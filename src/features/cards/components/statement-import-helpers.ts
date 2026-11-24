@@ -7,6 +7,7 @@ import {
   buildTransactionsFromRows,
   chunkArray,
   evaluateDeterministicStatementQuality,
+  evaluateMappingConfidence,
   generateStatementHash,
   isSpreadsheetOrHtmlFileName,
   parseSpreadsheetOrHtmlToRows,
@@ -514,6 +515,8 @@ export interface ParsedStatementWithFallbackResult {
   usedAiFallback: boolean;
   printedTotalCents: number | null;
   detectedMeta?: DetectedStatementMetadata;
+  isCacheHit?: boolean;
+  mappingConfidence?: number;
 }
 
 /**
@@ -551,6 +554,8 @@ export async function parseStatementWithPdfAiFallback(
       usedAiFallback: false,
       printedTotalCents: params.checksumGate?.officialTotalCents ?? null,
       detectedMeta,
+      isCacheHit: true,
+      mappingConfidence: 100,
     };
   }
 
@@ -560,11 +565,17 @@ export async function parseStatementWithPdfAiFallback(
   if (isSpreadsheetOrHtmlFileName(lowerName)) {
     const sheetRows = await parseSpreadsheetOrHtmlToRows(params.content);
     const headerCells = sheetRows[0]?.cells ?? [];
-    let mapping = getCachedColumnMapping(headerCells, sheetRows);
-    if (!mapping) {
-      mapping = sniffColumnMapping(sheetRows);
+    const cached = getCachedColumnMapping(headerCells, sheetRows);
+    const isCacheHit = Boolean(cached);
+    const mapping = cached ?? sniffColumnMapping(sheetRows);
+    if (!cached && mapping.hasHeader) {
       setCachedColumnMapping(headerCells, mapping);
     }
+    const mappingConfidence = evaluateMappingConfidence({
+      rows: sheetRows,
+      mapping,
+      isCacheHit,
+    });
     const transactions = buildTransactionsFromRows(sheetRows, mapping, {
       cardId: params.cardId,
       competenceMonth: params.competenceMonth,
@@ -583,6 +594,8 @@ export async function parseStatementWithPdfAiFallback(
       usedAiFallback: false,
       printedTotalCents: null,
       detectedMeta,
+      isCacheHit,
+      mappingConfidence,
     };
   }
 
@@ -609,17 +622,25 @@ export async function parseStatementWithPdfAiFallback(
       usedAiFallback: false,
       printedTotalCents: null,
       detectedMeta,
+      isCacheHit: true,
+      mappingConfidence: 100,
     };
   }
 
   const structuredTabular = isStructuredTabularFileName(params.fileNameOrType, params.content);
   if (structuredTabular) {
     const headerCells = deterministic.rows[0]?.cells ?? [];
-    let mapping = getCachedColumnMapping(headerCells, deterministic.rows);
-    if (!mapping) {
-      mapping = deterministic.mapping;
+    const cached = getCachedColumnMapping(headerCells, deterministic.rows);
+    const isCacheHit = Boolean(cached);
+    const mapping = cached ?? deterministic.mapping;
+    if (!cached && mapping.hasHeader) {
       setCachedColumnMapping(headerCells, mapping);
     }
+    const mappingConfidence = evaluateMappingConfidence({
+      rows: deterministic.rows,
+      mapping,
+      isCacheHit,
+    });
     const transactions =
       mapping !== deterministic.mapping
         ? buildTransactionsFromRows(deterministic.rows, mapping, {
@@ -641,6 +662,8 @@ export async function parseStatementWithPdfAiFallback(
       usedAiFallback: false,
       printedTotalCents: null,
       detectedMeta,
+      isCacheHit,
+      mappingConfidence,
     };
   }
 
@@ -661,11 +684,16 @@ export async function parseStatementWithPdfAiFallback(
       card: params.card,
       printedTotalCents: preprocessed.printedTotalCents,
     });
+    const mappingConfidence = evaluateMappingConfidence({
+      rows: deterministic.rows,
+      mapping: deterministic.mapping,
+    });
     return {
       ...deterministic,
       usedAiFallback: false,
       printedTotalCents: preprocessed.printedTotalCents,
       detectedMeta,
+      mappingConfidence,
     };
   }
 
@@ -678,11 +706,16 @@ export async function parseStatementWithPdfAiFallback(
       card: params.card,
       printedTotalCents: preprocessed.printedTotalCents,
     });
+    const mappingConfidence = evaluateMappingConfidence({
+      rows: deterministic.rows,
+      mapping: deterministic.mapping,
+    });
     return {
       ...deterministic,
       usedAiFallback: false,
       printedTotalCents: preprocessed.printedTotalCents,
       detectedMeta,
+      mappingConfidence,
     };
   }
 
@@ -748,11 +781,16 @@ export async function parseStatementWithPdfAiFallback(
       printedTotalCents: preprocessed.printedTotalCents,
       aiDetectedMeta: latestAiMeta,
     });
+    const mappingConfidence = evaluateMappingConfidence({
+      rows: deterministic.rows,
+      mapping: deterministic.mapping,
+    });
     return {
       ...deterministic,
       usedAiFallback: false,
       printedTotalCents: preprocessed.printedTotalCents,
       detectedMeta,
+      mappingConfidence,
     };
   }
 
@@ -776,11 +814,16 @@ export async function parseStatementWithPdfAiFallback(
       printedTotalCents: preprocessed.printedTotalCents,
       aiDetectedMeta: latestAiMeta,
     });
+    const mappingConfidence = evaluateMappingConfidence({
+      rows: deterministic.rows,
+      mapping: deterministic.mapping,
+    });
     return {
       ...deterministic,
       usedAiFallback: false,
       printedTotalCents: preprocessed.printedTotalCents,
       detectedMeta,
+      mappingConfidence,
     };
   }
 
@@ -803,6 +846,8 @@ export async function parseStatementWithPdfAiFallback(
     usedAiFallback: true,
     printedTotalCents: finalPrintedTotal,
     detectedMeta,
+    isCacheHit: false,
+    mappingConfidence: 100,
   };
 }
 

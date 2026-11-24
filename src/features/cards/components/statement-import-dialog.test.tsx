@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { UseQueryResult } from "@tanstack/react-query";
 import * as merchantLearningService from "@/services/merchant-learning";
+import { clearAllColumnMappingCache } from "@/services/statement-mapping-cache";
 import type { CreditCard, Expense } from "@/types";
 import { StatementImportDialog } from "./statement-import-dialog";
 
@@ -47,6 +48,14 @@ vi.mock("@/state", async (importOriginal) => {
     }),
     useImportStatementExpenses: () => ({
       mutateAsync: mutateAsyncMock,
+      isPending: false,
+    }),
+    useUpdateExpense: () => ({
+      mutateAsync: vi.fn().mockResolvedValue({}),
+      isPending: false,
+    }),
+    useCreateRefund: () => ({
+      mutateAsync: vi.fn().mockResolvedValue({}),
       isPending: false,
     }),
     useBusinessMode: () => ({
@@ -108,13 +117,20 @@ async function uploadMockStatementFile(
 }
 
 async function advanceFromMapping(user: ReturnType<typeof userEvent.setup>) {
-  const advanceBtn = await screen.findByRole("button", { name: /Avançar para Conferência/i });
-  await user.click(advanceBtn);
-  const form = document.querySelector("form");
-  if (form) fireEvent.submit(form);
+  // Se o passo 2 foi pulado automaticamente (confiança determinística >= 85% com cabeçalhos canônicos),
+  // o diálogo já se encontra na etapa de conferência.
+  const advanceBtn = screen.queryByRole("button", { name: /Avançar para Conferência/i });
+  if (advanceBtn) {
+    await user.click(advanceBtn);
+    const form = document.querySelector("form");
+    if (form) fireEvent.submit(form);
+  }
 }
 
 describe("StatementImportDialog", () => {
+  beforeEach(() => {
+    clearAllColumnMappingCache();
+  });
   it("renderiza o diálogo aberto com o componente de upload de arquivo", () => {
     render(
       <StatementImportDialog
@@ -854,6 +870,9 @@ describe("StatementImportDialog", () => {
       );
       const xlsInput = document.querySelector('input[type="file"]') as HTMLInputElement;
       await user.upload(xlsInput, htmlXls);
+      // Com confiança >= 85%, pula para conferência com botão "Ajustar colunas" no cabeçalho
+      const adjustBtn = await screen.findByRole("button", { name: /Ajustar colunas/i });
+      await user.click(adjustBtn);
       expect(await screen.findByText(/Prévia das primeiras linhas do extrato/i)).toBeInTheDocument();
       expect(mockExtractStatementPdfRowsWithAi).not.toHaveBeenCalled();
       unmountXls();

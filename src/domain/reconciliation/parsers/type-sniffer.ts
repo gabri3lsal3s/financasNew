@@ -550,3 +550,50 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
     startRowIndex,
   };
 }
+
+/**
+ * Avalia o nível de confiança (0 a 100) de um mapeamento de colunas inferido,
+ * analisando a consistência das colunas de Data, Valor e Descrição na amostra.
+ */
+export function evaluateMappingConfidence(params: {
+  rows: RawParsedRow[];
+  mapping: ColumnMapping;
+  isCacheHit?: boolean;
+}): number {
+  const { rows, mapping, isCacheHit } = params;
+  if (isCacheHit) return 100;
+  if (rows.length === 0) return 0;
+
+  const sample = rows.slice(mapping.startRowIndex, mapping.startRowIndex + 20);
+  if (sample.length === 0) return 0;
+
+  let validDates = 0;
+  let validAmounts = 0;
+  let validTexts = 0;
+
+  for (const row of sample) {
+    const dateCell = (row.cells[mapping.dateColIndex] ?? "").trim();
+    const amountCell = (row.cells[mapping.amountColIndex] ?? "").trim();
+    const textCell = (row.cells[mapping.descriptionColIndex] ?? "").trim();
+
+    if (normalizeDateToISO(dateCell) !== null || DATE_PATTERNS.some((p) => p.test(dateCell))) {
+      validDates++;
+    }
+    if (parseAmountToCents(amountCell) !== null) {
+      validAmounts++;
+    }
+    if (textCell.length >= 2 && parseAmountToCents(textCell) === null) {
+      validTexts++;
+    }
+  }
+
+  const dateRatio = validDates / sample.length;
+  const amountRatio = validAmounts / sample.length;
+  const textRatio = validTexts / sample.length;
+
+  let score = Math.round((dateRatio * 0.45 + amountRatio * 0.45 + textRatio * 0.1) * 100);
+  if (mapping.hasHeader && score >= 70) {
+    score = Math.min(100, score + 10);
+  }
+  return score;
+}

@@ -1,8 +1,25 @@
-import { Briefcase, Copy, Plus } from "lucide-react";
+import { Briefcase, Copy, Plus, X } from "lucide-react";
 import { Alert, Button, Tabs } from "@/components/ui";
 import { triggerSensory } from "@/services/sensory";
 
-export type ReconcileFilterTab = "all" | "new" | "suggested" | "matched" | "duplicates" | "app_only";
+export type ReconcileFilterTab =
+  | "all"
+  | "new"
+  | "suggested"
+  | "matched"
+  | "ignored"
+  | "duplicates"
+  | "app_only";
+
+export interface ReconcileFilterCounts {
+  all: number;
+  new: number;
+  suggested: number;
+  matched: number;
+  ignored: number;
+  duplicates: number;
+  appOnly: number;
+}
 
 export interface StatementReconcileToolbarProps {
   filter: ReconcileFilterTab;
@@ -17,6 +34,8 @@ export interface StatementReconcileToolbarProps {
   onUncheckDuplicates?: () => void;
   isBusinessModeEnabled?: boolean;
   onSetScopeAll?: (scope: "personal" | "business") => void;
+  counts?: Partial<ReconcileFilterCounts>;
+  isAddingManual?: boolean;
 }
 
 export function StatementReconcileToolbar({
@@ -32,17 +51,46 @@ export function StatementReconcileToolbar({
   onUncheckDuplicates,
   isBusinessModeEnabled = false,
   onSetScopeAll,
+  counts,
+  isAddingManual = false,
 }: StatementReconcileToolbarProps) {
+  const allCount = counts?.all;
+  const newCount = counts?.new;
+  const suggestedCount = counts?.suggested;
+  const matchedCount = counts?.matched;
+  const ignoredCount = counts?.ignored;
+  const dupCount = counts?.duplicates ?? duplicateCount;
+  const appCount = counts?.appOnly ?? countAppOnly;
+
   const tabsList = [
-    { value: "all", label: "Todos", content: null },
-    { value: "new", label: "Novos", content: null },
-    { value: "suggested", label: "Sugestões", content: null },
-    { value: "matched", label: "Conciliados", content: null },
-    ...(duplicateCount > 0
-      ? [{ value: "duplicates", label: `Duplicatas (${duplicateCount})`, content: null }]
+    {
+      value: "all",
+      label: allCount !== undefined ? `Todos (${allCount})` : "Todos",
+      content: null,
+    },
+    {
+      value: "new",
+      label: newCount !== undefined ? `Novos (${newCount})` : "Novos",
+      content: null,
+    },
+    {
+      value: "suggested",
+      label: suggestedCount !== undefined ? `Sugestões (${suggestedCount})` : "Sugestões",
+      content: null,
+    },
+    {
+      value: "matched",
+      label: matchedCount !== undefined ? `Conciliados (${matchedCount})` : "Conciliados",
+      content: null,
+    },
+    ...(ignoredCount !== undefined && ignoredCount > 0
+      ? [{ value: "ignored", label: `Ignorados / Estornos (${ignoredCount})`, content: null }]
       : []),
-    ...(countAppOnly > 0
-      ? [{ value: "app_only", label: `No App apenas (${countAppOnly})`, content: null }]
+    ...(dupCount > 0
+      ? [{ value: "duplicates", label: `Duplicatas (${dupCount})`, content: null }]
+      : []),
+    ...(appCount > 0
+      ? [{ value: "app_only", label: `No App apenas (${appCount})`, content: null }]
       : []),
   ];
 
@@ -75,7 +123,7 @@ export function StatementReconcileToolbar({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-7 text-xs text-warning-strong hover:bg-warning/15"
+                  className="h-7 text-xs text-warning-strong hover:bg-warning/15 cursor-pointer"
                   onClick={onUncheckDuplicates}
                 >
                   Desmarcar duplicatas
@@ -114,6 +162,7 @@ export function StatementReconcileToolbar({
             value={filter}
             onValueChange={(val) => onFilterChange(val as ReconcileFilterTab)}
             items={tabsList}
+            fullWidth={false}
           />
         </div>
         {filter !== "app_only" ? (
@@ -121,14 +170,23 @@ export function StatementReconcileToolbar({
             {canAddManual ? (
               <Button
                 type="button"
-                variant="outline"
+                variant={isAddingManual ? "secondary" : "outline"}
                 size="sm"
                 disabled={isPending}
-                className="text-xs h-8 gap-1"
+                className="text-xs h-8 gap-1 cursor-pointer"
                 onClick={onOpenAddManual}
               >
-                <Plus className="size-3.5" aria-hidden="true" />
-                Adicionar linha
+                {isAddingManual ? (
+                  <>
+                    <X className="size-3.5" aria-hidden="true" />
+                    Fechar adição
+                  </>
+                ) : (
+                  <>
+                    <Plus className="size-3.5" aria-hidden="true" />
+                    Adicionar linha
+                  </>
+                )}
               </Button>
             ) : null}
             {isBusinessModeEnabled && onSetScopeAll ? (
@@ -163,7 +221,7 @@ export function StatementReconcileToolbar({
               variant="ghost"
               size="sm"
               disabled={isPending}
-              className="shrink-0 text-xs"
+              className="shrink-0 text-xs cursor-pointer"
               onClick={() => onToggleAll(!allFilteredSelected)}
             >
               {allFilteredSelected ? "Desmarcar" : "Marcar todos"}

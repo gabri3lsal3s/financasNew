@@ -97,12 +97,28 @@ export interface ReconciliationItem {
   isTaxDeductible?: boolean;
   /** Natureza canônica da transação. */
   nature?: StatementTransactionNature;
+  /** Análise dos 4 estados da série de parcelamento se for compra parcelada. */
+  seriesAnalysis?: import("./series-detector").InstallmentSeriesAnalysis;
+  /** Se o usuário optou por projetar parcelas futuras K+1..N para esta compra. */
+  projectSeries?: boolean;
+  /** Se o item foi vinculado a uma despesa existente com ajuste de valor pendente. */
+  isLinkedAndAdjusted?: boolean;
+  /** Diferença em centavos entre o extrato e a despesa vinculada no app. */
+  pendingAdjustmentDifferenceCents?: number;
   /** Ação sugerida de conciliação para 1 clique na interface. */
   suggestedAction?:
     | "link_and_adjust_amount"
     | "import_and_project_series"
     | "import_single"
     | "link_existing";
+}
+
+export interface PendingLinkAdjustment {
+  expenseId: string;
+  originalValueCents: number;
+  newValueCents: number;
+  statementHash: string;
+  description: string;
 }
 
 /**

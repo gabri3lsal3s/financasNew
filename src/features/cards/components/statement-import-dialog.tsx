@@ -112,7 +112,7 @@ function StatementImportContent({
       onOpenChange={onOpenChange}
       title={`Importar Fatura — ${card.name}`}
       description={`Competência de ${monthLabel(state.activeCompetenceMonth)} · Concilie faturas via PDF, CSV, OFX, Excel, prints ou texto colado.`}
-      size="3xl"
+      size="2xl"
       footer={footer}
     >
       <div className="space-y-4">
@@ -193,6 +193,10 @@ function StatementImportContent({
             onFilesSelect={(files) => void state.handleFilesSelect(files)}
             onTextSubmit={(text) => void state.handleTextSubmit(text)}
             isProcessing={state.isReadingFile}
+            pendingPasswordFile={state.pendingPasswordFile}
+            passwordError={state.passwordError}
+            onPasswordSubmit={state.handlePasswordSubmit}
+            onPasswordCancel={state.handlePasswordCancel}
           />
         ) : state.step === "mapping" && state.columnMapping ? (
           <StatementMappingStep
@@ -222,6 +226,10 @@ function StatementImportContent({
             isBusinessModeEnabled={state.isBusinessModeEnabled}
             onToggleScope={state.handleToggleScope}
             onSetScopeAll={state.handleSetScopeAll}
+            onToggleProjectSeries={state.handleToggleProjectSeries}
+            onLinkAndAdjust={state.handleLinkAndAdjust}
+            onCreateRefund={state.handleCreateRefund}
+            onApplyCategoryBatch={state.handleApplyCategoryBatch}
             onBack={handleBackFromReconcile}
             onConfirm={() => void state.handleConfirmImport()}
             isPending={state.isPending}

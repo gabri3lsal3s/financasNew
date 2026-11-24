@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { ClipboardPaste, FileUp, Loader2 } from "lucide-react";
-import { Button, Dropzone, FormField, Tabs, Textarea } from "@/components/ui";
+import { ClipboardPaste, FileUp, Loader2, Lock } from "lucide-react";
+import { Button, Dropzone, FormField, Input, Tabs, Textarea } from "@/components/ui";
 import { readClipboardText } from "@/services/clipboard";
 
 export const STATEMENT_FILE_ACCEPT =
@@ -13,6 +13,10 @@ export interface StatementUploadStepProps {
   onFilesSelect?: (files: File[]) => void;
   onTextSubmit?: (text: string) => void;
   isProcessing?: boolean;
+  pendingPasswordFile?: File | null;
+  passwordError?: string | null;
+  onPasswordSubmit?: (password: string) => void;
+  onPasswordCancel?: () => void;
 }
 
 /**
@@ -25,9 +29,14 @@ export function StatementUploadStep({
   onFilesSelect,
   onTextSubmit,
   isProcessing = false,
+  pendingPasswordFile = null,
+  passwordError = null,
+  onPasswordSubmit,
+  onPasswordCancel,
 }: StatementUploadStepProps) {
   const [mode, setMode] = useState<UploadInputMode>("file");
   const [pastedText, setPastedText] = useState("");
+  const [pdfPassword, setPdfPassword] = useState("");
 
   const handleDrop = (files: File[]) => {
     if (isProcessing || files.length === 0) return;
@@ -52,6 +61,13 @@ export function StatementUploadStep({
     onTextSubmit(pastedText);
   };
 
+  const handleUnlockPdf = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pdfPassword.trim() || !onPasswordSubmit) return;
+    onPasswordSubmit(pdfPassword);
+    setPdfPassword("");
+  };
+
   const modeTabs = [
     {
       value: "file",
@@ -67,65 +83,146 @@ export function StatementUploadStep({
 
   return (
     <div className="space-y-3.5 pt-1">
-      {onTextSubmit ? (
-        <Tabs
-          value={mode}
-          onValueChange={(val) => setMode(val as UploadInputMode)}
-          items={modeTabs}
-          fullWidth
-        />
-      ) : null}
+      {pendingPasswordFile ? (
+        <form
+          onSubmit={handleUnlockPdf}
+          className="rounded-xl border border-warning/30 bg-warning/10 p-4 space-y-3 shadow-xs animate-in fade-in duration-200"
+        >
+          <div className="flex items-start gap-3">
+            <div className="pt-0.5 text-warning-strong shrink-0">
+              <Lock className="size-5" aria-hidden="true" />
+            </div>
+            <div className="space-y-1 flex-1 min-w-0">
+              <h3 className="text-sm font-semibold text-foreground">
+                Fatura em PDF protegida por senha
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                O arquivo <strong className="text-foreground">{pendingPasswordFile.name}</strong> está
+                criptografado. Digite a senha para continuar a importação.
+              </p>
+            </div>
+          </div>
 
-      {mode === "file" || !onTextSubmit ? (
-        <Dropzone
-          accept={STATEMENT_FILE_ACCEPT}
-          multiple
-          maxSizeBytes={15 * 1024 * 1024}
-          onFiles={handleDrop}
-          disabled={isProcessing}
-          label="Selecione o arquivo da fatura (PDF, CSV, OFX, Excel ou print)"
-          hint="Aceita PDF digital ou escaneado, CSV, OFX, Excel (.xlsx/.xls) e até 3 prints da fatura aberta"
-        />
-      ) : (
-        <div className="space-y-3 rounded-xl border border-border/80 bg-surface p-3.5 shadow-xs">
           <FormField
-            label="Conteúdo da fatura"
-            helperText="Cole lançamentos copiados do Internet Banking, aplicativo do banco, planilha ou PDF."
+            label="Senha do arquivo PDF"
+            helperText="A senha não é armazenada e permanece apenas em memória durante a leitura."
+            error={passwordError ?? undefined}
           >
-            <Textarea
-              value={pastedText}
-              onChange={(e) => setPastedText(e.target.value)}
+            <Input
+              type="password"
+              autoFocus={false}
+              value={pdfPassword}
+              onChange={(e) => setPdfPassword(e.target.value)}
+              placeholder="Digite a senha do PDF"
               disabled={isProcessing}
-              rows={6}
-              placeholder={"Exemplos aceitos:\n15/08  Supermercado Dia  R$ 140,50\n16/08  Livraria 2/3  120,00"}
-              aria-label="Conteúdo colado da fatura"
+              aria-label="Senha do arquivo PDF"
             />
           </FormField>
 
-          <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:justify-end">
+          <div className="flex items-center justify-end gap-2 pt-1">
+            {onPasswordCancel ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isProcessing}
+                onClick={() => {
+                  setPdfPassword("");
+                  onPasswordCancel();
+                }}
+              >
+                Cancelar
+              </Button>
+            ) : null}
             <Button
-              type="button"
-              variant="outline"
+              type="submit"
               size="sm"
-              disabled={isProcessing}
-              onClick={() => void handlePasteFromClipboard()}
+              disabled={isProcessing || !pdfPassword.trim()}
               className="gap-1.5"
             >
-              <ClipboardPaste className="size-4" aria-hidden="true" />
-              Colar área
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              disabled={isProcessing || !pastedText.trim()}
-              onClick={handleSubmitText}
-              className="gap-1.5"
-            >
-              <FileUp className="size-4" aria-hidden="true" />
-              Organizar fatura
+              {isProcessing ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                  <span>Desbloqueando...</span>
+                </>
+              ) : (
+                <span>Desbloquear e Continuar</span>
+              )}
             </Button>
           </div>
-        </div>
+        </form>
+      ) : (
+        <>
+          {onTextSubmit ? (
+            <Tabs
+              value={mode}
+              onValueChange={(val) => setMode(val as UploadInputMode)}
+              items={modeTabs}
+              fullWidth
+            />
+          ) : null}
+
+          {mode === "file" || !onTextSubmit ? (
+            <Dropzone
+              accept={STATEMENT_FILE_ACCEPT}
+              multiple
+              maxSizeBytes={15 * 1024 * 1024}
+              onFiles={handleDrop}
+              disabled={isProcessing}
+              label="Selecione o arquivo da fatura (PDF, CSV, OFX, Excel ou print)"
+              hint="Aceita PDF digital ou escaneado, CSV, OFX, Excel (.xlsx/.xls) e até 3 prints da fatura aberta"
+            />
+          ) : (
+            <div className="space-y-3 rounded-xl border border-border/80 bg-surface p-3.5 shadow-xs">
+              <FormField
+                label="Conteúdo da fatura"
+                helperText="Cole lançamentos copiados do Internet Banking, aplicativo do banco, planilha ou PDF."
+              >
+                <Textarea
+                  value={pastedText}
+                  onChange={(e) => setPastedText(e.target.value)}
+                  disabled={isProcessing}
+                  rows={6}
+                  placeholder={"Exemplos aceitos:\n15/08  Supermercado Dia  R$ 140,50\n16/08  Livraria 2/3  120,00"}
+                  aria-label="Conteúdo colado da fatura"
+                />
+              </FormField>
+
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isProcessing}
+                  onClick={() => void handlePasteFromClipboard()}
+                  className="gap-1.5"
+                >
+                  <ClipboardPaste className="size-4" aria-hidden="true" />
+                  Colar área
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={isProcessing || !pastedText.trim()}
+                  onClick={handleSubmitText}
+                  className="gap-1.5"
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                      Processando...
+                    </>
+                  ) : (
+                    <>
+                      <FileUp className="size-4" aria-hidden="true" />
+                      Organizar fatura
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {isProcessing ? (

@@ -10,10 +10,18 @@ export { InvoiceCompositionDonutCard } from "./invoice-composition-donut-card";
 export { InvoiceKpisSection } from "./invoice-kpis-section";
 export { PaymentDialog } from "./payment-dialog";
 export { StatementImportDialog } from "./statement-import-dialog";
-export { StatementItemFormDialog } from "./statement-item-form-dialog";
 export { StatementMappingStep } from "./statement-mapping-step";
 export { StatementReconcileStep } from "./statement-reconcile-step";
 export { StatementUploadStep } from "./statement-upload-step";
+export {
+  CategoryPill,
+  StatementAppOnlyRow,
+  StatementInlineAddRow,
+  StatementInlineEditRow,
+  StatementReconcileItemRow,
+} from "./statement-reconcile-rows";
+export { StatementReconcileSummaryCard } from "./statement-reconcile-summary-card";
+export { StatementReconcileToolbar } from "./statement-reconcile-toolbar";
 export { CardInvoiceExpensesFeed } from "./card-invoice-expenses-feed";
 export { CardInvoiceChargesFeed } from "./card-invoice-charges-feed";
 export { CardInvoicePaymentsFeed } from "./card-invoice-payments-feed";

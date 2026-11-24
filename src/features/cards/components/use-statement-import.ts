@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { inferBusinessTaxDeductibility } from "@/domain/business";
 import {
   matchCategoryBySlug,
   resolveMerchantIdentity,
@@ -7,9 +8,13 @@ import {
 import {
   buildTransactionsFromRows,
   chunkArray,
+  detectInstallmentSeriesState,
+  projectFutureInstallments,
   predictCategoryForDescription,
+  STATEMENT_IMPORT_CHUNK_SIZE,
   type ColumnMapping,
   type ExistingExpenseForReconciliation,
+  type PendingLinkAdjustment,
   type RawParsedRow,
   type ReconciliationItem,
   type DetectedStatementMetadata,
@@ -22,16 +27,23 @@ import {
   recordBatchAiMerchantTeachings,
   type BatchAiMerchantTeachingItem,
 } from "@/services/merchant-learning";
+import {
+  isPdfPasswordProtectedError,
+  PdfPasswordProtectedError,
+} from "@/services/native/receipt-extractor";
 import { computeFileSha256 } from "@/services/receipt-resolution";
 import { triggerSensory } from "@/services/sensory";
+import { setCachedColumnMapping } from "@/services/statement-mapping-cache";
 import { pushToast } from "@/services/toast";
 import { getActiveUserId } from "@/services/user-storage";
 import {
   useBusinessMode,
   useCardExpenses,
   useCategories,
+  useCreateRefund,
   useImportStatementExpenses,
   usePredictionHistory,
+  useUpdateExpense,
 } from "@/state";
 import type { CreditCard } from "@/types";
 import { MAX_AI_CATEGORIZE_BATCH_ITEMS } from "../../../../supabase/functions/_shared/ai-schemas";
@@ -46,6 +58,8 @@ import {
   parseStatementWithPdfAiFallback,
   readStatementFileContent,
   runStatementReconciliation,
+  type ChunkedImportExpenseInput,
+  type LoadedStatementSource,
   type StatementItemPatch,
 } from "./statement-import-helpers";
 import type { StatementImportProgress } from "./statement-reconcile-step";
@@ -83,6 +97,11 @@ export function useStatementImport({
   const [unmatchedAppExpenses, setUnmatchedAppExpenses] = useState<
     ExistingExpenseForReconciliation[]
   >([]);
+  const [pendingLinkAdjustments, setPendingLinkAdjustments] = useState<
+    Map<string, PendingLinkAdjustment>
+  >(new Map());
+  const [pendingPasswordFile, setPendingPasswordFile] = useState<File | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [importProgress, setImportProgress] = useState<StatementImportProgress | null>(null);
   const [isReadingFile, setIsReadingFile] = useState(false);
   const [usedAiStructurer, setUsedAiStructurer] = useState(false);
@@ -114,6 +133,8 @@ export function useStatementImport({
   const expensesQuery = useCardExpenses(card.id);
   const historyQuery = usePredictionHistory(true);
   const importMutation = useImportStatementExpenses();
+  const updateExpenseMutation = useUpdateExpense();
+  const createRefundMutation = useCreateRefund();
 
   const categories = useMemo(() => categoriesQuery.data ?? [], [categoriesQuery.data]);
   const defaultCategoryId = categories[0]?.id ?? "";
@@ -135,6 +156,7 @@ export function useStatementImport({
   ) => {
     const runId = ++reconcileRunIdRef.current;
     manuallyEditedIdsRef.current.clear();
+    setPendingLinkAdjustments(new Map());
 
     if (meta?.usedAiStructurer !== undefined) {
       setUsedAiStructurer(meta.usedAiStructurer);
@@ -146,6 +168,7 @@ export function useStatementImport({
       setDetectedMeta(meta.detectedMeta);
     }
 
+    const compForRecon = meta?.competenceForReconciliation ?? activeCompetenceMonth;
     const existingExpenses = meta?.competenceForReconciliation
       ? mapExpensesForReconciliation(expensesQuery.data ?? [], meta.competenceForReconciliation)
       : existingExpensesForReconciliation;
@@ -158,14 +181,37 @@ export function useStatementImport({
       defaultCategoryId,
     });
 
+    // Detecta estados de séries de parcelamento
+    const itemsWithSeries = reconciliation.items.map((item) => {
+      const inst = item.transaction.installment;
+      if (inst && inst.total > 1) {
+        const seriesAnalysis = detectInstallmentSeriesState({
+          transaction: item.transaction,
+          competenceMonth: compForRecon,
+          existingExpenses,
+          cardScope: card.scope,
+        });
+        const canProject =
+          seriesAnalysis !== null &&
+          seriesAnalysis.state !== "state_4_already_projected" &&
+          seriesAnalysis.missingFutureInstallments.length > 0;
+        return {
+          ...item,
+          seriesAnalysis,
+          projectSeries: canProject,
+        };
+      }
+      return item;
+    });
+
     const userMemory = getMerchantLearningMemory();
     const unknownMerchantImpact = new Map<
       string,
       { cleanText: string; totalAmountCents: number }
     >();
 
-    // Camadas 1, 2 e 3 locais (histórico + memória aprendida + catálogo canônico/keywords = 0 tokens!)
-    const preResolvedItems = reconciliation.items.map((item) => {
+    // Camadas 1, 2 e 3 locais (histórico + memória aprendida + catálogo canônico/keywords = 0 tokens)
+    const preResolvedItems = itemsWithSeries.map((item) => {
       if (
         item.status !== "unmatched_new" ||
         item.ignoredByDefault ||
@@ -314,7 +360,6 @@ export function useStatementImport({
           return;
         }
 
-        // Retroalimenta memória semântica fora do updater puro do React (deduplicado por comerciante)
         const learnedMerchantKeys = new Set<string>();
         for (const item of preResolvedItems) {
           if (manuallyEditedIdsRef.current.has(item.transaction.id)) continue;
@@ -400,7 +445,14 @@ export function useStatementImport({
       setPrintedTotalCents(result.printedTotalCents);
       setDetectedMeta(result.detectedMeta ?? null);
 
-      if (result.isOfx || result.usedAiFallback || result.rows.length === 0) {
+      const shouldAutoAdvance =
+        result.isOfx ||
+        result.usedAiFallback ||
+        result.rows.length === 0 ||
+        ((result.mapping.hasHeader ?? false) &&
+          ((result.isCacheHit ?? false) || (result.mappingConfidence ?? 0) >= 85));
+
+      if (shouldAutoAdvance) {
         applyReconciliation(result.transactions, {
           usedAiStructurer: result.usedAiFallback,
           printedTotalCents: result.printedTotalCents,
@@ -412,6 +464,81 @@ export function useStatementImport({
     } catch (err) {
       setError(getErrorMessage(err));
     }
+  };
+
+  const processLoadedStatementSource = async (loaded: LoadedStatementSource) => {
+    if (loaded.kind === "pdf_scanned") {
+      const { renderScannedPdfPageToBlob } = await import(
+        "@/services/native/receipt-extractor"
+      );
+      const pageBlobs: Array<{ blob: Blob; sha256?: string | null }> = [];
+      for (let page = 1; page <= MAX_STATEMENT_VISION_PAGES_OR_IMAGES; page++) {
+        const blob = await renderScannedPdfPageToBlob(loaded.buffer, page);
+        if (!blob) break;
+        pageBlobs.push({
+          blob,
+          sha256: page === 1 && loaded.sha256 ? loaded.sha256 : undefined,
+        });
+      }
+
+      loadedInputRef.current = {
+        visionBlobs: pageBlobs,
+        content: "",
+        fileNameOrType: "scanned_pdf",
+      };
+
+      const scannedVision = await parseStatementVisionBlobsWithAi({
+        blobs: pageBlobs,
+        cardId: card.id,
+        competenceMonth: activeCompetenceMonth,
+        card: {
+          id: card.id,
+          name: card.name,
+          brand: card.brand,
+          closing_day: card.closing_day,
+          due_day: card.due_day,
+          last_four_digits: card.last_four_digits,
+        },
+        userId: resolvedUserId,
+        isReadOnlyMode,
+        aiFallbackEnabled: aiExtractionEnabled,
+      });
+
+      if (scannedVision.transactions.length === 0) {
+        setError(
+          "Não foi possível extrair os dados da fatura em PDF. Se o arquivo estiver protegido por senha, desbloqueie-o ou exporte em CSV/OFX.",
+        );
+        return;
+      }
+
+      setParsedRows(scannedVision.rows);
+      setColumnMapping(scannedVision.mapping);
+      setDetectedMeta(scannedVision.detectedMeta ?? null);
+      applyReconciliation(scannedVision.transactions, {
+        usedAiStructurer: true,
+        printedTotalCents: null,
+        detectedMeta: scannedVision.detectedMeta,
+      });
+      return;
+    }
+
+    if (loaded.kind === "pdf_text") {
+      await handleProcessInput(
+        loaded.text,
+        loaded.fileName,
+        loaded.sha256,
+        loaded.spatialTransactions,
+        loaded.checksumGate,
+      );
+      return;
+    }
+
+    if (loaded.kind === "spreadsheet") {
+      await handleProcessInput(loaded.buffer, loaded.fileName, null);
+      return;
+    }
+
+    await handleProcessInput(loaded.content, loaded.fileName, null);
   };
 
   const handleFilesSelect = async (files: File[]) => {
@@ -472,91 +599,59 @@ export function useStatementImport({
       }
 
       const primaryFile = files[0]!;
-      const loaded = await readStatementFileContent(primaryFile, {
-        cardId: card.id,
-        competenceMonth: activeCompetenceMonth,
-      });
-
-      if (loaded.kind === "pdf_scanned") {
-        const { renderScannedPdfPageToBlob } = await import(
-          "@/services/native/receipt-extractor"
-        );
-        const pageBlobs: Array<{ blob: Blob; sha256?: string | null }> = [];
-        for (let page = 1; page <= MAX_STATEMENT_VISION_PAGES_OR_IMAGES; page++) {
-          const blob = await renderScannedPdfPageToBlob(loaded.buffer, page);
-          if (!blob) break;
-          pageBlobs.push({
-            blob,
-            sha256:
-              page === 1 && loaded.sha256
-                ? loaded.sha256
-                : undefined,
-          });
-        }
-
-        loadedInputRef.current = {
-          visionBlobs: pageBlobs,
-          content: "",
-          fileNameOrType: "scanned_pdf",
-        };
-
-        const scannedVision = await parseStatementVisionBlobsWithAi({
-          blobs: pageBlobs,
+      let loaded: LoadedStatementSource;
+      try {
+        loaded = await readStatementFileContent(primaryFile, {
           cardId: card.id,
           competenceMonth: activeCompetenceMonth,
-          card: {
-            id: card.id,
-            name: card.name,
-            brand: card.brand,
-            closing_day: card.closing_day,
-            due_day: card.due_day,
-            last_four_digits: card.last_four_digits,
-          },
-          userId: resolvedUserId,
-          isReadOnlyMode,
-          aiFallbackEnabled: aiExtractionEnabled,
         });
-
-        if (scannedVision.transactions.length === 0) {
-          setError(
-            "Não foi possível extrair os dados da fatura em PDF. Se o arquivo estiver protegido por senha, desbloqueie-o ou exporte em CSV/OFX.",
-          );
+      } catch (err: unknown) {
+        if (err instanceof PdfPasswordProtectedError || isPdfPasswordProtectedError(err)) {
+          setPendingPasswordFile(primaryFile);
+          setPasswordError(null);
           return;
         }
-
-        setParsedRows(scannedVision.rows);
-        setColumnMapping(scannedVision.mapping);
-        setDetectedMeta(scannedVision.detectedMeta ?? null);
-        applyReconciliation(scannedVision.transactions, {
-          usedAiStructurer: true,
-          printedTotalCents: null,
-          detectedMeta: scannedVision.detectedMeta,
-        });
-        return;
+        throw err;
       }
 
-      if (loaded.kind === "pdf_text") {
-        await handleProcessInput(
-          loaded.text,
-          loaded.fileName,
-          loaded.sha256,
-          loaded.spatialTransactions,
-          loaded.checksumGate,
-        );
-        return;
-      }
-
-      if (loaded.kind === "spreadsheet") {
-        await handleProcessInput(loaded.buffer, loaded.fileName, null);
-        return;
-      }
-
-      await handleProcessInput(loaded.content, loaded.fileName, null);
+      await processLoadedStatementSource(loaded);
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
       setIsReadingFile(false);
     }
+  };
+
+  const handlePasswordSubmit = async (password: string) => {
+    if (!pendingPasswordFile) return;
+    setIsReadingFile(true);
+    setPasswordError(null);
+
+    try {
+      const loaded = await readStatementFileContent(pendingPasswordFile, {
+        cardId: card.id,
+        competenceMonth: activeCompetenceMonth,
+        password,
+      });
+
+      setPendingPasswordFile(null);
+      setPasswordError(null);
+      await processLoadedStatementSource(loaded);
+    } catch (err: unknown) {
+      if (err instanceof PdfPasswordProtectedError || isPdfPasswordProtectedError(err)) {
+        setPasswordError("Senha incorreta. Verifique e tente novamente.");
+      } else {
+        setError(getErrorMessage(err));
+        setPendingPasswordFile(null);
+      }
+    } finally {
+      setIsReadingFile(false);
+    }
+  };
+
+  const handlePasswordCancel = () => {
+    setPendingPasswordFile(null);
+    setPasswordError(null);
   };
 
   const handleFileSelect = async (file: File) => handleFilesSelect([file]);
@@ -639,7 +734,14 @@ export function useStatementImport({
         setPrintedTotalCents(result.printedTotalCents);
         setDetectedMeta(result.detectedMeta ?? null);
 
-        if (result.isOfx || result.usedAiFallback || result.rows.length === 0) {
+        const shouldAutoAdvance =
+          result.isOfx ||
+          result.usedAiFallback ||
+          result.rows.length === 0 ||
+          ((result.mapping.hasHeader ?? false) &&
+            ((result.isCacheHit ?? false) || (result.mappingConfidence ?? 0) >= 85));
+
+        if (shouldAutoAdvance) {
           applyReconciliation(result.transactions, {
             usedAiStructurer: result.usedAiFallback,
             printedTotalCents: result.printedTotalCents,
@@ -664,6 +766,9 @@ export function useStatementImport({
   const handleConfirmMapping = (mapping: ColumnMapping) => {
     setColumnMapping(mapping);
     setError(null);
+    if (parsedRows.length > 0 && parsedRows[0]?.cells?.length) {
+      setCachedColumnMapping(parsedRows[0].cells, mapping);
+    }
     try {
       applyReconciliation(
         buildTransactionsFromRows(parsedRows, mapping, { cardId: card.id, competenceMonth: activeCompetenceMonth }),
@@ -699,6 +804,35 @@ export function useStatementImport({
         targetItem.transaction.rawDescription,
       );
     }
+  };
+
+  const handleApplyCategoryBatch = (ids: string[], categoryId: string) => {
+    for (const id of ids) {
+      manuallyEditedIdsRef.current.add(id);
+    }
+
+    setReconciledItems((prev) =>
+      prev.map((it) =>
+        ids.includes(it.transaction.id) ? { ...it, selectedCategoryId: categoryId } : it,
+      ),
+    );
+
+    const firstItem = reconciledItems.find((it) => ids.includes(it.transaction.id));
+    if (firstItem && categoryId) {
+      autoLearnExpenseCategory(
+        firstItem.transaction.cleanDescription,
+        categoryId,
+        undefined,
+        firstItem.transaction.rawDescription,
+      );
+    }
+
+    triggerSensory("selection");
+    pushToast({
+      title: "Categoria propagada",
+      description: `Categoria aplicada a ${ids.length} ${ids.length === 1 ? "compra" : "compras"}.`,
+      variant: "default",
+    });
   };
 
   const handleEditItem = (id: string, updated: StatementItemPatch) => {
@@ -771,6 +905,83 @@ export function useStatementImport({
     );
   };
 
+  const handleToggleProjectSeries = (id: string) => {
+    setReconciledItems((prev) =>
+      prev.map((it) =>
+        it.transaction.id === id ? { ...it, projectSeries: !(it.projectSeries ?? true) } : it,
+      ),
+    );
+  };
+
+  const handleLinkAndAdjust = (id: string) => {
+    const target = reconciledItems.find((it) => it.transaction.id === id);
+    if (!target || !target.matchedExpenseId) return;
+
+    const matchedCents = target.matchedExpenseValueCents ?? target.transaction.amountCents;
+    const diffCents = target.transaction.amountCents - matchedCents;
+
+    setReconciledItems((prev) =>
+      prev.map((it) =>
+        it.transaction.id === id
+          ? {
+              ...it,
+              selected: false,
+              isLinkedAndAdjusted: true,
+              pendingAdjustmentDifferenceCents: diffCents,
+            }
+          : it,
+      ),
+    );
+
+    setPendingLinkAdjustments((prev) => {
+      const next = new Map(prev);
+      next.set(id, {
+        expenseId: target.matchedExpenseId!,
+        newValueCents: target.transaction.amountCents,
+        originalValueCents: matchedCents,
+        differenceCents: diffCents,
+        statementHash: target.transaction.statementHash,
+      });
+      return next;
+    });
+
+    triggerSensory("selection");
+  };
+
+  const handleCreateRefund = async (item: ReconciliationItem) => {
+    try {
+      await createRefundMutation.mutateAsync({
+        cardId: card.id,
+        competenceMonth: activeCompetenceMonth,
+        amount: Math.abs(item.transaction.amountCents) / 100,
+        date: item.transaction.date,
+        note: item.transaction.cleanDescription,
+      });
+
+      setReconciledItems((prev) =>
+        prev.map((it) =>
+          it.transaction.id === item.transaction.id
+            ? { ...it, selected: false, ignoredByDefault: true }
+            : it,
+        ),
+      );
+
+      triggerSensory("success");
+      pushToast({
+        title: "Estorno registrado",
+        description: `Estorno de ${(Math.abs(item.transaction.amountCents) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} lançado na fatura e receita gerada.`,
+        variant: "default",
+      });
+    } catch (err) {
+      triggerSensory("error");
+      pushToast({
+        title: "Erro ao registrar estorno",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleUncheckDuplicates = () => {
     setReconciledItems((prev) =>
       prev.map((it) =>
@@ -781,26 +992,135 @@ export function useStatementImport({
 
   const handleConfirmImport = async () => {
     const toImport = reconciledItems.filter((it) => it.selected);
-    if (toImport.length === 0) return;
+    const hasLinkedAdjustments = pendingLinkAdjustments.size > 0;
+    if (toImport.length === 0 && !hasLinkedAdjustments) return;
 
     setError(null);
     try {
-      const { totalInserted, totalSkipped } = await executeChunkedStatementImport({
-        cardId: card.id,
-        cardScope: card.scope,
-        competenceMonth: activeCompetenceMonth,
-        items: toImport,
-        fallbackCategoryId: defaultCategoryId || categories[0]?.id || "",
-        onProgress: setImportProgress,
-        mutateChunk: (input) => importMutation.mutateAsync(input),
-      });
+      // 1. Atualiza despesas existentes vinculadas com divergência de centavos
+      if (hasLinkedAdjustments) {
+        const adjustmentPromises = Array.from(pendingLinkAdjustments.values()).map((adj) =>
+          updateExpenseMutation.mutateAsync({
+            id: adj.expenseId,
+            input: {
+              value: adj.newValueCents / 100,
+              statement_hash: adj.statementHash,
+            },
+          }),
+        );
+        const adjResults = await Promise.allSettled(adjustmentPromises);
+        const rejected = adjResults.find((r) => r.status === "rejected");
+        if (rejected && rejected.status === "rejected") {
+          throw rejected.reason;
+        }
+      }
+
+      // 2. Importa lançamentos selecionados da competência corrente
+      let totalInserted = 0;
+      let totalSkipped = 0;
+      if (toImport.length > 0) {
+        const result = await executeChunkedStatementImport({
+          cardId: card.id,
+          cardScope: card.scope,
+          competenceMonth: activeCompetenceMonth,
+          items: toImport,
+          fallbackCategoryId: defaultCategoryId || categories[0]?.id || "",
+          onProgress: setImportProgress,
+          mutateChunk: (input) => importMutation.mutateAsync(input),
+        });
+        totalInserted = result.totalInserted;
+        totalSkipped = result.totalSkipped;
+      }
+
+      // 3. Projeta parcelas futuras (K+1 .. N) agrupadas por competência
+      const isBusinessCard = card.scope === "business";
+      const seriesToProject: Array<{
+        item: ReconciliationItem;
+        projected: ReturnType<typeof projectFutureInstallments>;
+      }> = [];
+
+      for (const it of toImport) {
+        if (
+          it.projectSeries &&
+          it.transaction.installment &&
+          it.transaction.installment.total > it.transaction.installment.current
+        ) {
+          const itemScope = it.scope ?? (isBusinessCard ? "business" : "personal");
+          const isBiz = itemScope === "business";
+          const isDeductible = isBiz
+            ? (it.isTaxDeductible ?? inferBusinessTaxDeductibility({ description: it.transaction.cleanDescription }).isDeductible)
+            : false;
+
+          const projected = projectFutureInstallments({
+            currentInstallment: it.transaction.installment.current,
+            totalInstallments: it.transaction.installment.total,
+            installmentValueCents: it.transaction.amountCents,
+            baseDate: it.transaction.date,
+            baseCompetence: activeCompetenceMonth,
+            description: it.transaction.cleanDescription,
+            categoryId: it.selectedCategoryId || defaultCategoryId || categories[0]?.id || "",
+            scope: itemScope,
+            isTaxDeductible: isDeductible,
+          });
+
+          if (projected.length > 0) {
+            seriesToProject.push({ item: it, projected });
+          }
+        }
+      }
+
+      if (seriesToProject.length > 0) {
+        const projectionsByCompetence = new Map<string, ChunkedImportExpenseInput[]>();
+        for (const { projected } of seriesToProject) {
+          for (const p of projected) {
+            const list = projectionsByCompetence.get(p.billCompetence) ?? [];
+            list.push({
+              date: p.date,
+              value: p.valueCents / 100,
+              category_id: p.categoryId,
+              description: p.description,
+              installments_total: p.installmentsTotal,
+              installment_number: p.installmentNumber,
+              report_weight: 1.0,
+              statement_hash: undefined, // Sem statement_hash nas futuras para não conflitar com importações reais subsequentes
+              charge_kind: "installment",
+              scope: p.scope ?? (isBusinessCard ? "business" : "personal"),
+              ...(p.isTaxDeductible ? { is_tax_deductible: true } : {}),
+            });
+            projectionsByCompetence.set(p.billCompetence, list);
+          }
+        }
+
+        for (const [futureCompetence, futureExpenses] of projectionsByCompetence.entries()) {
+          const chunks = chunkArray(futureExpenses, STATEMENT_IMPORT_CHUNK_SIZE);
+          for (const chunk of chunks) {
+            await importMutation.mutateAsync({
+              cardId: card.id,
+              competenceMonth: futureCompetence,
+              expenses: chunk,
+            });
+          }
+        }
+      }
+
+      // 4. Salva cache declarativo de colunas se houver cabeçalhos
+      if (columnMapping && parsedRows.length > 0 && parsedRows[0]?.cells?.length) {
+        setCachedColumnMapping(parsedRows[0].cells, columnMapping);
+      }
 
       triggerSensory("success");
+      const totalAdjusted = pendingLinkAdjustments.size;
+      const futureCount = seriesToProject.reduce((acc, s) => acc + s.projected.length, 0);
+
       pushToast({
         variant: "default",
         title: `Fatura importada com sucesso: ${totalInserted} ${
           totalInserted === 1 ? "lançamento criado" : "lançamentos criados"
-        }${totalSkipped > 0 ? ` (${totalSkipped} duplicatas ignoradas)` : ""}.`,
+        }${totalSkipped > 0 ? ` (${totalSkipped} duplicatas ignoradas)` : ""}${
+          totalAdjusted > 0 ? ` · ${totalAdjusted} despesa(s) vinculada(s)` : ""
+        }${
+          futureCount > 0 ? ` · ${futureCount} parcelas futuras projetadas` : ""
+        }.`,
       });
       onClose();
     } catch (err) {
@@ -832,17 +1152,23 @@ export function useStatementImport({
     isReadingFile,
     usedAiStructurer,
     printedTotalCents,
+    pendingPasswordFile,
+    passwordError,
     canOpenMapping: parsedRows.length > 0,
-    isPending: importMutation.isPending || importProgress !== null,
+    isPending:
+      importMutation.isPending || updateExpenseMutation.isPending || importProgress !== null,
     handleFileSelect,
     handleFilesSelect,
     handleTextSubmit,
+    handlePasswordSubmit,
+    handlePasswordCancel,
     handleConfirmMapping,
     handleSwitchCompetence,
     handleDismissCompetenceMismatch,
     handleToggleItem,
     handleToggleAll,
     handleChangeCategory,
+    handleApplyCategoryBatch,
     handleEditItem,
     handleRemoveItem,
     handleAddManualItem,
@@ -850,6 +1176,9 @@ export function useStatementImport({
     isBusinessModeEnabled,
     handleToggleScope,
     handleSetScopeAll,
+    handleToggleProjectSeries,
+    handleLinkAndAdjust,
+    handleCreateRefund,
     handleConfirmImport,
   };
 }

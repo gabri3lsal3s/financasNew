@@ -144,6 +144,7 @@ export function setCachedColumnMapping(
   headerCells: string[],
   mapping: ColumnMapping,
 ): void {
+  if (!mapping.hasHeader) return;
   const signature = computeHeaderSignature(headerCells);
   if (!signature) return;
 
