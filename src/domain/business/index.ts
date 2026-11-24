@@ -9,3 +9,4 @@ export * from "./tax-shield";
 export * from "./mei-limit";
 export * from "./break-even";
 export * from "./card-reimbursement";
+export * from "./scope-conflict";

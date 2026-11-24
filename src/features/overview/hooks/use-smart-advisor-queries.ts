@@ -192,6 +192,7 @@ export function useSmartAdvisorQueries({
     (feedbackQuery.isLoading ||
       categoriesQuery.isLoading ||
       month0Expenses.isLoading ||
+      userPreferencesQuery.isLoading ||
       (isCurrentMonth && realCashData.isLoading));
 
   const isLoading =

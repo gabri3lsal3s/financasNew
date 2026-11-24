@@ -78,6 +78,10 @@ export interface ParsedBankTransaction {
   originalAmountCents?: number;
   /** Tags semânticas curtas associadas ao estabelecimento/itens. */
   semanticTags?: string[];
+  /** Escopo inferido pela IA (ex.: 'business' para nota fiscal/recibo PJ ou 'personal'). */
+  inferredScope?: "personal" | "business";
+  /** Sugestão de dedutibilidade fiscal (Livro-Caixa / Carnê-Leão / MEI) inferida pela IA ou regras. */
+  isTaxDeductible?: boolean;
 }
 
 

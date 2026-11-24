@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateTaxShield } from "./tax-shield";
+import { calculateTaxShield, inferBusinessTaxDeductibility } from "./tax-shield";
 
 describe("tax-shield (Escudo Tributário Líquido)", () => {
   it("não permite que IOF de cartão abata a provisão tributária e soma despesas dedutíveis", () => {
@@ -60,4 +60,52 @@ describe("tax-shield (Escudo Tributário Líquido)", () => {
     expect(shield.coveragePct).toBe(100);
     expect(shield.isFullyCovered).toBe(true);
   });
+
+  describe("inferBusinessTaxDeductibility", () => {
+    it("identifica softwares de trabalho, nuvem e SaaS como despesas dedutíveis", () => {
+      const aws = inferBusinessTaxDeductibility({ description: "AWS Cloud Services", categoryName: "Tecnologia" });
+      expect(aws.isDeductible).toBe(true);
+      expect(aws.confidence).toBe("high");
+
+      const figma = inferBusinessTaxDeductibility({ description: "Figma Professional Monthly" });
+      expect(figma.isDeductible).toBe(true);
+
+      const cert = inferBusinessTaxDeductibility({ description: "Emissão Certificado Digital A1 Serasa" });
+      expect(cert.isDeductible).toBe(true);
+    });
+
+    it("identifica honorários contábeis, papelaria e coworking como dedutíveis", () => {
+      const contab = inferBusinessTaxDeductibility({ description: "Honorários Contabilidade Mensal" });
+      expect(contab.isDeductible).toBe(true);
+
+      const papelaria = inferBusinessTaxDeductibility({ description: "Papel A4 e toner para escritório" });
+      expect(papelaria.isDeductible).toBe(true);
+
+      const coworking = inferBusinessTaxDeductibility({ description: "Mensalidade Coworking Sala Privativa" });
+      expect(coworking.isDeductible).toBe(true);
+    });
+
+    it("rejeita gastos domésticos e familiares mesmo se lançados no contexto de negócio", () => {
+      const mercado = inferBusinessTaxDeductibility({ description: "Supermercado Pão de Açúcar", categoryName: "Geral" });
+      expect(mercado.isDeductible).toBe(false);
+      expect(mercado.confidence).toBe("high");
+
+      const cinema = inferBusinessTaxDeductibility({ description: "Cinemark Shopping Iguatemi" });
+      expect(cinema.isDeductible).toBe(false);
+
+      const netflix = inferBusinessTaxDeductibility({ description: "Netflix Assinatura Familiar" });
+      expect(netflix.isDeductible).toBe(false);
+    });
+
+    it("retorna low confidence para descrições vazias ou genéricas sem palavras-chave", () => {
+      const empty = inferBusinessTaxDeductibility({});
+      expect(empty.isDeductible).toBe(false);
+      expect(empty.confidence).toBe("low");
+
+      const generic = inferBusinessTaxDeductibility({ description: "Pagamento diversos fornecedor" });
+      expect(generic.isDeductible).toBe(false);
+      expect(generic.confidence).toBe("low");
+    });
+  });
 });
+

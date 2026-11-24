@@ -155,23 +155,18 @@ export function shouldShowPaceAlert(
     return true;
   }
 
-  // 1. Virada de mês
-  if (checkpoint.month !== current.month) {
-    return true;
-  }
-
-  // 2. Entrada em déficit projetado (surplus < 0 quando antes era superávit/nulo)
+  // 1. Entrada em déficit projetado (surplus < 0 quando antes era superávit/nulo - fura o cooldown)
   const prevWasDeficit = checkpoint.surplusCents !== null && checkpoint.surplusCents < 0;
   const currentIsDeficit = current.surplusCents !== null && current.surplusCents < 0;
   if (!prevWasDeficit && currentIsDeficit) {
     return true;
   }
 
-  // 3. Avaliação temporal de Cooldown (7 dias ou 30 dias)
+  // 2. Avaliação temporal de Cooldown explícito (7 dias ou 30 dias escolhidos pelo usuário)
   const nowMs = options?.nowMs ?? Date.now();
   if (checkpoint.dismissedUntil !== undefined) {
     if (nowMs < checkpoint.dismissedUntil) {
-      // Dentro da janela de 7 ou 30 dias: permanece silenciado!
+      // Dentro da janela de 7 ou 30 dias: permanece silenciado mesmo se virar o mês!
       return false;
     }
     // Expirou o cooldown de 7 ou 30 dias: reavalia
@@ -179,6 +174,11 @@ export function shouldShowPaceAlert(
   }
 
   // Fallback legado (caso venha checkpoint antigo sem dismissedUntil):
+  // 3. Virada de mês
+  if (checkpoint.month !== current.month) {
+    return true;
+  }
+
   // 4. Agravamento do ritmo de gastos em 5% ou mais
   if (current.spentPercent - checkpoint.spentPercent >= 5) {
     return true;
@@ -230,23 +230,24 @@ export function shouldShowSurplusAlert(
     return true;
   }
 
-  // 1. Virada de mês
-  if (checkpoint.month !== current.month) {
-    return true;
-  }
-
-  // 2. Avaliação temporal de Cooldown (7 dias ou 30 dias)
+  // 1. Avaliação temporal de Cooldown explícito (7 dias ou 30 dias escolhidos pelo usuário)
   const nowMs = options?.nowMs ?? Date.now();
   if (checkpoint.dismissedUntil !== undefined) {
     if (nowMs < checkpoint.dismissedUntil) {
-      // Dentro da janela de 7 ou 30 dias: permanece silenciado!
+      // Dentro da janela de 7 ou 30 dias: permanece silenciado mesmo se virar o mês!
       return false;
     }
     // Expirou o cooldown de 7 ou 30 dias
     return true;
   }
 
-  // Fallback legado (sem prazo definido): variação significativa de sobra estimada (>= R$ 50,00)
+  // Fallback legado (sem prazo definido):
+  // 2. Virada de mês
+  if (checkpoint.month !== current.month) {
+    return true;
+  }
+
+  // 3. Variação significativa de sobra estimada (>= R$ 50,00)
   if (Math.abs(current.surplusCents - checkpoint.surplusCents) >= 5000) {
     return true;
   }
@@ -320,7 +321,7 @@ export function createZeroGuiltDismissalCheckpoint(
  * Cria um checkpoint de dispensa temporária padronizada (7 ou 30 dias) para cards de carrossel.
  */
 export function createTimedDismissalCheckpoint(
-  days: 7 | 30 = 7,
+  days: number = 7,
   nowMs: number = Date.now(),
 ): TimedAlertDismissalCheckpoint {
   return {
@@ -364,12 +365,12 @@ function resolveCheckpointTimestamp(
   cp: { dismissedUntil?: number; dismissedAt?: string } | undefined,
 ): number {
   if (!cp) return -1;
-  if (typeof cp.dismissedUntil === "number" && Number.isFinite(cp.dismissedUntil)) {
-    return cp.dismissedUntil;
-  }
   if (cp.dismissedAt) {
     const parsed = Date.parse(cp.dismissedAt);
     if (Number.isFinite(parsed)) return parsed;
+  }
+  if (typeof cp.dismissedUntil === "number" && Number.isFinite(cp.dismissedUntil)) {
+    return cp.dismissedUntil;
   }
   return 0;
 }

@@ -1,3 +1,4 @@
+import { inferBusinessTaxDeductibility } from "@/domain/business";
 import { todayISO } from "@/domain/debts";
 import {
   inferCategoryKeyword,
@@ -102,13 +103,13 @@ export function applyResolvedReceiptToLaunchState(
     if (nature === "expense") next.paymentMethod = "credit_card";
   }
 
+  let matched: Category | undefined;
   if (categories?.length) {
     const pool = categories.some((c) => c.type === nature)
       ? categories.filter((c) => c.type === nature)
       : categories;
 
     // Prioridade: 1) memória aprendida do usuário -> 2) dedução da IA -> 3) catálogo canônico -> 4) palavras-chave.
-    let matched: Category | undefined;
     if (identity.isLearned && identity.categorySlug) {
       matched = matchCategoryBySlug(pool, identity.categorySlug);
     }
@@ -134,6 +135,33 @@ export function applyResolvedReceiptToLaunchState(
       if (inferred) matched = matchCategoryBySlug(pool, inferred);
     }
     if (matched) next.categoryId = matched.id;
+  }
+
+  const isBusinessInferred =
+    ("inferredScope" in enriched && enriched.inferredScope === "business") ||
+    matchedCard?.scope === "business" ||
+    (matched && matched.scope === "business");
+
+  if (isBusinessInferred) {
+    next.scope = "business";
+    next.isFamily = false;
+    next.tripId = null;
+    next.splitEnabled = false;
+  }
+
+  if (next.scope === "business" && nature === "expense") {
+    if ("isTaxDeductible" in enriched && typeof enriched.isTaxDeductible === "boolean") {
+      next.isTaxDeductible = enriched.isTaxDeductible;
+    } else {
+      const deduction = inferBusinessTaxDeductibility({
+        description: next.description,
+        categoryName: matched?.name,
+        categorySlug: matched?.id,
+      });
+      next.isTaxDeductible = deduction.isDeductible;
+    }
+  } else if (next.scope !== "business") {
+    next.isTaxDeductible = false;
   }
 
   return next;

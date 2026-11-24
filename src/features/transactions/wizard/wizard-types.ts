@@ -67,6 +67,8 @@ export interface ReceiptMeta {
   isSameTitularity?: boolean;
   needsAmountInput?: boolean;
   semanticTags?: string[];
+  inferredScope?: "personal" | "business";
+  isTaxDeductible?: boolean;
 }
 
 export interface CreatedSplitExpense {

@@ -577,6 +577,7 @@ export function useStatementImport({
     try {
       const { totalInserted, totalSkipped } = await executeChunkedStatementImport({
         cardId: card.id,
+        cardScope: card.scope,
         competenceMonth,
         items: toImport,
         fallbackCategoryId: defaultCategoryId || categories[0]?.id || "",

@@ -538,6 +538,8 @@ export const AiSingleReceiptOutputSchema = z.object({
     .optional(),
   originalAmountCents: z.number().int().min(1).max(999_999_999).nullable().optional(),
   semanticTags: z.array(z.string().trim().min(1).max(30)).max(5).nullable().optional(),
+  inferredScope: z.enum(["personal", "business"]).nullable().optional(),
+  isTaxDeductible: z.boolean().nullable().optional(),
   confidence: ConfidenceLevelSchema,
   fieldConfidence: z
     .object({
@@ -635,6 +637,21 @@ export function normalizeSingleReceiptAiPayload(
 
   if (typeof clone.description === "string") {
     clone.description = clone.description.trim().slice(0, 160);
+  }
+
+  if (typeof clone.inferredScope === "string") {
+    const norm = clone.inferredScope.trim().toLowerCase();
+    clone.inferredScope = norm === "business" || norm === "personal" ? norm : null;
+  } else if (clone.inferredScope !== null && clone.inferredScope !== undefined) {
+    clone.inferredScope = null;
+  }
+
+  if (typeof clone.isTaxDeductible !== "boolean") {
+    if (clone.isTaxDeductible === "true") clone.isTaxDeductible = true;
+    else if (clone.isTaxDeductible === "false") clone.isTaxDeductible = false;
+    else if (clone.isTaxDeductible !== null && clone.isTaxDeductible !== undefined) {
+      clone.isTaxDeductible = null;
+    }
   }
 
   const optionalTextCaps = [

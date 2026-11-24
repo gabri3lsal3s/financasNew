@@ -214,4 +214,50 @@ describe("DashboardAlertsCarousel", () => {
     expect(screen.getAllByText("Slide 5").length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByText("Slide 6")).not.toBeInTheDocument();
   });
+
+  it("aplica inert nos slides inativos e clones para eliminar elementos fantasmas no DOM", () => {
+    const { container } = render(
+      <DashboardAlertsCarousel
+        items={[mockItemCritical, mockItemDeficit]}
+      />,
+    );
+
+    const slideContainers = container.querySelectorAll(".will-change-transform > div");
+    expect(slideContainers.length).toBe(4); // [lastClone, item0, item1, firstClone]
+
+    // Slide 1 (índice físico 1 = item0 ativo): NÃO deve ter inert
+    expect(slideContainers[1]).not.toHaveAttribute("inert");
+    expect(slideContainers[1]).toHaveAttribute("aria-hidden", "false");
+
+    // Clones e slides inativos (índice 0, 2 e 3): DEVEM ter inert e aria-hidden="true"
+    expect(slideContainers[0]).toHaveAttribute("inert");
+    expect(slideContainers[0]).toHaveAttribute("aria-hidden", "true");
+    expect(slideContainers[2]).toHaveAttribute("inert");
+    expect(slideContainers[2]).toHaveAttribute("aria-hidden", "true");
+    expect(slideContainers[3]).toHaveAttribute("inert");
+    expect(slideContainers[3]).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("reinicia para o slide 1 quando itens são alterados ou dispensados", () => {
+    const { rerender } = render(
+      <DashboardAlertsCarousel
+        items={[mockItemCritical, mockItemDeficit]}
+      />,
+    );
+
+    // Navega para o slide 2
+    const nextBtn = screen.getByRole("button", { name: /Próximo alerta/i });
+    fireEvent.click(nextBtn);
+    expect(screen.getByText("2 de 2")).toBeInTheDocument();
+
+    // Simula dispensa do mockItemCritical substituído por mockItemSurplus (total permanece 2)
+    rerender(
+      <DashboardAlertsCarousel
+        items={[mockItemDeficit, mockItemSurplus]}
+      />,
+    );
+
+    // Ao mudar os itens (itemsKey), deve reiniciar para o slide 1 sem travar em índice obsoleto
+    expect(screen.getByText("1 de 2")).toBeInTheDocument();
+  });
 });

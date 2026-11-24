@@ -173,6 +173,13 @@ export async function updateCustomSettings(patch: Partial<UserCustomSettings>): 
                 ...patch.dividendAutomation,
               }
             : current?.custom_settings?.dividendAutomation,
+        advisorDismissals:
+          patch.advisorDismissals !== undefined
+            ? {
+                ...(current?.custom_settings?.advisorDismissals ?? {}),
+                ...patch.advisorDismissals,
+              }
+            : current?.custom_settings?.advisorDismissals,
       };
 
       const { error } = await getSupabase()

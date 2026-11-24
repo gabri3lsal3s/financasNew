@@ -571,4 +571,41 @@ describe("ai-schemas (Trava 3 Hard Caps, Trava 5 Whitelist & Ajuste #3 BRT)", ()
       expect(parsedIntl.data.semanticTags).toEqual(["viagem", "padaria"]);
     }
   });
+
+  it("12. normaliza e valida inferredScope ('business'/'personal') e isTaxDeductible booleano no single_receipt", () => {
+    const bizReceipt = normalizeSingleReceiptAiPayload({
+      amountCents: 45000,
+      nature: "expense",
+      paymentMethod: "pix",
+      receiptKind: "invoice_danfe",
+      description: "Hospedagem AWS Cloud",
+      inferredScope: "BUSINESS",
+      isTaxDeductible: "true",
+      confidence: "high",
+    });
+
+    const parsed = AiSingleReceiptOutputSchema.safeParse(bizReceipt);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.inferredScope).toBe("business");
+      expect(parsed.data.isTaxDeductible).toBe(true);
+    }
+
+    const invalidScope = normalizeSingleReceiptAiPayload({
+      amountCents: 1000,
+      nature: "expense",
+      paymentMethod: "pix",
+      receiptKind: "pix",
+      description: "Transferência",
+      inferredScope: "unknown_scope",
+      isTaxDeductible: "invalid",
+      confidence: "low",
+    });
+    const parsedInvalid = AiSingleReceiptOutputSchema.safeParse(invalidScope);
+    expect(parsedInvalid.success).toBe(true);
+    if (parsedInvalid.success) {
+      expect(parsedInvalid.data.inferredScope).toBeNull();
+      expect(parsedInvalid.data.isTaxDeductible).toBeNull();
+    }
+  });
 });

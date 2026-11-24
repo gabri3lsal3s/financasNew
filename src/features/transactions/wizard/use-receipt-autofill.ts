@@ -165,6 +165,14 @@ export function useReceiptAutofill({
           : undefined;
       const needsAmountInput = enriched.amountCents === 0;
 
+      const isBusinessDeduced =
+        ("inferredScope" in enriched && enriched.inferredScope === "business") ||
+        resolved.matchedCard?.scope === "business";
+      const isDeductibleDeduced =
+        "isTaxDeductible" in enriched && typeof enriched.isTaxDeductible === "boolean"
+          ? enriched.isTaxDeductible
+          : undefined;
+
       setReceiptMeta({
         merchant: identity.friendlyName || enriched.description,
         cardLastDigits: enriched.cardLastDigits,
@@ -177,6 +185,8 @@ export function useReceiptAutofill({
         isSameTitularity: enriched.isSameTitularity,
         needsAmountInput,
         semanticTags: enriched.semanticTags ?? identity.semanticTags,
+        inferredScope: isBusinessDeduced ? "business" : undefined,
+        isTaxDeductible: isDeductibleDeduced,
       });
 
       setState((prev) =>
@@ -186,10 +196,15 @@ export function useReceiptAutofill({
 
       if (!options?.silentFeedback) {
         triggerSensory("success");
+        const businessTag = isBusinessDeduced
+          ? isDeductibleDeduced
+            ? " (Modo Negócio • dedutível)"
+            : " (Modo Negócio)"
+          : "";
         pushToast({
           title: needsAmountInput
-            ? `${kindLabel} preenchido`
-            : `${kindLabel} reconhecido`,
+            ? `${kindLabel} preenchido${businessTag}`
+            : `${kindLabel} reconhecido${businessTag}`,
           description: needsAmountInput
             ? `${identity.friendlyName || enriched.description} — informe o valor para concluir o lançamento.`
             : `${identity.friendlyName || enriched.description} preenchido no Wizard Rápido para conferência.`,

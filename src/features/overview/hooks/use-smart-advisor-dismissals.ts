@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
   DEFAULT_DISMISS_DAYS,
   SMART_ADVISOR_DISMISSALS_KEY,
@@ -197,6 +197,18 @@ export function useSmartAdvisorCooldownController(params: {
     () => localDecayMeta ?? params.cloudDecayMeta ?? {},
     [localDecayMeta, params.cloudDecayMeta],
   );
+
+  useEffect(() => {
+    if (params.cloudDismissals && Object.keys(params.cloudDismissals).length > 0) {
+      const merged = mergeAndFilterValidDismissals(
+        getDismissalsSnapshot(),
+        params.cloudDismissals,
+        params.nowMs,
+        false,
+      );
+      replaceSmartAdvisorDismissals(merged);
+    }
+  }, [params.cloudDismissals, params.nowMs]);
 
   const dismissInsight = useCallback(
     (

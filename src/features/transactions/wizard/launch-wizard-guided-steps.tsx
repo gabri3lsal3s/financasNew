@@ -164,6 +164,7 @@ export function LaunchWizardGuidedSteps({
           state={state}
           categoryName={selectedCategoryName}
           closingDay={selectedCardClosingDay}
+          cardScope={cards?.find((c) => c.id === state.cardId)?.scope}
           isFamilyModeEnabled={isFamilyActive}
           isBusinessModeEnabled={isBusinessActive}
           tripName={activeTrips.find((t) => t.id === state.tripId)?.title}

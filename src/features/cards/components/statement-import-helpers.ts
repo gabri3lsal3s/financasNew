@@ -1,3 +1,4 @@
+import { inferBusinessTaxDeductibility } from "@/domain/business";
 import { inferChargeKindFromDescription } from "@/domain/cards/charges";
 import { numberToCents } from "@/domain/money";
 import {
@@ -228,10 +229,13 @@ export interface ChunkedImportExpenseInput {
   report_weight: number;
   statement_hash: string;
   charge_kind?: string;
+  scope?: "personal" | "business";
+  is_tax_deductible?: boolean;
 }
 
 export async function executeChunkedStatementImport(params: {
   cardId: string;
+  cardScope?: string | null;
   competenceMonth: string;
   items: ReconciliationItem[];
   fallbackCategoryId: string;
@@ -242,17 +246,26 @@ export async function executeChunkedStatementImport(params: {
     expenses: ChunkedImportExpenseInput[];
   }) => Promise<{ inserted_count: number; skipped_count: number }>;
 }): Promise<{ totalInserted: number; totalSkipped: number }> {
-  const payload: ChunkedImportExpenseInput[] = params.items.map((it) => ({
-    date: it.transaction.date,
-    value: it.transaction.amountCents / 100,
-    category_id: it.selectedCategoryId || params.fallbackCategoryId,
-    description: it.transaction.cleanDescription,
-    installments_total: it.transaction.installment?.total ?? 1,
-    installment_number: it.transaction.installment?.current ?? 1,
-    report_weight: 1.0,
-    statement_hash: it.transaction.statementHash,
-    charge_kind: it.transaction.inferredChargeKind ?? "regular",
-  }));
+  const isBusinessCard = params.cardScope === "business";
+  const payload: ChunkedImportExpenseInput[] = params.items.map((it) => {
+    const isDeductible = isBusinessCard
+      ? inferBusinessTaxDeductibility({ description: it.transaction.cleanDescription }).isDeductible
+      : false;
+
+    return {
+      date: it.transaction.date,
+      value: it.transaction.amountCents / 100,
+      category_id: it.selectedCategoryId || params.fallbackCategoryId,
+      description: it.transaction.cleanDescription,
+      installments_total: it.transaction.installment?.total ?? 1,
+      installment_number: it.transaction.installment?.current ?? 1,
+      report_weight: 1.0,
+      statement_hash: it.transaction.statementHash,
+      charge_kind: it.transaction.inferredChargeKind ?? "regular",
+      scope: isBusinessCard ? "business" : "personal",
+      ...(isBusinessCard && isDeductible ? { is_tax_deductible: true } : {}),
+    };
+  });
 
   const chunks = chunkArray(payload, STATEMENT_IMPORT_CHUNK_SIZE);
   const totalItems = payload.length;

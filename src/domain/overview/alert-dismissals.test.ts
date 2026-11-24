@@ -6,6 +6,7 @@ import {
   createTimedDismissalCheckpoint,
   createZeroGuiltDismissalCheckpoint,
   isTimedAlertDismissed,
+  mergeDashboardAlertDismissals,
   shouldShowGoalAlert,
   shouldShowPaceAlert,
   shouldShowSurplusAlert,
@@ -239,6 +240,24 @@ describe("alert-dismissals (Motor Puro de Elegibilidade e Descarte de Alertas)",
         }),
       ).toBe(true);
     });
+
+    it("respeita o período de 7 dias escolhido pelo usuário mesmo atravessando a virada de mês", () => {
+      // Dispensado dia 28/11 por 7 dias (expira em 05/12)
+      const checkpoint = createPaceDismissalCheckpoint(basePace, 7, "2026-11-28T12:00:00Z");
+      // Dia 01/12 (3 dias depois, mês novo): DEVE PERMANECER DISPENSADO
+      expect(
+        shouldShowPaceAlert(checkpoint, { ...basePace, month: "2026-12" }, {
+          nowMs: new Date("2026-12-01T12:00:00Z").getTime(),
+        }),
+      ).toBe(false);
+
+      // Dia 06/12 (8 dias depois): expirou a dispensa de 7 dias -> reativa
+      expect(
+        shouldShowPaceAlert(checkpoint, { ...basePace, month: "2026-12" }, {
+          nowMs: new Date("2026-12-06T12:00:00Z").getTime(),
+        }),
+      ).toBe(true);
+    });
   });
 
   describe("shouldShowSurplusAlert", () => {
@@ -321,6 +340,24 @@ describe("alert-dismissals (Motor Puro de Elegibilidade e Descarte de Alertas)",
         }),
       ).toBe(true);
     });
+
+    it("respeita o período de 7 dias da sobra mesmo após virada de mês", () => {
+      // Dispensado dia 28/11 por 7 dias (expira em 05/12)
+      const checkpoint = createSurplusDismissalCheckpoint(baseSurplus, 7, "2026-11-28T12:00:00Z");
+      // Dia 01/12 (3 dias depois, mês novo): DEVE PERMANECER DISPENSADO
+      expect(
+        shouldShowSurplusAlert(checkpoint, { ...baseSurplus, month: "2026-12" }, {
+          nowMs: new Date("2026-12-01T12:00:00Z").getTime(),
+        }),
+      ).toBe(false);
+
+      // Dia 06/12 (8 dias depois): expirou a dispensa -> reativa
+      expect(
+        shouldShowSurplusAlert(checkpoint, { ...baseSurplus, month: "2026-12" }, {
+          nowMs: new Date("2026-12-06T12:00:00Z").getTime(),
+        }),
+      ).toBe(true);
+    });
   });
 
   describe("shouldShowZeroGuiltAlert", () => {
@@ -382,6 +419,52 @@ describe("alert-dismissals (Motor Puro de Elegibilidade e Descarte de Alertas)",
       expect(shouldShowTrialBanner(3, false, checkpoint, now + 1000)).toBe(true);
       expect(shouldShowTrialBanner(1, false, checkpoint, now + 1000)).toBe(true);
       expect(shouldShowTrialBanner(0, false, checkpoint, now + 1000)).toBe(true);
+    });
+  });
+
+  describe("mergeDashboardAlertDismissals", () => {
+    it("mescla dispensas da nuvem e locais escolhendo a ação mais recente (dismissedAt)", () => {
+      // Dispositivo A dispensou por 30 dias às 10:00 (expira em 30 dias)
+      const cloud = {
+        cards: {
+          "cash-gap-alert": {
+            dismissedAt: "2026-11-20T10:00:00.000Z",
+            dismissedUntil: new Date("2026-11-20T10:00:00.000Z").getTime() + 30 * 86400000,
+          },
+        },
+      };
+      // Dispositivo B dispensou por 7 dias às 12:00 (mais recente que o Dispositivo A!)
+      const local = {
+        cards: {
+          "cash-gap-alert": {
+            dismissedAt: "2026-11-20T12:00:00.000Z",
+            dismissedUntil: new Date("2026-11-20T12:00:00.000Z").getTime() + 7 * 86400000,
+          },
+        },
+      };
+
+      const merged = mergeDashboardAlertDismissals(cloud, local);
+      expect(merged.cards?.["cash-gap-alert"]?.dismissedAt).toBe("2026-11-20T12:00:00.000Z");
+      expect(merged.cards?.["cash-gap-alert"]?.dismissedUntil).toBe(
+        new Date("2026-11-20T12:00:00.000Z").getTime() + 7 * 86400000,
+      );
+    });
+
+    it("preserva cards presentes em apenas um dos lados", () => {
+      const cloud = {
+        cards: {
+          "card-cloud": createTimedDismissalCheckpoint(7, 1000),
+        },
+      };
+      const local = {
+        cards: {
+          "card-local": createTimedDismissalCheckpoint(30, 2000),
+        },
+      };
+
+      const merged = mergeDashboardAlertDismissals(cloud, local);
+      expect(merged.cards?.["card-cloud"]).toBeDefined();
+      expect(merged.cards?.["card-local"]).toBeDefined();
     });
   });
 });

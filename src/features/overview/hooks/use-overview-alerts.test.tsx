@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as nativeModule from "@/services/native";
-import { useOverviewPermissionsBanner } from "./use-overview-alerts";
+import { useDashboardAlertDismissals, useOverviewPermissionsBanner } from "./use-overview-alerts";
 
 const mockMutate = vi.fn();
 let mockCustomSettings: Record<string, unknown> = {};
@@ -138,5 +138,58 @@ describe("useOverviewPermissionsBanner", () => {
 
     const { result } = renderHook(() => useOverviewPermissionsBanner(vi.fn()));
     expect(result.current.shouldShowPermissionsBanner).toBe(false);
+  });
+});
+
+describe("useDashboardAlertDismissals", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockCustomSettings = {};
+    window.localStorage.clear();
+  });
+
+  it("mescla dispensas da nuvem com dispensas locais e atualiza o storage cache", () => {
+    const cloudCards = {
+      "cash-gap-alert": {
+        dismissedAt: "2026-11-20T10:00:00.000Z",
+        dismissedUntil: Date.now() + 7 * 86400000,
+      },
+    };
+    mockCustomSettings = {
+      dashboardAlertDismissals: {
+        cards: cloudCards,
+      },
+    };
+
+    const { result } = renderHook(() => useDashboardAlertDismissals());
+
+    expect(result.current.alertDismissals.cards?.["cash-gap-alert"]).toBeDefined();
+    expect(result.current.isLoading).toBe(false);
+  });
+
+  it("permite atualizar dispensas persistindo no custom_settings e no storage", () => {
+    const { result } = renderHook(() => useDashboardAlertDismissals());
+
+    act(() => {
+      result.current.updateAlertDismissals((prev) => ({
+        ...prev,
+        cards: {
+          ...(prev.cards ?? {}),
+          "test-card": {
+            dismissedAt: "2026-11-23T12:00:00.000Z",
+            dismissedUntil: Date.now() + 7 * 86400000,
+          },
+        },
+      }));
+    });
+
+    expect(mockMutate).toHaveBeenCalledWith({
+      dashboardAlertDismissals: expect.objectContaining({
+        cards: expect.objectContaining({
+          "test-card": expect.any(Object),
+        }),
+      }),
+    });
+    expect(result.current.alertDismissals.cards?.["test-card"]).toBeDefined();
   });
 });

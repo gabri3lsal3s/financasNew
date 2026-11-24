@@ -820,6 +820,8 @@ export function convertAiReceiptToUniversalData(
     originalCurrency: aiData.originalCurrency || undefined,
     originalAmountCents: aiData.originalAmountCents ?? undefined,
     semanticTags: aiData.semanticTags?.length ? aiData.semanticTags : undefined,
+    inferredScope: aiData.inferredScope ?? undefined,
+    isTaxDeductible: typeof aiData.isTaxDeductible === "boolean" ? aiData.isTaxDeductible : undefined,
   };
 }
 

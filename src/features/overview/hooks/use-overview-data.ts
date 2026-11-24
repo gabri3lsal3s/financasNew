@@ -10,6 +10,7 @@ import { isFamilyUnderDecay } from "@/domain/insights";
 import { extractPendingSplitSignals } from "@/domain/notifications/hub";
 import { isFirstUse, shouldShowOnboardingBanner } from "@/domain/onboarding";
 import {
+  createTimedDismissalCheckpoint,
   isGovernanceAlertDismissed,
   isTimedAlertDismissed,
   shouldShowPaceAlert,
@@ -121,7 +122,27 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
   const onboardingQuery = useOnboardingCounts();
   const corporateDividends = useCorporateDividends();
   const subscription = useUserSubscription();
-  const { isDismissed: isOnboardingDismissed, dismiss: dismissOnboarding } = useOnboardingDismissed();
+  const { isDismissed: isOnboardingDismissed, dismiss: rawDismissOnboarding } = useOnboardingDismissed();
+  const isEffectiveOnboardingDismissed =
+    isOnboardingDismissed || isTimedAlertDismissed(alertDismissals.cards?.["onboarding-progress-banner"]);
+
+  const dismissOnboarding = useCallback(() => {
+    rawDismissOnboarding();
+    try {
+      updateCustomSettingsMutation.mutate({
+        dashboardAlertDismissals: {
+          ...(userPreferencesQuery.data?.custom_settings?.dashboardAlertDismissals ?? {}),
+          cards: {
+            ...(userPreferencesQuery.data?.custom_settings?.dashboardAlertDismissals?.cards ?? {}),
+            "onboarding-progress-banner": createTimedDismissalCheckpoint(365),
+          },
+        },
+      });
+    } catch {
+      // Falha silenciosa caso offline
+    }
+  }, [rawDismissOnboarding, updateCustomSettingsMutation, userPreferencesQuery.data]);
+
   const [virginGuideDismissed, setVirginGuideDismissed] = useState(false);
   const [localInitialGoal, setLocalInitialGoal] = useState<OnboardingGoalId | null>(() =>
     getStoredInitialGoal(),
@@ -153,15 +174,16 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
   }, []);
 
   const isVirginAccount = Boolean(onboardingQuery?.data && isFirstUse(onboardingQuery.data));
-  const showVirginGuide = isVirginAccount && !virginGuideDismissed && !isOnboardingDismissed;
+  const showVirginGuide = isVirginAccount && !virginGuideDismissed && !isEffectiveOnboardingDismissed;
   const showOnboarding =
-    !showVirginGuide && !isOnboardingDismissed && onboardingQuery?.data
+    !showVirginGuide && !isEffectiveOnboardingDismissed && onboardingQuery?.data
       ? shouldShowOnboardingBanner(onboardingQuery.data, hasFeature, initialGoal)
       : false;
 
   const loading =
     incomesQuery.isLoading ||
     expensesQuery.isLoading ||
+    userPreferencesQuery.isLoading ||
     (isCurrentMonth && realCashData.isLoading);
 
   const error =

@@ -75,3 +75,179 @@ export function calculateTaxShield(params: {
     deductibleExpensesCents,
   };
 }
+
+export interface TaxDeductibilityInference {
+  isDeductible: boolean;
+  confidence: "high" | "medium" | "low";
+  reason: string;
+}
+
+const DEDUCTIBLE_KEYWORDS = [
+  // Nuvem, SaaS e TI
+  "aws",
+  "amazon web services",
+  "google cloud",
+  "azure",
+  "supabase",
+  "vercel",
+  "github",
+  "figma",
+  "canva",
+  "adobe",
+  "notion",
+  "slack",
+  "zoom",
+  "chatgpt",
+  "openai",
+  "hospedagem",
+  "dominio",
+  "servidor",
+  "software",
+  "licenca",
+  "saas",
+  // Contabilidade, Jurídico e Serviços
+  "contabilidade",
+  "contador",
+  "honorario",
+  "honorarios",
+  "assessoria",
+  "consultoria",
+  "certificado digital",
+  "certisign",
+  "serasa cert",
+  "soluti",
+  "correios",
+  "motoboy",
+  "frete",
+  "taxa bancaria",
+  "anuidade oab",
+  "anuidade crm",
+  "anuidade crc",
+  "anuidade crea",
+  "das mei",
+  "alvara",
+  // Escritório e Operação
+  "escritorio",
+  "papelaria",
+  "toner",
+  "cartucho",
+  "suprimentos",
+  "insumo",
+  "insumos",
+  "materia prima",
+  "embalagem",
+  // Sede Comercial
+  "aluguel comercial",
+  "coworking",
+  "we work",
+  "wework",
+  "internet comercial",
+  "energia comercial",
+  // Educação Profissional
+  "curso",
+  "treinamento",
+  "certificacao",
+  "congresso",
+  "seminario",
+  "livro tecnico",
+] as const;
+
+const NON_DEDUCTIBLE_DOMESTIC_KEYWORDS = [
+  "supermercado",
+  "padaria",
+  "sacolao",
+  "acougue",
+  "feira livre",
+  "cinema",
+  "cinemark",
+  "netflix",
+  "disney",
+  "spotify",
+  "hbo",
+  "max",
+  "parque",
+  "brinquedo",
+  "roupa",
+  "calcado",
+  "farmacia",
+  "drogaria",
+  "pet shop",
+  "veterinario",
+  "escola infantil",
+] as const;
+
+function normalizeSearchText(text?: string | null): string {
+  if (!text) return "";
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Heurística determinística pura para inferência de dedutibilidade fiscal (Livro-Caixa / Carnê-Leão / MEI).
+ */
+export function inferBusinessTaxDeductibility(input: {
+  description?: string | null;
+  categoryName?: string | null;
+  categorySlug?: string | null;
+}): TaxDeductibilityInference {
+  const normDesc = normalizeSearchText(input.description);
+  const normCat = normalizeSearchText(input.categoryName);
+  const normSlug = normalizeSearchText(input.categorySlug);
+  const combined = `${normDesc} ${normCat} ${normSlug}`.trim();
+
+  if (!combined) {
+    return {
+      isDeductible: false,
+      confidence: "low",
+      reason: "Sem informações textuais para inferir dedutibilidade fiscal.",
+    };
+  }
+
+  // Se houver indício claro de despesa doméstica estrita, não é dedutível
+  for (const nonDed of NON_DEDUCTIBLE_DOMESTIC_KEYWORDS) {
+    if (combined.includes(nonDed)) {
+      return {
+        isDeductible: false,
+        confidence: "high",
+        reason: `Despesa com padrão doméstico ou de consumo pessoal (${nonDed}), não elegível a dedução fiscal.`,
+      };
+    }
+  }
+
+  // Verifica termos dedutíveis
+  for (const ded of DEDUCTIBLE_KEYWORDS) {
+    if (combined.includes(ded)) {
+      return {
+        isDeductible: true,
+        confidence: "high",
+        reason: `Despesa operacional necessária à atividade (${ded}), elegível para dedução fiscal / Livro-Caixa.`,
+      };
+    }
+  }
+
+  // Se a categoria corporativa contiver palavras de serviço, insumo ou operação
+  if (
+    normCat.includes("insumo") ||
+    normCat.includes("operacao") ||
+    normCat.includes("software") ||
+    normCat.includes("imposto") ||
+    normCat.includes("tributo")
+  ) {
+    return {
+      isDeductible: true,
+      confidence: "medium",
+      reason: "Categoria identificada como operacional do negócio.",
+    };
+  }
+
+  return {
+    isDeductible: false,
+    confidence: "low",
+    reason: "Despesa corporativa padrão sem indício automático de dedutibilidade fiscal.",
+  };
+}

@@ -33,6 +33,7 @@ export function DashboardAlertsCarousel({
   }, [items, maxItems]);
 
   const total = validItems.length;
+  const itemsKey = useMemo(() => validItems.map((i) => i.id).join(","), [validItems]);
   const extendedItems = useMemo(() => {
     if (total <= 1) return validItems;
     const firstClone = { ...validItems[0]!, id: `${validItems[0]!.id}-clone-end` };
@@ -40,7 +41,7 @@ export function DashboardAlertsCarousel({
     return [lastClone, ...validItems, firstClone];
   }, [validItems, total]);
 
-  const carousel = useAlertsCarousel(total, autoplayIntervalMs);
+  const carousel = useAlertsCarousel(total, autoplayIntervalMs, itemsKey);
 
   if (total === 0) return null;
 
@@ -135,6 +136,7 @@ export function DashboardAlertsCarousel({
               key={item.id}
               className="w-full min-w-full shrink-0 flex items-stretch px-1 sm:px-1.5"
               aria-hidden={idx !== safePhysicalIndex}
+              inert={idx !== safePhysicalIndex ? true : undefined}
             >
               {item.content}
             </div>

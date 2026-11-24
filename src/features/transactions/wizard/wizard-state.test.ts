@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { applyResolvedReceiptToLaunchState } from "./wizard-mappers";
 import {
   buildExpenseInstallments,
   buildIncomeInstallments,
@@ -367,6 +368,73 @@ describe("Validação Zod dos Passos do Wizard (D10 / Fase 17)", () => {
       expect(parsed.data.scope).toBe("business");
       expect(parsed.data.isTaxDeductible).toBe(true);
     }
+  });
+
+  it("comuta automaticamente para escopo 'business' e sugere dedutibilidade ao resolver recibo de negócio", () => {
+    const base = defaultLaunchState("expense");
+
+    const resolvedBiz = {
+      kindLabel: "Nota Fiscal",
+      parsed: {
+        id: "r1",
+        bankName: "Nubank",
+        type: "expense" as const,
+        nature: "expense" as const,
+        amountCents: 15000,
+        date: "2026-08-20",
+        description: "AWS Cloud Services",
+        paymentMethod: "credit_card" as const,
+        rawText: "AWS Cloud Services",
+        rawCleanText: "",
+        timestamp: Date.now(),
+        inferredScope: "business" as const,
+        isTaxDeductible: true,
+        aiCategoryId: "cat-it",
+      },
+      identity: {
+        friendlyName: "AWS",
+        isLearned: false,
+        categorySlug: "assinaturas" as const,
+        confidence: "canonical_catalog" as const,
+        layer: 1 as const,
+      },
+      matchedCard: {
+        id: "card-pj",
+        user_id: "u1",
+        name: "Nubank PJ",
+        scope: "business" as const,
+        brand: "Mastercard",
+        credit_limit: 10000,
+        closing_day: 10,
+        due_day: 17,
+        color: "#820ad1",
+        is_active: true,
+      },
+    };
+
+    const next = applyResolvedReceiptToLaunchState(
+      base,
+      resolvedBiz,
+      [
+        {
+          id: "cat-it",
+          user_id: "u1",
+          name: "Servidores & Nuvem",
+          type: "expense" as const,
+          scope: "business" as const,
+          icon: "server",
+          color: "#000000",
+          is_reserved: false,
+          is_active: true,
+        },
+      ],
+      [resolvedBiz.matchedCard],
+    );
+
+    expect(next.scope).toBe("business");
+    expect(next.isTaxDeductible).toBe(true);
+    expect(next.cardId).toBe("card-pj");
+    expect(next.categoryId).toBe("cat-it");
   });
 });
 

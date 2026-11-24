@@ -52,17 +52,27 @@ export function useDashboardAlertDismissals() {
   useEffect(() => subscribeActiveUserId(setActiveUid), []);
   const storageKey = getScopedDashboardDismissalsKey(activeUid);
 
-  const [localState, setLocalState] = useState<{ key: string; value: DashboardAlertDismissals }>(() => ({
-    key: storageKey,
-    value: loadLocalAlertDismissals(storageKey),
-  }));
+  const [localDismissalsOverride, setLocalDismissalsOverride] = useState<{
+    key: string;
+    value: DashboardAlertDismissals;
+  } | null>(null);
 
-  const effectiveLocalDismissals = useMemo(
-    () => (localState.key === storageKey ? localState.value : loadLocalAlertDismissals(storageKey)),
-    [localState, storageKey],
-  );
+  const effectiveLocalDismissals = useMemo(() => {
+    if (localDismissalsOverride && localDismissalsOverride.key === storageKey) {
+      return localDismissalsOverride.value;
+    }
+    return loadLocalAlertDismissals(storageKey);
+  }, [localDismissalsOverride, storageKey]);
 
   const cloudAlertDismissals = userPreferencesQuery.data?.custom_settings?.dashboardAlertDismissals;
+
+  useEffect(() => {
+    if (cloudAlertDismissals && storageKey) {
+      const currentLocal = loadLocalAlertDismissals(storageKey);
+      const merged = mergeDashboardAlertDismissals(cloudAlertDismissals, currentLocal);
+      saveLocalAlertDismissals(merged, storageKey);
+    }
+  }, [cloudAlertDismissals, storageKey]);
 
   const alertDismissals = useMemo<DashboardAlertDismissals>(() => {
     return mergeDashboardAlertDismissals(cloudAlertDismissals, effectiveLocalDismissals);
@@ -70,22 +80,22 @@ export function useDashboardAlertDismissals() {
 
   const updateAlertDismissals = useCallback(
     (updater: (prev: DashboardAlertDismissals) => DashboardAlertDismissals) => {
-      setLocalState((prevState) => {
-        const prevLocal =
-          prevState.key === storageKey ? prevState.value : loadLocalAlertDismissals(storageKey);
-        const mergedBase = mergeDashboardAlertDismissals(cloudAlertDismissals, prevLocal);
-        const next = updater(mergedBase);
-        saveLocalAlertDismissals(next, storageKey);
-        updateCustomSettingsMutation.mutate({
-          dashboardAlertDismissals: next,
-        });
-        return { key: storageKey, value: next };
+      const currentLocal =
+        localDismissalsOverride && localDismissalsOverride.key === storageKey
+          ? localDismissalsOverride.value
+          : loadLocalAlertDismissals(storageKey);
+      const mergedBase = mergeDashboardAlertDismissals(cloudAlertDismissals, currentLocal);
+      const next = updater(mergedBase);
+      saveLocalAlertDismissals(next, storageKey);
+      updateCustomSettingsMutation.mutate({
+        dashboardAlertDismissals: next,
       });
+      setLocalDismissalsOverride({ key: storageKey, value: next });
     },
-    [cloudAlertDismissals, storageKey, updateCustomSettingsMutation],
+    [cloudAlertDismissals, localDismissalsOverride, storageKey, updateCustomSettingsMutation],
   );
 
-  return { alertDismissals, updateAlertDismissals };
+  return { alertDismissals, updateAlertDismissals, isLoading: userPreferencesQuery.isLoading };
 }
 
 export function useOverviewPermissionsBanner(navigate: NavigateFunction) {

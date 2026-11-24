@@ -1,9 +1,12 @@
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { MoneyText } from "@/components/ui/money-text";
+import { detectScopeConflict } from "@/domain/business";
 import { formatDateBR, monthLabel } from "@/lib/date";
 import { PAYMENT_METHOD_LABELS, RECURRENCE_FREQUENCY_LABELS } from "@/lib/labels";
 import { buildRecurrenceOccurrences } from "@/domain/recurrences";
+import type { CreditCardScope } from "@/types";
 import {
   buildExpenseInstallments,
   buildIncomeInstallments,
@@ -17,6 +20,7 @@ export interface StepReviewProps {
   state: LaunchState;
   categoryName?: string;
   closingDay?: number | null;
+  cardScope?: CreditCardScope | null;
   isFamilyModeEnabled?: boolean;
   isBusinessModeEnabled?: boolean;
   tripName?: string;
@@ -28,11 +32,21 @@ export function StepReview({
   state,
   categoryName,
   closingDay,
+  cardScope,
   isFamilyModeEnabled,
   isBusinessModeEnabled = false,
   tripName,
   tripMemberName,
 }: StepReviewProps) {
+  const scopeConflict = useMemo(() => {
+    if (!isBusinessModeEnabled) return { hasConflict: false, conflictKind: "none" as const };
+    return detectScopeConflict({
+      transactionScope: state.scope ?? "personal",
+      cardScope,
+      description: state.description,
+      categoryName,
+    });
+  }, [isBusinessModeEnabled, cardScope, state.scope, state.description, categoryName]);
   const isExpense = state.type === "expense";
   const installments =
     !state.recurring && state.installments > 1
@@ -163,6 +177,12 @@ export function StepReview({
           </>
         ) : null}
       </div>
+
+      {scopeConflict.hasConflict && scopeConflict.warningMessage ? (
+        <Alert variant="warning" className="text-xs">
+          {scopeConflict.warningMessage}
+        </Alert>
+      ) : null}
 
       {installments.length > 1 ? (
         <div className="flex flex-col gap-2">

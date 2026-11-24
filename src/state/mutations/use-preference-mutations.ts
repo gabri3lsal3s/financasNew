@@ -115,6 +115,12 @@ export function useUpdateCustomSettings() {
                     ...patch.dividendAutomation,
                   }
                 : old.custom_settings?.dividendAutomation,
+              advisorDismissals: patch.advisorDismissals !== undefined
+                ? {
+                    ...(old.custom_settings?.advisorDismissals ?? {}),
+                    ...patch.advisorDismissals,
+                  }
+                : old.custom_settings?.advisorDismissals,
             },
           };
         });

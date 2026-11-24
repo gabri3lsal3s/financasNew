@@ -104,6 +104,8 @@ const GEMINI_SINGLE_RECEIPT_RESPONSE_SCHEMA = {
       nullable: true,
       items: { type: "STRING" },
     },
+    inferredScope: { type: "STRING", enum: ["personal", "business"], nullable: true },
+    isTaxDeductible: { type: "BOOLEAN", nullable: true },
     confidence: { type: "STRING", enum: [...AI_ALLOWED_CONFIDENCE_LEVELS] },
     fieldConfidence: {
       type: "OBJECT",
@@ -193,12 +195,13 @@ function buildSingleReceiptPrompt(
     "4) description: nome comercial limpo da contraparte (sem banco, sem 'comprovante de'); merchantCnpj: apenas os 14 digitos do CNPJ do estabelecimento/recebedor (NUNCA CPF) ou null.",
     "5) originalCurrency e originalAmountCents: preencha com codigo ISO-4217 de 3 letras (ex.: USD, EUR, ARS) e valor em centavos somente se o recibo estiver em moeda estrangeira != BRL; caso contrario null.",
     "6) semanticTags: ate 4 tags curtas em portugues (sem acento/minusculas) dos produtos/servicos do recibo para busca futura (ex.: ['pet','racao'], ['reforma','eletrica']); ou null.",
-    "7) Nunca invente campos opcionais ausentes (use null) e sinalize fieldConfidence realista ('high' somente quando inequivoco).",
+    "7) inferredScope e isTaxDeductible: se for despesa empresarial ou nota fiscal com CNPJ para fins profissionais/negocio (ex.: insumos, softwares B2B, material de escritorio, consultoria, DAS MEI), defina inferredScope='business'; se for domestica/familiar, 'personal'. Se a despesa for dedutivel no Livro-Caixa / Carne-Leao (insumos diretos, material de escritorio, softwares de trabalho, cursos da profissao, coworking), defina isTaxDeductible=true; senao false/null.",
+    "8) Nunca invente campos opcionais ausentes (use null) e sinalize fieldConfidence realista ('high' somente quando inequivoco).",
   ];
 
   if (categories && categories.length > 0) {
     lines.push(
-      "8) categoryId: analise o estabelecimento E os produtos/itens listados no comprovante (priorize os itens de maior valor se houver varios) e escolha o id EXATO mais adequado ao tipo (expense/income) da lista abaixo, ou null se nenhuma encaixar. PROIBIDO inventar id.",
+      "9) categoryId: analise o estabelecimento E os produtos/itens listados no comprovante (priorize os itens de maior valor se houver varios) e escolha o id EXATO mais adequado ao tipo (expense/income) da lista abaixo, ou null se nenhuma encaixar. PROIBIDO inventar id.",
       `Categorias do usuario: ${JSON.stringify(categories)}`,
     );
   }
@@ -704,6 +707,8 @@ Deno?.serve?.(async (req: Request) => {
         ...parsed.data,
         merchantCnpj: parsed.data.merchantCnpj ?? null,
         categoryId: parsed.data.categoryId ?? null,
+        inferredScope: parsed.data.inferredScope ?? null,
+        isTaxDeductible: typeof parsed.data.isTaxDeductible === "boolean" ? parsed.data.isTaxDeductible : null,
       };
     } else if (requestData.mode === "categorize_batch" && allowedBatchCategoryIds) {
       const sanitizedDescriptions = requestData.descriptions.map((d) =>

@@ -8,7 +8,7 @@ export const ALERTS_CAROUSEL_TRANSITION_MS = 280;
 /**
  * Gerencia índice infinito com clones, swipe mobile, respeito a motion reduzido e autoplay.
  */
-export function useAlertsCarousel(total: number, autoplayIntervalMs: number) {
+export function useAlertsCarousel(total: number, autoplayIntervalMs: number, itemsKey?: string) {
   const { motionLevel } = useVisualCustomization();
   const osReducedMotion =
     typeof window !== "undefined" && typeof window.matchMedia === "function"
@@ -20,9 +20,15 @@ export function useAlertsCarousel(total: number, autoplayIntervalMs: number) {
   const [isTransitioning, setIsTransitioning] = useState(!reducedMotion);
   const [isPaused, setIsPaused] = useState(false);
   const [prevTotal, setPrevTotal] = useState(total);
+  const [prevItemsKey, setPrevItemsKey] = useState(itemsKey);
   const touchStartXRef = useRef<number | null>(null);
 
-  if (prevTotal !== total) {
+  if (itemsKey !== undefined && prevItemsKey !== itemsKey) {
+    setPrevItemsKey(itemsKey);
+    setPrevTotal(total);
+    setPhysicalIndex(1);
+    setIsTransitioning(false);
+  } else if (prevTotal !== total) {
     setPrevTotal(total);
     setPhysicalIndex(1);
     setIsTransitioning(false);
