@@ -1,6 +1,6 @@
 # Plano Canônico de Engenharia e Design: Padronização de Cabeçalhos e Sistema Universal de Playbooks Educativos
 
-> **Status:** Aprovado para Planejamento / Versão 2.0 Consolidada  
+> **Status:** Aprovado para Planejamento / Versão 2.1 Consolidada (Com Governança Granular de Dispensa)  
 > **Data:** 24 de Novembro de 2026  
 > **Documentos de Referência:** `AGENTS.md` (Regras 4, 7, 8, 13, 15, 18, 20, 21), `docs/architecture/ESPECIFICACAO_TECNICA.md`, `docs/architecture/ARCHITECTURE.md`, `docs/design/DESIGN_SYSTEM.md`.  
 > **Papel de Governança:** Arquiteto de Software Sênior & Product Designer Especialista em UX Mobile-First.  
@@ -22,7 +22,7 @@ No entanto, a experiência do usuário enfrentava dois gargalos críticos identi
    - *Em Investimentos:* O erro crônico de vender ativos para rebalancear gerando DARF e corretagem desnecessárias, ou misturar Reserva de Emergência com Renda Variável.
    - *No Modo Família e Viagem:* A incapacidade de lidar com a variabilidade de dinâmicas humanas (50/50 vs proporcional à renda vs caixa único; amigos dividindo no bar vs férias de casal).
 
-A solução unificada proposta combina a **padronização geométrica e ergonômica dos cabeçalhos** com a introdução do **Sistema Universal de Playbooks Educativos do Axir**: módulos consultivos leves, interativos, orientados a diagnóstico rápido (quiz de 2 a 3 perguntas) com **configuração executável em 1 clique** e **governança anti-poluição estrita via seletor global nas Configurações**.
+A solução unificada proposta combina a **padronização geométrica e ergonômica dos cabeçalhos** com a introdução do **Sistema Universal de Playbooks Educativos do Axir**: módulos consultivos leves, interativos, orientados a diagnóstico rápido (quiz de 2 a 3 perguntas) com **configuração executável em 1 clique** e **governança anti-poluição em dois níveis (controle mestre global em Ajustes + dispensa granular por módulo)**.
 
 ---
 
@@ -37,6 +37,7 @@ Uma auditoria técnica honesta exige avaliar os próprios pressupostos para evit
 | **"O problema dos botões gigantes é culpa exclusiva do componente `PageHeader`."** | **Falso.** A inspeção revelou que o `PageHeader` aplica `grid grid-cols-2 [&>*]:w-full` apenas para distribuir os botões simetricamente. A deformação grotesca em Família e Viagem foi provocada por **classes locais manuais** (`max-sm:min-h-11` e `w-full min-h-11`) introduzidas no JSX dessas páginas específicas. | A correção deve ser cirúrgica: limpar as classes locais infladas nas páginas e calibrar o `PageHeader` para manter botões em `size="sm"` (`h-9` mobile / `h-8` desktop) sem quebrar o layout das outras 25+ telas consumidoras. |
 | **"Toda área complexa do app precisa de um Playbook completo de 4 abas."** | **Risco Crítico de Inchaço (*Scope Creep*).** Transformar o app em um manual escolar infantilizado afasta o usuário experiente e infla o bundle. | **Critério Estrito de Gating:** Apenas recebem Playbook Dedicado os módulos onde o erro metodológico do usuário **corrompe os dados financeiros ou causa prejuízo real** (duplicar despesa com fatura, gerar DARF indevida, misturar PJ/PF). Telas de consumo analítico (Relatórios, Metas, Lembretes) devem receber apenas micro-dicas ou permanecer puramente minimalistas. |
 | **"A hit-area mínima da Apple/Google exige botões com altura visual de 44px no cabeçalho."** | **Conceito Errado de UX.** A diretriz WCAG 2.5.8 (Target Size Minimum) exige área de toque efetiva de 24×24px com espaçamento de 8px, ou 44×44px com alívio. Botões com altura visual de 36px (`h-9`) e padding horizontal com `gap-2` (8px) atendem plenamente à acessibilidade sem devorar o viewport vertical da tela. | Adotar altura canônica de `h-9` no mobile para botões de cabeçalho, preservando ergonomia ao toque sem criar blocos visuais maciços. |
+| **"O botão de desativar dentro do modal deve desligar tudo de uma vez."** | **Falha de Julgamento de UX (Corrigida):** Se o usuário já sabe lançar despesas e clica para desativar o guia na tela de Transações, ele NÃO quer necessariamente perder os guias de Família, Viagens ou Investimentos (que ele sequer teve chance de conhecer). | Implementar **governança granular de dispensa**: o usuário pode escolher entre "Ocultar apenas este guia" (local) ou "Ocultar todos os guias do app" (global). |
 | **"O switch nas Configurações pode ser apenas um estado remoto no banco."** | **Ponto Cego de Conectividade.** Se a flag `showEducationalPlaybooks` depender de requisição remota na inicialização, causará *layout shift* (FOUC) ou botões piscando na tela ao abrir o app offline. | Reutilizar a arquitetura síncrona do `useVisualCustomization` e `visual-storage.ts` (armazenamento local em `localStorage` com chave por usuário + sincronização assíncrona com `custom_settings` no Supabase). |
 
 ---
@@ -62,10 +63,7 @@ Foram auditadas todas as **26 telas e componentes** que consomem `<PageHeader />
 15. `src/features/trips/components/details/trip-details-empty-views.tsx` (Empty states com PageHeader)
 16. *Telas Administrativas:* 9 páginas em `src/features/admin/pages/` e `admin-forensics-page.tsx`
 
-**Conclusão de Segurança:** Qualquer modificação estrutural na prop `actionsLayoutClass` do `PageHeader` afeta todas as páginas acima. A estratégia mais segura consiste em:
-- Eliminar as classes locais anômalas em `family-page.tsx` e `trip-list-page.tsx`.
-- Refinar a lógica de 2 botões no `PageHeader` para assegurar altura canônica `h-9` sem sobreposição.
-- Validar que a adição do botão de playbook nessas páginas elevará o `actionCount` para 3, ativando automaticamente o layout de chips horizontais fluidos (`overflow-x-auto no-scrollbar`), que já é comprovadamente elegante e harmônico no Modo Negócio.
+**Conclusão de Segurança:** A estratégia mais segura consiste em eliminar as classes locais infladas em `family-page.tsx` e `trip-list-page.tsx`, sem alterar a casca estrutural global do `PageHeader`, permitindo que ao incluir o 3º botão (o Playbook correspondente), o cabeçalho ative automaticamente o layout fluido horizontal de chips com scroll suave, já aprovado em produção.
 
 ---
 
@@ -76,11 +74,11 @@ Mapeamento completo das áreas funcionais da codebase sob a ótica da fricção 
 | Módulo / Funcionalidade | Fricção Metodológica Inicial | Risco de Erro Crítico nos Dados | Frequência de Uso | Classificação Final | Justificativa Arquitetural |
 |---|---|---|---|---|---|
 | **Lançamentos & Gestão de Cartões** (`transactions` / `cards`) | **Altíssima** (maior causa de abandono de iniciantes) | **Crítico** (duplicação de despesas com fatura, quebra de DRE e orçamentos) | Diária (Core Loop) | **Playbook Dedicado (Onda 1)** | O erro de lançar a fatura inteira como despesa única destrói a base de dados do usuário. |
-| **Modo Família** (`family`) | **Altíssima** (atritos conjugais e modelos mentais divergentes) | **Alto** (acertos de contas distorcidos, sensação de injustiça) | Semanal / Mensal | **Playbook Dedicado (Onda 1)** | Usuários não sabem quando usar 50/50 vs proporcional ou o que pertence à casa. |
-| **Modo Viagem** (`trips`) | **Alta** (vaquinha prévia vs acerto no fim, estresse com rateio) | **Médio/Alto** (inflar custo de vida se não isolar da cesta da casa) | Eventual / Férias | **Playbook Dedicado (Onda 1)** | Essencial para orientar o rateio justo e blindar o extrato pessoal de distorções. |
+| **Modo Família** (`family`) | **Altíssima** (atritos conjugais e modelos mentais divergentes) | **Alto** (acertos de contas distorcidos, sensação de injustiça) | Semanal / Mensal | **Playbook Dedicado (Onda 2)** | Usuários não sabem quando usar 50/50 vs proporcional ou o que pertence à casa. |
+| **Modo Viagem** (`trips`) | **Alta** (vaquinha prévia vs acerto no fim, estresse com rateio) | **Médio/Alto** (inflar custo de vida se não isolar da cesta da casa) | Eventual / Férias | **Playbook Dedicado (Onda 2)** | Essencial para orientar o rateio justo e blindar o extrato pessoal de distorções. |
 | **Modo Negócio / PJ** (`business`) | **Altíssima** (confusão patrimonial PF/PJ, risco fiscal) | **Crítico** (autuações fiscais, desenquadramento de MEI) | Semanal | **Playbook Dedicado Existente** | Já implementado com sucesso (`EducationalGuideModal`); serve de referência. |
-| **Investimentos & Carteira** (`investments`) | **Altíssima** (insegurança em alocação, medo de errar no aporte) | **Crítico** (DARF indevida por giro de carteira, resgate de emergência no prejuízo) | Semanal / Mensal | **Playbook Dedicado (Onda 2)** | O motor de rebalanceamento por aportes do Axir exige alinhamento conceitual imediato. |
-| **Contas & Dívidas** (`debts`) | **Alta** (estratégia de amortização: matemática vs psicológica) | **Alto** (rolagem de crédito rotativo e contração de juros abusivos) | Mensal | **Playbook Dedicado (Onda 2)** | Decisão crucial entre método Bola de Neve (psicológico) vs Avalanche (matemático). |
+| **Investimentos & Carteira** (`investments`) | **Altíssima** (insegurança em alocação, medo de errar no aporte) | **Crítico** (DARF indevida por giro de carteira, resgate de emergência no prejuízo) | Semanal / Mensal | **Playbook Dedicado (Onda 3)** | O motor de rebalanceamento por aportes do Axir exige alinhamento conceitual imediato. |
+| **Contas & Dívidas** (`debts`) | **Alta** (estratégia de amortização: matemática vs psicológica) | **Alto** (rolagem de crédito rotativo e contração de juros abusivos) | Mensal | **Playbook Dedicado (Onda 3)** | Decisão crucial entre método Bola de Neve (psicológico) vs Avalanche (matemático). |
 | **Orçamentos & Tetos** (`budgets`) | Média / Alta (50/30/20 vs Base Zero) | Médio (tetos irreais abandonados na 2ª semana) | Mensal | **Micro-guia / Kits Contextuais** | O módulo já possui o sistema de kits orçamentários (`kits.ts`); dialog explicativo resolve. |
 | **Contas, Saldos & Checkpoints** (`accounts` / `reconciliation`) | Média (conciliação bancária vs ajuste de saldo) | Médio (criação de transações fantasmas de ajuste) | Semanal | **Micro-guia / Dica Contextual** | Tooltip e card explicativo dentro do diálogo de conciliação de saldo bastam. |
 | **Metas Financeiras** (`goals`) | Baixa (sonhos, prazos e caixinhas) | Baixo (apenas poupança direcionada) | Eventual | **Não Precisa de Playbook** | A interface de metas e prazos já é 100% intuitiva; adicionar playbook geraria poluição. |
@@ -164,62 +162,63 @@ Mapeamento completo das áreas funcionais da codebase sob a ótica da fricção 
 
 ---
 
-### 4.2 Governança Anti-Poluição: O Seletor Global em Configurações
+### 4.2 Governança Anti-Poluição: Seletor Global & Dispensa Granular
 
-O maior risco de adicionar playbooks é criar poluição visual para o usuário veterano que já domina a ferramenta. Para assegurar controle total:
+Para que o usuário tenha **controle absoluto** sobre a visibilidade dos guias sem ser punido por um modelo "tudo ou nada":
 
 ```mermaid
-flowchart LR
-    subgraph Config["Ajustes → Interface"]
-        SW["Switch Global:<br/><b>Playbooks e Guias Metodológicos</b><br/>(showEducationalPlaybooks)"]
+flowchart TD
+    subgraph GatilhoModal["Dentro do Playbook (Rodapé)"]
+        BTN["Ação: 'Ocultar atalho do guia...'"]
     end
 
-    subgraph Estado["Estado & Persistência Reutilizados"]
-        LS["localStorage (Síncrono/Offline)"]
-        HOOK["useVisualCustomization()"]
-        MUT["Supabase (custom_settings)"]
+    subgraph EscolhaDeliberada["Micro-Diálogo de Escolha da Dispensa"]
+        OP1["Opção 1 (Recomendada):<br/><b>Ocultar apenas este guia</b><br/><i>(dismissedPlaybookKeys += moduleKey)</i>"]
+        OP2["Opção 2 (Global):<br/><b>Ocultar todos os guias do app</b><br/><i>(showEducationalPlaybooks = false)</i>"]
     end
 
-    subgraph Telas["Renderização Condicional nas Telas"]
-        T1["Cabeçalhos (PageHeader Actions)"]
-        T2["Links em Diálogos (Rodapé)"]
-        T3["Botões Secundários em Empty States"]
+    subgraph AjustesUI["Ajustes → Interface"]
+        MASTER["Switch Master:<br/><b>Playbooks e Guias Metodológicos</b>"]
+        RESTORE["Indicador Granular:<br/><i>'X guias individuais ocultados. [Reativar todos]'</i>"]
     end
 
-    SW --> HOOK
-    HOOK <--> LS
-    HOOK --> MUT
-    HOOK -- "false" -->|Oculta 100% dos botões| Telas
-    HOOK -- "true" -->|Exibe atalhos discretos| Telas
+    BTN --> EscolhaDeliberada
+    OP1 -->|Oculta só Lançamentos; outros continuam ativos| RESTORE
+    OP2 -->|Desliga chave mestre| MASTER
 ```
 
-#### Mecânica de Implementação Reutilizada
+#### Modelo de Dados e Persistência
 1. **Contrato de Tipos (`src/types/schema.ts`):**
-   Adicionar no tipo `UserSettings` / `custom_settings`:
+   No tipo `UserSettings` / `custom_settings`:
    ```ts
-   showEducationalPlaybooks?: boolean;
+   showEducationalPlaybooks?: boolean;          // Master global (default: true)
+   dismissedPlaybookKeys?: string[];             // Lista de módulos dispensados localmente (ex: ["transactions"])
    ```
 2. **Domínio de Preferências Visuais (`src/domain/preferences/visual-defaults.ts`):**
-   - Campo em `VisualCustomizationSettings`: `showEducationalPlaybooks: boolean;`
-   - Chave em `VISUAL_STORAGE_KEYS`: `showEducationalPlaybooks: "show_educational_playbooks"`
-   - Default em `DEFAULT_VISUAL_CUSTOMIZATION`: `showEducationalPlaybooks: true`
-3. **Camada de Armazenamento (`src/services/visual-storage.ts`):**
-   - Persistência e hidratação síncrona com `getUserStorageItem` / `setUserStorageItem`.
-4. **Hook Central (`src/hooks/use-visual-customization.ts`):**
-   - Expor `showEducationalPlaybooks` e `setShowEducationalPlaybooks`.
-5. **Interface em Ajustes (`src/features/settings/components/tabs/interface-shortcuts-card.tsx`):**
-   - Novo card idêntico ao da *Memória de Cálculo*, posicionado imediatamente após o card da memória de cálculo:
-     * Ícone: `BookOpen`
-     * Título: `Playbooks e Guias Metodológicos`
-     * Descrição Ativo: *"Exibe atalhos para os guias práticos e playbooks metodológicos nas páginas (Família, Viagens, Lançamentos, Negócio e Dívidas)."*
-     * Descrição Inativo: *"Oculto. Mantém a interface 100% minimalista e focada em dados, ocultando os botões de guias educativos."*
-6. **UX do Atalho "Desativar atalhos de guias" dentro dos Modais:**
-   - No rodapé de cada playbook, ao lado do botão "Fechar", incluir link discreto:
-     `<Button variant="ghost" size="xs" onClick={handleDisableAllGuides}>Desativar atalhos de guias</Button>`
-   - Ao clicar, desliga a flag global, fecha o modal e emite feedback sonoro/tátil e toast informativo:
-     *"Guias educativos desativados. Você pode reativá-los a qualquer momento em Ajustes → Interface."*
-7. **Regra Estrita de Empty States:**
-   - Se `showEducationalPlaybooks === false`, o botão secundário "Ver Guia" no `EmptyState` não é renderizado, exibindo apenas o CTA operacional primário.
+   - Campos em `VisualCustomizationSettings`:
+     * `showEducationalPlaybooks: boolean;` (default: `true`)
+     * `dismissedPlaybookKeys: string[];` (default: `[]`)
+   - Chaves em `VISUAL_STORAGE_KEYS`:
+     * `showEducationalPlaybooks: "show_educational_playbooks"`
+     * `dismissedPlaybookKeys: "dismissed_playbook_keys"`
+3. **Regra de Visibilidade do Botão em Cada Tela:**
+   Um playbook de módulo `moduleKey` (ex: `"transactions"`, `"family"`, `"trips"`) só é renderizado se:
+   ```ts
+   const isPlaybookVisible = showEducationalPlaybooks && !dismissedPlaybookKeys.includes(moduleKey);
+   ```
+4. **UX do Micro-Diálogo de Dispensa dentro do Modal:**
+   No rodapé de cada playbook, ao lado do botão "Fechar":
+   - Botão discreto `variant="ghost" size="xs"` com ícone `EyeOff`: `"Ocultar atalho do guia..."`
+   - Ao clicar, abre um popover ou diálogo compacto com as duas escolhas ilustradas no diagrama:
+     * **"Ocultar apenas este guia" (Recomendado):** Adiciona o `moduleKey` ao array `dismissedPlaybookKeys`. Toast sensorial: *"Guia de Lançamentos ocultado. Você pode reativá-lo em Ajustes → Interface."*
+     * **"Ocultar todos os guias do app":** Desliga `showEducationalPlaybooks = false`. Toast sensorial: *"Todos os guias educativos foram desativados no app. Você pode reativá-los em Ajustes → Interface."*
+5. **Painel em Ajustes (`interface-shortcuts-card.tsx`):**
+   - Switch Master: **Playbooks e Guias Metodológicos**.
+   - Se o switch estiver ativo e `dismissedPlaybookKeys.length > 0`, renderiza abaixo um helper text com link de restauração:
+     *"1 guia individual ocultado (Lançamentos). [Reativar todos os guias]"*.
+     Ao clicar em "Reativar todos os guias", limpa o array `dismissedPlaybookKeys` com feedback tátil imediato.
+6. **Regra Estrita de Empty States:**
+   - Se `isPlaybookVisible === false`, o botão secundário "Ver Guia" no `EmptyState` não é renderizado, exibindo apenas o CTA operacional primário.
    - Zero `autoFocus` declarativo no mobile em formulários e modais (respeitando estritamente a Regra 20 do `AGENTS.md`).
 
 ---
@@ -236,7 +235,7 @@ Para não duplicar código e estruturas de modal (respeitando a Regra 4 do `AGEN
    - Stepper de Quiz com feedback tátil (`triggerSensory("selection")`).
    - Card de recomendação com explicação fiscal/metodológica e botão de aplicação 1-Click.
    - Seções de boas práticas comparativas (verde vs vermelho).
-   - Rodapé com botão de fechar e atalho de desativação global.
+   - Rodapé com botão de fechar e menu de dispensa granular integrada.
 2. **Definições Puras de Conteúdo em Domínio:**  
    Colocalizadas em `src/domain/playbooks/`:
    - `transaction-playbook.ts`
@@ -319,8 +318,8 @@ O plano foi estruturado em **3 Ondas Incrementais** para garantir testes contín
 ```mermaid
 flowchart LR
     subgraph Onda1["ONDA 1: Infraestrutura & Core"]
-        O1A["Correção de Cabeçalhos<br/>(Família & Viagem)"] --> O1B["Switch Global Ajustes<br/>(showEducationalPlaybooks)"]
-        O1B --> O1C["Shell Genérica de Playbooks<br/>(InteractivePlaybookModal)"]
+        O1A["Correção de Cabeçalhos<br/>(Família & Viagem)"] --> O1B["Switch Global & Granular em Ajustes<br/>(showEducationalPlaybooks + dismissedKeys)"]
+        O1B --> O1C["Shell Genérica de Playbooks<br/>(InteractivePlaybookModal com Dispensa Granular)"]
         O1C --> O1D["Playbook de Lançamentos & Cartões"]
     end
 
@@ -338,22 +337,23 @@ flowchart LR
     Onda2 --> Onda3
 ```
 
-### Onda 1 — Fundação, Correção Geométrica & Playbook de Lançamentos
-* **Objetivo:** Corrigir os botões defeituosos de cabeçalho, implantar o switch global de governança e lançar o playbook mais crítico do aplicativo (Lançamentos e Cartões).
+### Onda 1 — Fundação, Correção Geométrica, Dispensa Granular & Playbook de Lançamentos
+* **Objetivo:** Corrigir os botões defeituosos de cabeçalho, implantar o switch global com controle granular de dispensa e lançar o playbook mais crítico do aplicativo (Lançamentos e Cartões).
 * **Tarefas de Engenharia:**
   1. Remover `max-sm:min-h-11` de `src/features/family/pages/family-page.tsx`.
   2. Remover `w-full min-h-11 sm:min-h-8` de `src/features/trips/pages/trip-list-page.tsx`.
   3. Revisar `PageHeader.tsx` para assegurar que pares de botões adotem altura canônica `h-9` no mobile.
-  4. Adicionar `showEducationalPlaybooks` no schema de `UserSettings`, no domínio `visual-defaults.ts`, no storage `visual-storage.ts` e no hook `useVisualCustomization`.
-  5. Adicionar o card/switch em `src/features/settings/components/tabs/interface-shortcuts-card.tsx` colocalizado com a Memória de Cálculo.
-  6. Desenvolver a shell reutilizável `<InteractivePlaybookModal />` em `src/components/modules/playbooks/`.
+  4. Adicionar `showEducationalPlaybooks` e `dismissedPlaybookKeys` no schema de `UserSettings`, no domínio `visual-defaults.ts`, no storage `visual-storage.ts` e no hook `useVisualCustomization`.
+  5. Adicionar o card/switch em `src/features/settings/components/tabs/interface-shortcuts-card.tsx` colocalizado com a Memória de Cálculo, incluindo indicador de guias individuais ocultados e botão "Reativar todos os guias".
+  6. Desenvolver a shell reutilizável `<InteractivePlaybookModal />` em `src/components/modules/playbooks/` com suporte ao micro-diálogo de dispensa deliberada ("Ocultar apenas este guia" vs "Ocultar todos").
   7. Criar o domínio `transaction-playbook.ts` e o modal `TransactionEducationalGuideModal.tsx`.
-  8. Adicionar o gatilho discreto em `transaction-list-page.tsx` condicionado a `showEducationalPlaybooks`.
+  8. Adicionar o gatilho discreto em `transaction-list-page.tsx` condicionado a `isPlaybookVisible`.
 * **Quality Gate 1:**
   - Altura máxima de botões de cabeçalho no mobile $\le 36\text{px}$ (`h-9`).
   - Nenhum botão esticado em 100% da tela desnecessariamente.
-  - Ao desligar o switch nas Configurações, o botão do playbook desaparece do extrato de transações.
-  - Testes unitários com 100% de aprovação para `transaction-playbook.test.ts` e `TransactionEducationalGuideModal.test.tsx`.
+  - Ao dispensar "apenas este guia", o guia de Lançamentos desaparece do extrato, mas o guia de Negócio continua acessível.
+  - Ao desligar o switch master nas Configurações, todos os guias desaparecem de todo o app.
+  - Testes unitários com 100% de aprovação para `transaction-playbook.test.ts`, `InteractivePlaybookModal.test.tsx` e `TransactionEducationalGuideModal.test.tsx`.
 
 ---
 
@@ -362,13 +362,13 @@ flowchart LR
 * **Tarefas de Engenharia:**
   1. Criar o domínio puro `family-playbook.ts` e o modal `FamilyEducationalGuideModal.tsx`.
   2. Integrar o CTA 1-Click do quiz diretamente com a mutação de divisão da família (`split_rule`).
-  3. Adicionar o gatilho `Guia da Família` no cabeçalho de `family-page.tsx` (respeitando `showEducationalPlaybooks`).
+  3. Adicionar o gatilho `Guia da Família` no cabeçalho de `family-page.tsx` (respeitando `isPlaybookVisible`).
   4. Criar o domínio puro `trip-playbook.ts` e o modal `TripEducationalGuideModal.tsx`.
   5. Adicionar o gatilho `Guia de Viagem` no cabeçalho de `trip-list-page.tsx` e `trip-details-page.tsx`.
 * **Quality Gate 2:**
   - O cabeçalho de Família (agora com 3 botões) ativa o layout fluido de chips horizontais com scroll suave no mobile, sem esmagamento.
   - A recomendação do quiz de família atualiza a regra de divisão com feedback tátil e persistência no Supabase.
-  - Testes unitários cobrindo todos os fluxos de quiz e renderização condicional.
+  - Testes unitários cobrindo todos os fluxos de quiz, dispensa granular e renderização condicional.
 
 ---
 
@@ -388,12 +388,9 @@ flowchart LR
 
 ## 7. Decisões de Produto & Arquitetura Submetidas à Validação
 
-Antes da autorização formal para implementação, submetem-se à validação do Fundador/Product Owner as seguintes decisões de design:
-
-1. **Rótulo e Localização do Seletor em Ajustes:**  
-   *Proposta:* O switch será batizado de **"Playbooks e Guias Metodológicos"** e ficará colocalizado imediatamente abaixo do switch de **"Memória de Cálculo e Explicabilidade"** na aba *Interface* das Configurações.  
-   *Alternativa:* Posicionar em aba própria de "Auxílio & Ajuda". *(Nossa recomendação é manter na aba Interface, colocalizado com Memória de Cálculo, pois ambos controlam a densidade de atalhos explicativos da UI).*
-2. **Valor Padrão da Flag (`showEducationalPlaybooks`):**  
-   *Proposta:* Padrão `true` para novos usuários (para garantir acolhimento metodológico imediato), com atalho visível no rodapé dos modais para desativação com 1 clique se o usuário desejar minimalismo.
+1. **Governança Granular Aprovada:**  
+   O usuário tem total autonomia para dispensar individualmente um guia pontual que já domina ("Ocultar apenas este guia") sem perder a descoberta dos demais módulos, ou desativar o ecossistema completo ("Ocultar todos").
+2. **Localização do Seletor e Restauração em Ajustes:**  
+   Na aba *Interface* das Configurações, imediatamente após a *Memória de Cálculo*, com botão explícito de "Reativar todos os guias" se houver módulos dispensados localmente.
 3. **Escopo de Execução Imediata:**  
-   *Proposta:* Autorizar a execução da **Onda 1** (Correção dos botões de Família/Viagem + Infraestrutura do Switch Global + Playbook de Lançamentos & Cartões).
+   Autorização para execução da **Onda 1** (Correção dos botões de Família/Viagem + Infraestrutura do Switch Global/Granular + Playbook de Lançamentos & Cartões).
