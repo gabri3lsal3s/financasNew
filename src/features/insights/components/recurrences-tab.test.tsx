@@ -560,7 +560,7 @@ describe("RecurrencesTab", () => {
 
       // 1. Cabeçalho colapsado da seção de memória presente com contagem (1 cooldown + 2 micro-feedbacks = 3)
       const memoryHeaderBtn = screen.getByRole("button", {
-        name: /Memória de Aprendizado do Assistente \(3\)/i,
+        name: /Memória do Copiloto \(3\)/i,
       });
       expect(memoryHeaderBtn).toBeInTheDocument();
 
@@ -571,12 +571,12 @@ describe("RecurrencesTab", () => {
       const withinMemory = within(memorySection);
 
       // 3. Verifica exibição de itens sob cooldown
-      expect(withinMemory.getByText("Descartes Temporários sob Cooldown")).toBeInTheDocument();
+      expect(withinMemory.getByText("Temas em Cooldown & Famílias Pausadas")).toBeInTheDocument();
       expect(withinMemory.getByText("Spotify")).toBeInTheDocument();
       expect(withinMemory.getByText("Descartado temporariamente até 22/11")).toBeInTheDocument();
 
       // 4. Verifica exibição de decisões de micro-feedback registradas
-      expect(withinMemory.getByText("Decisões de Micro-Feedback Registradas")).toBeInTheDocument();
+      expect(withinMemory.getByText("Decisões de Aprendizado")).toBeInTheDocument();
       expect(withinMemory.getByText("Netflix")).toBeInTheDocument();
       expect(withinMemory.getByText("Já cancelei")).toBeInTheDocument();
       expect(withinMemory.getByText("Não é assinatura")).toBeInTheDocument();

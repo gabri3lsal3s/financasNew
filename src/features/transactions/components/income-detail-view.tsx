@@ -3,13 +3,14 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger, Badge } f
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon } from "@/components/modules/category-icon";
 import { formatDateBR } from "@/lib/date";
-import { RECEIVE_TYPE_LABELS } from "@/lib/labels";
-import type { Category, Income } from "@/types";
+import { INTERNAL_TRANSFER_KIND_LABELS, RECEIVE_TYPE_LABELS, TRANSACTION_SCOPE_LABELS } from "@/lib/labels";
+import type { Category, Income, InternalTransferKind } from "@/types";
 
 export interface IncomeDetailViewProps {
   income: Income;
   currentCategory?: Category;
   isFamilyActive: boolean;
+  isBusinessActive?: boolean;
   isReadOnly: boolean;
   isInstallment: boolean;
   isRecurring: boolean;
@@ -20,6 +21,7 @@ export function IncomeDetailView({
   income,
   currentCategory,
   isFamilyActive,
+  isBusinessActive = false,
   isReadOnly,
   isInstallment,
   isRecurring,
@@ -84,7 +86,34 @@ export function IncomeDetailView({
           </dd>
         </div>
 
-        {isReadOnly ? (
+        {isBusinessActive || income.is_internal_transfer ? (
+          <div className="flex items-center justify-between gap-2">
+            <dt className="text-xs text-muted-foreground">Esfera</dt>
+            <dd className="font-medium text-foreground text-xs">
+              <Badge variant={income.scope === "business" ? "portfolio" : "muted"} size="xs">
+                {TRANSACTION_SCOPE_LABELS[income.scope ?? "personal"]}
+              </Badge>
+            </dd>
+          </div>
+        ) : null}
+
+        {income.is_internal_transfer ? (
+          <div className="flex flex-col gap-1 border-t border-border/80 pt-2">
+            <div className="flex items-center justify-between gap-2">
+              <dt className="text-xs text-muted-foreground">Movimentação</dt>
+              <dd className="font-medium text-foreground text-xs">
+                <Badge variant="muted" size="xs">
+                  {income.transfer_kind && income.transfer_kind in INTERNAL_TRANSFER_KIND_LABELS
+                    ? INTERNAL_TRANSFER_KIND_LABELS[income.transfer_kind as InternalTransferKind]
+                    : "Transferência Interna"}
+                </Badge>
+              </dd>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Transferência interna pareada PF/PJ — somente leitura (exclua o par para corrigir).
+            </p>
+          </div>
+        ) : isReadOnly ? (
           <div className="flex items-center justify-between gap-2">
             <dt className="text-xs text-muted-foreground">Origem</dt>
             <dd className="flex items-center gap-1 font-medium text-foreground text-xs">

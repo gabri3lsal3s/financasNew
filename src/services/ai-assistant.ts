@@ -27,6 +27,7 @@ import {
   MAX_AI_SINGLE_RECEIPT_TEXT_CHARS,
   MAX_AI_STATEMENT_PDF_TEXT_CHARS,
   normalizeSingleReceiptAiPayload,
+  normalizeStatementPdfRowsAiPayload,
   sanitizeBatchDescriptionForAi,
   Sha256HexSchema,
   validateCategorizeBatchOutput,
@@ -38,14 +39,20 @@ import {
 
 export const CLIENT_AI_TIMEOUT_MS = 22_000;
 export const CLIENT_AI_BATCH_TIMEOUT_MS = 8_000;
-const AI_VISION_MAX_DIMENSION = 1024;
-const AI_VISION_DEFAULT_QUALITY = 0.72;
+const AI_VISION_MAX_DIMENSION = 960;
+const AI_VISION_DEFAULT_QUALITY = 0.70;
 const AI_VISION_FALLBACK_QUALITY = 0.55;
 const AI_VISION_RETRY_MAX_DIMENSION = 768;
 const AI_VISION_RETRY_QUALITY = 0.6;
 const MIN_AI_TEXT_LENGTH = 20;
 
 export type AiSingleReceiptSource = "cache_remote" | "ai_text" | "ai_vision";
+
+export interface AiCategoryOptionInput {
+  id: string;
+  name: string;
+  type?: "expense" | "income";
+}
 
 export interface AiClientBaseGuards {
   userId?: string | null;
@@ -60,6 +67,7 @@ export interface ExtractSingleReceiptAiParams extends AiClientBaseGuards {
   pdfFile?: File;
   preferVision?: boolean;
   userFullName?: string | null;
+  categories?: readonly AiCategoryOptionInput[];
 }
 
 export type AiFallbackResult = {
@@ -80,6 +88,7 @@ export type AiSingleReceiptClientResult =
 
 export interface CategorizeBatchAiParams extends AiClientBaseGuards {
   sha256?: string;
+  priority?: "active" | "passive";
   descriptions: readonly string[];
   categories: readonly { id: string; name: string }[];
 }
@@ -95,15 +104,17 @@ export type CategorizeBatchClientResult =
 
 export interface ExtractStatementPdfRowsAiParams extends AiClientBaseGuards {
   sha256?: string | null;
-  text: string;
+  text?: string;
+  imageBlob?: Blob;
   referenceYear?: number;
+  competenceMonth?: string;
 }
 
 export type StatementPdfRowsClientResult =
   | {
       ok: true;
       cached: boolean;
-      source: "cache_remote" | "ai_text";
+      source: "cache_remote" | "ai_text" | "ai_vision";
       data: AiStatementPdfRowsOutput;
     }
   | AiFallbackResult;
@@ -484,6 +495,20 @@ async function invokeAiAssistantHttp(
   }
 }
 
+function sanitizeAiCategoriesInput(
+  categories?: readonly AiCategoryOptionInput[],
+): Array<{ id: string; name: string; type?: "expense" | "income" }> {
+  if (!categories?.length) return [];
+  return categories
+    .map((c) => ({
+      id: c.id.trim().slice(0, 80),
+      name: c.name.trim().slice(0, 80),
+      ...(c.type ? { type: c.type } : {}),
+    }))
+    .filter((c) => c.id.length > 0 && c.name.length > 0)
+    .slice(0, MAX_AI_CATEGORIZE_CATEGORIES);
+}
+
 async function performSingleReceiptAiCall(
   params: ExtractSingleReceiptAiParams,
 ): Promise<AiSingleReceiptClientResult> {
@@ -517,6 +542,10 @@ async function performSingleReceiptAiCall(
     return { ok: false, reason: "invalid_payload", fallbackToLocal: true };
   }
 
+  const cleanCategories = sanitizeAiCategoriesInput(params.categories);
+  const allowedCategoryIds =
+    cleanCategories.length > 0 ? new Set(cleanCategories.map((c) => c.id)) : undefined;
+
   const httpRes = await invokeAiAssistantHttp({
     mode: "single_receipt",
     sha256: params.sha256,
@@ -530,6 +559,7 @@ async function performSingleReceiptAiCall(
     ...(params.userFullName?.trim()
       ? { userFullName: params.userFullName.trim().slice(0, 120) }
       : {}),
+    ...(cleanCategories.length > 0 ? { categories: cleanCategories } : {}),
   });
 
   if (!httpRes.ok) {
@@ -537,7 +567,7 @@ async function performSingleReceiptAiCall(
   }
 
   const validatedData = AiSingleReceiptOutputSchema.safeParse(
-    normalizeSingleReceiptAiPayload(httpRes.data),
+    normalizeSingleReceiptAiPayload(httpRes.data, allowedCategoryIds),
   );
   if (!validatedData.success) {
     return { ok: false, reason: "invalid_ai_output", fallbackToLocal: true };
@@ -586,10 +616,10 @@ export async function categorizeDescriptionsBatchWithAi(
   const blocked = checkAiPreconditions(params);
   if (blocked) return blocked;
 
-  const cleanCategories = params.categories
-    .map((c) => ({ id: c.id.trim(), name: c.name.trim().slice(0, 80) }))
-    .filter((c) => c.id.length > 0 && c.name.length > 0)
-    .slice(0, MAX_AI_CATEGORIZE_CATEGORIES);
+  const cleanCategories = sanitizeAiCategoriesInput(params.categories).map(({ id, name }) => ({
+    id,
+    name,
+  }));
 
   const sanitizedDescriptions = params.descriptions
     .slice(0, MAX_AI_CATEGORIZE_BATCH_ITEMS)
@@ -622,6 +652,7 @@ export async function categorizeDescriptionsBatchWithAi(
       {
         mode: "categorize_batch",
         sha256: resolvedSha,
+        priority: params.priority ?? "passive",
         descriptions: sanitizedDescriptions,
         categories: cleanCategories,
       },
@@ -661,18 +692,27 @@ export async function extractStatementPdfRowsWithAi(
   const blocked = checkAiPreconditions(params);
   if (blocked) return blocked;
 
-  const maskedText = maskSensitivePiiForAi(params.text)
-    .trim()
-    .slice(0, MAX_AI_STATEMENT_PDF_TEXT_CHARS);
+  const maskedText = params.text
+    ? maskSensitivePiiForAi(params.text).trim().slice(0, MAX_AI_STATEMENT_PDF_TEXT_CHARS)
+    : "";
 
-  if (!maskedText) {
+  let imagePayload: {
+    base64: string;
+    mimeType: VisionImageMimeType;
+  } | null = null;
+
+  if (params.imageBlob) {
+    imagePayload = await compressBlobForAiVision(params.imageBlob);
+  }
+
+  if (!maskedText && !imagePayload) {
     return { ok: false, reason: "invalid_payload", fallbackToLocal: true };
   }
 
   const resolvedSha =
     params.sha256 && Sha256HexSchema.safeParse(params.sha256).success
       ? params.sha256
-      : await computeTextSha256(maskedText);
+      : await computeTextSha256(maskedText || imagePayload?.base64 || "");
 
   if (!resolvedSha) {
     return { ok: false, reason: "invalid_payload", fallbackToLocal: true };
@@ -684,9 +724,18 @@ export async function extractStatementPdfRowsWithAi(
     const httpRes = await invokeAiAssistantHttp({
       mode: "statement_pdf_rows",
       sha256: resolvedSha,
-      text: maskedText,
+      ...(maskedText ? { text: maskedText } : {}),
+      ...(imagePayload
+        ? {
+            imageBase64: imagePayload.base64,
+            imageMimeType: imagePayload.mimeType,
+          }
+        : {}),
       ...(typeof params.referenceYear === "number"
         ? { referenceYear: params.referenceYear }
+        : {}),
+      ...(params.competenceMonth && /^\d{4}-\d{2}$/.test(params.competenceMonth)
+        ? { competenceMonth: params.competenceMonth }
         : {}),
     });
 
@@ -694,15 +743,24 @@ export async function extractStatementPdfRowsWithAi(
       return httpRes;
     }
 
-    const validated = AiStatementPdfRowsOutputSchema.safeParse(httpRes.data);
+    const validated = AiStatementPdfRowsOutputSchema.safeParse(
+      normalizeStatementPdfRowsAiPayload(httpRes.data),
+    );
     if (!validated.success || validated.data.rows.length === 0) {
       return { ok: false, reason: "invalid_ai_output", fallbackToLocal: true };
     }
 
+    const source: "cache_remote" | "ai_text" | "ai_vision" =
+      httpRes.source === "cache_remote"
+        ? "cache_remote"
+        : httpRes.source === "ai_vision"
+          ? "ai_vision"
+          : "ai_text";
+
     return {
       ok: true,
       cached: httpRes.cached,
-      source: httpRes.source === "cache_remote" ? "cache_remote" : "ai_text",
+      source,
       data: validated.data,
     };
   });
@@ -734,6 +792,7 @@ export function convertAiReceiptToUniversalData(
       aiData.merchantOrBeneficiary ||
       (aiData.nature === "expense" ? aiData.description : undefined),
     payerOrSource: aiData.payerOrSource || undefined,
+    taxId: aiData.merchantCnpj || undefined,
     bankName: aiData.bankName || undefined,
     cardLastDigits: aiData.cardLastDigits || undefined,
     cardBrand: aiData.cardBrand || undefined,
@@ -757,6 +816,10 @@ export function convertAiReceiptToUniversalData(
     },
     isSameTitularity: aiData.isSameTitularity ?? undefined,
     extractionSource: source,
+    aiCategoryId: aiData.categoryId || undefined,
+    originalCurrency: aiData.originalCurrency || undefined,
+    originalAmountCents: aiData.originalAmountCents ?? undefined,
+    semanticTags: aiData.semanticTags?.length ? aiData.semanticTags : undefined,
   };
 }
 

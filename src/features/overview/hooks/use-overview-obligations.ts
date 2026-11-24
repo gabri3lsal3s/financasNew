@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import type { CashGapInflow } from "@/domain/projection";
 import { useTripDetails } from "@/state/queries/use-trips";
 import {
   buildOverviewCashGapResult,
@@ -24,6 +25,8 @@ interface UseOverviewObligationsParams {
   month: string;
   rangeEnd: string;
   currentBalanceCents: number;
+  hasLiquidityContext?: boolean;
+  predictedInflows?: readonly CashGapInflow[];
   cardsLoading: boolean;
   cardExpensesLoading: boolean;
   cardPaymentsLoading: boolean;
@@ -43,6 +46,7 @@ interface UseOverviewObligationsParams {
 }
 
 const EMPTY_GOAL_SHARES: readonly PublicShare[] = [];
+const EMPTY_PREDICTED_INFLOWS: readonly CashGapInflow[] = [];
 
 /**
  * Deriva obrigações futuras, radar semanal de vencimentos, rachas pendentes,
@@ -53,6 +57,8 @@ export function useOverviewObligations({
   month,
   rangeEnd,
   currentBalanceCents,
+  hasLiquidityContext,
+  predictedInflows = EMPTY_PREDICTED_INFLOWS,
   cardsLoading,
   cardExpensesLoading,
   cardPaymentsLoading,
@@ -82,8 +88,22 @@ export function useOverviewObligations({
         cardPayments: cardPayments ?? [],
         debts: debts ?? [],
         incomes: incomes ?? [],
+        hasLiquidityContext,
+        predictedInflows,
       }),
-    [currentBalanceCents, today, month, rangeEnd, cards, cardExpenses, cardPayments, debts, incomes],
+    [
+      currentBalanceCents,
+      today,
+      month,
+      rangeEnd,
+      cards,
+      cardExpenses,
+      cardPayments,
+      debts,
+      incomes,
+      hasLiquidityContext,
+      predictedInflows,
+    ],
   );
 
   const weeklyRadarSummary = useMemo(

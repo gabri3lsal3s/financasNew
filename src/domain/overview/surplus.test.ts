@@ -94,5 +94,51 @@ describe("calculateSurplusCapacity — apuração da capacidade de aporte (F50)"
     expect(result.surplusCents).toBe(100000);
     expect(result.suggestedAporteCents).toBe(100000);
     expect(result.hasSurplus).toBe(true);
+    expect(result.allocationIntent).toBe("portfolio_aporte");
+  });
+
+  it("protege contra falso otimismo deduzindo recorrências fixas pendentes do mês", () => {
+    const result = calculateSurplusCapacity({
+      incomeCents: 500_000, // Salário caiu dia 5
+      expenseCents: 50_000,
+      pendingRecurringObligationsCents: 215_000, // Aluguel R$ 2.000 + Internet R$ 150 vencem dia 10
+      safeToSpendCents: 450_000,
+    });
+
+    // Sobra = 5000 - 500 - 2150 = 2350; safeToSpend ajustado = 4500 - 2150 = 2350
+    expect(result.pendingRecurringObligationsCents).toBe(215_000);
+    expect(result.surplusCents).toBe(235_000);
+    expect(result.suggestedAporteCents).toBe(235_000);
+    expect(result.hasSurplus).toBe(true);
+  });
+
+  it("direciona excedente para reserva quando há gap e respeita override hasExternalEmergencyFund", () => {
+    const incomplete = calculateSurplusCapacity({
+      incomeCents: 600_000,
+      expenseCents: 300_000,
+      safeToSpendCents: 300_000,
+      emergencyGapCents: 1_000_000,
+    });
+    expect(incomplete.allocationIntent).toBe("emergency_fund");
+    expect(incomplete.suggestedEmergencyAllocationCents).toBe(300_000);
+
+    const complete = calculateSurplusCapacity({
+      incomeCents: 600_000,
+      expenseCents: 300_000,
+      safeToSpendCents: 300_000,
+      emergencyGapCents: 0,
+    });
+    expect(complete.allocationIntent).toBe("portfolio_aporte");
+    expect(complete.suggestedEmergencyAllocationCents).toBe(0);
+
+    const externalOverride = calculateSurplusCapacity({
+      incomeCents: 600_000,
+      expenseCents: 300_000,
+      safeToSpendCents: 300_000,
+      emergencyGapCents: 1_000_000,
+      hasExternalEmergencyFund: true,
+    });
+    expect(externalOverride.allocationIntent).toBe("portfolio_aporte");
+    expect(externalOverride.suggestedEmergencyAllocationCents).toBe(0);
   });
 });

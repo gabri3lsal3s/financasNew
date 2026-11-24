@@ -1,12 +1,14 @@
 import { useCallback, useMemo, useState, type ClipboardEvent } from "react";
 import { useNavigate } from "react-router";
 import { Alert, Modal } from "@/components/ui";
+import { filterCategoriesForScope } from "@/domain/business";
 import { buildDescriptionSuggestions, buildHabitualEntries, dayOfMonth } from "@/domain/predictions";
 import { parseClipboardTransactionCandidate, type ReceiptUserContext } from "@/domain/notifications";
 import { todayISO } from "@/domain/debts";
 import { resolveActiveTripMember } from "@/domain/trips";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
+import { useSafeBusinessMode, useSafeViewScope } from "@/hooks/use-safe-business-scope";
 import { usePixClipboardDetector } from "@/hooks";
 import {
   useActiveCreditCards,
@@ -28,6 +30,7 @@ import { useLaunchWizardState } from "./use-launch-wizard-state";
 import { useLaunchWizardSubmit } from "./use-launch-wizard-submit";
 import { useReceiptAutofill } from "./use-receipt-autofill";
 import { defaultLaunchState, getStoredWizardMode, isPresetWeight } from "./wizard-state";
+import type { TransactionScope } from "@/types";
 import type { CreatedSplitExpense, EntryType, LaunchState, ReceiptMeta, WizardMode } from "./wizard-types";
 
 export interface LaunchWizardProps {
@@ -74,6 +77,7 @@ export function LaunchWizard({
   const [activeType, setActiveType] = useState<EntryType>(initialValues?.type ?? initialType);
 
   const categoriesQuery = useCategories(activeType);
+  const allCategoriesQuery = useCategories();
   const cardsQuery = useActiveCreditCards();
   const { isTripModeEnabled } = useTripMode();
   const userTripsQuery = useUserTrips();
@@ -95,6 +99,17 @@ export function LaunchWizard({
   const userPreferencesQuery = useUserPreferences();
   const { isFamilyModeEnabled } = useFamilyMode();
   const isFamilyActive = Boolean(isFamilyModeEnabled);
+  const { isBusinessModeEnabled } = useSafeBusinessMode();
+  const { effectiveViewScope } = useSafeViewScope();
+  const initialScopeOverride = initialValues?.scope;
+  const defaultScope: TransactionScope = !isBusinessModeEnabled
+    ? "personal"
+    : initialScopeOverride ??
+      (effectiveViewScope === "business" ||
+      (typeof window !== "undefined" && window.location?.pathname.startsWith("/negocio"))
+        ? "business"
+        : "personal");
+  const [showAllCategories, setShowAllCategories] = useState(false);
   const { detectedPix, clearDetectedPix } = usePixClipboardDetector();
 
   const wizard = useLaunchWizardState({
@@ -104,6 +119,8 @@ export function LaunchWizard({
     categories: categoriesQuery.data,
     preferredTripCategoryId: userPreferencesQuery.data?.custom_settings?.preferredTripCategoryId,
     isFamilyActive,
+    isBusinessActive: isBusinessModeEnabled,
+    defaultScope,
     onSetCategoryUnconfirmed: setIsCategoryUnconfirmed,
   });
   const { mode, setMode, state, setState, set } = wizard;
@@ -137,7 +154,7 @@ export function LaunchWizard({
     handlePastePixFromClipboard,
   } = useReceiptAutofill({
     state, setState, setMode, setIsCategoryUnconfirmed, setReceiptMeta,
-    categories: categoriesQuery.data, cards: cardsQuery.data, initialValues,
+    categories: categoriesQuery.data, allCategories: allCategoriesQuery.data, cards: cardsQuery.data, initialValues,
     detectedPix, clearDetectedPix, onOpenAttachDialog: () => setAttachOpen(true),
     userContext,
     userId: currentUserId,
@@ -179,13 +196,17 @@ export function LaunchWizard({
 
   const { submit, pending, error, setError } = useLaunchWizardSubmit({
     state, setState, initialType, initialValues, isReadOnlyMode, guardAction,
-    isFamilyActive, categories: categoriesQuery.data, selectedCard, currentUserId,
+    isFamilyActive, isBusinessActive: isBusinessModeEnabled, defaultScope,
+    categories: categoriesQuery.data, selectedCard, currentUserId,
     currentTrip, tripMembers, receiptMeta, setReceiptMeta, setCreatedSplitExpense,
     onSuccess, onOpenChange, onFallbackBack: () => navigate(-1),
   });
 
   const handleClose = () => {
-    setState(defaultLaunchState(initialType, initialValues));
+    setState(defaultLaunchState(initialType, {
+      ...(defaultScope === "business" ? { scope: "business" } : {}),
+      ...initialValues,
+    }));
     setMode(initialMode === "quick" ? "quick" : (getStoredWizardMode() ?? initialMode));
     setError(null);
     setReceiptMeta(null);
@@ -193,6 +214,18 @@ export function LaunchWizard({
     onOpenChange?.(false);
     if (!onClose && !onOpenChange) navigate(-1);
   };
+
+  const displayedCategories = useMemo(() => {
+    const raw = categoriesQuery.data;
+    if (!raw || !isBusinessModeEnabled) return raw;
+    return filterCategoriesForScope(raw, state.scope ?? "personal", showAllCategories);
+  }, [categoriesQuery.data, isBusinessModeEnabled, state.scope, showAllCategories]);
+
+  const cardsForSelect = useMemo(() => {
+    const raw = cardsQuery.data;
+    if (!raw || !isBusinessModeEnabled) return raw;
+    return raw.map((card) => (card.scope === "business" ? { ...card, name: `${card.name} (PJ)` } : card));
+  }, [cardsQuery.data, isBusinessModeEnabled]);
 
   const requestClose = () => {
     if (state.valueCents > 0 || state.categoryId !== "" || state.description.trim() !== "") setConfirmClose(true);
@@ -237,15 +270,20 @@ export function LaunchWizard({
           {mode === "quick" ? (
             <StepQuick
               state={state} habits={habits} onApplyHabitual={wizard.applyHabitual}
-              onTypeChange={wizard.handleTypeChange} onValueChange={wizard.handleValueChange} onCategoryChange={wizard.handleCategorySelect}
+              onTypeChange={(t) => { setError(null); wizard.handleTypeChange(t); }} onValueChange={wizard.handleValueChange} onCategoryChange={wizard.handleCategorySelect}
               onPaymentMethodChange={(m) => { set("paymentMethod", m); if (m !== "credit_card") set("cardId", null); }}
               onCardChange={(id) => set("cardId", id)} onInstallmentsChange={(c) => set("installments", c)}
               isCategoryUnconfirmed={isCategoryUnconfirmed} onReceiveTypeChange={(r) => set("receiveType", r)}
               onDescriptionChange={(d) => set("description", d)} onFamilyChange={(f) => set("isFamily", f)}
-              isFamilyModeEnabled={isFamilyActive} onSplitToggle={wizard.handleSplitToggle}
+              isFamilyModeEnabled={isFamilyActive} isBusinessModeEnabled={isBusinessModeEnabled}
+              showAllCategories={showAllCategories}
+              onToggleShowAllCategories={() => setShowAllCategories((v) => !v)}
+              onScopeChange={wizard.handleScopeChange}
+              onTaxDeductibleChange={(d) => set("isTaxDeductible", d)}
+              onSplitToggle={wizard.handleSplitToggle}
               onSplitPeopleCountChange={wizard.handleSplitPeopleCountChange} onSwitchToGuided={wizard.switchToGuided}
-              categories={categoriesQuery.data} categoriesLoading={categoriesQuery.isLoading}
-              predictionEntries={prediction.entries} cards={cardsQuery.data} cardsLoading={cardsQuery.isLoading}
+              categories={displayedCategories} categoriesLoading={categoriesQuery.isLoading}
+              predictionEntries={prediction.entries} cards={cardsForSelect} cardsLoading={cardsQuery.isLoading}
               receiptMeta={receiptMeta}
               activeTrips={activeTrips} onTripChange={wizard.handleTripChange} activeTripMemberName={activeTripMember?.name}
               onSplitDebtModeChange={(m) => set("splitDebtMode", m)}
@@ -258,11 +296,11 @@ export function LaunchWizard({
               setError={setError}
               habits={habits}
               descriptionSuggestions={descriptionSuggestions}
-              categories={categoriesQuery.data}
+              categories={displayedCategories}
               categoriesLoading={categoriesQuery.isLoading}
               categoriesIsError={categoriesQuery.isError}
               categoriesError={categoriesQuery.error}
-              cards={cardsQuery.data}
+              cards={cardsForSelect}
               cardsLoading={cardsQuery.isLoading}
               cardsError={cardsQuery.error}
               activeTrips={activeTrips}
@@ -270,9 +308,13 @@ export function LaunchWizard({
               selectedCategoryName={selectedCategory?.name}
               selectedCardClosingDay={selectedCard?.closing_day}
               isFamilyActive={isFamilyActive}
-              onTypeChange={wizard.handleTypeChange}
+              isBusinessActive={isBusinessModeEnabled}
+              showAllCategories={showAllCategories}
+              onToggleShowAllCategories={() => setShowAllCategories((v) => !v)}
+              onTypeChange={(t) => { setError(null); wizard.handleTypeChange(t); }}
               onValueChange={wizard.handleValueChange}
               onCategorySelect={wizard.handleCategorySelect}
+              onScopeChange={wizard.handleScopeChange}
               onApplyHabitual={wizard.applyHabitual}
               onSplitToggle={wizard.handleSplitToggle}
               onSplitPeopleCountChange={wizard.handleSplitPeopleCountChange}
@@ -299,6 +341,7 @@ export function LaunchWizard({
         isReadOnlyMode={isReadOnlyMode}
         aiExtractionEnabled={aiExtractionEnabled}
         cards={cardsQuery.data}
+        categories={allCategoriesQuery.data ?? categoriesQuery.data}
         createdSplitExpense={createdSplitExpense}
         onClearCreatedSplit={() => setCreatedSplitExpense(null)}
         onSplitFinished={() => {

@@ -17,6 +17,8 @@ function mapIncome(row: Income): Income {
     value: Number(row.value),
     report_weight: row.report_weight !== undefined && row.report_weight !== null ? Number(row.report_weight) : 1.0,
     is_family: Boolean(row.is_family),
+    is_internal_transfer: Boolean(row.is_internal_transfer),
+    scope: row.scope ?? "personal",
   };
 }
 

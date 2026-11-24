@@ -25,7 +25,7 @@ export {
   VAMPIRE_INCOME_IMPACT_THRESHOLD_PERCENT,
   VAMPIRE_CATEGORY_BUDGET_IMPACT_THRESHOLD_PERCENT,
 } from "./recurrences";
-export { ESSENTIAL_CATEGORY_ICONS, stripTemporalSuffixes } from "./shared";
+export { ESSENTIAL_CATEGORY_ICONS, normalizeText, stripTemporalSuffixes } from "./shared";
 export type {
   ExpenseLike,
   IncomeLike,
@@ -75,10 +75,12 @@ export {
   essentialSpendingRatio,
   incomeConcentration,
   isSignificantTrend,
+  isWeekendComparisonReliable,
   savingsHealth,
   weekendSpendingRatio,
 } from "./diagnostics";
 export type {
+  EssentialSpendingOptions,
   EssentialSpendingResult,
   IncomeConcentration,
   IncomeConcentrationOptions,
@@ -86,6 +88,7 @@ export type {
   SavingsHealth,
   WeekdayAverageOptions,
   WeekdayTotalItem,
+  WeekendComparisonContext,
 } from "./diagnostics";
 export { resolveCategorySemantics, findBestMatchingCategory } from "./category-semantics";
 export type { CategorySemantics, CategoryNature } from "./category-semantics";
@@ -139,9 +142,13 @@ export type {
 export {
   formatAdvisorThemeKey,
   formatCooldownExpiry,
+  INSIGHT_FAMILY_LABELS,
   MEMORIZED_FEEDBACK_LABELS,
+  PAYDAY_PATTERN_LABELS,
 } from "./assistant-memory";
 export type { FormattedThemeKey } from "./assistant-memory";
+export { buildMonthlyClosingSummary } from "./monthly-closing";
+export type { BuildMonthlyClosingInput, MonthlyClosingSummary } from "./monthly-closing";
 export {
   extractHabitClusterKey,
   inferIntentFromDescription,
@@ -161,6 +168,84 @@ export type {
   SpendingHabit,
   DetectSpendingHabitsOptions,
 } from "./habits";
+export {
+  detectCrossMethodDuplicateSubscriptions,
+  computeEndingInstallmentsRelief,
+  computeOptimalSurplusAllocation,
+} from "./holistic-opportunities";
+export type {
+  CrossMethodDuplicateSubscription,
+  DetectCrossMethodDuplicatesOptions,
+  EndingInstallmentExpenseInput,
+  EndingInstallmentItem,
+  EndingInstallmentsReliefResult,
+  OptimalSurplusDestination,
+  OptimalSurplusAllocationInput,
+  OptimalSurplusAllocationPlan,
+} from "./holistic-opportunities";
+export {
+  buildUnifiedLearningGraph,
+  buildTxOneOffKey,
+  buildScopedOneOffKey,
+  stripOccurrencePrefix,
+  inferPaydayProfile,
+  estimateUpcomingCycleInflowsCents,
+} from "./learning-graph";
+export type {
+  FeedbackEntry,
+  PaydayPattern,
+  PaydayProfile,
+  InsightThemeFamily,
+  SmartDecayRecord,
+  LearningMerchantRecordLike,
+  LearnedServiceInfo,
+  LearningIncomeInput,
+  LearningBudgetInput,
+  BuildUnifiedLearningGraphInput,
+  UnifiedLearningGraph,
+} from "./learning-graph";
+export {
+  buildUserFinancialContext,
+  classifyExpensePartitionBucket,
+  partitionAndNormalizeCycleExpenses,
+  resolveMonthlyReferenceBudget,
+  resolveAccountMaturityStage,
+} from "./financial-context";
+export type {
+  AccountMaturityStage,
+  ReferenceBudgetSource,
+  ExpensePartitionBucket,
+  ContextCategoryLike,
+  ContextIncomeLike,
+  ContextExpenseLike,
+  PendingRecurringCommitmentLike,
+  NormalizedCycleLens,
+  UserFinancialContext,
+  BuildUserFinancialContextInput,
+  PartitionedExpensesResult,
+  MonthlyReferenceBudgetResult,
+} from "./financial-context";
+export {
+  DEFAULT_ATTENTION_BUDGET_POLICY,
+  SMART_DECAY_STEPS_DAYS,
+  applyHomeCarouselAttentionBudget,
+  selectOperationalHomeBanner,
+  advanceSmartDecay,
+  isFamilyUnderDecay,
+  muteInsightFamily,
+  unmuteInsightFamily,
+} from "./attention-budget";
+export type {
+  InsightSurfaceLayer,
+  InsightTone,
+  GovernedInsightItem,
+  AttentionBudgetPolicy,
+  HomeCarouselBudgetResult,
+  OperationalHomeBannerKind,
+  OperationalHomeBannerCandidate,
+  OperationalHomeBannerPlan,
+  SmartDecayEvaluation,
+} from "./attention-budget";
 
 
 

@@ -23,6 +23,9 @@ function mapRecurrence(row: Recurrence): Recurrence {
     value: Number(row.value),
     report_weight: Number(row.report_weight),
     is_family: Boolean(row.is_family),
+    is_tax_deductible: Boolean(row.is_tax_deductible),
+    scope: row.scope ?? "personal",
+    charge_kind: row.charge_kind ?? "regular",
   };
 }
 

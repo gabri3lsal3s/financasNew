@@ -3,6 +3,8 @@ import {
   clearReceiptLearningMemory,
   getLearnedReceiptPreferences,
   learnFromReceiptCorrection,
+  lookupReceiptPreferenceInMerchantMemory,
+  migrateLegacyReceiptDictToMerchantMemory,
   normalizeMerchantKey,
 } from "./receipt-learning";
 
@@ -79,5 +81,39 @@ describe("receipt-learning (Plano 10 — Fase 5)", () => {
 
     expect(learned?.merchantName).toBe("Mart Minas Atacado");
     expect(learned?.usageCount).toBe(2);
+  });
+
+  it("converte dicionário legado para MerchantLearningMemory sem duplicar uso e resolve via userMemory", () => {
+    const migrated = migrateLegacyReceiptDictToMerchantMemory({
+      "cnpj:88709563000102": {
+        merchantName: "Rede Moleza",
+        categorySlug: "lazer",
+        paymentMethod: "debit",
+        cardLastDigits: "1234",
+        cnpj: "88709563000102",
+        usageCount: 3,
+        lastUpdated: "2026-10-10T10:00:00.000Z",
+      },
+      "name:redemolezadistribuicao": {
+        merchantName: "Rede Moleza",
+        categorySlug: "lazer",
+        cnpj: "88709563000102",
+        usageCount: 2,
+        lastUpdated: "2026-10-08T10:00:00.000Z",
+      },
+    });
+
+    expect(migrated.migratedCount).toBe(1);
+    const rec = migrated.memory["tax_88709563000102"];
+    expect(rec?.usageCount).toBe(3);
+    expect(rec?.preferredCardLastDigits).toBe("1234");
+    expect(rec?.rawAliases).toContain("redemolezadistribuicao");
+
+    const lookedUp = lookupReceiptPreferenceInMerchantMemory(
+      { merchantName: "REDE MOLEZA DISTRIBUICAO" },
+      migrated.memory,
+    );
+    expect(lookedUp?.merchantName).toBe("Rede Moleza");
+    expect(lookedUp?.cardLastDigits).toBe("1234");
   });
 });

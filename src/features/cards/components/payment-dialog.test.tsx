@@ -1,10 +1,12 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { PaymentDialog } from "./payment-dialog";
 
 const paymentMutateAsync = vi.fn();
 const refundMutateAsync = vi.fn();
+const payWithChargesMutateAsync = vi.fn();
+const updateCustomSettingsMutateAsync = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("@/state", () => ({
   useCreateCardPayment: () => ({
@@ -17,6 +19,21 @@ vi.mock("@/state", () => ({
   }),
   useRefinanceCardBill: () => ({
     mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  usePayCardBillWithCharges: () => ({
+    mutateAsync: payWithChargesMutateAsync,
+    isPending: false,
+  }),
+  useCategories: () => ({
+    data: [{ id: "cat-juros", name: "Juros e Encargos", type: "expense" }],
+    isLoading: false,
+  }),
+  useUserPreferences: () => ({
+    data: { custom_settings: { preferredChargeCategoryId: "cat-juros" } },
+  }),
+  useUpdateCustomSettings: () => ({
+    mutateAsync: updateCustomSettingsMutateAsync,
     isPending: false,
   }),
 }));
@@ -142,5 +159,68 @@ describe("PaymentDialog — Preenchimento automático e tratamento de faturas", 
 
     const submitBtn = screen.getByRole("button", { name: "Confirmar estorno" });
     expect(submitBtn).toBeDisabled();
+  });
+
+  it("permite incluir encargos da fatura e submete via payCardBillWithCharges", async () => {
+    payWithChargesMutateAsync.mockResolvedValueOnce({
+      payment_id: "p1",
+      total_paid: 235.5,
+      nominal_amount: 200,
+      charges_amount: 35.5,
+      charges_competence: "2026-08",
+      created_expense_ids: ["exp-charge-1"],
+    });
+    const onOpenChange = vi.fn();
+    const user = userEvent.setup();
+
+    render(
+      <PaymentDialog
+        cardId="c1"
+        competenceMonth="2026-08"
+        mode="payment"
+        open={true}
+        onOpenChange={onOpenChange}
+        openBalanceCents={20000}
+      />,
+    );
+
+    // Clica no botão para abrir seção de encargos
+    const toggleChargesBtn = screen.getByRole("button", {
+      name: /Incluir encargos nesta fatura/i,
+    });
+    await user.click(toggleChargesBtn);
+
+    // Campos de encargos ficam visíveis
+    expect(screen.getByText("Detalhamento de encargos")).toBeInTheDocument();
+    const interestInput = screen.getByRole("textbox", { name: "Juros de fatura" });
+    fireEvent.change(interestInput, { target: { value: "35,50" } });
+
+    // Live preview exibe totais
+    expect(screen.getByText("Total a debitar hoje do caixa:")).toBeInTheDocument();
+
+    const submitBtn = screen.getByRole("button", { name: "Confirmar pagamento" });
+    await user.click(submitBtn);
+
+    expect(payWithChargesMutateAsync).toHaveBeenCalledTimes(1);
+    expect(payWithChargesMutateAsync).toHaveBeenCalledWith({
+      cardId: "c1",
+      competenceMonth: "2026-08",
+      nominalAmount: 200,
+      charges: [
+        {
+          charge_kind: "interest",
+          amount: 35.5,
+          description: "Juros",
+          category_id: "cat-juros",
+        },
+      ],
+      chargeCompetenceMode: "current",
+      paymentDate: expect.any(String),
+      note: null,
+    });
+
+    await waitFor(() => {
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+    });
   });
 });

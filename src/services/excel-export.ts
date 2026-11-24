@@ -82,6 +82,18 @@ export interface ExcelClassTargetRow {
   status: string;
 }
 
+export interface ExcelBusinessDreData {
+  periodLabel: string;
+  profileLabel: string;
+  grossRevenueBRL: number;
+  operationalCostsBRL: number;
+  operationalProfitBRL: number;
+  fiscalTaxesPaidBRL: number;
+  proLaboreWithdrawnBRL: number;
+  retainedEarningsBRL: number;
+  marginPct: number;
+}
+
 export interface ExcelWorkbookData {
   appName?: string;
   generatedAt?: string;
@@ -105,6 +117,7 @@ export interface ExcelWorkbookData {
   debts: readonly ExcelDebtRow[];
   redemptions?: readonly ExcelRedemptionRow[];
   classTargets?: readonly ExcelClassTargetRow[];
+  businessDre?: ExcelBusinessDreData | null;
 }
 
 function sanitizeSpreadsheetText(value: string | number | null | undefined): string {
@@ -541,7 +554,59 @@ export function generateMultiSheetExcelXml(data: ExcelWorkbookData): string {
  </Worksheet>`;
   }
 
-  return `${xmlHeader}${sheet1}${sheet2}${sheet3}${sheet4}${sheet5}${sheet6}${sheet7}\n</Workbook>`;
+  // 8. Aba Condicional: Negocio (DRE) (apenas quando Modo Negócio estiver ativo)
+  let sheet8 = "";
+  if (data.businessDre) {
+    const biz = data.businessDre;
+    sheet8 = `
+ <Worksheet ss:Name="Negocio (DRE)">
+  <Table ss:DefaultColumnWidth="140">
+   <Column ss:Width="260"/>
+   <Column ss:Width="150"/>
+   <Row ss:Height="24">
+    <Cell ss:MergeAcross="1" ss:StyleID="Title"><Data ss:Type="String">Modo Negócio - DRE Simplificado (${escapeXml(biz.periodLabel)})</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:MergeAcross="1" ss:StyleID="Subtitle"><Data ss:Type="String">Enquadramento: ${escapeXml(biz.profileLabel)}</Data></Cell>
+   </Row>
+   <Row/>
+   <Row ss:StyleID="Header">
+    <Cell><Data ss:Type="String">Linha do DRE (PJ)</Data></Cell>
+    <Cell><Data ss:Type="String">Valor</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="TextBold"><Data ss:Type="String">(+) Receita Bruta do Negócio</Data></Cell>
+    <Cell ss:StyleID="Currency"><Data ss:Type="Number">${formatNumberRaw(biz.grossRevenueBRL)}</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="String">(-) Custos Operacionais e Encargos</Data></Cell>
+    <Cell ss:StyleID="Currency"><Data ss:Type="Number">${formatNumberRaw(-Math.abs(biz.operationalCostsBRL))}</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="TextBold"><Data ss:Type="String">(=) Lucro Operacional PJ</Data></Cell>
+    <Cell ss:StyleID="Currency"><Data ss:Type="Number">${formatNumberRaw(biz.operationalProfitBRL)}</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="String">(-) Impostos Fiscais Pagos (DAS / ISS)</Data></Cell>
+    <Cell ss:StyleID="Currency"><Data ss:Type="Number">${formatNumberRaw(-Math.abs(biz.fiscalTaxesPaidBRL))}</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="String">(-) Retiradas de Pró-Labore (PJ para PF)</Data></Cell>
+    <Cell ss:StyleID="Currency"><Data ss:Type="Number">${formatNumberRaw(-Math.abs(biz.proLaboreWithdrawnBRL))}</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="TextBold"><Data ss:Type="String">(=) Lucro Retido no Caixa PJ</Data></Cell>
+    <Cell ss:StyleID="Currency"><Data ss:Type="Number">${formatNumberRaw(biz.retainedEarningsBRL)}</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="String">Margem Líquida após Impostos</Data></Cell>
+    <Cell ss:StyleID="Percent"><Data ss:Type="Number">${(biz.marginPct / 100).toFixed(4)}</Data></Cell>
+   </Row>
+  </Table>
+ </Worksheet>`;
+  }
+
+  return `${xmlHeader}${sheet1}${sheet2}${sheet3}${sheet4}${sheet5}${sheet6}${sheet7}${sheet8}\n</Workbook>`;
 }
 
 /**

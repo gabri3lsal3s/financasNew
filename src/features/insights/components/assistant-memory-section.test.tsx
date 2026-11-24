@@ -48,7 +48,7 @@ describe("AssistantMemorySection (F30)", () => {
     );
 
     expect(
-      screen.getByRole("button", { name: /Memória de Aprendizado do Assistente \(2\)/i }),
+      screen.getByRole("button", { name: /Memória do Copiloto \(2\)/i }),
     ).toBeInTheDocument();
   });
 
@@ -67,9 +67,9 @@ describe("AssistantMemorySection (F30)", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: /Memória de Aprendizado do Assistente/i }));
+    await user.click(screen.getByRole("button", { name: /Memória do Copiloto/i }));
 
-    expect(screen.getByText("Descartes Temporários sob Cooldown")).toBeInTheDocument();
+    expect(screen.getByText("Temas em Cooldown & Famílias Pausadas")).toBeInTheDocument();
     expect(screen.getByText("Spotify")).toBeInTheDocument();
     expect(screen.getByText("Descartado temporariamente até 22/11")).toBeInTheDocument();
     expect(screen.getByText("(Cobrança duplicada)")).toBeInTheDocument();
@@ -91,9 +91,9 @@ describe("AssistantMemorySection (F30)", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: /Memória de Aprendizado do Assistente/i }));
+    await user.click(screen.getByRole("button", { name: /Memória do Copiloto/i }));
 
-    expect(screen.getByText("Decisões de Micro-Feedback Registradas")).toBeInTheDocument();
+    expect(screen.getByText("Decisões de Aprendizado")).toBeInTheDocument();
     expect(screen.getByText("Netflix")).toBeInTheDocument();
     expect(screen.getByText("Já cancelei")).toBeInTheDocument();
 
@@ -116,7 +116,7 @@ describe("AssistantMemorySection (F30)", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: /Memória de Aprendizado do Assistente/i }));
+    await user.click(screen.getByRole("button", { name: /Memória do Copiloto/i }));
 
     const reactivateBtn = screen.getByRole("button", { name: /Reativar monitoramento de Spotify/i });
     await user.click(reactivateBtn);
@@ -138,7 +138,7 @@ describe("AssistantMemorySection (F30)", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: /Memória de Aprendizado do Assistente/i }));
+    await user.click(screen.getByRole("button", { name: /Memória do Copiloto/i }));
 
     const reactivateBtn = screen.getByRole("button", { name: /Reativar monitoramento de Netflix/i });
     await user.click(reactivateBtn);
@@ -170,7 +170,7 @@ describe("AssistantMemorySection (F30)", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: /Memória de Aprendizado do Assistente/i }));
+    await user.click(screen.getByRole("button", { name: /Memória do Copiloto/i }));
 
     expect(screen.getByText("Google AI Pro")).toBeInTheDocument();
     expect(screen.getByText("Considerado essencial")).toBeInTheDocument();
@@ -197,7 +197,7 @@ describe("AssistantMemorySection (F30)", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: /Memória de Aprendizado do Assistente/i }));
+    await user.click(screen.getByRole("button", { name: /Memória do Copiloto/i }));
     await user.click(screen.getByRole("button", { name: /Reativar tudo/i }));
 
     expect(screen.getByText("Reativar todo o monitoramento?")).toBeInTheDocument();
@@ -207,5 +207,50 @@ describe("AssistantMemorySection (F30)", () => {
 
     expect(mockRevokeDismissal).toHaveBeenCalledWith("dup:spotify");
     expect(mockRevokeFeedback).toHaveBeenCalledWith("sub:netflix");
+  });
+
+  it("exibe Perfil de Renda Aprendido, Famílias Pausadas e Estabelecimentos Aprendidos com reversão em 1 clique (Fase 6)", async () => {
+    const user = userEvent.setup();
+    const onUnmuteFamily = vi.fn();
+    const onForgetMerchant = vi.fn();
+
+    render(
+      <AssistantMemorySection
+        feedbackMap={{}}
+        onRevokeFeedback={vi.fn()}
+        paydayProfile={{
+          pattern: "start_of_month",
+          typicalIncomeDays: [5],
+          expectedMonthlyIncomeCents: 600_000,
+          confidence: 0.9,
+          monthsAnalyzed: 3,
+        }}
+        decayByFamily={{
+          habit: {
+            dismissCount: 3,
+            lastDismissedAt: "2026-11-01T12:00:00Z",
+            dismissedUntil: Date.now() + 80 * 86_400_000,
+            muted: true,
+          },
+        }}
+        onUnmuteFamily={onUnmuteFamily}
+        merchantLearning={{
+          "ifood*rest": { alias: "iFood", categoryName: "Alimentação", count: 5 },
+        }}
+        onForgetMerchant={onForgetMerchant}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Memória do Copiloto/i }));
+
+    expect(screen.getByText(/Início do mês/i)).toBeInTheDocument();
+    expect(screen.getByText(/Hábitos & Microgastos/i)).toBeInTheDocument();
+    expect(screen.getByText("iFood")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Reativar" }));
+    expect(onUnmuteFamily).toHaveBeenCalledWith("habit");
+
+    await user.click(screen.getByRole("button", { name: "Esquecer" }));
+    expect(onForgetMerchant).toHaveBeenCalledWith("ifood*rest");
   });
 });

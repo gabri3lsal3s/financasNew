@@ -44,6 +44,7 @@ export const creditCardFormSchema = z.object({
     .refine((val) => val === null || val.length === 4, {
       message: "Os últimos dígitos devem conter exatamente 4 números.",
     }),
+  scope: z.enum(["personal", "business", "mixed"]).optional(),
 });
 
 export type CreditCardFormInput = z.infer<typeof creditCardFormSchema>;

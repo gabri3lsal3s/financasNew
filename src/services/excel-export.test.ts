@@ -287,5 +287,42 @@ describe("generateMultiSheetExcelXml", () => {
     expect(xml).toContain("Status Governança");
     expect(xml).toContain("9.00");
     expect(xml).toContain("Em Quarentena");
+    expect(xml).not.toContain('ss:Name="Negocio (DRE)"');
+  });
+
+  it("inclui aba condicional Negocio (DRE) apenas quando businessDre é fornecido", () => {
+    const mockDataWithBiz: ExcelWorkbookData = {
+      summary: {
+        totalPatrimonyBRL: 10000,
+        totalInvestedCostBRL: 8000,
+        unrealizedPnlBRL: 2000,
+        unrealizedPnlPct: 25,
+        cashBalanceBRL: 2000,
+        yearDividendsBRL: 0,
+        freedomPct: 10,
+        savingsRatePct: 25,
+      },
+      positions: [],
+      dividends: [],
+      dreMonthly: [],
+      debts: [],
+      businessDre: {
+        periodLabel: "Novembro 2026",
+        profileLabel: "MEI (Microempreendedor Individual)",
+        grossRevenueBRL: 6500,
+        operationalCostsBRL: 1200,
+        operationalProfitBRL: 5300,
+        fiscalTaxesPaidBRL: 75.9,
+        proLaboreWithdrawnBRL: 3000,
+        retainedEarningsBRL: 2224.1,
+        marginPct: 80.37,
+      },
+    };
+
+    const xml = generateMultiSheetExcelXml(mockDataWithBiz);
+    expect(xml).toContain('ss:Name="Negocio (DRE)"');
+    expect(xml).toContain("Modo Negócio - DRE Simplificado (Novembro 2026)");
+    expect(xml).toContain("6500.00");
+    expect(xml).toContain("2224.10");
   });
 });

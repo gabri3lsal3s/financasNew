@@ -4,7 +4,7 @@ import type { FamilyConsolidationResult } from "@/types";
 
 export interface InsightsWarningItem {
   id: string;
-  variant: "warning" | "success" | "error";
+  variant: "warning" | "success" | "error" | "info";
   message: string;
 }
 
@@ -79,7 +79,9 @@ export function buildInsightsWarnings({
           ? ("error" as const)
           : a.severity === "praise"
             ? ("success" as const)
-            : ("warning" as const),
+            : a.severity === "info"
+              ? ("info" as const)
+              : ("warning" as const),
       message: `${a.title}: ${a.description}`,
     })),
     ...portfolioRows

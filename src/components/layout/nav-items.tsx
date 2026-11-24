@@ -1,6 +1,7 @@
 import {
   ArrowLeftRight,
   Bell,
+  Briefcase,
   ChartLine,
   ChartPie,
   CreditCard,
@@ -25,6 +26,7 @@ export interface NavItem {
   adminOnly?: boolean;
   familyOnly?: boolean;
   tripOnly?: boolean;
+  businessOnly?: boolean;
 }
 
 export interface NavGroup {
@@ -38,6 +40,7 @@ export const navItems: NavItem[] = [
   { label: "Transações", shortLabel: "Extrato", path: "/transacoes", icon: ArrowLeftRight, featureKey: "transactions" },
   { label: "Cartões", shortLabel: "Cartões", path: "/cartoes", icon: CreditCard, featureKey: "cards" },
   { label: "Contas & Dívidas", shortLabel: "Contas", path: "/dividas", icon: HandCoins, featureKey: "debts" },
+  { label: "Meu Negócio", shortLabel: "Negócio", path: "/negocio", icon: Briefcase, businessOnly: true },
   { label: "Modo Viagem", shortLabel: "Viagens", path: "/viagens", icon: Plane, tripOnly: true },
   { label: "Investimentos", shortLabel: "Carteira", path: "/investments", icon: ChartLine, featureKey: "investments" },
   { label: "Orçamentos", shortLabel: "Orçamentos", path: "/orcamentos", icon: PiggyBank, featureKey: "budgets" },
@@ -58,6 +61,7 @@ export const navGroups: NavGroup[] = [
       { label: "Transações", shortLabel: "Extrato", path: "/transacoes", icon: ArrowLeftRight, featureKey: "transactions" },
       { label: "Cartões", shortLabel: "Cartões", path: "/cartoes", icon: CreditCard, featureKey: "cards" },
       { label: "Contas & Dívidas", shortLabel: "Contas", path: "/dividas", icon: HandCoins, featureKey: "debts" },
+      { label: "Meu Negócio", shortLabel: "Negócio", path: "/negocio", icon: Briefcase, businessOnly: true },
       { label: "Modo Viagem", shortLabel: "Viagens", path: "/viagens", icon: Plane, tripOnly: true },
     ],
   },
@@ -83,7 +87,7 @@ export const navGroups: NavGroup[] = [
 
 /**
  * Filtra itens de navegação baseado no status administrativo, presença de família ativa,
- * modo viagem ativo e nas Feature Flags ativas.
+ * modo viagem ativo, modo negócio ativo e nas Feature Flags ativas.
  */
 export function filterNavItems(
   items: readonly NavItem[],
@@ -91,9 +95,10 @@ export function filterNavItems(
   hasFeature: (key: string) => boolean,
   isFamilyActive = false,
   isTripActive = false,
+  isBusinessActive = false,
 ): NavItem[] {
   // Se o usuário não possui módulos de finanças pessoais (ex.: Apenas Investimentos),
-  // Modo Viagem e Modo Familiar são restritos e não devem ser exibidos na navegação.
+  // Modo Viagem, Modo Familiar e Modo Negócio são restritos e não devem ser exibidos na navegação.
   const hasFinance =
     hasFeature("transactions") ||
     hasFeature("cards") ||
@@ -104,6 +109,7 @@ export function filterNavItems(
     if (item.adminOnly && !isAdmin) return false;
     if (item.familyOnly && (!isFamilyActive || !hasFinance)) return false;
     if (item.tripOnly && (!isTripActive || !hasFinance)) return false;
+    if (item.businessOnly && (!isBusinessActive || !hasFinance)) return false;
     if (item.featureKey && !hasFeature(item.featureKey)) return false;
     return true;
   });

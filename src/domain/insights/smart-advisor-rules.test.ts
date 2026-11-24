@@ -7,6 +7,7 @@ import {
   computeDismissCooldownExpiry,
   computeEffectiveAdvisorSurplusCents,
   computeMonthlyAdvisorTotalCents,
+  detectCardChargesDrain,
   evaluateSmartAdvisorInsights,
   mapRawExpensesToAdvisorLikes,
   mapRawIncomesToAdvisorLikes,
@@ -223,5 +224,33 @@ describe("smart-advisor-rules (regras puras do SmartAdvisor)", () => {
       reportWeight: 1,
       installments: [{ date: "2026-10-22", value: 34.9, billCompetence: null }],
     });
+  });
+
+  it("detectCardChargesDrain gera insight acionável quando juros e multas superam o limiar", () => {
+    const expenses = [
+      { value: 15.0, charge_kind: "interest" as const },
+      { value: 10.0, charge_kind: "fine" as const },
+      { value: 100.0, charge_kind: "regular" as const },
+    ];
+
+    const result = detectCardChargesDrain(expenses, 2000);
+    expect(result.hasDrain).toBe(true);
+    expect(result.totalInterestCents).toBe(1500);
+    expect(result.totalFineCents).toBe(1000);
+    expect(result.totalDrainCents).toBe(2500);
+    expect(result.chargeCount).toBe(2);
+    expect(result.insight?.themeKey).toBe("charges:drain");
+    expect(result.insight?.primaryAction?.kind).toBe("navigate_cards");
+  });
+
+  it("detectCardChargesDrain não gera insight quando abaixo do limiar", () => {
+    const expenses = [
+      { value: 5.0, charge_kind: "interest" as const },
+      { value: 100.0, charge_kind: "regular" as const },
+    ];
+
+    const result = detectCardChargesDrain(expenses, 2000);
+    expect(result.hasDrain).toBe(false);
+    expect(result.insight).toBeNull();
   });
 });

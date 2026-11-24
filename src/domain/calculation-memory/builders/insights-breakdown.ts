@@ -8,6 +8,9 @@
 import { enrichBreakdown } from "../formatters";
 import type { CalculationBreakdown, BreakdownStep } from "../types";
 import type { SmartAdvisorInsight } from "@/domain/insights/advisor";
+import type { ReferenceBudgetSource } from "@/domain/insights/financial-context";
+import { formatMonthYear } from "@/lib/date";
+import { formatCentsAsBRL } from "@/services/masks/money";
 
 export interface SmartAdvisorBreakdownOptions {
   dayOfMonth?: number;
@@ -443,4 +446,203 @@ export function buildSmartAdvisorBreakdown(
   };
 
   return enrichBreakdown(fallbackBreakdown);
+}
+
+export interface PaceProjectionBreakdownParams {
+  month: string;
+  referenceBudgetCents: number;
+  referenceBudgetSource: ReferenceBudgetSource;
+  isProvisionalReference?: boolean;
+  fixedPaidCents: number;
+  pendingFixedCents: number;
+  oneOffAndTripCents: number;
+  projectedVariableCents: number;
+  historicalVariableMedianCents?: number;
+  blendedWeight?: number | null;
+  refundsNeutralizedCents?: number;
+  priorCycleRefundCreditCents?: number;
+  investmentCents?: number;
+  projectedSurplusCents: number | null;
+  dailyCents: number | null;
+  dayOfMonth: number;
+  daysInMonth: number;
+}
+
+const REFERENCE_SOURCE_LABELS: Record<ReferenceBudgetSource, { title: string; hint: string }> = {
+  current_income: {
+    title: "Renda Efetiva do Mês",
+    hint: "Soma das receitas operacionais já registradas na competência",
+  },
+  current_plus_expected_income: {
+    title: "Renda Parcial + Parcelas Previstas",
+    hint: "Receitas já lançadas somadas às parcelas habituais ainda esperadas no ciclo",
+  },
+  expected_income: {
+    title: "Renda Habitual Prevista (Base Provisória)",
+    hint: "Estimativa baseada no seu histórico de recebimentos enquanto o mês ainda recebe entradas",
+  },
+  category_budgets: {
+    title: "Soma dos Orçamentos Definidos (Base Provisória)",
+    hint: "Referência formada pelos tetos de gastos configurados nas categorias",
+  },
+  none: {
+    title: "Base de Referência Ainda Não Definida",
+    hint: "Cadastre sua renda ou defina orçamentos para ativar a projeção",
+  },
+};
+
+/**
+ * Monta a Memória de Cálculo da Projeção Híbrida de Ritmo e Fechamento (Lente Consumo).
+ */
+export function buildPaceProjectionBreakdown(
+  params: PaceProjectionBreakdownParams,
+): CalculationBreakdown {
+  const {
+    month,
+    referenceBudgetCents,
+    referenceBudgetSource,
+    fixedPaidCents,
+    pendingFixedCents,
+    oneOffAndTripCents,
+    projectedVariableCents,
+    historicalVariableMedianCents = 0,
+    blendedWeight = null,
+    refundsNeutralizedCents = 0,
+    priorCycleRefundCreditCents = 0,
+    investmentCents = 0,
+    projectedSurplusCents,
+    dailyCents,
+    dayOfMonth,
+    daysInMonth,
+  } = params;
+
+  const sourceMeta = REFERENCE_SOURCE_LABELS[referenceBudgetSource];
+  const monthLabel = formatMonthYear(month);
+  const steps: BreakdownStep[] = [];
+
+  if (referenceBudgetCents > 0) {
+    steps.push({
+      label: sourceMeta.title,
+      operator: "=",
+      rawValue: referenceBudgetCents,
+      unit: "currency",
+      hint: sourceMeta.hint,
+      tone: "positive",
+    });
+  }
+
+  if (fixedPaidCents > 0) {
+    steps.push({
+      label: "Despesas Fixas e Estruturais Pagas (1x)",
+      operator: "-",
+      rawValue: fixedPaidCents,
+      unit: "currency",
+      hint: "Recorrências, essenciais e custos fixos considerados 1 vez no mês",
+      tone: "default",
+    });
+  }
+
+  if (pendingFixedCents > 0) {
+    steps.push({
+      label: "Contas Fixas Previstas Pendentes (1x)",
+      operator: "-",
+      rawValue: pendingFixedCents,
+      unit: "currency",
+      hint: "Vencimentos recorrentes já esperados no ciclo que ainda não caíram",
+      tone: "default",
+    });
+  }
+
+  if (oneOffAndTripCents > 0) {
+    steps.push({
+      label: "Compras Pontuais e Viagens (1x)",
+      operator: "-",
+      rawValue: oneOffAndTripCents,
+      unit: "currency",
+      hint: "Isoladas do ritmo diário para não multiplicar pelos dias restantes",
+      tone: "default",
+    });
+  }
+
+  if (projectedVariableCents > 0 || referenceBudgetCents > 0) {
+    const usesSmoothing =
+      blendedWeight !== null &&
+      blendedWeight < 1 &&
+      historicalVariableMedianCents > 0;
+
+    steps.push({
+      label: "Gastos Variáveis Projetados",
+      operator: "-",
+      rawValue: projectedVariableCents,
+      unit: "currency",
+      hint: usesSmoothing
+        ? "Suavização quadrática com sua mediana recente para evitar distorções nos primeiros dias"
+        : `Projeção do consumo variável cotidiano ao longo dos ${daysInMonth} dias do mês`,
+      tone: "negative",
+    });
+  }
+
+  if (priorCycleRefundCreditCents > 0) {
+    steps.push({
+      label: "Crédito de Estorno de Ciclo Anterior",
+      operator: "+",
+      rawValue: priorCycleRefundCreditCents,
+      unit: "currency",
+      hint: "Abate o resultado líquido sem distorcer o ritmo variável atual",
+      tone: "positive",
+    });
+  }
+
+  if (investmentCents > 0) {
+    steps.push({
+      label: "Aportes Realizados no Mês",
+      operator: "-",
+      rawValue: investmentCents,
+      unit: "currency",
+      hint: "Recursos direcionados à carteira descontados do saldo livre de consumo",
+      tone: "portfolio",
+    });
+  }
+
+  const finalSurplus = projectedSurplusCents ?? 0;
+  const isPositive = finalSurplus >= 0;
+
+  const notes: string[] = [];
+  if (refundsNeutralizedCents > 0) {
+    notes.push(
+      `Inclui neutralização de ${formatCentsAsBRL(refundsNeutralizedCents)} em estornos diretamente nos gastos deste mês.`,
+    );
+  }
+  if (dailyCents !== null && dailyCents >= 0) {
+    notes.push(
+      `Ritmo sugerido para fechar no azul até o dia ${daysInMonth}: até ${formatCentsAsBRL(dailyCents)}/dia nos gastos variáveis.`,
+    );
+  }
+  notes.push(
+    "Lente Consumo (competência): considera despesas ponderadas do mês. Para vencimentos bancários de faturas e boletos em conta, consulte a Lente Caixa (Saldo Livre Real).",
+  );
+
+  const breakdown: CalculationBreakdown = {
+    id: `pace-projection-${month}`,
+    title: "Memória do Ritmo e Projeção do Mês",
+    description:
+      "Separa custos fixos (1x) e gastos variáveis suavizados para projetar o fechamento sem alarmes falsos.",
+    periodLabel: `${monthLabel} (dia ${dayOfMonth} de ${daysInMonth})`,
+    formulaExpression:
+      "Resultado Projetado = Base Mensal - Fixos (1x) - Pontuais (1x) - Variáveis Projetados - Aportes",
+    unit: "currency",
+    steps,
+    result: {
+      label: isPositive ? "Superávit Projetado" : "Ajuste Projetado no Fechamento",
+      rawValue: finalSurplus,
+      unit: "currency",
+      tone: isPositive ? "positive" : "negative",
+      hint: isPositive
+        ? "Margem estimada ao fim do ciclo mantendo o ritmo atual."
+        : "Valor estimado acima da referência caso o ritmo variável permaneça constante.",
+    },
+    notes,
+  };
+
+  return enrichBreakdown(breakdown);
 }

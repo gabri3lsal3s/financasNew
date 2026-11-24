@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { buildSmartAdvisorBreakdown } from "@/domain/calculation-memory/builders/insights-breakdown";
 import type { SmartAdvisorCardContext, SmartAdvisorInsight } from "@/domain/insights/advisor";
+import { resolveInsightThemeFamily } from "@/domain/insights/attention-budget";
 import type { CalibrationDecision } from "@/domain/insights/feedback";
 import { useSmartAdvisorInsights } from "@/features/overview/hooks";
 import { currentMonth } from "@/lib/date";
@@ -102,8 +103,13 @@ export function SmartAdvisorCard({
 
   const breakdown = useMemo(() => {
     if (!activeInsight) return undefined;
+    const now = new Date();
+    const dayOfMonth = now.getDate();
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     return buildSmartAdvisorBreakdown(activeInsight, {
       referenceMonthLabel: month,
+      dayOfMonth,
+      daysInMonth,
     });
   }, [activeInsight, month]);
 
@@ -209,6 +215,28 @@ export function SmartAdvisorCard({
     );
   };
 
+  const handleMarkTxOneOff = () => {
+    const p = activeInsight.primaryAction?.payload as
+      | { occurrenceKey?: string; name?: string }
+      | undefined;
+    const key = p?.occurrenceKey ?? activeInsight.themeKey.replace(/^calib_tx:/, "tx_one_off:");
+    void runWithSubmitting(async () => {
+      await hook.markTxOneOff(key, p?.name ?? activeInsight.title);
+      hook.dismiss(activeInsight.themeKey);
+    });
+  };
+
+  const activeFamily = resolveInsightThemeFamily(activeInsight.themeKey);
+  const canPauseFamily = (hook.decayByFamily?.[activeFamily]?.dismissCount ?? 0) >= 2;
+  const handlePauseFamily = () => {
+    hook.muteFamily(activeInsight.themeKey);
+    pushToast({
+      title: "Tema pausado",
+      description: "Você pode reativar este tema a qualquer momento na Memória do Copiloto.",
+      variant: "default",
+    });
+  };
+
   const handlePrimaryActionClick = () => {
     const route = resolveSmartAdvisorActionRoute(activeInsight, window.location.search);
     if (route) navigate?.(route);
@@ -269,6 +297,9 @@ export function SmartAdvisorCard({
             hasExternalConfirmExpense={Boolean(onConfirmExpense)}
             onConfirmRecurrence={handleConfirmRecurrenceAction}
             onIgnoreRecurrence={(reason) => void handleIgnoreRecurrence(reason)}
+            onMarkTxOneOff={handleMarkTxOneOff}
+            onPauseFamily={handlePauseFamily}
+            canPauseFamily={canPauseFamily}
             onConfirmIncome={handleConfirmIncomeAction}
             onConfirmExpense={handleConfirmExpenseAction}
             onActionClick={handlePrimaryActionClick}
@@ -347,6 +378,9 @@ export function SmartAdvisorCard({
           hasExternalConfirmExpense={Boolean(onConfirmExpense)}
           onConfirmRecurrence={handleConfirmRecurrenceAction}
           onIgnoreRecurrence={(reason) => void handleIgnoreRecurrence(reason)}
+          onMarkTxOneOff={handleMarkTxOneOff}
+          onPauseFamily={handlePauseFamily}
+          canPauseFamily={canPauseFamily}
           onConfirmIncome={handleConfirmIncomeAction}
           onConfirmExpense={handleConfirmExpenseAction}
           onActionClick={handlePrimaryActionClick}

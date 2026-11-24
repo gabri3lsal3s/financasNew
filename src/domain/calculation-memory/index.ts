@@ -19,3 +19,4 @@ export * from "./builders/insights-breakdown";
 export * from "./builders/reports-breakdown";
 export * from "./builders/family-breakdown";
 export * from "./builders/trips-breakdown";
+export * from "./builders/business-breakdown";

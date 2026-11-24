@@ -9,7 +9,16 @@ const createExpenseMock = vi.fn();
 const addTripExpenseMock = vi.fn();
 const linkPersonalExpenseMock = vi.fn();
 const updateCustomSettingsMock = vi.fn().mockResolvedValue({});
+const resolveAndScanReceiptFileMock = vi.fn();
 let mockPreferredTripCategoryId: string | undefined = undefined;
+
+vi.mock("@/services/receipt-resolution", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/services/receipt-resolution")>();
+  return {
+    ...actual,
+    resolveAndScanReceiptFile: (...args: unknown[]) => resolveAndScanReceiptFileMock(...args),
+  };
+});
 
 vi.mock("@/hooks/use-auth", () => ({
   useAuth: () => ({
@@ -273,5 +282,78 @@ describe("AddTripExpenseDialog — integração com extrato pessoal e parcelamen
 
     const comboboxes = screen.getAllByRole("combobox");
     expect(comboboxes[0]).toHaveTextContent("Praia e Passeios");
+  });
+
+  it("lê recibo internacional via upload, ativa conversor cambial e converte USD -> BRL no rateio do grupo", async () => {
+    const user = userEvent.setup();
+    resolveAndScanReceiptFileMock.mockResolvedValueOnce({
+      ok: true,
+      status: "success",
+      file: new File(["x"], "recibo-paris.jpg", { type: "image/jpeg" }),
+      sha256: "a".repeat(64),
+      extractedText: "Hotel Miami US$ 100.00",
+      kindLabel: "Comprovante de Cartão",
+      matchedCard: { id: "card-2", name: "Itaú", brand: "Visa", closing_day: 25 },
+      identity: {
+        friendlyName: "Hotel Miami",
+        categorySlug: "moradia",
+        confidence: "canonical_catalog",
+        isLearned: false,
+        layer: 3,
+      },
+      parsed: {
+        id: "ai-1",
+        bankName: "Itaú",
+        nature: "expense",
+        type: "expense",
+        amountCents: 10_000,
+        originalCurrency: "USD",
+        originalAmountCents: 10_000,
+        description: "Hotel Miami",
+        date: "2026-11-20",
+        paymentMethod: "credit_card",
+        cardId: "card-2",
+        rawText: "",
+        timestamp: Date.now(),
+      },
+    });
+
+    render(
+      <AddTripExpenseDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        tripId="trip-1"
+        members={mockMembers}
+      />,
+    );
+
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    expect(fileInput).toBeTruthy();
+    const file = new File(["img"], "recibo.jpg", { type: "image/jpeg" });
+    await user.upload(fileInput, file);
+
+    expect(await screen.findByText("Conversão cambial automática")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Hotel Miami")).toBeInTheDocument();
+
+    const rateInput = screen.getByLabelText("Cotação para Real");
+    await user.type(rateInput, "5,50");
+
+    const moneyInput = screen.getByLabelText("Valor Pago") as HTMLInputElement;
+    await waitFor(() => {
+      expect(moneyInput.value).toContain("550,00");
+    });
+
+    const form = document.getElementById("add-trip-expense-form")!;
+    fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(addTripExpenseMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amount_cents: 55_000,
+          description: "Hotel Miami",
+          expense_date: "2026-11-20",
+        }),
+      );
+    });
   });
 });

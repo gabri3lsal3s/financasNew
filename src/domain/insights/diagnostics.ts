@@ -4,9 +4,10 @@
  * semana e saúde da poupança.
  */
 
-export type SavingsHealth = "critico" | "baixo" | "moderado" | "saudavel" | "forte";
+export type SavingsHealth = "indefinido" | "critico" | "baixo" | "moderado" | "saudavel" | "forte";
 
 export const SAVINGS_HEALTH_LABELS: Record<SavingsHealth, string> = {
+  indefinido: "Aguardando renda",
   critico: "Crítico",
   baixo: "Baixo",
   moderado: "Moderado",
@@ -15,7 +16,8 @@ export const SAVINGS_HEALTH_LABELS: Record<SavingsHealth, string> = {
 };
 
 /** Saúde da poupança por faixa de savings rate (%). */
-export function savingsHealth(savingsRatePercent: number): SavingsHealth {
+export function savingsHealth(savingsRatePercent: number | null | undefined, hasIncome = true): SavingsHealth {
+  if (!hasIncome || savingsRatePercent == null || Number.isNaN(savingsRatePercent)) return "indefinido";
   if (savingsRatePercent < 0) return "critico";
   if (savingsRatePercent < 10) return "baixo";
   if (savingsRatePercent < 20) return "moderado";
@@ -94,46 +96,87 @@ export function weekendSpendingRatio(weekdayDailyCents: number, weekendDailyCent
 
 export const WEEKEND_RATIO_LIMIT = 1.5;
 
+export interface WeekendComparisonContext {
+  totalExpenseCount: number;
+  elapsedWeekdaysCount: number;
+  elapsedWeekendDaysCount: number;
+  weekdayDailyCents: number;
+}
 
 /**
- * Comprometimento Essencial: calcula a fração de gastos em categorias essenciais vs. total de despesas.
+ * Exige massa crítica mínima (>= 4 despesas, >= 2 dias úteis e >= 1 dia de fim de semana decorrido)
+ * antes de exibir comparação entre dias úteis e fins de semana.
+ */
+export function isWeekendComparisonReliable(ctx: WeekendComparisonContext): boolean {
+  return (
+    ctx.totalExpenseCount >= 4 &&
+    ctx.elapsedWeekdaysCount >= 2 &&
+    ctx.elapsedWeekendDaysCount >= 1 &&
+    ctx.weekdayDailyCents > 0
+  );
+}
+
+/**
+ * Comprometimento Essencial: calcula a fração de gastos em categorias essenciais vs. base de referência.
  * Recomendação financeira clássica (Regra 50/30/20): gastos essenciais até 50% da renda/despesas.
  */
 export interface EssentialSpendingResult {
   essentialCents: number;
   totalCents: number;
   ratioPercent: number;
-  status: "adequado" | "moderado" | "elevado";
+  status: "adequado" | "moderado" | "elevado" | "em_formacao";
+  hasCriticalMass: boolean;
+}
+
+export interface EssentialSpendingOptions {
+  /** Quantidade de lançamentos considerados no mês (exige >= 3 para sair de "em_formacao"). */
+  transactionCount?: number;
+  /** Renda de referência do mês em centavos; quando > 0, usa max(renda, despesas). */
+  referenceIncomeCents?: number;
 }
 
 export function essentialSpendingRatio(
   essentialCents: number,
-  totalCents: number,
+  totalExpensesCents: number,
+  options?: EssentialSpendingOptions,
 ): EssentialSpendingResult {
-  if (totalCents <= 0) {
+  const hasCriticalMass =
+    totalExpensesCents > 0 &&
+    (options?.transactionCount === undefined || options.transactionCount >= 3);
+
+  const denominatorCents =
+    options?.referenceIncomeCents && options.referenceIncomeCents > 0
+      ? Math.max(options.referenceIncomeCents, totalExpensesCents)
+      : totalExpensesCents;
+
+  if (!hasCriticalMass || denominatorCents <= 0) {
     return {
-      essentialCents: 0,
-      totalCents: 0,
+      essentialCents,
+      totalCents: denominatorCents,
       ratioPercent: 0,
-      status: "adequado",
+      status: options?.transactionCount !== undefined && options.transactionCount < 3 ? "em_formacao" : "adequado",
+      hasCriticalMass: false,
     };
   }
-  const ratioPercent = Math.min(100, Math.max(0, (essentialCents / totalCents) * 100));
+
+  const ratioPercent = Math.min(100, Math.max(0, (essentialCents / denominatorCents) * 100));
   const status: "adequado" | "moderado" | "elevado" =
     ratioPercent <= 50 ? "adequado" : ratioPercent <= 70 ? "moderado" : "elevado";
 
   return {
     essentialCents,
-    totalCents,
+    totalCents: denominatorCents,
     ratioPercent,
     status,
+    hasCriticalMass: true,
   };
 }
 
-export const ESSENTIAL_STATUS_LABELS: Record<"adequado" | "moderado" | "elevado", string> = {
+export const ESSENTIAL_STATUS_LABELS: Record<"adequado" | "moderado" | "elevado" | "em_formacao", string> = {
   adequado: "Equilibrado",
   moderado: "Atenção",
   elevado: "Elevado",
+  em_formacao: "Em formação",
 };
 
 /** Tendência vs mês anterior é significativa quando variação > 15%. */
@@ -144,6 +187,8 @@ export function isSignificantTrend(currentCents: number, previousCents: number, 
 }
 
 export interface ProRataTrendResult {
+  /** Se existe base comparável do mês anterior (> 0). */
+  hasPreviousBase: boolean;
   /** Variação percentual pro-rata: ((atual - anteriorProRata) / anteriorProRata) * 100 */
   percentChange: number;
   /** Se a variação é estatisticamente significativa (> thresholdPercent). */
@@ -164,8 +209,9 @@ export function calculateProRataTrend(
 ): ProRataTrendResult {
   if (previousExpensesToSameDateCents <= 0) {
     return {
-      percentChange: currentExpensesToDateCents > 0 ? 100 : 0,
-      isSignificant: currentExpensesToDateCents > 0,
+      hasPreviousBase: false,
+      percentChange: 0,
+      isSignificant: false,
       previousComparableCents: 0,
     };
   }
@@ -175,6 +221,7 @@ export function calculateProRataTrend(
   const isSignificant = Math.abs(percentChange) > thresholdPercent;
 
   return {
+    hasPreviousBase: true,
     percentChange,
     isSignificant,
     previousComparableCents: previousExpensesToSameDateCents,

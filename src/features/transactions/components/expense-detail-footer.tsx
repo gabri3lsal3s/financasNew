@@ -5,10 +5,12 @@ import type { Expense } from "@/types";
 export interface ExpenseDetailFooterProps {
   expense: Expense | null;
   isEditing: boolean;
+  isInternalTransfer?: boolean;
   editPending: boolean;
   repeatPending: boolean;
   hasLinkedSplit?: boolean;
   onCancelEdit: () => void;
+  onClose?: () => void;
   onSubmitEdit: () => void;
   onGoToTrip: (tripId: string) => void;
   onSplit: () => void;
@@ -23,10 +25,12 @@ export interface ExpenseDetailFooterProps {
 export function ExpenseDetailFooter({
   expense,
   isEditing,
+  isInternalTransfer = false,
   editPending,
   repeatPending,
   hasLinkedSplit,
   onCancelEdit,
+  onClose,
   onSubmitEdit,
   onGoToTrip,
   onSplit,
@@ -46,6 +50,30 @@ export function ExpenseDetailFooter({
         </Button>
         <Button type="button" disabled={editPending} onClick={onSubmitEdit}>
           {editPending ? "Salvando…" : "Salvar alterações"}
+        </Button>
+      </ModalFooter>
+    );
+  }
+
+  if (isInternalTransfer) {
+    return (
+      <ModalFooter
+        borderless
+        destructiveAction={
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-critical hover:bg-critical/10 hover:text-critical gap-1.5"
+            onClick={onDelete}
+          >
+            <Trash2 className="size-3.5 shrink-0" aria-hidden="true" />
+            <span>Excluir transferência pareada</span>
+          </Button>
+        }
+      >
+        <Button type="button" variant="outline" onClick={onClose}>
+          Fechar
         </Button>
       </ModalFooter>
     );

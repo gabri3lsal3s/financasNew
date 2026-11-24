@@ -41,6 +41,7 @@ export interface UseReceiptAutofillParams {
   setIsCategoryUnconfirmed: Dispatch<SetStateAction<boolean>>;
   setReceiptMeta: Dispatch<SetStateAction<ReceiptMeta | null>>;
   categories: Category[] | undefined;
+  allCategories?: Category[];
   cards: CreditCard[] | undefined;
   initialValues?: Partial<LaunchState>;
   detectedPix: {
@@ -62,6 +63,7 @@ export function useReceiptAutofill({
   setIsCategoryUnconfirmed,
   setReceiptMeta,
   categories,
+  allCategories,
   cards,
   initialValues,
   detectedPix,
@@ -75,21 +77,25 @@ export function useReceiptAutofill({
   const merchantLearning = useMerchantLearning();
   const cardDigits = useCardDigitsMapping();
   const bankCard = useBankCardMapping();
+  const effectiveCategories = allCategories ?? categories;
 
   useEffect(() => {
-    if (!categories?.length || categories.some((c) => c.id === state.categoryId)) return;
+    const activeList = effectiveCategories?.some((c) => c.type === state.type)
+      ? effectiveCategories.filter((c) => c.type === state.type)
+      : categories;
+    if (!activeList?.length || activeList.some((c) => c.id === state.categoryId)) return;
 
     const target = initialValues?.categoryId || state.categoryId;
     let matchedCategory = target
-      ? categories.find((c) => c.id === target) ||
-        matchCategoryBySlug(categories, target as CanonicalCategorySlug)
+      ? activeList.find((c) => c.id === target) ||
+        matchCategoryBySlug(activeList, target as CanonicalCategorySlug)
       : undefined;
 
     if (!matchedCategory && state.description) {
       const prefs = getBankAssistantPreferences();
       if (prefs.autoCategoryInferenceEnabled) {
         const slug = inferCategoryKeyword(state.description);
-        if (slug) matchedCategory = matchCategoryBySlug(categories, slug);
+        if (slug) matchedCategory = matchCategoryBySlug(activeList, slug);
       }
     }
 
@@ -104,7 +110,15 @@ export function useReceiptAutofill({
       }, 0);
       return () => clearTimeout(timer);
     }
-  }, [categories, initialValues?.categoryId, state.categoryId, state.description, setState]);
+  }, [
+    categories,
+    effectiveCategories,
+    initialValues?.categoryId,
+    state.categoryId,
+    state.description,
+    state.type,
+    setState,
+  ]);
 
   useEffect(() => {
     if (state.type !== "expense" || state.paymentMethod !== "credit_card") return;
@@ -136,6 +150,7 @@ export function useReceiptAutofill({
       setMode("quick");
       const resolved = resolveReceiptTransaction(parsed, {
         cards,
+        categories: effectiveCategories,
         userContext,
         userId,
         userMemory: merchantLearning.memory,
@@ -161,9 +176,12 @@ export function useReceiptAutofill({
         fieldConfidence: enriched.fieldConfidence,
         isSameTitularity: enriched.isSameTitularity,
         needsAmountInput,
+        semanticTags: enriched.semanticTags ?? identity.semanticTags,
       });
 
-      setState((prev) => applyResolvedReceiptToLaunchState(prev, resolved, categories, cards));
+      setState((prev) =>
+        applyResolvedReceiptToLaunchState(prev, resolved, effectiveCategories, cards),
+      );
       setIsCategoryUnconfirmed(!identity.isLearned);
 
       if (!options?.silentFeedback) {
@@ -183,7 +201,7 @@ export function useReceiptAutofill({
       bankCard.bankCardMapping,
       cardDigits.cardDigitsMapping,
       cards,
-      categories,
+      effectiveCategories,
       merchantLearning.memory,
       setIsCategoryUnconfirmed,
       setMode,
@@ -198,6 +216,7 @@ export function useReceiptAutofill({
     async (file: File): Promise<ScanReceiptFileResult> => {
       const result = await resolveAndScanReceiptFile(file, {
         cards,
+        categories: effectiveCategories,
         isManualAttachment: true,
         userContext,
         userId,
@@ -206,6 +225,7 @@ export function useReceiptAutofill({
         bankCardMapping: bankCard.bankCardMapping,
         isReadOnlyMode,
         aiFallbackEnabled: aiExtractionEnabled,
+        preferFastAiVisionForWebImages: true,
       });
       if (result.ok && result.parsed) handleReceiptParsed(result.parsed);
       return result;
@@ -215,6 +235,7 @@ export function useReceiptAutofill({
       bankCard.bankCardMapping,
       cardDigits.cardDigitsMapping,
       cards,
+      effectiveCategories,
       handleReceiptParsed,
       isReadOnlyMode,
       merchantLearning.memory,

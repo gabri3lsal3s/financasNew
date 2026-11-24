@@ -131,6 +131,9 @@ function CategoryFormContent({
             isFamilyActive={state.isFamilyActive}
             isFamily={state.isFamily}
             onIsFamilyChange={state.setIsFamily}
+            isBusinessActive={state.isBusinessActive}
+            scope={state.scope}
+            onScopeChange={state.setScope}
           />
         </form>
       </Modal>

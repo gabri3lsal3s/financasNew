@@ -127,6 +127,19 @@ describe("ritmo de gastos (§3.8)", () => {
     expect(pace.active).toBe(true);
     expect(pace.ahead).toBe(false);
   });
+
+  it("inativo e spentPercent=0 quando monthlyBudgetCents <= 0 (elimina bug 500000%)", () => {
+    const pace = spendingPace({
+      spentCents: 5_000,
+      monthlyBudgetCents: 0,
+      dayOfMonth: 23,
+      daysInMonth: 30,
+    });
+    expect(pace.active).toBe(false);
+    expect(pace.spentPercent).toBe(0);
+    expect(pace.gapPoints).toBe(0);
+    expect(pace.ahead).toBe(false);
+  });
 });
 
 describe("projeção de fim de mês (§3.8)", () => {
@@ -216,7 +229,71 @@ describe("projeção de fim de mês (§3.8)", () => {
       surplusCents: null,
       onTrack: null,
       burnRateCents: null,
+      projectedVariableCents: null,
+      blendedWeight: null,
     });
+  });
+
+  it("mês atual sem base de renda nem orçamento → projeção inativa (tudo null)", () => {
+    const result = endOfMonthProjection({
+      phase: "current",
+      incomesCents: 0,
+      referenceBudgetCents: 0,
+      investmentsCents: 0,
+      expensesCents: 5_000,
+      dayOfMonth: 23,
+      daysInMonth: 30,
+    });
+    expect(result.projectedExpensesCents).toBeNull();
+    expect(result.surplusCents).toBeNull();
+    expect(result.onTrack).toBeNull();
+  });
+
+  it("modo híbrido (Blended Shrinkage Quadrático): suaviza pico no dia 2 e converge 100% no dia 14", () => {
+    // Dia 2: R$ 700 variável com mediana histórica R$ 1.800 → ~R$ 1.977,55 (w = 4/196)
+    const day2 = endOfMonthProjection({
+      phase: "current",
+      incomesCents: 500_000,
+      investmentsCents: 0,
+      fixedPaidCents: 0,
+      pendingFixedCents: 200_000,
+      variableExpensesCents: 70_000,
+      historicalVariableMedianCents: 180_000,
+      dayOfMonth: 2,
+      daysInMonth: 30,
+    });
+    expect(day2.projectedVariableCents).toBe(197_755);
+    expect(day2.projectedExpensesCents).toBe(397_755); // 200_000 fixo pendente + 197_755 variável
+    expect(day2.blendedWeight).toBeCloseTo(4 / 196, 6);
+    expect(day2.onTrack).toBe(true);
+
+    // Dia 14: peso = 1 → converge 100% para extrapolação real
+    const day14 = endOfMonthProjection({
+      phase: "current",
+      incomesCents: 500_000,
+      investmentsCents: 0,
+      fixedPaidCents: 200_000,
+      variableExpensesCents: 70_000,
+      historicalVariableMedianCents: 180_000,
+      dayOfMonth: 14,
+      daysInMonth: 28,
+    });
+    expect(day14.blendedWeight).toBe(1);
+    expect(day14.projectedVariableCents).toBe(140_000);
+    expect(day14.projectedExpensesCents).toBe(340_000);
+  });
+
+  it("dailyBudget retorna null quando sem renda e sem referenceBudgetCents (cold start)", () => {
+    const result = dailyBudget({
+      phase: "current",
+      incomesCents: 0,
+      referenceBudgetCents: 0,
+      investmentsCents: 0,
+      expensesCents: 5_000,
+      dayOfMonth: 23,
+      daysInMonth: 30,
+    });
+    expect(result.dailyCents).toBeNull();
   });
 });
 

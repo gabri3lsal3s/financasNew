@@ -18,6 +18,7 @@ import {
   useUpdateIncomeGrouped,
   useUpdateRecurrenceOccurrences,
 } from "@/state";
+import { useSafeBusinessMode, useSafeDeleteInternalTransferPair } from "@/hooks/use-safe-business-scope";
 import type { DbInsert, Income, InstallmentDeleteMode, RecurrenceGroupFields } from "@/types";
 import type { IncomeEditSavePayload } from "./income-edit-form";
 
@@ -43,10 +44,12 @@ export function useIncomeDetailActions({
   const categories = useCategories("income").data ?? [];
   const { isFamilyModeEnabled } = useFamilyMode();
   const isFamilyActive = Boolean(isFamilyModeEnabled);
+  const { isBusinessModeEnabled: isBusinessActive } = useSafeBusinessMode();
   const { data: myFamilyData } = useMyFamily();
 
   const deleteIncome = useDeleteIncome();
   const deleteIncomeGrouped = useDeleteIncomeGrouped();
+  const deleteTransferPair = useSafeDeleteInternalTransferPair();
   const deleteRecurrence = useDeleteRecurrenceOccurrences();
   const updateIncome = useUpdateIncome();
   const updateIncomeGrouped = useUpdateIncomeGrouped();
@@ -54,12 +57,17 @@ export function useIncomeDetailActions({
   const createIncome = useCreateIncome();
 
   const currentCategory = categories.find((c) => c.id === income?.category_id);
-  const isReadOnly = income?.source_ref != null;
+  const isInternalTransfer = Boolean(income?.is_internal_transfer && income?.transfer_pair_id);
+  const isReadOnly = income?.source_ref != null || isInternalTransfer;
   const isInstallment = income != null && (income.installments_total ?? 1) > 1;
   const isRecurring = income?.recurrence_id != null;
   const isGrouped = isInstallment || isRecurring;
   const editPending = updateIncome.isPending || updateIncomeGrouped.isPending || updateRecurrence.isPending;
-  const deletePending = deleteIncome.isPending || deleteIncomeGrouped.isPending || deleteRecurrence.isPending;
+  const deletePending =
+    deleteIncome.isPending ||
+    deleteIncomeGrouped.isPending ||
+    deleteTransferPair.isPending ||
+    deleteRecurrence.isPending;
 
   const handleConfirmDelete = async () => {
     if (!income) return;
@@ -67,7 +75,13 @@ export function useIncomeDetailActions({
     setConfirmOpen(false);
     onOpenChange(false);
     try {
-      if (isRecurring) {
+      if (isInternalTransfer && income.transfer_pair_id) {
+        await deleteTransferPair.mutateAsync(income.transfer_pair_id);
+        pushToast({
+          title: "Transferência pareada removida das duas esferas (PF e PJ)",
+          variant: "success",
+        });
+      } else if (isRecurring) {
         await deleteRecurrence.mutateAsync({ occurrenceId: income.id, mode });
         pushToast({ title: mode === "single" ? "Ocorrência excluída com sucesso" : "Recorrências excluídas com sucesso", variant: "success" });
       } else if (isGrouped) {
@@ -124,7 +138,11 @@ export function useIncomeDetailActions({
     } else {
       await updateIncome.mutateAsync({
         id: income.id,
-        input: { ...payload, family_id: resolvedFamilyId },
+        input: {
+          ...payload,
+          family_id: resolvedFamilyId,
+          ...(isBusinessActive && payload.scope !== undefined ? { scope: payload.scope } : {}),
+        },
       });
     }
 
@@ -178,7 +196,7 @@ export function useIncomeDetailActions({
   };
 
   return {
-    categories, currentCategory, isFamilyActive, isReadOnly, isInstallment, isRecurring, isGrouped,
+    categories, currentCategory, isFamilyActive, isBusinessActive, isInternalTransfer, isReadOnly, isInstallment, isRecurring, isGrouped,
     editPending, deletePending, repeatPending: createIncome.isPending,
     handleConfirmDelete, handleSaveEdit, handleShare, handleRepeat,
   };

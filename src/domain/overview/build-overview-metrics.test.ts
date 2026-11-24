@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { buildUserFinancialContext } from "@/domain/insights";
 import type { Budget, Category, Debt, Expense, Income, PublicShare } from "@/types";
 import {
   OVERVIEW_OTHERS_COLOR,
   buildOverviewCashGapResult,
   buildOverviewWeeklyRadarSummary,
+  buildPredictedUpcomingCashInflows,
   computeCurrentMonthProjectionMetrics,
   computeLiveGoalProgressMap,
   computeMonthlyCashflowMetrics,
@@ -254,5 +256,158 @@ describe("build-overview-metrics (seletores puros da Visão Geral)", () => {
       hasSurplus: false,
     });
     expect(eligible).toHaveLength(1);
+  });
+
+  describe("Fase 3 — Blindagem via UserFinancialContext & CashGap Preditivo", () => {
+    it("suprime PaceAlert em Cold Start (dia 23, 1 despesa R$ 50, renda 0) e remove Math.max(1, ...)", () => {
+      const ctx = buildUserFinancialContext({
+        month: "2026-08",
+        todayISO: "2026-08-23",
+        monthIncomes: [],
+        monthExpenses: [makeExpense("e1", 50, "c-food", "2026-08-23")],
+        categories: [makeCategory("c-food", "Alimentação")],
+      });
+
+      const metrics = computeCurrentMonthProjectionMetrics({
+        isCurrentMonth: true,
+        grossIncomeCents: 0,
+        grossExpenseCents: 5000,
+        investmentCents: 0,
+        dayOfMonth: 23,
+        daysInMonth: 31,
+        financialContext: ctx,
+      });
+
+      expect(metrics.pace.active).toBe(false);
+      expect(metrics.pace.spentPercent).toBe(0);
+      expect(metrics.daily.dailyCents).toBeNull();
+      expect(metrics.projection.projectedExpensesCents).toBeNull();
+      expect(metrics.showPaceAlert).toBe(false);
+
+      // Mesmo em modo fallback (sem financialContext), não divide por 1 centavo
+      const fallbackMetrics = computeCurrentMonthProjectionMetrics({
+        isCurrentMonth: true,
+        grossIncomeCents: 0,
+        grossExpenseCents: 5000,
+        investmentCents: 0,
+        dayOfMonth: 23,
+        daysInMonth: 31,
+      });
+      expect(fallbackMetrics.pace.spentPercent).toBe(0);
+      expect(fallbackMetrics.daily.dailyCents).toBeNull();
+      expect(fallbackMetrics.showPaceAlert).toBe(false);
+    });
+
+    it("não dispara falso alerta de ritmo quando apenas custo fixo estrutural (Aluguel) pesa no início/meio do mês", () => {
+      const ctx = buildUserFinancialContext({
+        month: "2026-08",
+        todayISO: "2026-08-15",
+        monthIncomes: [makeIncome("i1", 5000, "2026-08-05")],
+        monthExpenses: [
+          makeExpense("e1", 3000, "c-moradia", "2026-08-10"),
+          makeExpense("e2", 100, "c-lazer", "2026-08-12"),
+          makeExpense("e3", 120, "c-lazer", "2026-08-14"),
+        ],
+        categories: [
+          { ...makeCategory("c-moradia", "Moradia"), icon: "moradia" },
+          makeCategory("c-lazer", "Lazer"),
+        ],
+        historicalExpensesByMonth: [
+          [makeExpense("h1", 2000, "c-moradia", "2026-07-10"), makeExpense("h2", 800, "c-lazer", "2026-07-12")],
+        ],
+      });
+
+      const metrics = computeCurrentMonthProjectionMetrics({
+        isCurrentMonth: true,
+        grossIncomeCents: 500000,
+        grossExpenseCents: 322000,
+        investmentCents: 0,
+        dayOfMonth: 15,
+        daysInMonth: 31,
+        financialContext: ctx,
+      });
+
+      expect(metrics.projection.onTrack).toBe(true);
+      expect(metrics.showPaceAlert).toBe(false);
+    });
+
+    it("buildOverviewCashGapResult retorna sem déficit quando hasLiquidityContext = false (Cold Start)", () => {
+      const res = buildOverviewCashGapResult({
+        currentBalanceCents: 0,
+        today: "2026-08-23",
+        month: "2026-08",
+        rangeEnd: "2026-09-01",
+        cards: [{ id: "card1", user_id: "u1", name: "Nu", brand: null, credit_limit: 1000, closing_day: 10, due_day: 25, color: null, is_active: true }],
+        cardExpenses: [{ ...makeExpense("ce1", 50, "c1"), card_id: "card1", bill_competence: "2026-08", payment_method: "credit_card" }],
+        cardPayments: [],
+        debts: [],
+        incomes: [],
+        hasLiquidityContext: false,
+      });
+
+      expect(res.isCashGapDetected).toBe(false);
+      expect(res.severity).toBe("none");
+      expect(res.maxDeficitCents).toBe(0);
+    });
+
+    it("inclui salário recorrente previsto no dia 5 para evitar falso déficit em fatura que vence no dia 10", () => {
+      const ctx = buildUserFinancialContext({
+        month: "2026-09",
+        todayISO: "2026-09-02",
+        monthIncomes: [],
+        monthExpenses: [],
+        historicalIncomes: [
+          makeIncome("h-jul", 5000, "2026-07-05"),
+          makeIncome("h-aug", 5000, "2026-08-05"),
+        ],
+      });
+
+      const predictedInflows = buildPredictedUpcomingCashInflows({
+        month: "2026-09",
+        today: "2026-09-02",
+        isCurrentMonth: true,
+        monthIncomes: [],
+        paydayProfile: ctx.learning.paydayProfile,
+        expectedUpcomingInflowsCents: ctx.lens.liquidity.expectedUpcomingInflowsCents,
+      });
+
+      expect(predictedInflows).toHaveLength(1);
+      expect(predictedInflows[0]?.expectedDate).toBe("2026-09-05");
+      expect(predictedInflows[0]?.amountCents).toBe(500000);
+
+      // Fatura R$ 2.500 vence dia 10; saldo hoje R$ 1.000; salário R$ 5.000 cai dia 5 -> sem déficit!
+      const noGapRes = buildOverviewCashGapResult({
+        currentBalanceCents: 100000,
+        today: "2026-09-02",
+        month: "2026-09",
+        rangeEnd: "2026-10-01",
+        cards: [{ id: "card1", user_id: "u1", name: "Nu", brand: null, credit_limit: 5000, closing_day: 25, due_day: 10, color: null, is_active: true }],
+        cardExpenses: [{ ...makeExpense("ce1", 2500, "c1", "2026-08-20"), card_id: "card1", bill_competence: "2026-09", payment_method: "credit_card" }],
+        cardPayments: [],
+        debts: [],
+        incomes: [],
+        hasLiquidityContext: true,
+        predictedInflows,
+      });
+      expect(noGapRes.isCashGapDetected).toBe(false);
+
+      // Fatura R$ 2.500 vence dia 4 (antes do dia 5) -> gap real detectado informando entrada do dia 5!
+      const realGapRes = buildOverviewCashGapResult({
+        currentBalanceCents: 100000,
+        today: "2026-09-02",
+        month: "2026-09",
+        rangeEnd: "2026-10-01",
+        cards: [{ id: "card1", user_id: "u1", name: "Nu", brand: null, credit_limit: 5000, closing_day: 25, due_day: 4, color: null, is_active: true }],
+        cardExpenses: [{ ...makeExpense("ce1", 2500, "c1", "2026-08-20"), card_id: "card1", bill_competence: "2026-09", payment_method: "credit_card" }],
+        cardPayments: [],
+        debts: [],
+        incomes: [],
+        hasLiquidityContext: true,
+        predictedInflows,
+      });
+      expect(realGapRes.isCashGapDetected).toBe(true);
+      expect(realGapRes.maxDeficitCents).toBe(150000);
+      expect(realGapRes.nextInflowDate).toBe("2026-09-05");
+    });
   });
 });

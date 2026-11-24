@@ -1,12 +1,13 @@
 import { useCallback, useState } from "react";
 import type { NavigateFunction } from "react-router";
+import { advanceSmartDecay } from "@/domain/insights";
 import {
   createGoalDismissalCheckpoint,
   createPaceDismissalCheckpoint,
   createSurplusDismissalCheckpoint,
   createTimedDismissalCheckpoint,
 } from "@/domain/overview";
-import type { DashboardAlertDismissals, PublicShare } from "@/types";
+import type { DashboardAlertDismissals, PublicShare, SmartDecayMetaRecord } from "@/types";
 
 interface UseOverviewModalsParams {
   month: string;
@@ -23,6 +24,8 @@ interface UseOverviewModalsParams {
     string,
     { currentCents: number; percentage: number; isCompleted: boolean }
   >;
+  advisorDecayMeta?: Record<string, SmartDecayMetaRecord>;
+  onPersistDecayMeta?: (nextMeta: Record<string, SmartDecayMetaRecord>) => void;
 }
 
 /**
@@ -39,6 +42,8 @@ export function useOverviewModals({
   surplusSuggestedAporteCents,
   hasSurplus,
   liveGoalProgress,
+  advisorDecayMeta,
+  onPersistDecayMeta,
 }: UseOverviewModalsParams) {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [isOthersBudgetOpen, setIsOthersBudgetOpen] = useState(false);
@@ -72,6 +77,19 @@ export function useOverviewModals({
     [clearDetectedPix, navigate],
   );
 
+  const advanceDecayFamily = useCallback(
+    (family: "pace" | "surplus" | "cash_gap") => {
+      if (!onPersistDecayMeta) return;
+      const currentMeta = advisorDecayMeta ?? {};
+      const evaluation = advanceSmartDecay(currentMeta[family]);
+      onPersistDecayMeta({
+        ...currentMeta,
+        [family]: evaluation.record,
+      });
+    },
+    [advisorDecayMeta, onPersistDecayMeta],
+  );
+
   const handleDismissPace = useCallback(
     (days: 7 | 30 = 7) => {
       updateAlertDismissals((prev) => ({
@@ -85,8 +103,9 @@ export function useOverviewModals({
           days,
         ),
       }));
+      advanceDecayFamily("pace");
     },
-    [month, paceSpentPercent, projectionSurplusCents, updateAlertDismissals],
+    [month, paceSpentPercent, projectionSurplusCents, updateAlertDismissals, advanceDecayFamily],
   );
 
   const handleDismissSurplus = useCallback(
@@ -101,8 +120,9 @@ export function useOverviewModals({
           days,
         ),
       }));
+      advanceDecayFamily("surplus");
     },
-    [month, surplusSuggestedAporteCents, updateAlertDismissals],
+    [month, surplusSuggestedAporteCents, updateAlertDismissals, advanceDecayFamily],
   );
 
   const handleDismissGoal = useCallback(
@@ -165,8 +185,11 @@ export function useOverviewModals({
           [cardKey]: createTimedDismissalCheckpoint(days),
         },
       }));
+      if (cardKey === "cash-gap-alert") {
+        advanceDecayFamily("cash_gap");
+      }
     },
-    [updateAlertDismissals],
+    [updateAlertDismissals, advanceDecayFamily],
   );
 
   return {

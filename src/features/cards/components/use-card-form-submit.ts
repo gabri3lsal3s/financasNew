@@ -2,6 +2,7 @@ import { useState } from "react";
 import { creditCardFormSchema } from "@/domain/cards";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
+import { useSafeBusinessMode } from "@/hooks/use-safe-business-scope";
 import {
   useCreateCard,
   useDeleteCard,
@@ -9,7 +10,7 @@ import {
   useUpdateCustomSettings,
   useUserPreferences,
 } from "@/state";
-import type { CreditCard, CreditCardForm } from "@/types";
+import type { CreditCard, CreditCardForm, CreditCardScope } from "@/types";
 
 export interface UseCardFormSubmitParams {
   card: CreditCard | null;
@@ -36,6 +37,8 @@ export function useCardFormSubmit({ card, onClose, onDeleted }: UseCardFormSubmi
   const [lastFourDigits, setLastFourDigits] = useState(card?.last_four_digits ?? "");
   const [isActive, setIsActive] = useState(card?.is_active ?? true);
   const [isPrimary, setIsPrimary] = useState(card ? card.id === primaryCardId : false);
+  const [scope, setScope] = useState<CreditCardScope>(card?.scope ?? "personal");
+  const { isBusinessModeEnabled } = useSafeBusinessMode();
   const [error, setError] = useState<string | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
@@ -59,6 +62,7 @@ export function useCardFormSubmit({ card, onClose, onDeleted }: UseCardFormSubmi
       color: color.trim() || null,
       is_active: isActive,
       last_four_digits: lastFourDigits.trim() || null,
+      ...(isBusinessModeEnabled || card?.scope ? { scope } : {}),
     });
     if (!parsed.success) {
       triggerSensory("error");
@@ -164,7 +168,8 @@ export function useCardFormSubmit({ card, onClose, onDeleted }: UseCardFormSubmi
       color !== (card.color ?? "") ||
       lastFourDigits !== (card.last_four_digits ?? "") ||
       isActive !== card.is_active ||
-      isPrimary !== (card.id === primaryCardId)
+      isPrimary !== (card.id === primaryCardId) ||
+      (isBusinessModeEnabled && scope !== (card.scope ?? "personal"))
     : name.trim() !== "" ||
       brand.trim() !== "" ||
       limitCents > 0 ||
@@ -191,6 +196,9 @@ export function useCardFormSubmit({ card, onClose, onDeleted }: UseCardFormSubmi
     setIsActive,
     isPrimary,
     setIsPrimary,
+    scope,
+    setScope,
+    isBusinessModeEnabled,
     error,
     deleteConfirmOpen,
     setDeleteConfirmOpen,

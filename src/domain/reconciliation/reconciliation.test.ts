@@ -461,6 +461,38 @@ Encargos e Tarifas: R$ 0,00
       expect(score).toBe(0);
     });
 
+    it("aplica bônus semântico de 15 pontos quando charge_kind não-regular coincide", () => {
+      const stmt: StatementTransaction = {
+        id: "stmt-charge",
+        index: 0,
+        occurrenceIndex: 0,
+        date: "2026-08-16", // D+1: 25 pontos
+        rawDescription: "JUROS ROTATIVO COBRANCA BANCO",
+        cleanDescription: "JUROS ROTATIVO",
+        amountCents: 5000,
+        isRefund: false,
+        isPayment: false,
+        statementHash: "hash-charge-1",
+        inferredChargeKind: "interest",
+      };
+
+      const existingCharge = {
+        id: "exp-charge-1",
+        date: "2026-08-15",
+        description: "Juros de Fatura",
+        valueCents: 5000,
+        categoryId: "cat-fin",
+        installmentNumber: null,
+        installmentsTotal: null,
+        chargeKind: "interest" as const,
+      };
+
+      // Sem o bônus: valor(50) + D+1(25) + texto parcial ~= 75 (probable_match)
+      // Com o bônus (+15): atinge 90+ (exact_match), evitando duplicata no importador
+      const score = calculateMatchScore(stmt, existingCharge);
+      expect(score).toBeGreaterThanOrEqual(85);
+    });
+
     it("classifica itens corretamente na reconciliação completa com predição de categorias", () => {
       const statements: StatementTransaction[] = [
         {
@@ -855,6 +887,64 @@ OFXHEADER:100
       expect(result.items[1]?.isInternalDuplicate).toBe(true);
       expect(result.items[1]?.duplicateReason).toContain("Lançamento duplicado no mesmo arquivo");
       expect(result.items[1]?.selected).toBe(false);
+    });
+  });
+
+  describe("Conciliação de Parcelas Herdadas & Virada de Ano (Refinamento FinOps)", () => {
+    it("atribui bônus de coincidência de parcela (+25) para casar como exact_match mesmo quando a fatura repete a data original da compra", () => {
+      const existingInstallment: ExistingExpenseForReconciliation = {
+        id: "exp-parc-3",
+        date: "2026-11-10",
+        description: "Amazon Marketplace",
+        valueCents: 15000,
+        categoryId: "cat-compras",
+        installmentNumber: 3,
+        installmentsTotal: 6,
+      };
+
+      const stmtOriginalDate: StatementTransaction = {
+        id: "stmt-parc-3",
+        index: 0,
+        occurrenceIndex: 0,
+        date: "2026-09-10", // Data original da compra na fatura de novembro
+        rawDescription: "AMZN*MKTPLC 03/06",
+        cleanDescription: "MKTPLC",
+        amountCents: 15000,
+        isRefund: false,
+        isPayment: false,
+        installment: { current: 3, total: 6 },
+        statementHash: "hash-parc-3",
+      };
+
+      const score = calculateMatchScore(stmtOriginalDate, existingInstallment);
+      expect(score).toBeGreaterThanOrEqual(75);
+
+      const reconciled = reconcileStatementTransactions({
+        statementTransactions: [stmtOriginalDate],
+        existingExpenses: [existingInstallment],
+        history: [],
+        defaultCategoryId: "cat-default",
+      });
+      expect(reconciled.items[0]?.status).toBe("exact_match");
+
+      // Penaliza se for outra parcela de mesmo valor (ex.: 2/6 vs 4/6)
+      const conflictingStmt: StatementTransaction = {
+        ...stmtOriginalDate,
+        installment: { current: 2, total: 6 },
+      };
+      expect(calculateMatchScore(conflictingStmt, existingInstallment)).toBeLessThan(75);
+    });
+
+    it("resolve datas sem ano na virada dezembro -> janeiro usando competenceMonth", () => {
+      const parsed = parseStatementInput(
+        "Data;Descrição;Valor\n22/12;Ceia Natal;320,00\n03/01;Padaria Ano Novo;45,00",
+        "fatura-jan.csv",
+        { cardId: "card-1", competenceMonth: "2027-01" },
+      );
+
+      expect(parsed.transactions).toHaveLength(2);
+      expect(parsed.transactions[0]?.date).toBe("2026-12-22");
+      expect(parsed.transactions[1]?.date).toBe("2027-01-03");
     });
   });
 });

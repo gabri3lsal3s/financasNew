@@ -1,10 +1,10 @@
 import type { ConfidenceLevel, ReceiptFieldConfidence } from "@/domain/notifications";
 import type { RecurrenceFrequency } from "@/domain/recurrences";
-import type { DebtType, PaymentMethod, ReceiveType } from "@/types";
+import type { ChargeKind, DebtType, PaymentMethod, ReceiveType, TransactionScope } from "@/types";
 
 export type EntryType = "expense" | "income";
 export type WizardMode = "quick" | "guided";
-export type WizardContextMode = "personal" | "family" | "trip" | "split";
+export type WizardContextMode = "personal" | "family" | "trip" | "split" | "business";
 
 export interface LaunchState {
   step: number;
@@ -45,6 +45,12 @@ export interface LaunchState {
   tripId: string | null;
   /** Modalidade de recebimento do rateio quando despesa parcelada */
   splitDebtMode: "single_total" | "per_installment";
+  /** Tipo de encargo quando despesa no cartão de crédito */
+  chargeKind?: ChargeKind;
+  /** Esfera fiscal do lançamento: pessoal (PF) ou negócio (PJ/MEI). */
+  scope?: TransactionScope;
+  /** Despesa dedutível para cálculo de escudo fiscal no Modo Negócio. */
+  isTaxDeductible?: boolean;
 }
 
 export const WIZARD_STEPS = ["Valor", "Categoria", "Detalhes", "Revisão"] as const;
@@ -60,6 +66,7 @@ export interface ReceiptMeta {
   fieldConfidence?: ReceiptFieldConfidence;
   isSameTitularity?: boolean;
   needsAmountInput?: boolean;
+  semanticTags?: string[];
 }
 
 export interface CreatedSplitExpense {

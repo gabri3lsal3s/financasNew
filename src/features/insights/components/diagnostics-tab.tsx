@@ -21,7 +21,7 @@ import { DiagnosticsWarningsSection } from "./DiagnosticsWarningsSection";
 
 export interface WarningItem {
   id: string;
-  variant: "warning" | "success" | "error";
+  variant: "warning" | "success" | "error" | "info";
   message: string;
 }
 
@@ -34,11 +34,13 @@ export interface DiagnosticsTabProps {
   concentration: { topSharePercent: number; alert: boolean };
   weekendComparable: boolean;
   weekendRatio: number;
+  trendHasPreviousBase?: boolean;
   trendSignificant: boolean;
   trendPercent: number;
   overspentBudgets?: number;
   essentialSpending?: EssentialSpendingResult;
   hasTransactions?: boolean;
+  hasIncome?: boolean;
 }
 
 export function DiagnosticsTab({
@@ -50,11 +52,13 @@ export function DiagnosticsTab({
   concentration,
   weekendComparable,
   weekendRatio,
+  trendHasPreviousBase = true,
   trendSignificant,
   trendPercent,
   overspentBudgets = 0,
   essentialSpending,
   hasTransactions,
+  hasIncome = true,
 }: DiagnosticsTabProps) {
   return (
     <div className="flex flex-col gap-6 min-w-0">
@@ -74,23 +78,27 @@ export function DiagnosticsTab({
           <DiagnosticCard
             icon={<PiggyBank className="size-4" aria-hidden="true" />}
             label="Saúde da poupança"
-            value={`${formatPercent(savingsRate)}%`}
-            subtitle="Capacidade de poupar"
+            value={health === "indefinido" || !hasIncome ? "—" : `${formatPercent(savingsRate)}%`}
+            subtitle={health === "indefinido" || !hasIncome ? "Aguardando renda" : "Capacidade de poupar"}
             tone={
-              health === "forte" || health === "saudavel"
-                ? "positive"
-                : health === "moderado"
-                  ? "neutral"
-                  : "negative"
+              health === "indefinido" || !hasIncome
+                ? "neutral"
+                : health === "forte" || health === "saudavel"
+                  ? "positive"
+                  : health === "moderado"
+                    ? "neutral"
+                    : "negative"
             }
             badge={
               <Badge
                 variant={
-                  health === "forte" || health === "saudavel"
-                    ? "positive"
-                    : health === "moderado"
-                      ? "warning"
-                      : "critical"
+                  health === "indefinido" || !hasIncome
+                    ? "muted"
+                    : health === "forte" || health === "saudavel"
+                      ? "positive"
+                      : health === "moderado"
+                        ? "warning"
+                        : "critical"
                 }
                 size="xs"
                 className="max-w-full truncate"
@@ -115,9 +123,9 @@ export function DiagnosticsTab({
           <DiagnosticCard
             icon={<Wallet className="size-4" aria-hidden="true" />}
             label="Concentração de renda"
-            value={`${concentration.topSharePercent.toFixed(0)}%`}
-            subtitle={concentration.alert ? "Alta dependência" : "Fonte principal"}
-            tone={concentration.alert ? "negative" : "neutral"}
+            value={!hasIncome ? "—" : `${concentration.topSharePercent.toFixed(0)}%`}
+            subtitle={!hasIncome ? "Aguardando renda" : concentration.alert ? "Alta dependência" : "Fonte principal"}
+            tone={!hasIncome ? "neutral" : concentration.alert ? "negative" : "neutral"}
           />
 
           <DiagnosticCard
@@ -137,26 +145,38 @@ export function DiagnosticsTab({
           <DiagnosticCard
             icon={<ShieldCheck className="size-4" aria-hidden="true" />}
             label="Gastos essenciais"
-            value={essentialSpending ? `${essentialSpending.ratioPercent.toFixed(0)}%` : "—"}
-            subtitle="Teto ideal: até 50%"
+            value={
+              !essentialSpending
+                ? "—"
+                : essentialSpending.status === "em_formacao" || !essentialSpending.hasCriticalMass
+                  ? "Em formação"
+                  : `${essentialSpending.ratioPercent.toFixed(0)}%`
+            }
+            subtitle={
+              essentialSpending?.status === "em_formacao"
+                ? "Mín. 3 lançamentos"
+                : "Teto ideal: até 50%"
+            }
             tone={
-              essentialSpending
-                ? essentialSpending.status === "adequado"
+              !essentialSpending || essentialSpending.status === "em_formacao" || !essentialSpending.hasCriticalMass
+                ? "neutral"
+                : essentialSpending.status === "adequado"
                   ? "positive"
                   : essentialSpending.status === "moderado"
                     ? "neutral"
                     : "negative"
-                : "neutral"
             }
             badge={
               essentialSpending ? (
                 <Badge
                   variant={
-                    essentialSpending.status === "adequado"
-                      ? "positive"
-                      : essentialSpending.status === "moderado"
-                        ? "warning"
-                        : "critical"
+                    essentialSpending.status === "em_formacao" || !essentialSpending.hasCriticalMass
+                      ? "muted"
+                      : essentialSpending.status === "adequado"
+                        ? "positive"
+                        : essentialSpending.status === "moderado"
+                          ? "warning"
+                          : "critical"
                   }
                   size="xs"
                   className="max-w-full truncate"
@@ -169,16 +189,16 @@ export function DiagnosticsTab({
 
           <DiagnosticCard
             icon={
-              trendPercent >= 0 ? (
+              !trendHasPreviousBase || trendPercent >= 0 ? (
                 <TrendingUp className="size-4" aria-hidden="true" />
               ) : (
                 <TrendingDown className="size-4" aria-hidden="true" />
               )
             }
             label="Tendência de gastos"
-            value={formatSignedPct(trendPercent)}
+            value={trendHasPreviousBase ? formatSignedPct(trendPercent) : "Sem base anterior"}
             subtitle="vs. mês anterior"
-            tone={trendSignificant ? (trendPercent > 0 ? "negative" : "positive") : "neutral"}
+            tone={trendHasPreviousBase && trendSignificant ? (trendPercent > 0 ? "negative" : "positive") : "neutral"}
           />
         </div>
       </section>

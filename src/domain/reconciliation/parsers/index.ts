@@ -1,4 +1,5 @@
 import type { ColumnMapping, RawParsedRow, StatementTransaction } from "../types";
+import { inferChargeKindFromDescription } from "@/domain/cards/charges";
 import { cleanDescription, isLikelyIncomeDescription, isPaymentOrSettlement } from "../clean";
 import { extractInstallmentInfo } from "../installments";
 import { generateStatementHash } from "../hash";
@@ -11,6 +12,32 @@ export * from "./type-sniffer";
 export * from "./csv-parser";
 export * from "./ofx-parser";
 export * from "./text-parser";
+export * from "./spreadsheet-parser";
+
+function hasExplicitYearToken(rawDate: string): boolean {
+  const t = rawDate.trim();
+  if (/\b\d{4}\b/.test(t)) return true;
+  if (/^\d{1,2}[/.-]\d{1,2}[/.-]\d{2}$/.test(t)) return true;
+  if (/[a-zç]{3,9}\s*(?:de\s+|[/-])?\s*\d{2,4}$/i.test(t)) return true;
+  return false;
+}
+
+function resolveDateWithCompetenceBoundary(rawDate: string, competenceMonth: string): string | null {
+  const compYear = Number.parseInt(competenceMonth.slice(0, 4), 10) || new Date().getFullYear();
+  const compMonth = Number.parseInt(competenceMonth.slice(5, 7), 10);
+  const initialIso = normalizeDateToISO(rawDate, compYear);
+  if (!initialIso) return null;
+
+  if (!hasExplicitYearToken(rawDate) && Number.isFinite(compMonth)) {
+    const parsedMonth = Number.parseInt(initialIso.slice(5, 7), 10);
+    // Ex.: compra em "22/12" dentro da fatura de competência "2027-01" pertence a 2026-12
+    if (Number.isFinite(parsedMonth) && parsedMonth > compMonth + 2) {
+      return `${compYear - 1}${initialIso.slice(4)}`;
+    }
+  }
+
+  return initialIso;
+}
 
 /**
  * Converte linhas tabulares parseadas em transações normalizadas de extrato.
@@ -21,8 +48,6 @@ export function buildTransactionsFromRows(
   params: { cardId: string; competenceMonth: string },
 ): StatementTransaction[] {
   const transactions: StatementTransaction[] = [];
-  const startYear = Number.parseInt(params.competenceMonth.slice(0, 4), 10) || new Date().getFullYear();
-
   const occurrenceCounter = new Map<string, number>();
   let index = 0;
 
@@ -32,7 +57,7 @@ export function buildTransactionsFromRows(
     const rawDate = row.cells[mapping.dateColIndex] ?? "";
     const rawDesc = row.cells[mapping.descriptionColIndex] ?? "";
 
-    const date = normalizeDateToISO(rawDate, startYear);
+    const date = resolveDateWithCompetenceBoundary(rawDate, params.competenceMonth);
     if (!date || !rawDesc.trim()) {
       continue;
     }
@@ -131,6 +156,7 @@ export function buildTransactionsFromRows(
       isPayment,
       installment,
       statementHash,
+      inferredChargeKind: inferChargeKindFromDescription(rawDescForTx),
     });
   }
 

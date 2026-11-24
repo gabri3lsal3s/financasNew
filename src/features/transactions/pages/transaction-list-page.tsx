@@ -84,6 +84,7 @@ export function TransactionListPage() {
         onFilterChange={tx.setFilter}
         searchQuery={tx.searchQuery}
         onSearchChange={tx.setSearchQuery}
+        structuredFilterBadges={tx.structuredFilterBadges}
       />
 
       {tx.error ? (

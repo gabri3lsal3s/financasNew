@@ -107,6 +107,28 @@ export function useSmartAdvisorActions({
     [setFeedbackMutation],
   );
 
+  const markTxOneOff = useCallback(
+    async (occurrenceKey: string, displayName?: string) => {
+      await setFeedbackMutation.mutateAsync({ occurrenceKey, decision: "one_off" });
+      triggerSensory("success");
+      const name = displayName ?? "Este gasto";
+      pushToast({
+        title: "Marcado como pontual",
+        description: `${name} foi isolado da projeção de gastos recorrentes do mês.`,
+        duration: 5000,
+        variant: "success",
+        action: {
+          label: "Desfazer",
+          onClick: () => {
+            void setFeedbackMutation.mutateAsync({ occurrenceKey, decision: null });
+            triggerSensory("action");
+          },
+        },
+      });
+    },
+    [setFeedbackMutation],
+  );
+
   const confirmIncome = useCallback(
     async (payload: { name: string; valueCents: number; categoryId: string; date?: string }) => {
       const created = await createIncomeMutation.mutateAsync(
@@ -182,6 +204,7 @@ export function useSmartAdvisorActions({
     confirmRecurrence,
     ignoreRecurrence,
     markAsEssential,
+    markTxOneOff,
     confirmIncome,
     confirmExpense,
   };

@@ -10,22 +10,47 @@ import {
   type ChallengeOption,
   type DiscretionaryChallenge,
 } from "@/domain/savings";
-import { realizedByCategoryMap, spentByCategoryMap } from "@/domain/budgets";
+import { realizedByCategoryMap } from "@/domain/budgets";
 import type { Category, CreditCard, Expense, Income } from "@/types";
 import {
   calculateProRataTrend,
   calculateWeekdayWeekendDailyAverages,
   essentialSpendingRatio,
   incomeConcentration,
+  isWeekendComparisonReliable,
   savingsHealth,
   weekendSpendingRatio,
   type EssentialSpendingResult,
   type IncomeConcentration,
   type SavingsHealth,
 } from "./diagnostics";
+import { resolveCategorySemantics } from "./category-semantics";
 import { partitionFeedback, type FeedbackDecision, type FeedbackMap } from "./feedback";
+import type { UnifiedLearningGraph } from "./learning-graph";
 import { calculateRecurringTotals, detectRecurrences, type ExpenseLike, type RecurrenceOccurrence } from "./recurrences";
-import { ESSENTIAL_CATEGORY_ICONS } from "./shared";
+import { normalizeText, stripTemporalSuffixes } from "./shared";
+
+function isExpenseMarkedEssential(
+  expense: Pick<Expense, "id" | "description" | "category_id">,
+  category: Category | undefined,
+  essentialKeys?: ReadonlySet<string>,
+): boolean {
+  if (category) {
+    const sem = resolveCategorySemantics({ name: category.name, icon: category.icon });
+    if (sem.isEssential) {
+      return true;
+    }
+  }
+  if (!essentialKeys || essentialKeys.size === 0) return false;
+  if (essentialKeys.has(expense.id) || essentialKeys.has(expense.category_id)) return true;
+  const normalizedDesc = normalizeText(stripTemporalSuffixes(expense.description ?? ""));
+  if (normalizedDesc && essentialKeys.has(normalizedDesc)) return true;
+  if (category?.name) {
+    const normalizedCat = normalizeText(category.name);
+    if (normalizedCat && essentialKeys.has(normalizedCat)) return true;
+  }
+  return false;
+}
 
 export interface BuildInsightsAnalyticsInput {
   month: string;
@@ -42,6 +67,9 @@ export interface BuildInsightsAnalyticsInput {
   incomeCents: number;
   expenseCents: number;
   effectiveSavingsRateForHealth: number;
+  hasIncome?: boolean;
+  referenceIncomeCents?: number;
+  learning?: UnifiedLearningGraph;
 }
 
 export interface InsightsAnalyticsResult {
@@ -49,6 +77,7 @@ export interface InsightsAnalyticsResult {
   concentration: IncomeConcentration;
   weekendComparable: boolean;
   weekendRatio: number;
+  trendHasPreviousBase: boolean;
   trendSignificant: boolean;
   trendPercent: number;
   essentialSpending: EssentialSpendingResult;
@@ -82,6 +111,7 @@ export function buildInsightsAnalytics(input: BuildInsightsAnalyticsInput): Insi
       categoryIcon: categoryById.get(e.category_id)?.icon ?? null,
       installmentGroupId: e.installment_group_id,
       recurrenceId: e.recurrence_id,
+      tripId: e.trip_id,
       paymentMethod: e.payment_method,
       cardId: e.card_id,
       cardName: e.card_id ? cardById.get(e.card_id)?.name ?? null : null,
@@ -90,31 +120,69 @@ export function buildInsightsAnalytics(input: BuildInsightsAnalyticsInput): Insi
   );
 
   const feedbackMap = input.feedbackMap as Record<string, FeedbackDecision>;
-  const occurrences = detectRecurrences(allExpenses, { todayISO: todayISOStr, feedbackMap });
+  const occurrences = detectRecurrences(allExpenses, {
+    todayISO: todayISOStr,
+    feedbackMap,
+    includeFormalRecurrences: true,
+    merchantAliasMap: input.learning?.merchantAliasMap,
+    learnedServices: input.learning?.learnedServices,
+  });
   const { active: partitionedActive, ignored: ignoredOccurrences } = partitionFeedback(occurrences, feedbackMap);
   const activeOccurrences = partitionedActive.filter((o) => o.lifecycle !== "lapsed");
   const lapsedOccurrences = partitionedActive.filter((o) => o.lifecycle === "lapsed");
   const recurringTotals = calculateRecurringTotals(activeOccurrences);
 
-  const spentByMonth = [month0, month1, month2, month3].map((list) => spentByCategoryMap(list));
+  const essentialKeys = input.learning?.essentialKeys;
+  const oneOffExpenseIds = input.learning?.oneOffExpenseIds;
+  const currentMonthOneOffKeys = input.learning?.currentMonthOneOffKeys;
+
+  const spentByMonth = [month0, month1, month2, month3].map((list, idx) => {
+    const map = new Map<string, number>();
+    for (const e of list) {
+      if (e.trip_id != null) continue;
+      if (oneOffExpenseIds?.has(e.id)) continue;
+      if (idx === 0 && currentMonthOneOffKeys && currentMonthOneOffKeys.size > 0) {
+        const cleanDesc = normalizeText(stripTemporalSuffixes(e.description ?? ""));
+        if (cleanDesc && currentMonthOneOffKeys.has(cleanDesc)) continue;
+      }
+      const cat = categoryById.get(e.category_id);
+      if (isExpenseMarkedEssential(e, cat, essentialKeys)) continue;
+      const weightedCents = numberToCents(e.value * (e.report_weight ?? 1));
+      if (weightedCents <= 0) continue;
+      map.set(e.category_id, (map.get(e.category_id) ?? 0) + weightedCents);
+    }
+    return map;
+  });
   const categorySpends: CategorySpend[] = categories
     .filter((c) => c.type === "expense")
-    .map((c) => ({
-      categoryId: c.id,
-      name: c.name,
-      icon: c.icon,
-      monthlyAvgCents: typicalMonthlySpendCents(spentByMonth.map((m) => m.get(c.id) ?? 0)),
-      essential: c.icon != null && ESSENTIAL_CATEGORY_ICONS.has(c.icon),
-    }));
-  const challenges = pickTopChallenges(buildChallengeOptions(categorySpends, input.incomeCents));
-  const discretionary = discretionaryChallenge(categorySpends, input.incomeCents);
+    .map((c) => {
+      const catKey = normalizeText(c.name);
+      const sem = resolveCategorySemantics({ name: c.name, icon: c.icon });
+      const isNonCuttable =
+        !sem.isCuttableCategory ||
+        Boolean(essentialKeys?.has(c.id)) ||
+        Boolean(catKey && essentialKeys?.has(catKey));
+      return {
+        categoryId: c.id,
+        name: c.name,
+        icon: c.icon,
+        monthlyAvgCents: typicalMonthlySpendCents(spentByMonth.map((m) => m.get(c.id) ?? 0)),
+        essential: isNonCuttable,
+      };
+    });
+  const hasIncome = input.hasIncome ?? input.incomeCents > 0;
+  const hasHistoricalMonths = month1.length > 0 || month2.length > 0 || month3.length > 0;
+  const referenceForChallenges =
+    hasIncome || hasHistoricalMonths ? (input.referenceIncomeCents ?? input.incomeCents) : 0;
+  const challenges = pickTopChallenges(buildChallengeOptions(categorySpends, referenceForChallenges));
+  const discretionary = discretionaryChallenge(categorySpends, referenceForChallenges);
   const showDiscretionary = discretionary !== null && discretionary.categoryCount >= 2;
 
   const incomeByCategory = realizedByCategoryMap(incomes);
   const concentration = incomeConcentration([...incomeByCategory.values()], {
     isSingleSalarySource: incomes.length === 1,
   });
-  const health = savingsHealth(input.effectiveSavingsRateForHealth);
+  const health = savingsHealth(input.effectiveSavingsRateForHealth, hasIncome);
 
   const [yearStr, monthNumStr] = month.split("-");
   const yr = Number(yearStr ?? now.getFullYear());
@@ -144,7 +212,12 @@ export function buildInsightsAnalytics(input: BuildInsightsAnalyticsInput): Insi
     elapsedWeekendDaysCount: Math.max(1, elapsedWeekendDaysCount),
   });
   const weekendRatio = weekendSpendingRatio(weekdayDailyCents, weekendDailyCents);
-  const weekendComparable = weekdayDailyCents > 0;
+  const weekendComparable = isWeekendComparisonReliable({
+    totalExpenseCount: month0.length,
+    elapsedWeekdaysCount,
+    elapsedWeekendDaysCount,
+    weekdayDailyCents,
+  });
 
   const prevComparableCents = isCurrentMonth
     ? month1
@@ -154,20 +227,21 @@ export function buildInsightsAnalytics(input: BuildInsightsAnalyticsInput): Insi
   const trend = calculateProRataTrend(input.expenseCents, prevComparableCents);
 
   const essentialExpensesCents = month0
-    .filter((e) => {
-      const cat = categoryById.get(e.category_id);
-      return cat?.icon != null && ESSENTIAL_CATEGORY_ICONS.has(cat.icon);
-    })
-    .reduce((acc, e) => acc + numberToCents(e.value), 0);
+    .filter((e) => isExpenseMarkedEssential(e, categoryById.get(e.category_id), essentialKeys))
+    .reduce((acc, e) => acc + numberToCents(e.value * (e.report_weight ?? 1)), 0);
 
   return {
     health,
     concentration,
     weekendComparable,
     weekendRatio,
+    trendHasPreviousBase: trend.hasPreviousBase,
     trendSignificant: trend.isSignificant,
     trendPercent: trend.percentChange,
-    essentialSpending: essentialSpendingRatio(essentialExpensesCents, input.expenseCents),
+    essentialSpending: essentialSpendingRatio(essentialExpensesCents, input.expenseCents, {
+      transactionCount: month0.length,
+      referenceIncomeCents: input.referenceIncomeCents,
+    }),
     ...recurringTotals,
     activeOccurrences,
     ignoredOccurrences,

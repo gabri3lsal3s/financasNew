@@ -1,13 +1,20 @@
 import { useCallback, useMemo } from "react";
 import { budgetLimitsByCategory } from "@/domain/budgets";
+import {
+  filterDebtsByViewScope,
+  filterExpensesByViewScope,
+  filterIncomesByViewScope,
+} from "@/domain/business";
 import { numberToCents } from "@/domain/money";
 import {
   aggregateByCategory,
   aggregateByPaymentMethod,
+  aggregateExpensesByChargeKind,
   aggregateByWeekday,
   weightedCents,
   type ReportPeriodMode,
 } from "@/domain/reports";
+import { useSafeViewScope } from "@/hooks/use-safe-business-scope";
 import { currentMonth, shiftMonth, yearRange } from "@/lib/date";
 import {
   useBudgets,
@@ -74,7 +81,8 @@ export function useFinanceReportData({
     enabled: enabled && hasFamily && isFamilyModeEnabled && mode === "month",
   });
 
-  const expenses = useMemo(
+  const { effectiveViewScope } = useSafeViewScope();
+  const rawExpenses = useMemo(
     () =>
       !enabled
         ? []
@@ -88,7 +96,7 @@ export function useFinanceReportData({
     [enabled, mode, monthlyExpenses.data, yearExpenses.data, customValid, rangeExpenses.data],
   );
 
-  const incomes = useMemo(
+  const rawIncomes = useMemo(
     () =>
       !enabled
         ? []
@@ -100,6 +108,16 @@ export function useFinanceReportData({
               ? rangeIncomes.data ?? []
               : [],
     [enabled, mode, monthlyIncomes.data, yearIncomes.data, customValid, rangeIncomes.data],
+  );
+
+  const expenses = useMemo(
+    () => filterExpensesByViewScope(rawExpenses, effectiveViewScope, { mode: "dre" }),
+    [rawExpenses, effectiveViewScope],
+  );
+
+  const incomes = useMemo(
+    () => filterIncomesByViewScope(rawIncomes, effectiveViewScope, { mode: "dre" }),
+    [rawIncomes, effectiveViewScope],
   );
 
   const loading = enabled
@@ -124,7 +142,8 @@ export function useFinanceReportData({
 
   const categories = useMemo(() => (enabled ? categoriesQuery.data ?? [] : []), [enabled, categoriesQuery.data]);
   const categoryById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
-  const debts = useMemo(() => (enabled ? debtsQuery.data ?? [] : []), [enabled, debtsQuery.data]);
+  const rawDebts = useMemo(() => (enabled ? debtsQuery.data ?? [] : []), [enabled, debtsQuery.data]);
+  const debts = useMemo(() => filterDebtsByViewScope(rawDebts, effectiveViewScope), [rawDebts, effectiveViewScope]);
 
   const expenseEntries = useMemo(
     () =>
@@ -140,6 +159,7 @@ export function useFinanceReportData({
           paymentMethod: item.payment_method,
           baseCents: numberToCents(item.value),
           weight: weightsEnabled ? item.report_weight : 1,
+          chargeKind: item.charge_kind,
         };
       }),
     [expenses, categoryById, weightsEnabled],
@@ -167,6 +187,7 @@ export function useFinanceReportData({
   const byCategory = useMemo(() => aggregateByCategory(expenseEntries), [expenseEntries]);
   const byMethod = useMemo(() => aggregateByPaymentMethod(expenseEntries), [expenseEntries]);
   const byWeekday = useMemo(() => aggregateByWeekday(expenseEntries), [expenseEntries]);
+  const byChargeKind = useMemo(() => aggregateExpensesByChargeKind(expenseEntries), [expenseEntries]);
   const limitsByCategory = useMemo(() => budgetLimitsByCategory(budgetsQuery.data ?? []), [budgetsQuery.data]);
 
   const currentUserId = myFamilyQuery.data?.currentMember?.user_id;
@@ -211,9 +232,16 @@ export function useFinanceReportData({
   return {
     loading,
     error,
+    rawExpenses,
+    rawIncomes,
+    rawDebts,
     expenses,
     incomes,
-    monthlyExpensesData: enabled ? monthlyExpenses.data : undefined,
+    monthlyExpensesData: enabled
+      ? monthlyExpenses.data
+        ? filterExpensesByViewScope(monthlyExpenses.data, effectiveViewScope, { mode: "dre" })
+        : undefined
+      : undefined,
     categories,
     debts,
     realCashBalanceCents: realCashQuery.cashBalance.currentBalanceCents,
@@ -223,6 +251,7 @@ export function useFinanceReportData({
     byCategory,
     byMethod,
     byWeekday,
+    byChargeKind,
     limitsByCategory,
     householdSummary,
     grossExpenseBrutoCents,

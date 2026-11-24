@@ -38,6 +38,14 @@ export function deriveBudgetsLimitsData(params: {
   const spentWeightedByCategory = spentByCategoryMap(expenses);
   const spentGrossByCategory = spentGrossByCategoryMap(expenses);
 
+  const chargesByCategory = new Map<string, number>();
+  for (const exp of expenses) {
+    if (exp.charge_kind && exp.charge_kind !== "regular") {
+      const current = chargesByCategory.get(exp.category_id) ?? 0;
+      chargesByCategory.set(exp.category_id, current + Math.round(Number(exp.value) * 100));
+    }
+  }
+
   const allExpenseRows: BudgetCategoryRowData[] = categories.map((category) => {
     const ownHistory = limitsByCategory.get(category.id) ?? [];
     const spentWeighted = spentWeightedByCategory.get(category.id) ?? 0;
@@ -50,6 +58,7 @@ export function deriveBudgetsLimitsData(params: {
       spentGrossCents: spentGross,
       hasSplitDifference: spentGross !== spentWeighted,
       inherited: isInheritedLimit(ownHistory, month),
+      chargesCents: chargesByCategory.get(category.id) ?? 0,
     };
   });
 

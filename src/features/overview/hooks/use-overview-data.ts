@@ -1,5 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
+import {
+  filterCardsByViewScope,
+  filterDebtsByViewScope,
+  filterExpensesByViewScope,
+  filterIncomesByViewScope,
+} from "@/domain/business";
 import { todayISO } from "@/domain/debts";
+import { isFamilyUnderDecay } from "@/domain/insights";
 import { extractPendingSplitSignals } from "@/domain/notifications/hub";
 import { isFirstUse, shouldShowOnboardingBanner } from "@/domain/onboarding";
 import {
@@ -10,6 +17,7 @@ import {
   shouldShowTrialBanner,
 } from "@/domain/overview";
 import { useOnboardingDismissed } from "@/hooks";
+import { useSafeViewScope } from "@/hooks/use-safe-business-scope";
 import { currentMonth, shiftMonth } from "@/lib/date";
 import {
   useAllCardExpenses,
@@ -36,6 +44,7 @@ import {
 } from "@/state";
 import { getStoredInitialGoal, setStoredInitialGoal } from "@/state/demo-mode";
 import { useUserTrips } from "@/state/queries/use-trips";
+import { useUserFinancialContext } from "@/state/selectors";
 import type { DashboardAlertDismissals, OnboardingGoalId } from "@/types";
 import { useOverviewCashflow } from "./use-overview-cashflow";
 import { useOverviewObligations } from "./use-overview-obligations";
@@ -77,7 +86,32 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
   const householdData = hasFamily ? familyConsolidationQuery.data : null;
   const currentUserId = myFamilyQuery.data?.currentMember?.user_id;
 
+  const { effectiveViewScope } = useSafeViewScope();
   const realCashData = useRealCashBalance(today);
+  const scopedIncomes = useMemo(
+    () => (incomesQuery.data ? filterIncomesByViewScope(incomesQuery.data, effectiveViewScope, { mode: "dre" }) : undefined),
+    [incomesQuery.data, effectiveViewScope],
+  );
+  const scopedExpenses = useMemo(
+    () => (expensesQuery.data ? filterExpensesByViewScope(expensesQuery.data, effectiveViewScope, { mode: "dre" }) : undefined),
+    [expensesQuery.data, effectiveViewScope],
+  );
+  const scopedPrevIncomes = useMemo(
+    () => (prevIncomesQuery.data ? filterIncomesByViewScope(prevIncomesQuery.data, effectiveViewScope, { mode: "dre" }) : undefined),
+    [prevIncomesQuery.data, effectiveViewScope],
+  );
+  const scopedPrevExpenses = useMemo(
+    () => (prevExpensesQuery.data ? filterExpensesByViewScope(prevExpensesQuery.data, effectiveViewScope, { mode: "dre" }) : undefined),
+    [prevExpensesQuery.data, effectiveViewScope],
+  );
+  const scopedCards = useMemo(
+    () => (cardsQuery.data ? filterCardsByViewScope(cardsQuery.data, effectiveViewScope) : undefined),
+    [cardsQuery.data, effectiveViewScope],
+  );
+  const scopedDebts = useMemo(
+    () => (debtsQuery.data ? filterDebtsByViewScope(debtsQuery.data, effectiveViewScope) : undefined),
+    [debtsQuery.data, effectiveViewScope],
+  );
   const portfolioPositionQuery = usePortfolioPosition();
   const rawPositionRows = portfolioPositionQuery?.rows;
   const positionRows = useMemo(() => rawPositionRows ?? [], [rawPositionRows]);
@@ -135,19 +169,38 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
     expensesQuery.error ??
     (isCurrentMonth ? realCashData.error : null);
 
+  const hasCashHistory = Boolean(
+    realCashData.cashBalance.inflowSinceCheckpointCents > 0 ||
+      realCashData.cashBalance.outflowSinceCheckpointCents > 0 ||
+      realCashData.cashBalance.eventsSinceCheckpoint.length > 0,
+  );
+
+  const { context: financialContext, predictedUpcomingInflows } = useUserFinancialContext({
+    month,
+    todayISO: today,
+    isCurrentMonth,
+    realCashBalanceCents: realCashData.cashBalance.currentBalanceCents,
+    hasCashCheckpoint: realCashData.cashBalance.latestCheckpoint !== null,
+    hasCashHistory,
+    committedObligationsCents: realCashData.safeToSpend.committedObligationsCents,
+    safeToSpendCents: realCashData.safeToSpend.safeToSpendCents,
+    positionRows,
+  });
+
   const cashflow = useOverviewCashflow({
     month,
     prevMonth,
     isCurrentMonth,
-    incomes: incomesQuery.data,
-    expenses: expensesQuery.data,
-    prevIncomes: prevIncomesQuery.data,
-    prevExpenses: prevExpensesQuery.data,
+    incomes: scopedIncomes,
+    expenses: scopedExpenses,
+    prevIncomes: scopedPrevIncomes,
+    prevExpenses: scopedPrevExpenses,
     contributions: contributionsQuery.data,
     budgets: budgetsQuery.data,
     expenseCategories: expenseCategories.data,
     committedObligationsCents: realCashData.safeToSpend.committedObligationsCents,
     safeToSpendCents: realCashData.safeToSpend.safeToSpendCents,
+    financialContext,
   });
 
   const obligations = useOverviewObligations({
@@ -155,16 +208,18 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
     month,
     rangeEnd,
     currentBalanceCents: realCashData.cashBalance.currentBalanceCents,
+    hasLiquidityContext: financialContext.lens.liquidity.hasLiquidityContext,
+    predictedInflows: predictedUpcomingInflows,
     cardsLoading: cardsQuery.isLoading,
     cardExpensesLoading: cardExpensesQuery.isLoading,
     cardPaymentsLoading: cardPaymentsQuery.isLoading,
     debtsLoading: debtsQuery.isLoading,
     splitSharesLoading: splitSharesQuery.isLoading,
-    cards: cardsQuery.data,
+    cards: scopedCards,
     cardExpenses: cardExpensesQuery.data,
     cardPayments: cardPaymentsQuery.data,
-    debts: debtsQuery.data,
-    incomes: incomesQuery.data,
+    debts: scopedDebts,
+    incomes: scopedIncomes,
     splitShares: splitSharesQuery.data,
     goalShares: goalSharesQuery.data,
     positionRows,
@@ -173,16 +228,23 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
     goalDismissals: alertDismissals.goals,
   });
 
-  const isPaceEligible = shouldShowPaceAlert(alertDismissals.pace, {
-    month,
-    spentPercent: cashflow.pace.spentPercent,
-    surplusCents: cashflow.projection.surplusCents,
-  });
+  const advisorDecayMeta = useMemo(
+    () => userPreferencesQuery.data?.custom_settings?.advisorDecayMeta ?? {},
+    [userPreferencesQuery.data?.custom_settings?.advisorDecayMeta],
+  );
 
-  const isSurplusEligible = shouldShowSurplusAlert(alertDismissals.surplus, {
-    month,
-    surplusCents: cashflow.surplusCapacity.suggestedAporteCents,
-  });
+  const isPaceEligible =
+    shouldShowPaceAlert(alertDismissals.pace, {
+      month,
+      spentPercent: cashflow.pace.spentPercent,
+      surplusCents: cashflow.projection.surplusCents,
+    }) && !isFamilyUnderDecay(advisorDecayMeta.pace);
+
+  const isSurplusEligible =
+    shouldShowSurplusAlert(alertDismissals.surplus, {
+      month,
+      surplusCents: cashflow.surplusCapacity.suggestedAporteCents,
+    }) && !isFamilyUnderDecay(advisorDecayMeta.surplus);
 
   const isGovernanceDismissed = isGovernanceAlertDismissed(alertDismissals.governance);
   const hasPendingSplitSignals = useMemo(
@@ -193,6 +255,8 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
     (cardKey: string) => isTimedAlertDismissed(alertDismissals.cards?.[cardKey]),
     [alertDismissals.cards],
   );
+  const isCashGapEligible =
+    !isCardDismissed("cash-gap-alert") && !isFamilyUnderDecay(advisorDecayMeta.cash_gap);
   const isTrialBannerEligible = shouldShowTrialBanner(
     subscription.trialDaysRemaining,
     Boolean(subscription.hasAutoRenew),
@@ -209,9 +273,14 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
     error,
     hasFeature,
     onboardingQuery,
+    financialContext,
+    predictedUpcomingInflows,
+    advisorDecayMeta,
+    updateCustomSettingsMutation,
     ...cashflow,
     isPaceEligible,
     isSurplusEligible,
+    isCashGapEligible,
     isGovernanceDismissed,
     hasPendingSplitSignals,
     isCardDismissed,

@@ -1,10 +1,14 @@
 import { useCallback, useMemo } from "react";
+import { calculateBusinessDre } from "@/domain/business";
 import {
   buildFinancialDRE,
   buildReportFreedomAnalysis,
   computeConsolidatedBalanceSheet,
   sumContributionsInPeriod,
 } from "@/domain/reports";
+import { useSafeBusinessMode } from "@/hooks/use-safe-business-scope";
+import { BUSINESS_PROFILE_LABELS } from "@/lib/labels";
+import type { ExcelBusinessDreData } from "@/services/excel-export";
 import { useFinanceReportData } from "./use-finance-report-data";
 import { useInvestmentReportData } from "./use-investment-report-data";
 import { useReportExcelPayload } from "./use-report-excel-payload";
@@ -120,6 +124,37 @@ export function useReportsData(params: UseReportsDataParams) {
     ],
   );
 
+  const { isBusinessModeEnabled, businessProfile } = useSafeBusinessMode();
+
+  const businessDreForExcel = useMemo<ExcelBusinessDreData | null>(() => {
+    if (!isBusinessModeEnabled || !hasFinanceFeatures) return null;
+    const dre = calculateBusinessDre({
+      incomes: finance.rawIncomes,
+      expenses: finance.rawExpenses,
+      debts: finance.rawDebts,
+    });
+    const profileKind = businessProfile?.profileKind ?? "mei";
+    return {
+      periodLabel: period.periodLabel,
+      profileLabel: BUSINESS_PROFILE_LABELS[profileKind] ?? "MEI",
+      grossRevenueBRL: dre.grossRevenueCents / 100,
+      operationalCostsBRL: dre.operationalCostsCents / 100,
+      operationalProfitBRL: dre.operationalProfitCents / 100,
+      fiscalTaxesPaidBRL: dre.fiscalTaxesPaidCents / 100,
+      proLaboreWithdrawnBRL: dre.proLaboreWithdrawnCents / 100,
+      retainedEarningsBRL: dre.retainedEarningsCents / 100,
+      marginPct: dre.marginPct,
+    };
+  }, [
+    isBusinessModeEnabled,
+    hasFinanceFeatures,
+    finance.rawIncomes,
+    finance.rawExpenses,
+    finance.rawDebts,
+    businessProfile?.profileKind,
+    period.periodLabel,
+  ]);
+
   const excel = useReportExcelPayload({
     hasFinanceFeatures, hasInvestmentsFeature, month,
     isCurrentPeriod: period.isCurrentPeriod, isDateInPeriod: period.isDateInPeriod,
@@ -130,6 +165,7 @@ export function useReportsData(params: UseReportsDataParams) {
     assets: investments.assets, dividends: investments.dividends, debts: finance.debts,
     expenses: finance.expenses, incomes: finance.incomes, periodRedemptions: investments.periodRedemptions,
     allocationAnalysis: investments.allocationAnalysis, consolidatedBalance, freedomAnalysis,
+    ...(businessDreForExcel ? { businessDre: businessDreForExcel } : {}),
   });
 
   const needsFinanceLoading = activeTab === "financas" || activeTab === "balanco" || !activeTab;
@@ -154,6 +190,7 @@ export function useReportsData(params: UseReportsDataParams) {
     byCategory: finance.byCategory,
     byMethod: finance.byMethod,
     byWeekday: finance.byWeekday,
+    byChargeKind: finance.byChargeKind,
     limitsByCategory: finance.limitsByCategory,
     householdSummary: finance.householdSummary,
     grossExpenseBrutoCents: finance.grossExpenseBrutoCents,

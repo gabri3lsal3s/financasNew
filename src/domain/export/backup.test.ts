@@ -218,5 +218,51 @@ describe("domain/export — backup JSON", () => {
       expect(parsed.payload.data.sector_targets[0]?.class_name).toBe("Ações");
     }
   });
+
+  it("preserva transfer_pair_id completo e rejeita par órfão em despesas/receitas", () => {
+    const dataOk: BackupData = {
+      ...emptyData(),
+      categories: [
+        { id: "c1", user_id: "u1", type: "expense", name: "Saída", icon: null, color: null, is_reserved: false, is_active: true },
+        { id: "c2", user_id: "u1", type: "income", name: "Entrada", icon: null, color: null, is_reserved: false, is_active: true },
+      ],
+      expenses: [
+        {
+          id: "e1",
+          user_id: "u1",
+          category_id: "c1",
+          value: 500,
+          date: "2026-11-10",
+          scope: "business",
+          is_internal_transfer: true,
+          transfer_pair_id: "pair-1",
+          transfer_kind: "pro_labore",
+        },
+      ],
+      incomes: [
+        {
+          id: "i1",
+          user_id: "u1",
+          category_id: "c2",
+          value: 500,
+          date: "2026-11-10",
+          scope: "personal",
+          is_internal_transfer: true,
+          transfer_pair_id: "pair-1",
+          transfer_kind: "pro_labore",
+        },
+      ],
+    };
+
+    const valid = parseBackupPayload(buildBackupPayload(dataOk));
+    expect(valid.ok).toBe(true);
+
+    const broken: BackupData = {
+      ...dataOk,
+      incomes: [],
+    };
+    const invalid = parseBackupPayload(buildBackupPayload(broken));
+    expect(invalid.ok).toBe(false);
+  });
 });
 

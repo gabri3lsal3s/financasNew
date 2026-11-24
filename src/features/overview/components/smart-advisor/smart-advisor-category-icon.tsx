@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   ArrowDownLeft,
   HelpCircle,
+  Sparkles,
   TrendingDown,
   TrendingUp,
   Users,
@@ -45,6 +46,13 @@ export function AdvisorCategoryIcon({
     case "income":
       return (
         <ArrowDownLeft
+          className={`${sizeClass} ${inheritColor ? "" : "text-positive-strong"} shrink-0`.trim()}
+          aria-hidden="true"
+        />
+      );
+    case "celebration":
+      return (
+        <Sparkles
           className={`${sizeClass} ${inheritColor ? "" : "text-positive-strong"} shrink-0`.trim()}
           aria-hidden="true"
         />

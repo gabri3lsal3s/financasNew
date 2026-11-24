@@ -30,12 +30,13 @@ import {
 import {
   convertAiReceiptToUniversalData,
   extractSingleReceiptWithAi,
-  formatAiQuotaResetHint,
+  type AiCategoryOptionInput,
   type AiSingleReceiptClientResult,
 } from "@/services/ai-assistant";
 import { computeSha256Hex } from "@/services/sha256-fallback";
 import {
   extractReceiptTextFromFile,
+  isNativePlatform,
   MAX_RECEIPT_FILE_SIZE_BYTES,
   processPixShare,
 } from "@/services/native";
@@ -104,6 +105,8 @@ export interface ResolveReceiptOptions {
   bankCardMapping?: Record<string, string>;
   /** Nome de banco padrão caso não identificado. */
   defaultBankName?: string;
+  /** Categorias reais do usuário enviadas à IA para dedução direta por itens/produtos. */
+  categories?: readonly AiCategoryOptionInput[];
 }
 
 export interface CompressReceiptImageOptions {
@@ -130,6 +133,11 @@ export interface ResolveAndScanReceiptFileOptions extends ResolveReceiptOptions 
   aiFallbackEnabled?: boolean;
   /** Bloqueia chamada de rede à Micro-IA quando conta está em modo somente leitura. */
   isReadOnlyMode?: boolean;
+  /**
+   * Acelera imagens na Web/PWA enviando direto para IA Vision em 1 passagem (evitando download/CPU de Tesseract),
+   * degradando para o pipeline local em caso de falha/cota. Em PDFs, mantém texto digital local e pula OCR lento.
+   */
+  preferFastAiVisionForWebImages?: boolean;
 }
 
 export interface ResolvedReceiptResult {
@@ -477,6 +485,10 @@ export function resolveReceiptTransaction(
       fieldConfidence: universal.fieldConfidence,
       isSameTitularity: universal.isSameTitularity,
       extractionSource: universal.extractionSource ?? "local_deterministic",
+      aiCategoryId: universal.aiCategoryId,
+      originalCurrency: universal.originalCurrency,
+      originalAmountCents: universal.originalAmountCents,
+      semanticTags: universal.semanticTags,
     };
 
     return {
@@ -581,6 +593,7 @@ async function tryAiReceiptFallback(params: {
     userId: params.options?.userId,
     isReadOnlyMode: params.options?.isReadOnlyMode,
     featureEnabled: params.options?.aiFallbackEnabled,
+    categories: params.options?.categories,
   });
 
   if (!aiRes.ok) {
@@ -605,26 +618,22 @@ function buildAiFailureFallbackMessage(params: {
   defaultMessage: string;
   context: "empty_text" | "unrecognized";
 }): string {
+  // SilentQuotaShield: nunca exibir mensagens de cota/limite esgotado ao usuario;
+  // retornar orientacao neutra de produto para arquivo digital ou preenchimento manual.
   if (params.reason === "quota_exceeded") {
-    return params.context === "empty_text"
-      ? `Não foi possível ler o texto deste arquivo e sua cota de leitura assistida renova em ${formatAiQuotaResetHint(
-          params.quotaResetAt,
-        )}. Preencha manualmente ou envie um PDF digital.`
-      : `Não foi possível identificar os campos automaticamente e sua cota de leitura assistida renova em ${formatAiQuotaResetHint(
-          params.quotaResetAt,
-        )}. Preencha os campos manualmente.`;
+    return params.defaultMessage;
   }
 
   if (params.reason === "timeout" || params.reason === "upstream_unavailable") {
-    return "A leitura assistida por IA está temporariamente instável. Tente enviar novamente em instantes ou preencha os campos manualmente.";
+    return "A leitura automática do arquivo está temporariamente instável. Tente novamente em instantes ou preencha os campos manualmente.";
   }
 
   if (params.context === "empty_text") {
     if (params.reason === "offline") {
-      return "Sem conexão com a internet para acionar a leitura assistida por IA. Conecte-se e tente novamente ou preencha os campos manualmente.";
+      return "Sem conexão com a internet para leitura do arquivo. Conecte-se e tente novamente ou preencha os campos manualmente.";
     }
     if (params.reason === "read_only") {
-      return "A leitura assistida por IA está disponível apenas em contas ativas. Envie um PDF digital emitido pelo banco ou preencha os campos manualmente.";
+      return "Envie um PDF digital emitido pelo banco ou preencha os campos manualmente.";
     }
   }
 
@@ -758,39 +767,89 @@ export async function resolveAndScanReceiptFile(
 
   const isPdf = file.type === "application/pdf" || lowerName.endsWith(".pdf");
   const isRasterImage = isRasterReceiptFile(file);
+  const runningNative = typeof isNativePlatform === "function" && isNativePlatform();
+  const aiAllowed = canAttemptAiFallback(sha256, options);
+  const useFastWebVision = Boolean(
+    options?.preferFastAiVisionForWebImages &&
+      isRasterImage &&
+      !runningNative &&
+      aiAllowed,
+  );
+
+  let fastAiFailure: { reason: AiFallbackReason; quotaResetAt?: string } | null = null;
+
+  // Caminho rápido para imagens na Web: evita dupla compressão em canvas e espera do Tesseract
+  if (useFastWebVision && sha256) {
+    const fastAiAttempt = await tryAiReceiptFallback({
+      sha256,
+      isRasterImage: true,
+      isPdf: false,
+      preparedFile: file,
+      rawFile: file,
+      shouldUseLocalCache,
+      preferVision: true,
+      options,
+    });
+    if (fastAiAttempt.ok) {
+      return {
+        status: "success",
+        ok: true,
+        file,
+        sha256,
+        extractedText: "",
+        parsed: fastAiAttempt.resolved.parsed,
+        identity: fastAiAttempt.resolved.identity,
+        matchedCard: fastAiAttempt.resolved.matchedCard,
+        kindLabel: fastAiAttempt.resolved.kindLabel,
+        multiplicity: "single_receipt",
+      };
+    }
+    fastAiFailure = { reason: fastAiAttempt.reason, quotaResetAt: fastAiAttempt.quotaResetAt };
+  }
 
   const shouldCompress = options?.compressImage !== false;
   const preparedFile = shouldCompress
     ? await compressReceiptImageIfNeeded(file, options?.compression)
     : file;
 
+  const shouldSkipPdfWebOcr = Boolean(
+    options?.preferFastAiVisionForWebImages && isPdf && !runningNative && aiAllowed,
+  );
+
   try {
-    const extractedRaw = await extractReceiptTextFromFile(preparedFile);
+    const extractedRaw = shouldSkipPdfWebOcr
+      ? await extractReceiptTextFromFile(preparedFile, { skipWebImageOcr: true })
+      : await extractReceiptTextFromFile(preparedFile);
     const trimmed = extractedRaw.trim();
 
     if (!trimmed) {
-      if (canAttemptAiFallback(sha256, options) && (isRasterImage || isPdf)) {
-        const aiAttempt = await tryAiReceiptFallback({
-          sha256,
-          isRasterImage,
-          isPdf,
-          preparedFile,
-          rawFile: file,
-          shouldUseLocalCache,
-          preferVision: isRasterImage || isPdf,
-          options,
-        });
-        if (aiAttempt.ok) {
+      const emptyFallbackAttempt = fastAiFailure
+        ? ({ ok: false, ...fastAiFailure } as const)
+        : canAttemptAiFallback(sha256, options) && (isRasterImage || isPdf)
+          ? await tryAiReceiptFallback({
+              sha256,
+              isRasterImage,
+              isPdf,
+              preparedFile,
+              rawFile: file,
+              shouldUseLocalCache,
+              preferVision: isRasterImage || isPdf,
+              options,
+            })
+          : null;
+
+      if (emptyFallbackAttempt) {
+        if (emptyFallbackAttempt.ok) {
           return {
             status: "success",
             ok: true,
             file: preparedFile,
             sha256,
             extractedText: "",
-            parsed: aiAttempt.resolved.parsed,
-            identity: aiAttempt.resolved.identity,
-            matchedCard: aiAttempt.resolved.matchedCard,
-            kindLabel: aiAttempt.resolved.kindLabel,
+            parsed: emptyFallbackAttempt.resolved.parsed,
+            identity: emptyFallbackAttempt.resolved.identity,
+            matchedCard: emptyFallbackAttempt.resolved.matchedCard,
+            kindLabel: emptyFallbackAttempt.resolved.kindLabel,
             multiplicity: "single_receipt",
           };
         }
@@ -803,11 +862,11 @@ export async function resolveAndScanReceiptFile(
           extractedText: "",
           parsed: null,
           identity: null,
-          aiFallbackReason: aiAttempt.reason,
-          quotaResetAt: aiAttempt.quotaResetAt,
+          aiFallbackReason: emptyFallbackAttempt.reason,
+          quotaResetAt: emptyFallbackAttempt.quotaResetAt,
           errorMessage: buildAiFailureFallbackMessage({
-            reason: aiAttempt.reason,
-            quotaResetAt: aiAttempt.quotaResetAt,
+            reason: emptyFallbackAttempt.reason,
+            quotaResetAt: emptyFallbackAttempt.quotaResetAt,
             defaultMessage:
               "Não foi possível ler o texto deste arquivo. Certifique-se de que o comprovante esteja nítido ou seja um PDF digital emitido pelo banco.",
             context: "empty_text",
@@ -850,29 +909,34 @@ export async function resolveAndScanReceiptFile(
     });
 
     if (!resolved) {
-      if (canAttemptAiFallback(sha256, options)) {
-        const aiAttempt = await tryAiReceiptFallback({
-          sha256,
-          trimmedText: trimmed,
-          isRasterImage,
-          isPdf,
-          preparedFile,
-          rawFile: file,
-          shouldUseLocalCache,
-          preferVision: isRasterImage || isPdf,
-          options,
-        });
-        if (aiAttempt.ok) {
+      const unrecognizedAttempt = fastAiFailure
+        ? ({ ok: false, ...fastAiFailure } as const)
+        : canAttemptAiFallback(sha256, options)
+          ? await tryAiReceiptFallback({
+              sha256,
+              trimmedText: trimmed,
+              isRasterImage,
+              isPdf,
+              preparedFile,
+              rawFile: file,
+              shouldUseLocalCache,
+              preferVision: isRasterImage || isPdf,
+              options,
+            })
+          : null;
+
+      if (unrecognizedAttempt) {
+        if (unrecognizedAttempt.ok) {
           return {
             status: "success",
             ok: true,
             file: preparedFile,
             sha256,
             extractedText: trimmed,
-            parsed: aiAttempt.resolved.parsed,
-            identity: aiAttempt.resolved.identity,
-            matchedCard: aiAttempt.resolved.matchedCard,
-            kindLabel: aiAttempt.resolved.kindLabel,
+            parsed: unrecognizedAttempt.resolved.parsed,
+            identity: unrecognizedAttempt.resolved.identity,
+            matchedCard: unrecognizedAttempt.resolved.matchedCard,
+            kindLabel: unrecognizedAttempt.resolved.kindLabel,
             multiplicity,
           };
         }
@@ -886,11 +950,11 @@ export async function resolveAndScanReceiptFile(
           parsed: null,
           identity: null,
           multiplicity,
-          aiFallbackReason: aiAttempt.reason,
-          quotaResetAt: aiAttempt.quotaResetAt,
+          aiFallbackReason: unrecognizedAttempt.reason,
+          quotaResetAt: unrecognizedAttempt.quotaResetAt,
           errorMessage: buildAiFailureFallbackMessage({
-            reason: aiAttempt.reason,
-            quotaResetAt: aiAttempt.quotaResetAt,
+            reason: unrecognizedAttempt.reason,
+            quotaResetAt: unrecognizedAttempt.quotaResetAt,
             defaultMessage:
               "Não foi possível identificar informações financeiras válidas (valor, data e destinatário) no comprovante. Verifique o arquivo e tente novamente.",
             context: "unrecognized",
@@ -915,6 +979,7 @@ export async function resolveAndScanReceiptFile(
     let finalResolved = resolved;
     const localConfidenceScore = resolved.parsed.confidenceScore ?? 1;
     if (
+      !fastAiFailure &&
       localConfidenceScore < AI_FALLBACK_CONFIDENCE_THRESHOLD &&
       canAttemptAiFallback(sha256, options)
     ) {

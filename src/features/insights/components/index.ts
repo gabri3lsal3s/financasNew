@@ -5,6 +5,7 @@ export * from "./assistant-memory-section";
 export * from "./recurrence-audit-modal";
 export * from "./convert-recurrence-dialog";
 export * from "./projection-tab";
+export * from "./monthly-closing-card";
 export { RecurrencesTab as OccurrencesBlock } from "./recurrences-tab";
 export type { RecurrencesTabProps as OccurrencesBlockProps } from "./recurrences-tab";
 export { ProjectionTab as ProjectionRunwayBlock } from "./projection-tab";

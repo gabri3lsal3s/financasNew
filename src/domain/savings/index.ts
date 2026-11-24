@@ -75,25 +75,29 @@ export function buildChallengeOptions(
   categories: readonly CategorySpend[],
   monthlyIncomeCents: number,
 ): ChallengeOption[] {
+  if (monthlyIncomeCents <= 0) return [];
+
   const minLimit = dynamicMinLimitCents(monthlyIncomeCents);
   const highSpendFloor = Math.round(monthlyIncomeCents * HIGH_SPEND_THRESHOLD_PERCENT);
 
   const options: ChallengeOption[] = [];
   for (const category of categories) {
     if (category.essential) continue;
+    if (category.monthlyAvgCents <= 0) continue;
     if (category.monthlyAvgCents < highSpendFloor) continue;
 
     for (const percent of [10, 20, 30] as const) {
       const targetCents = Math.round(category.monthlyAvgCents * (1 - percent / 100));
-      // Desafio inviável: a meta cairia abaixo do piso dinâmico.
-      if (targetCents < minLimit) continue;
+      const savingsCents = Math.round(category.monthlyAvgCents * (percent / 100));
+      // Desafio inviável ou irrisório: a meta cairia abaixo do piso dinâmico ou economizaria < R$ 10.
+      if (targetCents < minLimit || savingsCents < 1000) continue;
       options.push({
         categoryId: category.categoryId,
         name: category.name,
         icon: category.icon,
         percent,
         targetCents,
-        savingsCents: Math.round(category.monthlyAvgCents * (percent / 100)),
+        savingsCents,
         minLimitCents: minLimit,
       });
     }
@@ -140,9 +144,14 @@ export function discretionaryChallenge(
   categories: readonly CategorySpend[],
   monthlyIncomeCents: number,
 ): DiscretionaryChallenge | null {
+  if (monthlyIncomeCents <= 0) return null;
+
   const highSpendFloor = Math.round(monthlyIncomeCents * HIGH_SPEND_THRESHOLD_PERCENT);
   const eligible = categories.filter(
-    (category) => !category.essential && category.monthlyAvgCents >= highSpendFloor,
+    (category) =>
+      !category.essential &&
+      category.monthlyAvgCents > 0 &&
+      category.monthlyAvgCents >= highSpendFloor,
   );
   const totalAvgCents = eligible.reduce((acc, category) => acc + category.monthlyAvgCents, 0);
   if (totalAvgCents <= 0) return null;
@@ -185,6 +194,8 @@ export interface BudgetUsage {
   limitCents: number;
   /** Gastos do mês na categoria. */
   spentCents: number;
+  /** Se a categoria é essencial/obrigatória (suprime sugestões de redução de teto preventivo). */
+  essential?: boolean;
 }
 
 export interface LimitSuggestion {
@@ -245,6 +256,14 @@ export function suggestIncrease(limitCents: number, spentCents: number): number 
   return limitCents + Math.max(excess, buffer);
 }
 
+export interface LimitSuggestionOptions {
+  /**
+   * Indica se o mês já está encerrado ou na reta final (ex.: dia >= 25 ou fechamento M-1).
+   * Quando `false` (início de mês aberto), suprime reduções prematuras de limite.
+   */
+  isMonthClosedOrLate?: boolean;
+}
+
 /**
  * Sugestão de redução: uso < 50% e folga > R$ 50 → novo limite mantendo
  * 30% de margem (`spent ÷ 0,7`), arredondado para cima a R$ 10 e nunca
@@ -254,7 +273,9 @@ export function suggestReduction(
   limitCents: number,
   spentCents: number,
   monthlyIncomeCents: number,
+  options?: LimitSuggestionOptions,
 ): number | null {
+  if (options?.isMonthClosedOrLate === false) return null;
   if (limitCents <= 0) return null;
   const slack = limitCents - spentCents;
   if (slack <= REDUCE_SLACK_FLOOR_CENTS) return null;
@@ -276,6 +297,7 @@ export function buildLimitSuggestions(
   usages: readonly BudgetUsage[],
   monthlyIncomeCents: number,
   max = MAX_LIMIT_SUGGESTIONS,
+  options?: LimitSuggestionOptions,
 ): LimitSuggestion[] {
   const suggestions: LimitSuggestion[] = [];
 
@@ -294,7 +316,11 @@ export function buildLimitSuggestions(
       continue;
     }
 
-    const reduction = suggestReduction(usage.limitCents, usage.spentCents, monthlyIncomeCents);
+    // Categorias essenciais (ex.: Saúde, Alimentação, Moradia) não devem receber sugestão
+    // automática de cortar o teto preventivo quando houve folga no mês.
+    if (usage.essential) continue;
+
+    const reduction = suggestReduction(usage.limitCents, usage.spentCents, monthlyIncomeCents, options);
     if (reduction !== null && usage.limitCents - reduction >= 1000) {
       suggestions.push({
         categoryId: usage.categoryId,

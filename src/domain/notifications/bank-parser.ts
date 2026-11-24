@@ -70,6 +70,14 @@ export interface ParsedBankTransaction {
   fieldConfidence?: ReceiptFieldConfidence;
   isSameTitularity?: boolean;
   extractionSource?: ReceiptExtractionSource;
+  /** ID da categoria sugerida pela IA entre as categorias cadastradas do usuário. */
+  aiCategoryId?: string;
+  /** Código ISO-4217 da moeda original quando diferente de BRL (ex.: "USD", "EUR"). */
+  originalCurrency?: string;
+  /** Valor em centavos na moeda original antes da conversão para BRL. */
+  originalAmountCents?: number;
+  /** Tags semânticas curtas associadas ao estabelecimento/itens. */
+  semanticTags?: string[];
 }
 
 

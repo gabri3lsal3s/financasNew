@@ -1,4 +1,5 @@
 import type { StatementTransaction } from "../types";
+import { inferChargeKindFromDescription } from "@/domain/cards/charges";
 import { cleanDescription, isPaymentOrSettlement } from "../clean";
 import { extractInstallmentInfo } from "../installments";
 import { generateStatementHash } from "../hash";
@@ -138,6 +139,7 @@ export function parseOfxToTransactions(
       installment,
       statementHash,
       fitid,
+      inferredChargeKind: inferChargeKindFromDescription(combinedDesc),
     });
   }
 

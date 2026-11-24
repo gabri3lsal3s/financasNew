@@ -200,4 +200,38 @@ describe("sugestões de limite (§3.7.5)", () => {
       ),
     ).toEqual([]);
   });
+
+  it("impede redução prematura de limite quando isMonthClosedOrLate === false (Fase 6)", () => {
+    expect(suggestReduction(100_000, 10_000, 500_000, { isMonthClosedOrLate: false })).toBeNull();
+    expect(
+      buildLimitSuggestions(
+        [{ categoryId: "a", name: "A", icon: null, limitCents: 100_000, spentCents: 10_000 }],
+        500_000,
+        3,
+        { isMonthClosedOrLate: false },
+      ),
+    ).toEqual([]);
+  });
+
+  it("não gera desafios nem infla categoryCount com categorias R$ 0 quando monthlyIncomeCents <= 0", () => {
+    const categories = [
+      { categoryId: "c1", name: "Lazer", icon: "lazer", monthlyAvgCents: 5000, essential: false },
+      { categoryId: "c2", name: "Compras", icon: "compras", monthlyAvgCents: 0, essential: false },
+      { categoryId: "c3", name: "Vestuário", icon: "vestuario", monthlyAvgCents: 0, essential: false },
+    ];
+    expect(buildChallengeOptions(categories, 0)).toEqual([]);
+    expect(discretionaryChallenge(categories, 0)).toBeNull();
+  });
+
+  it("suprime suggestReduction para categorias essenciais com folga, mantendo para discricionárias", () => {
+    const suggestions = buildLimitSuggestions(
+      [
+        { categoryId: "saude", name: "Saúde", icon: "saude", limitCents: 50_000, spentCents: 5000, essential: true },
+        { categoryId: "lazer", name: "Lazer", icon: "lazer", limitCents: 50_000, spentCents: 5000, essential: false },
+      ],
+      500_000,
+    );
+    expect(suggestions.some((s) => s.categoryId === "saude")).toBe(false);
+    expect(suggestions.some((s) => s.categoryId === "lazer" && s.kind === "reduce")).toBe(true);
+  });
 });

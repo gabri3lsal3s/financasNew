@@ -76,6 +76,20 @@ export function applyResolvedReceiptToLaunchState(
     paymentMethod: enriched.paymentMethod ?? prev.paymentMethod,
   };
 
+  if (
+    nature === "expense" &&
+    identity.preferredReportWeight !== undefined &&
+    !prev.splitEnabled
+  ) {
+    next.reportWeight = identity.preferredReportWeight;
+    next.reportCustomAmountCents = Math.round(
+      enriched.amountCents * identity.preferredReportWeight,
+    );
+  }
+  if (identity.preferredIsFamily !== undefined) {
+    next.isFamily = identity.preferredIsFamily;
+  }
+
   if (installmentCount && installmentCount > 1) {
     next.installments = installmentCount;
     if (nature === "expense") next.paymentMethod = "credit_card";
@@ -89,18 +103,35 @@ export function applyResolvedReceiptToLaunchState(
   }
 
   if (categories?.length) {
-    const slug = identity.categorySlug || enriched.categorySlug;
-    let matched = slug ? matchCategoryBySlug(categories, slug as CanonicalCategorySlug) : undefined;
-    if (!matched && slug) {
-      matched = categories.find(
-        (c) =>
-          c.name.toLowerCase().includes(slug.toLowerCase()) ||
-          slug.toLowerCase().includes(c.name.toLowerCase()),
-      );
+    const pool = categories.some((c) => c.type === nature)
+      ? categories.filter((c) => c.type === nature)
+      : categories;
+
+    // Prioridade: 1) memória aprendida do usuário -> 2) dedução da IA -> 3) catálogo canônico -> 4) palavras-chave.
+    let matched: Category | undefined;
+    if (identity.isLearned && identity.categorySlug) {
+      matched = matchCategoryBySlug(pool, identity.categorySlug);
+    }
+    if (!matched && enriched.aiCategoryId) {
+      matched = pool.find((c) => c.id === enriched.aiCategoryId);
+    }
+    if (!matched) {
+      const catalogSlug =
+        (!identity.isLearned ? identity.categorySlug : undefined) || enriched.categorySlug;
+      if (catalogSlug) {
+        matched = matchCategoryBySlug(pool, catalogSlug as CanonicalCategorySlug);
+        if (!matched) {
+          matched = pool.find(
+            (c) =>
+              c.name.toLowerCase().includes(catalogSlug.toLowerCase()) ||
+              catalogSlug.toLowerCase().includes(c.name.toLowerCase()),
+          );
+        }
+      }
     }
     if (!matched) {
       const inferred = inferCategoryKeyword(next.description);
-      if (inferred) matched = matchCategoryBySlug(categories, inferred);
+      if (inferred) matched = matchCategoryBySlug(pool, inferred);
     }
     if (matched) next.categoryId = matched.id;
   }

@@ -1,16 +1,24 @@
 import { useMemo } from "react";
-import { MoneyText } from "@/components/ui";
+import { Briefcase } from "lucide-react";
+import { Badge, Button, MoneyText } from "@/components/ui";
 import { CardSubscriptionRadar, KpiCard, KpiGrid } from "@/components/modules";
 import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
+import type { MixedCardSplitResult } from "@/domain/business";
 import { buildInvoiceBreakdown } from "@/domain/calculation-memory";
-import type { CompetenceSummary } from "@/domain/cards";
+import { summarizeInvoiceCharges, type CompetenceSummary } from "@/domain/cards";
 import type { CardSubscriptionImpact } from "@/domain/insights/card-radar";
+import type { Expense } from "@/types";
+import { InvoiceCompositionDonutCard } from "./invoice-composition-donut-card";
 
 export interface InvoiceKpisSectionProps {
   cardName?: string;
   summary: CompetenceSummary | undefined;
   cardSubscriptionImpact: CardSubscriptionImpact | null;
   onIgnoreSubscriptionItem: (key: string) => void;
+  expenses?: readonly Expense[];
+  onOpenCharge?: () => void;
+  mixedCardSplit?: MixedCardSplitResult | null;
+  onOpenReimbursement?: () => void;
 }
 
 /** KPIs da competência (Bruto vs. Ponderado) e radar de assinaturas previstas. */
@@ -19,7 +27,16 @@ export function InvoiceKpisSection({
   summary,
   cardSubscriptionImpact,
   onIgnoreSubscriptionItem,
+  expenses,
+  onOpenCharge,
+  mixedCardSplit,
+  onOpenReimbursement,
 }: InvoiceKpisSectionProps) {
+  const chargesSummary = useMemo(() => {
+    if (!expenses || expenses.length === 0) return undefined;
+    return summarizeInvoiceCharges(expenses);
+  }, [expenses]);
+
   const invoiceBreakdown = useMemo(() => {
     if (!summary) return null;
     return buildInvoiceBreakdown({
@@ -33,8 +50,9 @@ export function InvoiceKpisSection({
       creditoRestanteCents: summary.creditoRestanteCents,
       saldoBrutoCents: summary.saldoBrutoCents,
       saldoPonderadoCents: summary.saldoPonderadoCents,
+      chargesSummary,
     });
-  }, [cardName, summary]);
+  }, [cardName, summary, chargesSummary]);
 
   return (
     <>
@@ -100,6 +118,48 @@ export function InvoiceKpisSection({
         />
       </KpiGrid>
 
+      {mixedCardSplit && mixedCardSplit.businessCents > 0 ? (
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs">
+          <div className="flex items-start gap-2.5 min-w-0">
+            <Briefcase className="size-4 shrink-0 text-portfolio mt-0.5" aria-hidden="true" />
+            <div className="flex flex-col gap-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs sm:text-sm font-semibold text-foreground">
+                  Gastos do Meu Negócio (PJ) nesta fatura
+                </span>
+                {mixedCardSplit.isFullyReimbursed ? (
+                  <Badge variant="positive" size="xs">
+                    Reembolsado
+                  </Badge>
+                ) : null}
+              </div>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1">
+                  <span>Pessoal (PF):</span>
+                  <MoneyText cents={mixedCardSplit.personalCents} tone="default" variant="caption" className="font-semibold text-foreground" />
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <span>Negócio (PJ):</span>
+                  <MoneyText cents={mixedCardSplit.businessCents} tone="portfolio" variant="caption" className="font-semibold" />
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {!mixedCardSplit.isFullyReimbursed && onOpenReimbursement ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+              onClick={onOpenReimbursement}
+            >
+              Registrar Reembolso PJ para PF
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+
       {cardSubscriptionImpact && cardSubscriptionImpact.totalProjectedCents > 0 ? (
         <div data-tour="cards-subscription-radar">
           <CardSubscriptionRadar
@@ -107,6 +167,16 @@ export function InvoiceKpisSection({
             onIgnoreItem={onIgnoreSubscriptionItem}
           />
         </div>
+      ) : null}
+
+      {expenses && expenses.length > 0 ? (
+        <InvoiceCompositionDonutCard
+          cardName={cardName}
+          competenceMonth={summary?.month ?? ""}
+          expenses={expenses}
+          onOpenChargeDialog={onOpenCharge}
+          calculationMemoryAction={invoiceBreakdown ? <CalculationMemoryModal breakdown={invoiceBreakdown} /> : undefined}
+        />
       ) : null}
     </>
   );

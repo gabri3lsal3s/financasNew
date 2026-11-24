@@ -100,6 +100,29 @@ export const AI_ALLOWED_RECEIPT_KINDS = [
 
 export const AI_ALLOWED_CONFIDENCE_LEVELS = ["high", "medium", "low"] as const;
 
+export const AI_STATEMENT_ENTRY_TYPES = ["purchase", "refund", "payment", "charge"] as const;
+export type AiStatementEntryType = (typeof AI_STATEMENT_ENTRY_TYPES)[number];
+
+export const AI_SERVICE_SEGMENTS = [
+  "streaming",
+  "fitness",
+  "cloud_ai",
+  "telecom",
+  "mobility",
+  "delivery",
+  "utilities",
+  "health",
+  "education",
+  "other",
+] as const;
+export type AiServiceSegment = (typeof AI_SERVICE_SEGMENTS)[number];
+
+export const AI_CUT_TIERS = ["essential", "discretionary", "can_cut"] as const;
+export type AiCutTier = (typeof AI_CUT_TIERS)[number];
+
+export type AiCallPriority = "active" | "passive";
+export const PASSIVE_AI_DAILY_RESERVE = 2;
+
 export function stripBase64DataPrefix(raw: string): string {
   const trimmed = raw.trim();
   const commaIdx = trimmed.indexOf(",");
@@ -307,10 +330,15 @@ export function evaluateAiQuotaAllowance(params: {
   todayBrt: string;
   nextDayResetAtIso: string;
   nextMonthResetAtIso: string;
+  priority?: AiCallPriority;
 }): AiQuotaEvaluation {
   const limits = AI_QUOTA_LIMITS[params.planGroup][params.bucket];
   const row = params.row;
   const isSameDay = Boolean(row && row.period_day === params.todayBrt);
+  const priority: AiCallPriority = params.priority ?? "active";
+  const reserve =
+    priority === "passive" ? (limits.day <= 2 ? 1 : PASSIVE_AI_DAILY_RESERVE) : 0;
+  const effectiveDailyLimit = Math.max(1, limits.day - reserve);
 
   const usedMonth = row
     ? params.bucket === "receipt_calls"
@@ -335,7 +363,7 @@ export function evaluateAiQuotaAllowance(params: {
     };
   }
 
-  if (usedDay >= limits.day) {
+  if (usedDay >= effectiveDailyLimit) {
     return {
       allowed: false,
       limitScope: "day",
@@ -349,7 +377,7 @@ export function evaluateAiQuotaAllowance(params: {
     allowed: true,
     usedDay,
     usedMonth,
-    remainingDay: limits.day - usedDay,
+    remainingDay: effectiveDailyLimit - usedDay,
     remainingMonth: limits.month - usedMonth,
   };
 }
@@ -370,6 +398,16 @@ export const AiSingleReceiptRequestSchema = z
     imageBase64: z.string().optional(),
     imageMimeType: z.enum(["image/jpeg", "image/webp", "image/png"]).optional(),
     userFullName: z.string().trim().max(120).optional(),
+    categories: z
+      .array(
+        z.object({
+          id: z.string().trim().min(1).max(80),
+          name: z.string().trim().min(1).max(80),
+          type: z.enum(["expense", "income"]).optional(),
+        }),
+      )
+      .max(MAX_AI_CATEGORIZE_CATEGORIES)
+      .optional(),
   })
   .superRefine((val, ctx) => {
     const hasText = Boolean(val.text && val.text.trim().length > 0);
@@ -391,20 +429,46 @@ export const AiSingleReceiptRequestSchema = z
     }
   });
 
-export const AiStatementPdfRowsRequestSchema = z.object({
-  mode: z.literal("statement_pdf_rows"),
-  sha256: Sha256HexSchema,
-  text: z
-    .string()
-    .trim()
-    .min(1, "Texto da fatura vazio.")
-    .max(MAX_AI_STATEMENT_PDF_TEXT_CHARS, "Texto da fatura excede 25.000 caracteres."),
-  referenceYear: z.number().int().min(2020).max(2100).optional(),
-});
+export const AiStatementPdfRowsRequestSchema = z
+  .object({
+    mode: z.literal("statement_pdf_rows"),
+    sha256: Sha256HexSchema,
+    text: z
+      .string()
+      .max(MAX_AI_STATEMENT_PDF_TEXT_CHARS, "Texto da fatura excede 25.000 caracteres.")
+      .optional(),
+    imageBase64: z.string().optional(),
+    imageMimeType: z.enum(["image/jpeg", "image/webp", "image/png"]).optional(),
+    referenceYear: z.number().int().min(2020).max(2100).optional(),
+    competenceMonth: z
+      .string()
+      .regex(/^\d{4}-\d{2}$/)
+      .optional(),
+  })
+  .superRefine((val, ctx) => {
+    const hasText = Boolean(val.text && val.text.trim().length > 0);
+    const hasImage = Boolean(val.imageBase64 && val.imageBase64.trim().length > 0);
+    if (!hasText && !hasImage) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Informe texto da fatura ou imageBase64 para análise.",
+      });
+    }
+    if (hasImage && val.imageBase64) {
+      if (!isWithinImageByteCap(val.imageBase64, MAX_AI_IMAGE_BYTES)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["imageBase64"],
+          message: "Imagem comprimida da fatura excede o teto estrito de 500 KB.",
+        });
+      }
+    }
+  });
 
 export const AiCategorizeBatchRequestSchema = z.object({
   mode: z.literal("categorize_batch"),
   sha256: Sha256HexSchema,
+  priority: z.enum(["active", "passive"]).optional(),
   descriptions: z
     .array(
       z
@@ -451,6 +515,11 @@ export const AiSingleReceiptOutputSchema = z.object({
   receiptKind: z.enum(AI_ALLOWED_RECEIPT_KINDS),
   description: z.string().trim().min(1).max(160),
   merchantOrBeneficiary: z.string().trim().max(120).nullable().optional(),
+  merchantCnpj: z
+    .string()
+    .regex(/^\d{14}$/)
+    .nullable()
+    .optional(),
   payerOrSource: z.string().trim().max(120).nullable().optional(),
   bankName: z.string().trim().max(80).nullable().optional(),
   cardLastDigits: z
@@ -461,6 +530,14 @@ export const AiSingleReceiptOutputSchema = z.object({
   cardBrand: z.string().trim().max(40).nullable().optional(),
   installmentsCount: z.number().int().min(1).max(60).nullable().optional(),
   isSameTitularity: z.boolean().nullable().optional(),
+  categoryId: z.string().trim().min(1).max(80).nullable().optional(),
+  originalCurrency: z
+    .string()
+    .regex(/^[A-Z]{3}$/)
+    .nullable()
+    .optional(),
+  originalAmountCents: z.number().int().min(1).max(999_999_999).nullable().optional(),
+  semanticTags: z.array(z.string().trim().min(1).max(30)).max(5).nullable().optional(),
   confidence: ConfidenceLevelSchema,
   fieldConfidence: z
     .object({
@@ -479,7 +556,10 @@ export type AiSingleReceiptOutput = z.infer<typeof AiSingleReceiptOutputSchema>;
  * Normaliza campos opcionais/formatáveis retornados pelo LLM antes da validação Zod estrita,
  * preservando integralmente a exigência de `amountCents` inteiro válido (nunca arredonda float).
  */
-export function normalizeSingleReceiptAiPayload(raw: unknown): unknown {
+export function normalizeSingleReceiptAiPayload(
+  raw: unknown,
+  allowedCategoryIds?: ReadonlySet<string>,
+): unknown {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     return raw;
   }
@@ -500,6 +580,47 @@ export function normalizeSingleReceiptAiPayload(raw: unknown): unknown {
   if (typeof clone.cardLastDigits === "string") {
     const digits = clone.cardLastDigits.replace(/\D/g, "");
     clone.cardLastDigits = digits.length >= 4 ? digits.slice(-4) : null;
+  }
+
+  if (typeof clone.merchantCnpj === "string") {
+    const cnpjDigits = clone.merchantCnpj.replace(/\D/g, "");
+    clone.merchantCnpj = cnpjDigits.length === 14 ? cnpjDigits : null;
+  }
+
+  if (typeof clone.originalCurrency === "string") {
+    const iso = clone.originalCurrency.trim().toUpperCase();
+    clone.originalCurrency = /^[A-Z]{3}$/.test(iso) && iso !== "BRL" ? iso : null;
+  }
+
+  if (typeof clone.originalAmountCents === "number") {
+    if (
+      !Number.isInteger(clone.originalAmountCents) ||
+      clone.originalAmountCents < 1 ||
+      clone.originalAmountCents > 999_999_999
+    ) {
+      clone.originalAmountCents = null;
+    }
+  }
+
+  if (Array.isArray(clone.semanticTags)) {
+    const cleanTags = clone.semanticTags
+      .filter((t): t is string => typeof t === "string")
+      .map((t) => t.trim().toLowerCase().slice(0, 30))
+      .filter(Boolean)
+      .slice(0, 5);
+    clone.semanticTags = cleanTags.length > 0 ? Array.from(new Set(cleanTags)) : null;
+  }
+
+  if (typeof clone.categoryId === "string") {
+    clone.categoryId = clone.categoryId.trim() || null;
+  }
+  if (
+    allowedCategoryIds &&
+    allowedCategoryIds.size > 0 &&
+    typeof clone.categoryId === "string" &&
+    !allowedCategoryIds.has(clone.categoryId)
+  ) {
+    clone.categoryId = null;
   }
 
   if (typeof clone.installmentsCount === "number") {
@@ -538,6 +659,7 @@ export const AiStatementPdfRowSchema = z.object({
   amountCents: z.number().int().refine((n) => n !== 0, "amountCents não pode ser zero."),
   installmentCurrent: z.number().int().min(1).max(60).nullable().optional(),
   installmentTotal: z.number().int().min(1).max(60).nullable().optional(),
+  entryType: z.enum(AI_STATEMENT_ENTRY_TYPES).nullable().optional(),
 });
 
 export const AiStatementPdfRowsOutputSchema = z.object({
@@ -547,10 +669,92 @@ export const AiStatementPdfRowsOutputSchema = z.object({
 export type AiStatementPdfRow = z.infer<typeof AiStatementPdfRowSchema>;
 export type AiStatementPdfRowsOutput = z.infer<typeof AiStatementPdfRowsOutputSchema>;
 
+/**
+ * Normaliza linhas retornadas pelo LLM para faturas (`statement_pdf_rows`):
+ * - Descarta linhas zeradas (`amountCents === 0`, ex.: isenção de anuidade R$ 0,00) sem invalidar o lote;
+ * - Preserva float sem arredondar (para rejeição estrita pelo Zod);
+ * - Higieniza datas ISO, parcelas (1/1 ou 0 -> null) e sinal coerente com `entryType`.
+ */
+export function normalizeStatementPdfRowsAiPayload(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return raw;
+  }
+
+  const record = raw as Record<string, unknown>;
+  if (!Array.isArray(record.rows)) {
+    return raw;
+  }
+
+  const allowedTypes = new Set<string>(AI_STATEMENT_ENTRY_TYPES);
+  const normalizedRows: unknown[] = [];
+
+  for (const item of record.rows) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      normalizedRows.push(item);
+      continue;
+    }
+
+    const row: Record<string, unknown> = { ...(item as Record<string, unknown>) };
+    if (row.amountCents === 0) {
+      continue;
+    }
+
+    if (typeof row.date === "string") {
+      const trimmedDate = row.date.trim();
+      if (/^\d{4}-\d{2}-\d{2}/.test(trimmedDate)) {
+        row.date = trimmedDate.slice(0, 10);
+      }
+    }
+
+    if (typeof row.description === "string") {
+      row.description = row.description.trim().slice(0, 160);
+    }
+
+    const cur = row.installmentCurrent;
+    const tot = row.installmentTotal;
+    const validInstallment =
+      typeof cur === "number" &&
+      typeof tot === "number" &&
+      Number.isInteger(cur) &&
+      Number.isInteger(tot) &&
+      cur >= 1 &&
+      tot >= 2 &&
+      cur <= tot &&
+      tot <= 60;
+
+    if (!validInstallment) {
+      row.installmentCurrent = null;
+      row.installmentTotal = null;
+    }
+
+    const rawEntryType = typeof row.entryType === "string" ? row.entryType.trim() : "";
+    const entryType = allowedTypes.has(rawEntryType) ? rawEntryType : null;
+    row.entryType = entryType;
+
+    if (
+      (entryType === "refund" || entryType === "payment") &&
+      typeof row.amountCents === "number" &&
+      Number.isInteger(row.amountCents) &&
+      row.amountCents > 0
+    ) {
+      row.amountCents = -row.amountCents;
+    }
+
+    normalizedRows.push(row);
+  }
+
+  return { ...record, rows: normalizedRows };
+}
+
 export const AiCategorizeBatchItemOutputSchema = z.object({
   index: z.number().int().min(0).max(MAX_AI_CATEGORIZE_BATCH_ITEMS - 1),
   friendlyName: z.string().trim().min(1).max(120),
   categoryId: z.string().trim().min(1).max(80).nullable(),
+  canonicalMerchant: z.string().trim().min(1).max(80).nullable().optional(),
+  serviceSegment: z.enum(AI_SERVICE_SEGMENTS).nullable().optional(),
+  cutTier: z.enum(AI_CUT_TIERS).nullable().optional(),
+  isSubscription: z.boolean().nullable().optional(),
+  semanticTags: z.array(z.string().trim().min(1).max(30)).max(5).nullable().optional(),
 });
 
 export const AiCategorizeBatchOutputSchema = z.object({
@@ -558,6 +762,69 @@ export const AiCategorizeBatchOutputSchema = z.object({
 });
 
 export type AiCategorizeBatchOutput = z.infer<typeof AiCategorizeBatchOutputSchema>;
+
+/**
+ * Higieniza campos semânticos opcionais do lote sem invalidar classificações válidas.
+ */
+export function normalizeCategorizeBatchAiPayload(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return raw;
+  }
+
+  const record = raw as Record<string, unknown>;
+  if (!Array.isArray(record.items)) {
+    return raw;
+  }
+
+  const allowedSegments = new Set<string>(AI_SERVICE_SEGMENTS);
+  const allowedCutTiers = new Set<string>(AI_CUT_TIERS);
+
+  const normalizedItems = record.items.map((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      return item;
+    }
+
+    const row: Record<string, unknown> = { ...(item as Record<string, unknown>) };
+
+    if ("canonicalMerchant" in row) {
+      row.canonicalMerchant =
+        typeof row.canonicalMerchant === "string"
+          ? row.canonicalMerchant.trim().slice(0, 80) || null
+          : null;
+    }
+
+    if ("serviceSegment" in row) {
+      const seg = typeof row.serviceSegment === "string" ? row.serviceSegment.trim() : "";
+      row.serviceSegment = allowedSegments.has(seg) ? seg : null;
+    }
+
+    if ("cutTier" in row) {
+      const tier = typeof row.cutTier === "string" ? row.cutTier.trim() : "";
+      row.cutTier = allowedCutTiers.has(tier) ? tier : null;
+    }
+
+    if ("isSubscription" in row) {
+      row.isSubscription = typeof row.isSubscription === "boolean" ? row.isSubscription : null;
+    }
+
+    if ("semanticTags" in row) {
+      if (Array.isArray(row.semanticTags)) {
+        const cleanTags = row.semanticTags
+          .filter((t): t is string => typeof t === "string")
+          .map((t) => t.trim().toLowerCase().slice(0, 30))
+          .filter(Boolean)
+          .slice(0, 5);
+        row.semanticTags = cleanTags.length > 0 ? Array.from(new Set(cleanTags)) : null;
+      } else {
+        row.semanticTags = null;
+      }
+    }
+
+    return row;
+  });
+
+  return { ...record, items: normalizedItems };
+}
 
 /**
  * Valida o output do lote garantindo pela Trava 5 que nenhum `categoryId` inventado
@@ -602,7 +869,7 @@ export function validateCategorizeBatchOutput(
     }
   });
 
-  const parsed = checkedSchema.safeParse(raw);
+  const parsed = checkedSchema.safeParse(normalizeCategorizeBatchAiPayload(raw));
   if (!parsed.success) {
     return { success: false };
   }
@@ -621,7 +888,7 @@ export type AiAssistantResponseBody =
       ok: true;
       mode: "statement_pdf_rows";
       cached: boolean;
-      source: "cache_remote" | "ai_text";
+      source: "cache_remote" | "ai_text" | "ai_vision";
       data: AiStatementPdfRowsOutput;
     }
   | {

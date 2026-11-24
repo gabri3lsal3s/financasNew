@@ -48,7 +48,12 @@ export function AddTripExpenseDialog({
           </ModalFooter>
         }
       >
-        <form id="add-trip-expense-form" onSubmit={form.handleSubmit} className="space-y-4">
+        <form
+          id="add-trip-expense-form"
+          onSubmit={form.handleSubmit}
+          onPaste={form.handleFormPaste}
+          className="space-y-4"
+        >
           <TripExpenseFormFields
             formId="add-trip-expense-form"
             amountCents={form.amountCents}
@@ -70,6 +75,21 @@ export function AddTripExpenseDialog({
             payerOptions={members.map((m) => ({ value: m.id, label: m.name + (m.is_host ? " (Você / Organizador)" : "") }))}
             expenseDate={form.expenseDate}
             onExpenseDateChange={form.setExpenseDate}
+            onReceiptFileSelect={(file) => {
+              void form.handleReceiptFileSelect(file);
+            }}
+            onPasteClipboard={() => {
+              void form.handlePasteClipboard();
+            }}
+            isScanningReceipt={form.isScanningReceipt}
+            scanFeedbackMessage={form.scanFeedbackMessage}
+            foreignCurrency={form.foreignCurrency}
+            foreignAmountCents={form.foreignAmountCents}
+            exchangeRateInput={form.exchangeRateInput}
+            onForeignCurrencyChange={form.handleForeignCurrencyChange}
+            onForeignAmountCentsChange={form.handleForeignAmountCentsChange}
+            onExchangeRateChange={form.handleExchangeRateChange}
+            onClearForeignCurrency={form.clearForeignCurrency}
           />
 
           {form.isCurrentUserPayer && (

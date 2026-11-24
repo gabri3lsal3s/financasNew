@@ -1,6 +1,8 @@
-import { Checkbox, ColorPicker, FormField, Input, MoneyInput, NumberStepper } from "@/components/ui";
+import { Checkbox, ColorPicker, FormField, Input, MoneyInput, NumberStepper, Select } from "@/components/ui";
+import { CREDIT_CARD_SCOPE_LABELS } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import { triggerSensory } from "@/services/sensory";
+import type { CreditCardScope } from "@/types";
 
 const QUICK_BRANDS = ["Visa", "Mastercard", "Elo", "Amex"] as const;
 
@@ -35,6 +37,9 @@ export interface CardFormFieldsProps {
   onIsPrimaryChange: (checked: boolean) => void;
   isActive: boolean;
   onIsActiveChange: (checked: boolean) => void;
+  isBusinessModeEnabled?: boolean;
+  scope?: CreditCardScope;
+  onScopeChange?: (scope: CreditCardScope) => void;
 }
 
 export function CardFormFields({
@@ -57,6 +62,9 @@ export function CardFormFields({
   onIsPrimaryChange,
   isActive,
   onIsActiveChange,
+  isBusinessModeEnabled = false,
+  scope = "personal",
+  onScopeChange,
 }: CardFormFieldsProps) {
   return (
     <div className="md:col-span-7 flex flex-col gap-3.5">
@@ -195,6 +203,24 @@ export function CardFormFields({
           O cartão principal é exibido em primeiro lugar na carteira e abre selecionado por padrão.
         </p>
       </div>
+
+      {isBusinessModeEnabled && onScopeChange ? (
+        <FormField
+          label="Esfera do cartão"
+          helperText="Cartões Pessoais aceitam despesas do Meu Negócio e permitem registrar reembolso PJ para PF na fatura."
+        >
+          <Select
+            value={scope}
+            onValueChange={(value) => onScopeChange(value as CreditCardScope)}
+            options={[
+              { value: "personal", label: CREDIT_CARD_SCOPE_LABELS.personal },
+              { value: "business", label: CREDIT_CARD_SCOPE_LABELS.business },
+              { value: "mixed", label: CREDIT_CARD_SCOPE_LABELS.mixed },
+            ]}
+            ariaLabel="Esfera do cartão"
+          />
+        </FormField>
+      ) : null}
 
       {isEditing ? (
         <div className="rounded-xl border border-border/80 bg-surface-raised p-3 flex flex-col gap-1.5">

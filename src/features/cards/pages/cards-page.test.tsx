@@ -199,6 +199,7 @@ vi.mock("@/state", () => ({
   useCreateCardPayment: () => ({ mutateAsync: paymentMock, isPending: false }),
   useBatchCreateCardPayments: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreateRefund: () => ({ mutateAsync: refundMock, isPending: false }),
+  usePayCardBillWithCharges: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreateCard: () => ({ mutateAsync: createCardMock, isPending: false }),
   useUpdateCard: () => ({ mutateAsync: updateCardMock, isPending: false }),
   useDeleteCard: () => ({ mutateAsync: deleteCardMock, isPending: false }),
@@ -225,7 +226,7 @@ vi.mock("@/state", () => ({
     },
     isLoading: false,
   }),
-  useUpdateCustomSettings: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateCustomSettings: () => ({ mutateAsync: vi.fn().mockResolvedValue(undefined), isPending: false }),
   useUpdateRecurrenceOccurrences: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateExpenseGrouped: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useFamilyMode: () => ({

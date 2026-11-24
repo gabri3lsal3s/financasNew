@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Users } from "lucide-react";
+import { Briefcase, ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { Badge, Button, Skeleton } from "@/components/ui";
 import { CategoryIcon } from "@/components/modules/category-icon";
 import { rankCategoriesByFrequency, type PredictionEntry } from "@/domain/predictions";
@@ -14,6 +14,9 @@ export interface QuickCategoryGridProps {
   selectedCategoryId: string;
   isCategoryUnconfirmed?: boolean;
   isFamilyModeEnabled?: boolean;
+  isBusinessModeEnabled?: boolean;
+  showAllCategories?: boolean;
+  onToggleShowAllCategories?: () => void;
   onSelectCategory: (categoryId: string) => void;
 }
 
@@ -26,6 +29,9 @@ export function QuickCategoryGrid({
   selectedCategoryId,
   isCategoryUnconfirmed = false,
   isFamilyModeEnabled = false,
+  isBusinessModeEnabled = false,
+  showAllCategories = false,
+  onToggleShowAllCategories,
   onSelectCategory,
 }: QuickCategoryGridProps) {
   const rankedCategories = useMemo(
@@ -68,7 +74,21 @@ export function QuickCategoryGrid({
             </Badge>
           ) : null}
         </div>
-        <span className="text-[11px] text-muted-foreground">Toque para selecionar</span>
+        {isBusinessModeEnabled && onToggleShowAllCategories ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            sensoryIntent="selection"
+            onClick={onToggleShowAllCategories}
+            aria-pressed={showAllCategories}
+            className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+          >
+            {showAllCategories ? "Filtrar esfera" : "Mostrar todas"}
+          </Button>
+        ) : (
+          <span className="text-[11px] text-muted-foreground">Toque para selecionar</span>
+        )}
       </div>
 
       {categoriesLoading ? (
@@ -97,7 +117,15 @@ export function QuickCategoryGrid({
                     : "border-border/80 bg-surface text-foreground hover:bg-surface-hover",
                 )}
               >
-                {isFamilyModeEnabled && cat.is_family ? (
+                {isBusinessModeEnabled && cat.scope === "business" ? (
+                  <span
+                    className="absolute right-1.5 top-1.5 flex items-center justify-center text-portfolio"
+                    title="Categoria do Meu Negócio (PJ)"
+                    aria-label="Categoria do Meu Negócio (PJ)"
+                  >
+                    <Briefcase className="size-2.5" aria-hidden="true" />
+                  </span>
+                ) : isFamilyModeEnabled && cat.is_family ? (
                   <span
                     className="absolute right-1.5 top-1.5 flex items-center justify-center text-muted-foreground"
                     title="Categoria Familiar Compartilhada"

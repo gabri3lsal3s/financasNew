@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
+import { calculateMixedCardSplit, filterCardsByViewScope } from "@/domain/business";
 import {
   autoSelectBillMonth,
   buildCompetenceSummaries,
@@ -8,6 +9,7 @@ import {
   sortCardsByPreference,
 } from "@/domain/cards";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
+import { useSafeBusinessMode, useSafeIncomes, useSafeViewScope } from "@/hooks/use-safe-business-scope";
 import { currentMonth } from "@/lib/date";
 import {
   useAllCardExpenses,
@@ -48,9 +50,15 @@ export function useCardsPageState() {
     [userPreferencesQuery.data?.custom_settings?.cardOrder],
   );
 
+  const { isBusinessModeEnabled } = useSafeBusinessMode();
+  const { effectiveViewScope } = useSafeViewScope();
   const cards = useMemo(
-    () => sortCardsByPreference(cardsQuery.data ?? [], { primaryCardId, cardOrder }),
-    [cardsQuery.data, primaryCardId, cardOrder],
+    () =>
+      sortCardsByPreference(filterCardsByViewScope(cardsQuery.data ?? [], effectiveViewScope), {
+        primaryCardId,
+        cardOrder,
+      }),
+    [cardsQuery.data, effectiveViewScope, primaryCardId, cardOrder],
   );
 
   const { isHighlighted } = useHighlightTarget("q");
@@ -108,6 +116,18 @@ export function useCardsPageState() {
     () => (paymentsQuery.data ?? []).filter((p) => p.competence_month === effectiveMonth),
     [paymentsQuery.data, effectiveMonth],
   );
+  const incomesQuery = useSafeIncomes(effectiveMonth, {
+    enabled: isBusinessModeEnabled && Boolean(cardId),
+  });
+  const mixedCardSplit = useMemo(() => {
+    if (!isBusinessModeEnabled || !selectedCard || selectedCard.scope === "business") return null;
+    return calculateMixedCardSplit({
+      cardId: selectedCard.id,
+      competenceMonth: effectiveMonth,
+      expenses: competenceExpenses,
+      incomes: incomesQuery.data ?? [],
+    });
+  }, [isBusinessModeEnabled, selectedCard, effectiveMonth, competenceExpenses, incomesQuery.data]);
 
   const { installments, regular } = useMemo(
     () => partitionInvoiceExpenses(competenceExpenses),
@@ -215,6 +235,7 @@ export function useCardsPageState() {
     handleCardDeleted,
     printExpenseRows: buildInvoiceExpenseRows(competenceExpenses, categoryById),
     printPaymentRows: buildPrintPaymentRows(competencePayments),
+    mixedCardSplit,
     ...actions,
   };
 }

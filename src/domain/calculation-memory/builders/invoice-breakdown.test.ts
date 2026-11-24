@@ -71,6 +71,34 @@ describe("buildInvoiceBreakdown", () => {
     expect(breakdown.result.label).toBe("Fatura Paga / Zerada");
     expect(breakdown.notes?.[0]).toContain("Crédito Transbordado");
   });
+
+  it("detalha encargos quando chargesSummary possui juros, multa e tarifas", () => {
+    const breakdown = buildInvoiceBreakdown({
+      cardName: "Nubank",
+      month: "2026-08",
+      previstoBrutoCents: 50000,
+      pagoCents: 0,
+      saldoBrutoCents: 50000,
+      chargesSummary: {
+        consumptionCents: 40000,
+        interestCents: 5000,
+        fineCents: 2000,
+        taxCents: 1000,
+        bankFeeCents: 2000,
+        totalChargesCents: 10000,
+        totalInvoiceCents: 50000,
+        chargesPercentage: 20,
+        hasCharges: true,
+      },
+    });
+
+    expect(breakdown.steps).toHaveLength(5); // Consumo + Juros + Multa + IOF + Tarifas
+    expect(breakdown.steps[0]?.label).toBe("Consumo e Compras da Fatura");
+    expect(breakdown.steps[1]?.label).toBe("Juros de Fatura");
+    expect(breakdown.steps[1]?.rawValue).toBe(5000);
+    expect(breakdown.steps[2]?.label).toBe("Multa por Atraso");
+    expect(breakdown.notes?.some((n) => n.includes("Composição de Encargos"))).toBe(true);
+  });
 });
 
 describe("buildCardLimitBreakdown", () => {

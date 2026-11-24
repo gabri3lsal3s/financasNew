@@ -331,5 +331,30 @@ export function validateIntegrity(data: BackupData): string[] {
   checkRef(data.portfolio_contributions, "asset_id", assetIds, "de contribuição de ativo");
   checkRef(data.portfolio_dividends, "asset_id", assetIds, "de provento de ativo");
 
+  // Valida integridade simétrica de transferências internas pareadas PF x PJ (quando presentes no backup)
+  const incomePairIds = new Set(
+    (data.incomes ?? [])
+      .filter((row) => Boolean(row.is_internal_transfer) && asString(row, "transfer_pair_id") !== null)
+      .map((row) => asString(row, "transfer_pair_id") as string),
+  );
+  const expensePairIds = new Set(
+    (data.expenses ?? [])
+      .filter((row) => Boolean(row.is_internal_transfer) && asString(row, "transfer_pair_id") !== null)
+      .map((row) => asString(row, "transfer_pair_id") as string),
+  );
+
+  for (const pairId of expensePairIds) {
+    if (!incomePairIds.has(pairId)) {
+      errors.push(`Transferência pareada "${pairId}" na tabela de despesas não possui entrada correspondente em receitas.`);
+      if (errors.length >= 8) break;
+    }
+  }
+  for (const pairId of incomePairIds) {
+    if (errors.length >= 8) break;
+    if (!expensePairIds.has(pairId)) {
+      errors.push(`Transferência pareada "${pairId}" na tabela de receitas não possui saída correspondente em despesas.`);
+    }
+  }
+
   return errors;
 }

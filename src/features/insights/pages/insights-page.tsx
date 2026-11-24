@@ -4,9 +4,11 @@ import { Activity, Calendar, LineChart, Repeat } from "lucide-react";
 import { ErrorState, Tabs, type TabItem } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
 import { EmergencyFundConfigDialog } from "@/components/modules";
+import { normalizeText } from "@/domain/insights";
 import { monthLabel } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
-import { DiagnosticsTab, ProjectionTab, RecurrencesTab } from "../components";
+import { pushToast } from "@/services/toast";
+import { DiagnosticsTab, MonthlyClosingCard, ProjectionTab, RecurrencesTab } from "../components";
 import { InsightsLoadingSkeleton } from "../components/InsightsLoadingSkeleton";
 import { useInsightsDashboardData } from "../hooks/use-insights-dashboard-data";
 
@@ -58,6 +60,12 @@ export function InsightsPage({
     emergencyFund,
     realCashCents,
     handleFeedback,
+    monthlyClosing,
+    dismissMonthlyClosing,
+    applyMonthlyClosingLimit,
+    unmuteFamily,
+    forgetMerchant,
+    merchantLearning,
   } = useInsightsDashboardData();
 
   const handleFilterChange = (nextValue: string) => {
@@ -91,11 +99,13 @@ export function InsightsPage({
           concentration={dashboard.concentration}
           weekendComparable={dashboard.weekendComparable}
           weekendRatio={dashboard.weekendRatio}
+          trendHasPreviousBase={dashboard.trendHasPreviousBase}
           trendSignificant={dashboard.trendSignificant}
           trendPercent={dashboard.trendPercent}
           overspentBudgets={dashboard.overspentBudgets}
           essentialSpending={dashboard.essentialSpending}
           hasTransactions={dashboard.hasTransactions}
+          hasIncome={dashboard.hasIncome}
         />
       ),
     },
@@ -121,6 +131,11 @@ export function InsightsPage({
           cards={cards}
           initialSelectedKey={searchParams?.get("item") || undefined}
           monthlyIncomeCents={dashboard.incomeCents}
+          paydayProfile={dashboard.paydayProfile}
+          decayByFamily={dashboard.decayByFamily}
+          onUnmuteFamily={unmuteFamily}
+          merchantLearning={merchantLearning}
+          onForgetMerchant={forgetMerchant}
         />
       ),
     },
@@ -139,6 +154,7 @@ export function InsightsPage({
           spentPercent={dashboard.spentPercent}
           elapsedPercent={dashboard.elapsedPercent}
           paceActive={dashboard.paceActive}
+          paceBreakdown={dashboard.paceBreakdown}
           pendingSummary={dashboard.pendingSummary}
           challenges={dashboard.challenges}
           showDiscretionary={dashboard.showDiscretionary}
@@ -151,6 +167,16 @@ export function InsightsPage({
           referenceMonth={month}
           composition={emergencyFund.composition}
           onOpenEmergencyConfig={() => setIsEmergencyConfigOpen(true)}
+          hasIncome={dashboard.hasIncome}
+          onApplyChallenge={applyMonthlyClosingLimit}
+          onMarkCategoryEssential={(_categoryId, categoryName) => {
+            handleFeedback(`category:${normalizeText(categoryName)}`, "essential");
+            pushToast({
+              title: "Categoria marcada como essencial",
+              description: `${categoryName} não receberá sugestões de corte e pode ser revertida na Memória do Copiloto.`,
+              variant: "success",
+            });
+          }}
         />
       ),
     },
@@ -174,6 +200,14 @@ export function InsightsPage({
       ) : null}
 
       {error ? <ErrorState message={getErrorMessage(error)} /> : null}
+
+      {!loading && monthlyClosing ? (
+        <MonthlyClosingCard
+          summary={monthlyClosing}
+          onDismiss={dismissMonthlyClosing}
+          onApplyLimit={applyMonthlyClosingLimit}
+        />
+      ) : null}
 
       <Tabs
         value={effectiveFilter}

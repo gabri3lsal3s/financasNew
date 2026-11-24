@@ -73,6 +73,7 @@ export const categoryFormSchema = z.object({
   icon: cleanTextSchema(50).nullable().optional(),
   color: cleanTextSchema(30).nullable().optional(),
   is_family: z.boolean().default(false).optional(),
+  scope: z.enum(["personal", "business", "both"]).optional(),
 });
 
 export type CategoryFormInput = z.infer<typeof categoryFormSchema>;

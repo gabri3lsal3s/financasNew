@@ -31,6 +31,7 @@
 import type { SystemFeatureKey } from "@/types";
 
 export * from "./intents";
+export * from "./structured-query";
 
 export type SearchEntryType =
   | "action"
@@ -65,6 +66,19 @@ export interface SearchEntry {
   featureKey?: SystemFeatureKey;
   /** Restrito a administradores do sistema (§F73). */
   adminOnly?: boolean;
+  /** Metadados opcionais para filtragem estruturada em Command Palette (Fase 3). */
+  structuredMeta?: {
+    categoryName?: string;
+    cardName?: string;
+    paymentMethod?: string;
+    installmentsTotal?: number;
+    recurrenceId?: string | null;
+    isFamily?: boolean;
+    tripId?: string | null;
+    chargeKind?: string | null;
+    billCompetence?: string | null;
+    extraTerms?: readonly string[];
+  };
 }
 
 export interface SearchResult {

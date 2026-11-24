@@ -42,6 +42,7 @@ function CardFormContent({ card, open, onOpenChange, onDeleted }: CardFormConten
     color: state.color.trim() || null,
     is_active: state.isActive,
     last_four_digits: state.lastFourDigits.trim() || card?.last_four_digits || null,
+    scope: state.scope,
   };
 
   return (
@@ -180,6 +181,9 @@ function CardFormContent({ card, open, onOpenChange, onDeleted }: CardFormConten
               onIsPrimaryChange={state.setIsPrimary}
               isActive={state.isActive}
               onIsActiveChange={state.setIsActive}
+              isBusinessModeEnabled={state.isBusinessModeEnabled}
+              scope={state.scope}
+              onScopeChange={state.setScope}
             />
           </div>
         </form>

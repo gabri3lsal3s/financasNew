@@ -200,12 +200,15 @@ export function buildEmergencyFundBreakdown(
     monthlySavingsVelocityCents = 0,
   } = params;
 
-  const safeMonthlyExpenses = Math.max(1, monthlyExpensesCents);
-  const coverageMonths = Math.round((liquidReserveCents / safeMonthlyExpenses) * 10) / 10;
+  const hasExpenseBase = monthlyExpensesCents > 0;
+  const safeMonthlyExpenses = hasExpenseBase ? monthlyExpensesCents : 0;
+  const coverageMonths = hasExpenseBase
+    ? Math.round((liquidReserveCents / safeMonthlyExpenses) * 10) / 10
+    : 0;
   const coverageDays = Math.round(coverageMonths * 30);
   const targetCents = providedTargetCents ?? safeMonthlyExpenses * targetMonths;
   const gapCents = targetCents - liquidReserveCents;
-  const isSurplus = gapCents <= 0;
+  const isSurplus = hasExpenseBase && gapCents <= 0;
 
   const steps: BreakdownStep[] = [
     {
@@ -221,32 +224,36 @@ export function buildEmergencyFundBreakdown(
       operator: "/",
       rawValue: safeMonthlyExpenses,
       unit: "currency",
-      hint: "Média das despesas essenciais mensais para manter seu padrão de vida",
-      tone: "default",
+      hint: hasExpenseBase
+        ? "Média das despesas essenciais mensais para manter seu padrão de vida"
+        : "Aguardando registro de despesas mensais para definir a base de cálculo",
+      tone: hasExpenseBase ? "default" : "muted",
     },
   ];
 
-  const notes: string[] = [
-    `Meta configurada: ${targetMonths} meses de custo de vida (${formatCentsAsBRL(targetCents)}).`,
-  ];
+  const notes: string[] = hasExpenseBase
+    ? [`Meta configurada: ${targetMonths} meses de custo de vida (${formatCentsAsBRL(targetCents)}).`]
+    : ["Ainda não há custo de vida mensal de referência para calcular os meses de autonomia."];
 
-  if (!isSurplus) {
-    const monthsToTarget =
-      monthlySavingsVelocityCents > 0
-        ? Math.ceil(gapCents / monthlySavingsVelocityCents)
-        : null;
+  if (hasExpenseBase) {
+    if (!isSurplus) {
+      const monthsToTarget =
+        monthlySavingsVelocityCents > 0
+          ? Math.ceil(gapCents / monthlySavingsVelocityCents)
+          : null;
 
-    notes.push(
-      `Deficit de reserva: Faltam ${formatCentsAsBRL(gapCents)} para atingir a meta plena.${
-        monthsToTarget
-          ? ` No ritmo atual de poupanca (${formatCentsAsBRL(monthlySavingsVelocityCents)}/mes), a meta sera alcancada em ~${monthsToTarget} meses.`
-          : ""
-      }`,
-    );
-  } else {
-    notes.push(
-      `Meta superada: Suas reservas cobrem 100% da meta de ${targetMonths} meses com excedente seguro de ${formatCentsAsBRL(Math.abs(gapCents))}.`,
-    );
+      notes.push(
+        `Deficit de reserva: Faltam ${formatCentsAsBRL(gapCents)} para atingir a meta plena.${
+          monthsToTarget
+            ? ` No ritmo atual de poupanca (${formatCentsAsBRL(monthlySavingsVelocityCents)}/mes), a meta sera alcancada em ~${monthsToTarget} meses.`
+            : ""
+        }`,
+      );
+    } else {
+      notes.push(
+        `Meta superada: Suas reservas cobrem 100% da meta de ${targetMonths} meses com excedente seguro de ${formatCentsAsBRL(Math.abs(gapCents))}.`,
+      );
+    }
   }
 
   const breakdown: CalculationBreakdown = {
@@ -254,7 +261,9 @@ export function buildEmergencyFundBreakdown(
     title: "Reserva de Emergência e Autonomia (Runway)",
     description:
       "Quantos meses e dias você consegue manter seu custo de vida sem nenhuma nova receita.",
-    periodLabel: `${coverageMonths.toFixed(1).replace(".", ",")} Meses de Autonomia`,
+    periodLabel: hasExpenseBase
+      ? `${coverageMonths.toFixed(1).replace(".", ",")} Meses de Autonomia`
+      : "Aguardando base de custo mensal",
     formulaExpression:
       "Meses de Autonomia = Reservas Liquidas / Custo de Vida Mensal",
     unit: "months",
@@ -262,10 +271,20 @@ export function buildEmergencyFundBreakdown(
     result: {
       label: "Autonomia Financeira Estimada",
       rawValue: coverageMonths,
-      formattedValue: `${coverageMonths.toFixed(1).replace(".", ",")} meses (~${coverageDays} dias)`,
+      formattedValue: hasExpenseBase
+        ? `${coverageMonths.toFixed(1).replace(".", ",")} meses (~${coverageDays} dias)`
+        : "Aguardando base",
       unit: "months",
-      tone: coverageMonths >= targetMonths ? "positive" : coverageMonths >= 3 ? "default" : "negative",
-      hint: `Você possui cobertura para viver ~${coverageDays} dias com as reservas líquidas atuais.`,
+      tone: !hasExpenseBase
+        ? "muted"
+        : coverageMonths >= targetMonths
+          ? "positive"
+          : coverageMonths >= 3
+            ? "default"
+            : "negative",
+      hint: hasExpenseBase
+        ? `Você possui cobertura para viver ~${coverageDays} dias com as reservas líquidas atuais.`
+        : "Registre despesas no ciclo ou informe um custo de vida mensal para calcular sua autonomia em meses.",
     },
     inclusions: [
       "Saldo disponível em contas bancárias de movimento",

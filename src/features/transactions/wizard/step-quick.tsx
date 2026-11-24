@@ -5,7 +5,7 @@ import type { HabitualEntry, PredictionEntry } from "@/domain/predictions";
 import { triggerSensory } from "@/services/sensory";
 import { formatCentsAsCurrency } from "@/services/masks";
 import { cn } from "@/lib/utils";
-import type { Category, PaymentMethod, ReceiveType } from "@/types";
+import type { Category, PaymentMethod, ReceiveType, TransactionScope } from "@/types";
 import { LaunchContextSelector } from "./launch-context-selector";
 import { QuickCategoryGrid } from "./quick-category-grid";
 import { QuickDescriptionField } from "./quick-description-field";
@@ -24,6 +24,11 @@ export interface StepQuickProps {
   onDescriptionChange: (description: string) => void;
   onFamilyChange?: (isFamily: boolean) => void;
   isFamilyModeEnabled?: boolean;
+  isBusinessModeEnabled?: boolean;
+  showAllCategories?: boolean;
+  onToggleShowAllCategories?: () => void;
+  onScopeChange?: (scope: TransactionScope) => void;
+  onTaxDeductibleChange?: (deductible: boolean) => void;
   onSplitToggle?: (enabled: boolean) => void;
   onSplitPeopleCountChange?: (count: number) => void;
   onSplitDebtModeChange?: (mode: "single_total" | "per_installment") => void;
@@ -60,7 +65,8 @@ export function StepQuick(props: StepQuickProps) {
   const {
     state, onTypeChange, onValueChange, onCategoryChange, onPaymentMethodChange,
     onCardChange, onInstallmentsChange, isCategoryUnconfirmed = false, onReceiveTypeChange,
-    onDescriptionChange, onFamilyChange, isFamilyModeEnabled = false, onSplitToggle,
+    onDescriptionChange, onFamilyChange, isFamilyModeEnabled = false, isBusinessModeEnabled = false,
+    showAllCategories = false, onToggleShowAllCategories, onScopeChange, onTaxDeductibleChange, onSplitToggle,
     onSplitPeopleCountChange, onSplitDebtModeChange, activeTrips, onTripChange,
     activeTripMemberName, onSwitchToGuided, categories, categoriesLoading = false,
     predictionEntries, habits, onApplyHabitual, cards, cardsLoading = false, receiptMeta, onSubmit,
@@ -88,7 +94,10 @@ export function StepQuick(props: StepQuickProps) {
     [state.valueCents],
   );
 
-  const showContextSelector = isFamilyModeEnabled || (isExpense && ((activeTrips && activeTrips.length > 0) || onSplitToggle));
+  const showContextSelector =
+    isBusinessModeEnabled ||
+    isFamilyModeEnabled ||
+    (isExpense && ((activeTrips && activeTrips.length > 0) || onSplitToggle));
 
   return (
     <div className="flex flex-col gap-4">
@@ -186,6 +195,9 @@ export function StepQuick(props: StepQuickProps) {
         selectedCategoryId={state.categoryId}
         isCategoryUnconfirmed={isCategoryUnconfirmed}
         isFamilyModeEnabled={isFamilyModeEnabled}
+        isBusinessModeEnabled={isBusinessModeEnabled}
+        showAllCategories={showAllCategories}
+        onToggleShowAllCategories={onToggleShowAllCategories}
         onSelectCategory={onCategoryChange}
       />
 
@@ -254,8 +266,11 @@ export function StepQuick(props: StepQuickProps) {
           state={state}
           title="Contexto"
           isFamilyModeEnabled={isFamilyModeEnabled}
+          isBusinessModeEnabled={isBusinessModeEnabled}
           activeTrips={activeTrips}
           activeTripMemberName={activeTripMemberName}
+          onScopeChange={onScopeChange}
+          onTaxDeductibleChange={onTaxDeductibleChange}
           onFamilyChange={onFamilyChange}
           onTripChange={onTripChange}
           onSplitToggle={onSplitToggle}

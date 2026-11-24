@@ -1,6 +1,8 @@
 import { CheckCircle2, TrendingDown, TrendingUp } from "lucide-react";
 import { Progress } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
+import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
+import type { CalculationBreakdown } from "@/domain/calculation-memory";
 import { formatPercent } from "@/services/masks";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +21,8 @@ export interface ProjectionLineProps {
   elapsedPercent?: number;
   /** Ritmo ativo (8º dia + fração ≥ 30%)? */
   paceActive?: boolean;
+  /** Memória de cálculo detalhada da projeção do mês (`?`). */
+  breakdown?: CalculationBreakdown | null;
 }
 
 /**
@@ -33,11 +37,15 @@ export function ProjectionLine({
   spentPercent = 0,
   elapsedPercent = 0,
   paceActive = false,
+  breakdown,
 }: ProjectionLineProps) {
   return (
     <section aria-label="Projeção de gastos" className="flex flex-col gap-3 rounded-xl border border-border/80 bg-surface shadow-xs p-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-foreground">Projeção de gastos</h3>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <h3 className="text-sm font-semibold text-foreground">Projeção de gastos</h3>
+          {breakdown ? <CalculationMemoryModal breakdown={breakdown} priority="p1" /> : null}
+        </div>
         {onTrack !== null ? (
           <span
             className={cn(

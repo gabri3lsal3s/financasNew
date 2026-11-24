@@ -1,4 +1,5 @@
 import {
+  Briefcase,
   PanelTop,
   Calculator,
   Monitor,
@@ -14,7 +15,8 @@ import {
   Checkbox,
   Switch,
 } from "@/components/ui";
-import { useFamilyMode, useTripMode, useUpdateCustomSettings } from "@/state";
+import { useBusinessMode, useFamilyMode, useTripMode, useUpdateCustomSettings } from "@/state";
+import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import {
   useVisualCustomization,
   type HeaderButtonsConfig,
@@ -33,6 +35,12 @@ export function InterfaceShortcutsCard({
 }: InterfaceShortcutsCardProps) {
   const { isFamilyModeEnabled, toggleFamilyMode, isPending: isUpdatingFamilyMode } = useFamilyMode();
   const { isTripModeEnabled, toggleTripMode, isPending: isUpdatingTripMode } = useTripMode();
+  const {
+    isBusinessModeEnabled,
+    toggleBusinessMode,
+    isPending: isUpdatingBusinessMode,
+  } = useBusinessMode();
+  const { guardAction, upgradeModal } = useMutationGuard();
   const { showCalculationMemory, setShowCalculationMemory } = useVisualCustomization();
   const updateCustomSettingsMutation = useUpdateCustomSettings();
 
@@ -205,6 +213,39 @@ export function InterfaceShortcutsCard({
             <div
               className={cn(
                 "flex items-center justify-between gap-3 p-3.5 rounded-xl border transition-colors duration-150",
+                isBusinessModeEnabled ? "border-primary/40 bg-primary/5" : "border-border/80 bg-surface",
+              )}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <Briefcase className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                <div className="min-w-0">
+                  <div className="font-semibold text-xs text-foreground">
+                    Modo Negócio (MEI / Autônomo)
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {isBusinessModeEnabled
+                      ? "Ativo. Separa finanças pessoais (PF) e do negócio (PJ), DRE mensal, Teto MEI e painel /negocio."
+                      : "Desativado por padrão. Ative se você é MEI, autônomo ou profissional liberal e deseja separar PF e PJ."}
+                  </div>
+                </div>
+              </div>
+              <Switch
+                checked={isBusinessModeEnabled}
+                disabled={isUpdatingBusinessMode}
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    guardAction(() => void toggleBusinessMode(true), "Modo Negócio");
+                  } else {
+                    void toggleBusinessMode(false);
+                  }
+                }}
+                aria-label="Modo Negócio (MEI / Autônomo)"
+              />
+            </div>
+
+            <div
+              className={cn(
+                "flex items-center justify-between gap-3 p-3.5 rounded-xl border transition-colors duration-150",
                 showCalculationMemory ? "border-primary/40 bg-primary/5" : "border-border/80 bg-surface",
               )}
             >
@@ -235,6 +276,7 @@ export function InterfaceShortcutsCard({
           </div>
         </div>
       </CardContent>
+      {upgradeModal}
     </Card>
   );
 }

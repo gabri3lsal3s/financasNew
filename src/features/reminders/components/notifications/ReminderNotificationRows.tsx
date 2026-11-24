@@ -5,6 +5,7 @@ import {
   CreditCard,
   HandCoins,
   HelpCircle,
+  Sparkles,
   TrendingDown,
   TrendingUp,
   Users,
@@ -41,6 +42,7 @@ const ADVISOR_ICON_MAP: Record<AdvisorIconKind, typeof AlertTriangle> = {
   income: ArrowDownLeft,
   savings: TrendingDown,
   calibration: HelpCircle,
+  celebration: Sparkles,
 };
 
 const BADGE_CONTAINER_TONES: Record<

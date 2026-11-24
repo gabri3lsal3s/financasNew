@@ -19,6 +19,10 @@ export type CategoryNature = "essential" | "discretionary" | "investment";
 export interface CategorySemantics {
   /** Se é despesa essencial (não sugerida para corte). */
   isEssential: boolean;
+  /** Se é obrigação contratual, fiscal ou financeira inegociável (empréstimo, impostos, juros, pensão). */
+  isNonCuttableObligation: boolean;
+  /** Se a categoria é elegível a sugestões automáticas de corte percentual (Desafios de Economia / Redução de Teto). */
+  isCuttableCategory: boolean;
   /** Se é categoria agregadora de compras variáveis (excluída de recorrências similares). */
   isAggregator: boolean;
   /** Se é categorização forte de assinaturas / serviços digitais / mensalidades. */
@@ -44,6 +48,17 @@ const ESSENTIAL_ICONS = new Set([
   "telefone",
   "impostos",
   "tributos",
+]);
+
+/** Ícones de obrigações contratuais, fiscais ou encargos que jamais devem receber sugestão de "cortar %". */
+const NON_CUTTABLE_OBLIGATION_ICONS = new Set([
+  "impostos",
+  "tributos",
+  "juros",
+  "multas",
+  "taxas",
+  "emprestimo",
+  "justica",
 ]);
 
 /** Ícones que representam categorias agregadoras de transações com dispersão natural. */
@@ -137,6 +152,88 @@ const ESSENTIAL_STEMS = [
   "darf",
   "ipva",
   "taxa",
+  "alimentacao",
+  "refeicao",
+  "mercado",
+  "supermercado",
+  "hipermercado",
+  "feira",
+  "hortifruti",
+  "sacolao",
+  "acougue",
+  "padaria",
+  "mercearia",
+  "transporte",
+  "combustivel",
+  "gasolina",
+  "etanol",
+  "diesel",
+  "onibus",
+  "metro",
+  "pedagio",
+  "terapia",
+  "psicolog",
+  "fisioterapia",
+];
+
+/**
+ * Raízes lexicais de alimentação explicitamente fora de casa / delivery / lazer gastronômico.
+ * Quando o usuário cria uma categoria dedicada (ex.: "Restaurantes", "Delivery", "iFood", "Bares"),
+ * ela permanece discricionária (elegível a metas de economia) mesmo se usar o ícone `alimentacao`.
+ */
+const DISCRETIONARY_DINING_STEMS = [
+  "restaurante",
+  "restaurantes",
+  "delivery",
+  "ifood",
+  "rappi",
+  "ubereats",
+  "lanche",
+  "lanches",
+  "fast food",
+  "hamburgueria",
+  "pizzaria",
+  "bar",
+  "bares",
+  "barzinho",
+  "cerveja",
+  "bebidas",
+  "cafeteria",
+  "doceria",
+  "sorveteria",
+];
+
+/**
+ * Raízes lexicais de obrigações contratuais, dívidas, encargos ou deveres legais inegociáveis.
+ */
+const NON_CUTTABLE_OBLIGATION_STEMS = [
+  "emprestimo",
+  "emprestimos",
+  "divida",
+  "dividas",
+  "financiamento",
+  "consorcio",
+  "pensao",
+  "justica",
+  "judicial",
+  "advogado",
+  "cartorio",
+  "juros",
+  "multa",
+  "multas",
+  "encargo",
+  "encargos",
+  "tarifa",
+  "tarifas",
+  "imposto",
+  "impostos",
+  "tributo",
+  "tributos",
+  "darf",
+  "ipva",
+  "iptu",
+  "seguro",
+  "fatura",
 ];
 
 /**
@@ -256,26 +353,40 @@ export function resolveCategorySemantics(category: {
   const iconIsAggregator = icon != null && AGGREGATOR_ICONS.has(icon);
   const isAggregator = nameIsAggregator || iconIsAggregator;
 
-  // 3. Essenciais
-  const nameIsEssential = containsAnyStem(normName, ESSENTIAL_STEMS);
-  const iconIsEssential = icon != null && (ESSENTIAL_ICONS.has(icon) || iconIsAggregator);
+  // 3. Obrigações contratuais / fiscais / encargos não cortáveis
+  const nameIsObligation = containsAnyStem(normName, NON_CUTTABLE_OBLIGATION_STEMS);
+  const iconIsObligation = icon != null && NON_CUTTABLE_OBLIGATION_ICONS.has(icon);
+  const isNonCuttableObligation = nameIsObligation || iconIsObligation;
+
+  // 4. Essenciais (com distinção entre Alimentação básica vs categoria explícita de Delivery/Restaurante/Bar)
+  const isExplicitDiscretionaryDining =
+    containsAnyStem(normName, DISCRETIONARY_DINING_STEMS) &&
+    !normName.includes("mercado") &&
+    !normName.includes("alimentacao");
+  const nameIsEssential = containsAnyStem(normName, ESSENTIAL_STEMS) && !isExplicitDiscretionaryDining;
+  const iconIsEssential =
+    icon != null &&
+    (ESSENTIAL_ICONS.has(icon) || iconIsAggregator) &&
+    !isExplicitDiscretionaryDining;
   const isEssential = nameIsEssential || iconIsEssential;
 
-  // 4. Investimentos
+  // 5. Investimentos
   const nameIsInvestment = containsAnyStem(normName, INVESTMENT_STEMS);
   const iconIsInvestment = icon != null && INVESTMENT_ICONS.has(icon);
   const isInvestment = nameIsInvestment || iconIsInvestment;
 
-  // 5. Determinação da Natureza Financeira (50/30/20)
+  // 6. Determinação da Natureza Financeira (50/30/20) e Elegibilidade a Corte
   let nature: CategoryNature = "discretionary";
   if (isInvestment) {
     nature = "investment";
-  } else if (isEssential) {
+  } else if (isEssential || isNonCuttableObligation) {
     nature = "essential";
   }
 
-  // 6. CutTier para cortes de gastos
-  const tier: CutTier = isEssential ? "essential" : "discretionary";
+  const isCuttableCategory = !isEssential && !isInvestment && !isNonCuttableObligation;
+
+  // 7. CutTier para cortes de gastos
+  const tier: CutTier = isCuttableCategory ? "discretionary" : "essential";
 
   // 7. Segmento de serviço estimado
   let segment: ServiceSegment = "other";
@@ -360,6 +471,8 @@ export function resolveCategorySemantics(category: {
 
   return {
     isEssential,
+    isNonCuttableObligation,
+    isCuttableCategory,
     isAggregator,
     isSubscriptionCategory,
     segment,

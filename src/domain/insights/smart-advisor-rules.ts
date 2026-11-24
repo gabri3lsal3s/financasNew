@@ -2,7 +2,10 @@ import { budgetLimitsByCategory, realizedByCategoryMap, resolveEffectiveLimit } 
 import { numberToCents, sumGrossCents } from "@/domain/money";
 import { calculateSurplusCapacity } from "@/domain/overview";
 import { shiftMonth } from "@/lib/date";
-import type { Budget, Category, FamilyConsolidationResult, IncomeGoal } from "@/types";
+import { formatCentsAsCurrency } from "@/services/masks/money";
+import type { Budget, Category, ChargeKind, FamilyConsolidationResult, IncomeGoal } from "@/types";
+import type { InsightThemeFamily, SmartDecayRecord } from "./attention-budget";
+import type { UserFinancialContext } from "./financial-context";
 import {
   filterAndRankAllAdvisorInsights,
   generateSmartAdvisorInsights,
@@ -27,6 +30,8 @@ export interface RawAdvisorExpenseItem {
   category_id: string;
   installment_group_id?: string | null;
   recurrence_id?: string | null;
+  trip_id?: string | null;
+  charge_kind?: ChargeKind | null;
 }
 
 export interface RawAdvisorIncomeItem {
@@ -38,6 +43,7 @@ export interface RawAdvisorIncomeItem {
   category_id: string;
   installment_group_id?: string | null;
   recurrence_id?: string | null;
+  source_ref?: string | null;
 }
 
 export function mergeAndFilterValidDismissals(
@@ -79,6 +85,7 @@ export function mapRawExpensesToAdvisorLikes(
       categoryIcon: categoryById.get(e.category_id)?.icon ?? null,
       installmentGroupId: e.installment_group_id ?? null,
       recurrenceId: e.recurrence_id ?? null,
+      ...(e.trip_id != null ? { tripId: e.trip_id } : {}),
     })),
   );
 }
@@ -100,6 +107,7 @@ export function mapRawIncomesToAdvisorLikes(
       categoryIcon: categoryById.get(i.category_id)?.icon ?? null,
       installmentGroupId: i.installment_group_id ?? null,
       recurrenceId: i.recurrence_id ?? null,
+      ...(i.source_ref != null ? { sourceRef: i.source_ref } : {}),
     })),
   );
 }
@@ -182,6 +190,106 @@ export interface EvaluateSmartAdvisorParams {
   nowMs: number;
   categories?: readonly Category[];
   suppressedThemeKeys?: readonly string[];
+  financialContext?: UserFinancialContext;
+  budgetedCategoryLimits?: ReadonlyMap<string, number>;
+  isEmergencyFundComplete?: boolean;
+  monthlySettledDividendsCents?: number;
+  historicalVariableMedianCents?: number;
+  oneOffExpenseIds?: ReadonlySet<string>;
+  decayByFamily?: Readonly<Partial<Record<InsightThemeFamily, SmartDecayRecord>>>;
+}
+
+export interface CardChargesDrainResult {
+  hasDrain: boolean;
+  totalInterestCents: number;
+  totalFineCents: number;
+  totalDrainCents: number;
+  chargeCount: number;
+  insight: SmartAdvisorInsight | null;
+}
+
+/**
+ * Radar Anti-Juros (Fase 1 do Blueprint v2.1):
+ * Identifica acúmulo de encargos financeiros (juros e multas de cartão) e gera alerta
+ * acionável direcionando para liquidação integral da fatura.
+ */
+export type ChargeDrainExpenseCandidate = {
+  value?: number;
+  valueCents?: number;
+  charge_kind?: string | null;
+  chargeKind?: string | null;
+};
+
+export function detectCardChargesDrain(
+  expenses: readonly ChargeDrainExpenseCandidate[],
+  thresholdCents = 2000,
+): CardChargesDrainResult {
+  let totalInterestCents = 0;
+  let totalFineCents = 0;
+  let chargeCount = 0;
+
+  for (const exp of expenses) {
+    const cents =
+      typeof exp.valueCents === "number"
+        ? exp.valueCents
+        : typeof exp.value === "number"
+          ? numberToCents(exp.value)
+          : 0;
+    const kind = exp.charge_kind ?? exp.chargeKind;
+    if (kind === "interest") {
+      totalInterestCents += cents;
+      chargeCount += 1;
+    } else if (kind === "fine") {
+      totalFineCents += cents;
+      chargeCount += 1;
+    }
+  }
+
+  const totalDrainCents = totalInterestCents + totalFineCents;
+  const hasDrain = totalDrainCents >= thresholdCents;
+
+  if (!hasDrain) {
+    return {
+      hasDrain: false,
+      totalInterestCents,
+      totalFineCents,
+      totalDrainCents,
+      chargeCount,
+      insight: null,
+    };
+  }
+
+  const formattedDrain = formatCentsAsCurrency(totalDrainCents);
+  const insight: SmartAdvisorInsight = {
+    id: "advisor-charges-drain",
+    themeKey: "charges:drain",
+    priority: totalDrainCents >= 10000 ? 1 : 3,
+    category: totalDrainCents >= 10000 ? "critical" : "savings",
+    title: "Dreno de Juros e Multas Detectado",
+    description: `Foram identificados ${formattedDrain} em juros e multas de cartão. Quitar a fatura integralmente estanca o vazamento financeiro.`,
+    iconName: totalDrainCents >= 10000 ? "alert-triangle" : "trending-down",
+    primaryAction: {
+      label: "Ver Faturas",
+      kind: "navigate_cards",
+    },
+    secondaryAction: {
+      label: "Ignorar",
+      kind: "dismiss",
+    },
+    metadata: {
+      valueCents: totalDrainCents,
+      annualSavingsCents: totalDrainCents * 12,
+    },
+  };
+
+  return {
+    hasDrain: true,
+    totalInterestCents,
+    totalFineCents,
+    totalDrainCents,
+    chargeCount,
+    insight,
+  };
 }
 
 export function evaluateSmartAdvisorInsights(params: EvaluateSmartAdvisorParams): {
@@ -199,10 +307,13 @@ export function evaluateSmartAdvisorInsights(params: EvaluateSmartAdvisorParams)
     monthlyIncomeCents: params.monthlyIncomeCents,
     categoryBudgets: new Map(params.categoryBudgetsMap),
     feedbackMap: params.feedbackMap,
+    merchantAliasMap: params.financialContext?.learning.merchantAliasMap,
+    learnedServices: params.financialContext?.learning.learnedServices,
   });
 
   const incomeOccurrences = detectIncomeRecurrences(params.allIncomes, {
     todayISO: params.todayISO,
+    merchantAliasMap: params.financialContext?.learning.merchantAliasMap,
   });
 
   const realizedIncomeByCategory = realizedByCategoryMap(
@@ -231,7 +342,18 @@ export function evaluateSmartAdvisorInsights(params: EvaluateSmartAdvisorParams)
     committedObligationsCents: params.effectiveCommittedObligationsCents,
     spendingHabits: params.spendingHabits,
     categories: params.categories,
+    financialContext: params.financialContext,
+    budgetedCategoryLimits: params.budgetedCategoryLimits ?? params.categoryBudgetsMap,
+    isEmergencyFundComplete: params.isEmergencyFundComplete,
+    monthlySettledDividendsCents: params.monthlySettledDividendsCents,
+    historicalVariableMedianCents: params.historicalVariableMedianCents,
+    oneOffExpenseIds: params.oneOffExpenseIds,
   });
+
+  const chargesDrain = detectCardChargesDrain(params.allExpenses ?? []);
+  if (chargesDrain.insight) {
+    candidates.push(chargesDrain.insight);
+  }
 
   const activeCandidates =
     params.suppressedThemeKeys && params.suppressedThemeKeys.length > 0
@@ -248,6 +370,7 @@ export function evaluateSmartAdvisorInsights(params: EvaluateSmartAdvisorParams)
     lastDismissedDay: params.effectiveLastDismissedDay ?? undefined,
     currentDayISO: params.todayISO,
     nowMs: params.nowMs,
+    decayByFamily: params.decayByFamily ?? params.financialContext?.learning.decayByFamily,
   });
 
   return { allCandidates: candidates, eligibleInsights: eligible };

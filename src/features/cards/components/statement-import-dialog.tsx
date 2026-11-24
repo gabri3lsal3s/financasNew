@@ -47,6 +47,14 @@ function StatementImportContent({
     onClose: () => onOpenChange(false),
   });
 
+  const handleBackFromReconcile = () => {
+    if (state.usedAiStructurer || state.parsedRows.length === 0) {
+      state.setStep("upload");
+    } else {
+      state.setStep("mapping");
+    }
+  };
+
   const footer =
     state.step === "mapping" ? (
       <ModalFooter borderless>
@@ -63,7 +71,7 @@ function StatementImportContent({
         <Button
           type="button"
           variant="outline"
-          onClick={() => state.setStep(state.parsedRows.length > 0 ? "mapping" : "upload")}
+          onClick={handleBackFromReconcile}
           disabled={state.isPending}
         >
           <RotateCcw className="size-4" aria-hidden="true" />
@@ -99,7 +107,7 @@ function StatementImportContent({
       open={open}
       onOpenChange={onOpenChange}
       title={`Importar Fatura — ${card.name}`}
-      description={`Competência de ${monthLabel(competenceMonth)} · Importe arquivos CSV ou OFX para conciliação automática.`}
+      description={`Competência de ${monthLabel(competenceMonth)} · Concilie faturas via PDF, CSV, OFX, Excel, prints ou texto colado.`}
       size="3xl"
       footer={footer}
     >
@@ -115,7 +123,9 @@ function StatementImportContent({
 
         {state.step === "upload" ? (
           <StatementUploadStep
-            onFileSelect={state.handleFileSelect}
+            onFileSelect={(file) => void state.handleFileSelect(file)}
+            onFilesSelect={(files) => void state.handleFilesSelect(files)}
+            onTextSubmit={(text) => void state.handleTextSubmit(text)}
             isProcessing={state.isReadingFile}
           />
         ) : state.step === "mapping" && state.columnMapping ? (
@@ -132,6 +142,9 @@ function StatementImportContent({
             items={state.reconciledItems}
             unmatchedAppExpenses={state.unmatchedAppExpenses}
             categories={state.categories}
+            usedAiStructurer={state.usedAiStructurer}
+            printedTotalCents={state.printedTotalCents}
+            onOpenMapping={state.canOpenMapping ? () => state.setStep("mapping") : undefined}
             onToggleItem={state.handleToggleItem}
             onToggleAll={state.handleToggleAll}
             onChangeCategory={state.handleChangeCategory}
@@ -139,8 +152,8 @@ function StatementImportContent({
             onRemoveItem={state.handleRemoveItem}
             onAddManualItem={state.handleAddManualItem}
             onUncheckDuplicates={state.handleUncheckDuplicates}
-            onBack={() => state.setStep(state.parsedRows.length > 0 ? "mapping" : "upload")}
-            onConfirm={state.handleConfirmImport}
+            onBack={handleBackFromReconcile}
+            onConfirm={() => void state.handleConfirmImport()}
             isPending={state.isPending}
             importProgress={state.importProgress}
             hideFooter

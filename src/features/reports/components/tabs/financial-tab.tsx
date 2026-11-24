@@ -5,13 +5,13 @@ import { Button, buttonVariants } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { cn } from "@/lib/utils";
 import { formatPercent } from "@/services/masks";
-import type { CategoryTotal, PaymentMethodTotal, WeekdayTotal } from "@/domain/reports";
+import type { CategoryTotal, ChargeKindTotal, PaymentMethodTotal, WeekdayTotal } from "@/domain/reports";
 import type { Expense } from "@/types";
 import { FinancialExpensesBreakdownCard } from "./financial-expenses-breakdown-card";
 import { FinancialPeriodToolbar } from "./financial-period-toolbar";
 
 export type PeriodMode = "month" | "year" | "custom";
-export type AggregationTab = "category" | "method" | "weekday";
+export type AggregationTab = "category" | "method" | "weekday" | "charges";
 
 export interface FinancialTabProps {
   mode: PeriodMode;
@@ -36,6 +36,7 @@ export interface FinancialTabProps {
   byCategory: CategoryTotal[];
   byMethod: PaymentMethodTotal[];
   byWeekday: WeekdayTotal[];
+  byChargeKind?: ChargeKindTotal[];
   expenses: Expense[];
   onOpenFinancialReport: () => void;
   onShowDetail: (title: string, expenseList: Expense[]) => void;
@@ -52,7 +53,7 @@ export function FinancialTab(props: FinancialTabProps) {
     grossIncomeBrutoCents, grossExpenseBrutoCents, grossSavingsBrutoCents,
     grossSavingsRatePercent, currentIncomeCents, currentExpenseCents,
     hasDualMetrics, aggregationTab, setAggregationTab,
-    byCategory, byMethod, byWeekday, expenses,
+    byCategory, byMethod, byWeekday, byChargeKind, expenses,
     onOpenFinancialReport, onShowDetail,
   } = props;
 
@@ -154,6 +155,7 @@ export function FinancialTab(props: FinancialTabProps) {
         byCategory={byCategory}
         byMethod={byMethod}
         byWeekday={byWeekday}
+        byChargeKind={byChargeKind}
         expenses={expenses}
         grossExpenseBrutoCents={grossExpenseBrutoCents}
         currentExpenseCents={currentExpenseCents}

@@ -25,6 +25,9 @@ import {
   type IncomeLike,
   type RecurrenceOccurrence,
 } from "./recurrences";
+import { generateSmartAdvisorInsights } from "./advisor";
+import { calculateCardSubscriptionImpact } from "./card-radar";
+import { buildUnifiedLearningGraph } from "./learning-graph";
 import { normalizeText } from "./shared";
 
 describe("domain/insights/recurrences — Detecção Dual de Rendas (Fase 4, Tarefa 4.1)", () => {
@@ -1416,6 +1419,145 @@ describe("domain/insights/recurrences — Detecção Dual de Rendas (Fase 4, Tar
 
         expect(evaluateExpensePriceEvolution(singleExpense, [singleExpense])).toBeNull();
       });
+    });
+  });
+
+  describe("FASE 2 — Recorrências Formais, Fulfillment Semântico, Blindagem de Rendas & Aliases", () => {
+    it("Cenário 1 (Paradoxo da Recorrência Formal): preserva em totais e radar com isFormalRecurrence=true e bloqueia calib:* no SmartAdvisor", () => {
+      const expenses: ExpenseLike[] = [
+        {
+          id: "f1",
+          description: "Academia Smart",
+          month: "2026-08",
+          date: "2026-08-10",
+          valueCents: 11990,
+          categoryId: "fitness",
+          recurrenceId: "rec-formal-academia",
+          paymentMethod: "credit_card",
+          cardId: "card-nu",
+          cardName: "Nubank",
+        },
+        {
+          id: "f2",
+          description: "Academia Smart",
+          month: "2026-09",
+          date: "2026-09-10",
+          valueCents: 11990,
+          categoryId: "fitness",
+          recurrenceId: "rec-formal-academia",
+          paymentMethod: "credit_card",
+          cardId: "card-nu",
+          cardName: "Nubank",
+        },
+      ];
+
+      // Sem includeFormalRecurrences (default false), permanece oculta para detecção espontânea
+      expect(detectRecurrences(expenses, { todayISO: "2026-10-05" })).toHaveLength(0);
+
+      // Com includeFormalRecurrences: true, mantém nos totais recorrentes e no Radar do cartão
+      const occurrences = detectRecurrences(expenses, {
+        todayISO: "2026-10-05",
+        includeFormalRecurrences: true,
+      });
+      expect(occurrences).toHaveLength(1);
+      const formalOcc = occurrences[0]!;
+      expect(formalOcc.isFormalRecurrence).toBe(true);
+
+      const totals = calculateRecurringTotals(occurrences);
+      expect(totals.totalRecurringCents).toBe(11990);
+
+      const radarImpact = calculateCardSubscriptionImpact(
+        { id: "card-nu", name: "Nubank", closing_day: 15, due_day: 22, credit_limit: 5000 },
+        occurrences,
+        { todayISO: "2026-10-05" },
+      );
+      expect(radarImpact.projectedCount).toBe(1);
+      expect(radarImpact.totalProjectedCents).toBe(11990);
+
+      // Nunca gera calibração `calib:*` no SmartAdvisor
+      const advisorInsights = generateSmartAdvisorInsights({
+        occurrences,
+        todayISO: "2026-10-05",
+      });
+      expect(advisorInsights.some((i) => i.themeKey.startsWith("calib:"))).toBe(false);
+    });
+
+    it("Cenário 2 (Fulfillment Semântico — Renda & Despesa): evita falso missingThisMonth e protege contra falso positivo de serviços conhecidos", () => {
+      // Renda: meses anteriores "Salário ACME" R$ 5.000 e mês atual "Salário Nov" R$ 5.000 na mesma categoria
+      const incomes: IncomeLike[] = [
+        { id: "s1", description: "Salário ACME", month: "2026-08", date: "2026-08-05", valueCents: 500000, categoryId: "cat-sal" },
+        { id: "s2", description: "Salário ACME", month: "2026-09", date: "2026-09-05", valueCents: 500000, categoryId: "cat-sal" },
+        { id: "s3", description: "Salário ACME", month: "2026-10", date: "2026-10-05", valueCents: 500000, categoryId: "cat-sal" },
+        { id: "s4", description: "Salário Nov", month: "2026-11", date: "2026-11-05", valueCents: 500000, categoryId: "cat-sal" },
+      ];
+      const detectedIncomes = detectIncomeRecurrences(incomes, { todayISO: "2026-11-12" });
+      const acme = detectedIncomes.find((i) => i.name === "Salário ACME");
+      expect(acme).toBeDefined();
+      expect(acme?.missingThisMonth).toBe(false);
+      expect(acme?.expectedDate).toBe("2026-12-05");
+
+      // Despesa: "Condomínio Edifício Sol" R$ 850 em Ago/Set cumprida em Out por "Boleto Cond. Sol" R$ 860 na mesma categoria
+      const condoExpenses: ExpenseLike[] = [
+        { id: "c1", description: "Condomínio Edifício Sol", month: "2026-08", date: "2026-08-10", valueCents: 85000, categoryId: "cat-moradia" },
+        { id: "c2", description: "Condomínio Edifício Sol", month: "2026-09", date: "2026-09-10", valueCents: 85000, categoryId: "cat-moradia" },
+        { id: "c3", description: "Boleto Cond. Sol", month: "2026-10", date: "2026-10-10", valueCents: 86000, categoryId: "cat-moradia" },
+      ];
+      const detectedCondo = detectRecurrences(condoExpenses, { todayISO: "2026-10-20" });
+      expect(detectedCondo).toHaveLength(1);
+      expect(detectedCondo[0]?.missingThisMonth).toBe(false);
+
+      // Guarda anti-falso-positivo: "Netflix" R$ 39,90 em Out NÃO cumpre "HBO Max" R$ 39,90 na mesma categoria
+      const streamingExpenses: ExpenseLike[] = [
+        { id: "h1", description: "HBO Max", month: "2026-08", date: "2026-08-05", valueCents: 3990, categoryId: "cat-streaming" },
+        { id: "h2", description: "HBO Max", month: "2026-09", date: "2026-09-05", valueCents: 3990, categoryId: "cat-streaming" },
+        { id: "n1", description: "Netflix", month: "2026-10", date: "2026-10-05", valueCents: 3990, categoryId: "cat-streaming" },
+      ];
+      const detectedStreaming = detectRecurrences(streamingExpenses, { todayISO: "2026-10-15" });
+      const hbo = detectedStreaming.find((s) => s.key === "sub:hbo");
+      expect(hbo?.missingThisMonth).toBe(true);
+    });
+
+    it("Blindagem detectIncomeRecurrences: ignora 2 eventos espaçados em 5 meses, [REFUND] e proventos esporádicos", () => {
+      const noisyIncomes: IncomeLike[] = [
+        // 2 eventos espaçados em 5 meses
+        { id: "g1", description: "Venda Equipamento", month: "2026-04", date: "2026-04-10", valueCents: 120000, categoryId: "cat-extra" },
+        { id: "g2", description: "Venda Equipamento", month: "2026-09", date: "2026-09-12", valueCents: 120000, categoryId: "cat-extra" },
+        // Proventos esporádicos
+        { id: "d1", description: "Dividendo MXRF11", month: "2026-08", date: "2026-08-15", valueCents: 8500, categoryId: "cat-inv", sourceRef: "[DIVIDEND]mxrf" },
+        { id: "d2", description: "Dividendo MXRF11", month: "2026-09", date: "2026-09-15", valueCents: 8500, categoryId: "cat-inv", sourceRef: "[DIVIDEND]mxrf" },
+        // Estornos [REFUND]
+        { id: "r1", description: "Estorno Cartão", month: "2026-08", date: "2026-08-20", valueCents: 30000, categoryId: "cat-out", sourceRef: "[REFUND]pay-1" },
+        { id: "r2", description: "Estorno Cartão", month: "2026-09", date: "2026-09-20", valueCents: 30000, categoryId: "cat-out", sourceRef: "[REFUND]pay-2" },
+      ];
+
+      expect(detectIncomeRecurrences(noisyIncomes, { todayISO: "2026-10-10" })).toHaveLength(0);
+    });
+
+    it("Teste Cross-Module: alias salvo em merchantLearning -> UnifiedLearningGraph -> detectRecurrences agrupa lançamentos distintos", () => {
+      const learning = buildUnifiedLearningGraph({
+        referenceMonth: "2026-10",
+        merchantLearning: {
+          name_academia_fit: {
+            friendlyName: "Academia Fit",
+            rawAliases: ["pag*academiafit ltda", "academia fit"],
+          },
+        },
+      });
+
+      const expenses: ExpenseLike[] = [
+        { id: "a1", description: "PAG*AcademiaFit LTDA", month: "2026-09", date: "2026-09-10", valueCents: 14990, categoryId: "cat-saude" },
+        { id: "a2", description: "Academia Fit", month: "2026-10", date: "2026-10-10", valueCents: 14990, categoryId: "cat-saude" },
+      ];
+
+      const detected = detectRecurrences(expenses, {
+        todayISO: "2026-10-20",
+        merchantAliasMap: learning.merchantAliasMap,
+      });
+
+      expect(detected).toHaveLength(1);
+      expect(detected[0]?.name).toBe("Academia Fit");
+      expect(detected[0]?.averageCents).toBe(14990);
+      expect(detected[0]?.months).toEqual(["2026-09", "2026-10"]);
     });
   });
 });

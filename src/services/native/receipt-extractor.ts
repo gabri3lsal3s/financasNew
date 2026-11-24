@@ -122,18 +122,24 @@ function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob | null> {
  * Renderiza a primeira página de um PDF escaneado em PNG Blob via `unpdf` (`getDocumentProxy` + `<canvas>`),
  * com fallback automático para `extractImages` quando necessário.
  */
-export async function renderScannedPdfPageToBlob(buffer: ArrayBuffer): Promise<Blob | null> {
-  if (typeof document === "undefined") {
+export async function renderScannedPdfPageToBlob(
+  buffer: ArrayBuffer,
+  pageNumber = 1,
+): Promise<Blob | null> {
+  if (typeof document === "undefined" || pageNumber < 1) {
     return null;
   }
 
   const unpdf = await import("unpdf");
 
-  // Estratégia 1: renderização fiel da página 1 em <canvas>
+  // Estratégia 1: renderização fiel da página solicitada em <canvas>
   try {
     const pdf = await unpdf.getDocumentProxy(new Uint8Array(buffer.slice(0)));
     try {
-      const page = await pdf.getPage(1);
+      if (pageNumber > pdf.numPages) {
+        return null;
+      }
+      const page = await pdf.getPage(pageNumber);
       const baseViewport = page.getViewport({ scale: 1 });
       const largestSide = Math.max(baseViewport.width, baseViewport.height, 1);
       const scale = Math.min(2, PDF_RENDER_MAX_DIMENSION / largestSide);
@@ -161,9 +167,9 @@ export async function renderScannedPdfPageToBlob(buffer: ArrayBuffer): Promise<B
     // Segue para fallback de extração direta de imagens embutidas
   }
 
-  // Estratégia 2: extração da maior imagem embutida na página 1 via unpdf.extractImages
+  // Estratégia 2: extração da maior imagem embutida na página solicitada via unpdf.extractImages
   try {
-    const images = await unpdf.extractImages(new Uint8Array(buffer.slice(0)), 1);
+    const images = await unpdf.extractImages(new Uint8Array(buffer.slice(0)), pageNumber);
     const largest = images
       .filter((img) => img.width >= 200 && img.height >= 200)
       .sort((a, b) => b.width * b.height - a.width * a.height)[0];
@@ -210,14 +216,22 @@ export async function renderScannedPdfPageToBlob(buffer: ArrayBuffer): Promise<B
   }
 }
 
+export interface ExtractReceiptFileOptions {
+  /** Pula OCR local no navegador para delegar imagens/PDFs escaneados diretamente ao Vision. */
+  skipWebImageOcr?: boolean;
+}
+
 /**
  * Pipeline unificado de leitura de PDF (Web/PWA e Android):
  * 1. Tenta sempre extração de texto digital via `unpdf` (< 30ms) antes de qualquer OCR.
  * 2. Se texto < 40 caracteres (PDF escaneado):
  *    - No Android nativo: delega ao ReceiptOcrHelper (PdfRenderer + ML Kit).
- *    - Na Web/PWA: renderiza página em <canvas> e passa ao OCR local.
+ *    - Na Web/PWA: renderiza página em <canvas> e passa ao OCR local (ou pula se `skipWebImageOcr: true`).
  */
-async function extractPdfTextUnified(file: File): Promise<string> {
+async function extractPdfTextUnified(
+  file: File,
+  options?: ExtractReceiptFileOptions,
+): Promise<string> {
   let buffer: ArrayBuffer;
   try {
     buffer = await file.arrayBuffer();
@@ -262,7 +276,7 @@ async function extractPdfTextUnified(file: File): Promise<string> {
     } catch {
       // Fallback silencioso para renderização web caso o plugin falhe
     }
-  } else {
+  } else if (!options?.skipWebImageOcr) {
     const pageBlob = await renderScannedPdfPageToBlob(buffer);
     if (pageBlob) {
       const ocrText = (await extractTextFromImageWeb(pageBlob)).trim();
@@ -278,11 +292,14 @@ async function extractPdfTextUnified(file: File): Promise<string> {
 /**
  * Extrai o texto contido em um arquivo de comprovante (PDF ou imagem):
  * - PDF digital (Web, PWA ou Android): extrai streams digitais via `unpdf` primeiro.
- * - PDF escaneado (< 40 chars): PdfRenderer + ML Kit no Android; <canvas> + OCR na Web/PWA.
+ * - PDF escaneado (< 40 chars): PdfRenderer + ML Kit no Android; <canvas> + OCR na Web/PWA (se não pulado).
  * - Imagem: ML Kit no Android nativo (fallback Web) e Tesseract.js com pré-processamento na Web/PWA.
  * - Em qualquer plataforma: higieniza e repara ruídos com cleanOcrText.
  */
-export async function extractReceiptTextFromFile(file: File): Promise<string> {
+export async function extractReceiptTextFromFile(
+  file: File,
+  options?: ExtractReceiptFileOptions,
+): Promise<string> {
   if (file.size > MAX_RECEIPT_FILE_SIZE_BYTES) {
     throw new Error("O arquivo excede o limite máximo permitido de 15 MB.");
   }
@@ -308,7 +325,7 @@ export async function extractReceiptTextFromFile(file: File): Promise<string> {
   let extractedRaw = "";
 
   if (isPdf) {
-    extractedRaw = await extractPdfTextUnified(file);
+    extractedRaw = await extractPdfTextUnified(file, options);
   } else if (isImage) {
     if (isNativePlatform()) {
       try {
@@ -324,7 +341,7 @@ export async function extractReceiptTextFromFile(file: File): Promise<string> {
         // Fallback para OCR Web
       }
     }
-    if (!extractedRaw) {
+    if (!extractedRaw && !options?.skipWebImageOcr) {
       extractedRaw = await extractTextFromImageWeb(file);
     }
   } else if (file.type.startsWith("text/")) {

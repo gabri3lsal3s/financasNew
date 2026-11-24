@@ -23,7 +23,7 @@ const ACTIVE_DIALOG_SELECTOR =
 
 export const WIZARD_QUERY_KEYS = [
   "novo", "modo", "valor", "descricao", "data", "forma", "cartao", "categoria",
-  "parcelas", "sug_id", "passo", "step", "racha", "split", "pessoas", "participantes", "familia",
+  "parcelas", "sug_id", "passo", "step", "racha", "split", "pessoas", "participantes", "familia", "escopo",
 ] as const;
 
 export function isLaunchShortcutQuery(novoParam: string | null, modoParam: string | null): boolean {
@@ -66,6 +66,11 @@ export function parseLaunchWizardInitialValues(
 
   const categoria = params.get("categoria");
   if (categoria) vals.categoryId = categoria;
+
+  const escopo = params.get("escopo");
+  if (escopo === "business" || escopo === "personal") {
+    vals.scope = escopo;
+  }
 
   const parcelas = Number.parseInt(params.get("parcelas") ?? "", 10);
   if (Number.isFinite(parcelas) && parcelas >= 1 && parcelas <= 60) vals.installments = parcelas;

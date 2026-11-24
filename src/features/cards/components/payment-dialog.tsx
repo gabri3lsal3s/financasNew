@@ -1,4 +1,5 @@
-import { useId, useState } from "react";
+import { useId, useMemo, useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import {
   Alert,
   Button,
@@ -9,12 +10,22 @@ import {
   ModalFooter,
   MoneyInput,
   MoneyText,
+  Select,
+  Skeleton,
 } from "@/components/ui";
 import { toISODate } from "@/domain/money";
 import { monthLabel } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
-import { useCreateCardPayment, useCreateRefund } from "@/state";
+import {
+  useCategories,
+  useCreateCardPayment,
+  useCreateRefund,
+  usePayCardBillWithCharges,
+  useUpdateCustomSettings,
+  useUserPreferences,
+  type CardBillChargeItem,
+} from "@/state";
 import { BillRefinanceDialog } from "./bill-refinance-dialog";
 
 export interface PaymentDialogProps {
@@ -48,23 +59,122 @@ function PaymentDialogContent({
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
 
+  // Seção de encargos (juros, multa, IOF, tarifas)
+  const [showCharges, setShowCharges] = useState(false);
+  const [interestCents, setInterestCents] = useState(0);
+  const [fineCents, setFineCents] = useState(0);
+  const [taxCents, setTaxCents] = useState(0);
+  const [feeCents, setFeeCents] = useState(0);
+  const [chargeCompetenceMode, setChargeCompetenceMode] = useState<"current" | "next">("current");
+  const [selectedChargeCategoryId, setSelectedChargeCategoryId] = useState<string | null>(null);
+
+  const totalChargesCents = interestCents + fineCents + taxCents + feeCents;
+
+  const expenseCategories = useCategories("expense");
+  const { data: preferences } = useUserPreferences();
+  const updateCustomSettings = useUpdateCustomSettings();
+  const categories = useMemo(() => expenseCategories.data ?? [], [expenseCategories.data]);
+
+  const defaultChargeCategoryId = useMemo(() => {
+    if (categories.length === 0) return "";
+    const prefId = preferences?.custom_settings?.preferredChargeCategoryId;
+    if (prefId && categories.some((c) => c.id === prefId)) {
+      return prefId;
+    }
+    const match = categories.find((c) =>
+      /juros|tarifa|banc|cart|finan/i.test(c.name),
+    );
+    return match ? match.id : (categories[0]?.id ?? "");
+  }, [categories, preferences?.custom_settings?.preferredChargeCategoryId]);
+
+  const effectiveChargeCategoryId = selectedChargeCategoryId ?? defaultChargeCategoryId;
+
   const isZeroOrPaid = !isRefund && openBalanceCents <= 0;
   const createPayment = useCreateCardPayment();
   const createRefund = useCreateRefund();
-  const pending = createPayment.isPending || createRefund.isPending;
+  const payWithCharges = usePayCardBillWithCharges();
+  const pending = createPayment.isPending || createRefund.isPending || payWithCharges.isPending;
 
   const handleSubmit = async () => {
     setError(null);
-    const input = {
-      cardId,
-      competenceMonth,
-      amount: cents / 100,
-      date,
-      note: note.trim() || null,
-    };
     try {
-      if (isRefund) await createRefund.mutateAsync(input);
-      else await createPayment.mutateAsync(input);
+      if (isRefund) {
+        await createRefund.mutateAsync({
+          cardId,
+          competenceMonth,
+          amount: cents / 100,
+          date,
+          note: note.trim() || null,
+        });
+        triggerSensory("success");
+        onOpenChange(false);
+        return;
+      }
+
+      if (showCharges && totalChargesCents > 0) {
+        if (!effectiveChargeCategoryId) {
+          triggerSensory("error");
+          setError("Selecione uma categoria para os encargos da fatura.");
+          return;
+        }
+
+        const chargesList: CardBillChargeItem[] = [];
+        if (interestCents > 0) {
+          chargesList.push({
+            charge_kind: "interest",
+            amount: interestCents / 100,
+            description: "Juros",
+            category_id: effectiveChargeCategoryId || undefined,
+          });
+        }
+        if (fineCents > 0) {
+          chargesList.push({
+            charge_kind: "fine",
+            amount: fineCents / 100,
+            description: "Multa",
+            category_id: effectiveChargeCategoryId || undefined,
+          });
+        }
+        if (taxCents > 0) {
+          chargesList.push({
+            charge_kind: "tax",
+            amount: taxCents / 100,
+            description: "IOF",
+            category_id: effectiveChargeCategoryId || undefined,
+          });
+        }
+        if (feeCents > 0) {
+          chargesList.push({
+            charge_kind: "bank_fee",
+            amount: feeCents / 100,
+            description: "Tarifa",
+            category_id: effectiveChargeCategoryId || undefined,
+          });
+        }
+
+        await payWithCharges.mutateAsync({
+          cardId,
+          competenceMonth,
+          nominalAmount: cents / 100,
+          charges: chargesList,
+          chargeCompetenceMode,
+          paymentDate: date,
+          note: note.trim() || null,
+        });
+        void updateCustomSettings
+          .mutateAsync({ preferredChargeCategoryId: effectiveChargeCategoryId })
+          .catch(() => {});
+        onOpenChange(false);
+        return;
+      }
+
+      await createPayment.mutateAsync({
+        cardId,
+        competenceMonth,
+        amount: cents / 100,
+        date,
+        note: note.trim() || null,
+      });
       triggerSensory("success");
       onOpenChange(false);
     } catch (err) {
@@ -154,6 +264,125 @@ function PaymentDialogContent({
         <FormField label={isRefund ? "Valor do estorno" : "Valor pago"} htmlFor="payment-amount">
           <MoneyInput id="payment-amount" cents={cents} onCentsChange={setCents} aria-label={isRefund ? "Valor do estorno" : "Valor do pagamento"} />
         </FormField>
+
+        {!isRefund ? (
+          <div className="flex flex-col gap-2.5">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              sensoryIntent="selection"
+              onClick={() => setShowCharges((prev) => !prev)}
+              className="text-xs text-muted-foreground hover:text-foreground justify-between w-full border border-dashed border-border/80 px-3 py-2 h-auto"
+            >
+              <span>Incluir encargos nesta fatura (juros, multa, IOF, tarifas)</span>
+              {showCharges ? <ChevronUp className="size-4 shrink-0" /> : <ChevronDown className="size-4 shrink-0" />}
+            </Button>
+
+            {showCharges ? (
+              <div className="rounded-xl border border-border/80 bg-surface-raised p-3.5 flex flex-col gap-3">
+                <div className="text-xs font-semibold text-foreground">
+                  Detalhamento de encargos
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <FormField label="Juros" htmlFor="charge-interest" optional>
+                    <MoneyInput
+                      id="charge-interest"
+                      cents={interestCents}
+                      onCentsChange={setInterestCents}
+                      aria-label="Juros de fatura"
+                    />
+                  </FormField>
+
+                  <FormField label="Multa por atraso" htmlFor="charge-fine" optional>
+                    <MoneyInput
+                      id="charge-fine"
+                      cents={fineCents}
+                      onCentsChange={setFineCents}
+                      aria-label="Multa de fatura"
+                    />
+                  </FormField>
+
+                  <FormField label="IOF / Tributos" htmlFor="charge-tax" optional>
+                    <MoneyInput
+                      id="charge-tax"
+                      cents={taxCents}
+                      onCentsChange={setTaxCents}
+                      aria-label="IOF e tributos"
+                    />
+                  </FormField>
+
+                  <FormField label="Tarifa / Encargos" htmlFor="charge-fee" optional>
+                    <MoneyInput
+                      id="charge-fee"
+                      cents={feeCents}
+                      onCentsChange={setFeeCents}
+                      aria-label="Tarifas e encargos"
+                    />
+                  </FormField>
+                </div>
+
+                {totalChargesCents > 0 ? (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-border/60">
+                      <FormField label="Destino dos encargos" htmlFor="charge-competence-mode">
+                        <Select
+                          id="charge-competence-mode"
+                          value={chargeCompetenceMode}
+                          onValueChange={(val) => setChargeCompetenceMode(val as "current" | "next")}
+                          options={[
+                            { value: "current", label: "Lançar nesta fatura (pago agora)" },
+                            { value: "next", label: "Lançar na próxima fatura" },
+                          ]}
+                          ariaLabel="Destino dos encargos"
+                        />
+                      </FormField>
+
+                      <FormField label="Categoria dos encargos" htmlFor="charge-category">
+                        {expenseCategories.isLoading ? (
+                          <Skeleton className="h-10 w-full" />
+                        ) : (
+                          <Select
+                            id="charge-category"
+                            value={effectiveChargeCategoryId}
+                            onValueChange={(val) => setSelectedChargeCategoryId(val)}
+                            options={categories.map((c) => ({ value: c.id, label: c.name }))}
+                            placeholder="Selecione categoria"
+                            ariaLabel="Categoria dos encargos"
+                          />
+                        )}
+                      </FormField>
+                    </div>
+
+                    <div className="rounded-lg border border-border/80 bg-surface p-2.5 flex flex-col gap-1.5 text-xs">
+                      <div className="flex items-center justify-between text-muted-foreground">
+                        <span>Valor nominal da fatura:</span>
+                        <MoneyText cents={cents} tone="default" className="text-xs font-medium" />
+                      </div>
+                      <div className="flex items-center justify-between text-muted-foreground">
+                        <span>Total de encargos:</span>
+                        <MoneyText cents={totalChargesCents} tone="default" className="text-xs font-semibold text-warning-strong" />
+                      </div>
+                      <div className="flex items-center justify-between text-foreground font-semibold pt-1.5 border-t border-border/80">
+                        <span>Total a debitar hoje do caixa:</span>
+                        <MoneyText
+                          cents={chargeCompetenceMode === "current" ? cents + totalChargesCents : cents}
+                          tone="default"
+                          className="text-xs font-bold"
+                        />
+                      </div>
+                      {chargeCompetenceMode === "next" ? (
+                        <p className="text-[11px] text-muted-foreground pt-0.5">
+                          Os encargos serão incluídos automaticamente na fatura do mês seguinte.
+                        </p>
+                      ) : null}
+                    </div>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         <FormField label="Data" htmlFor="payment-date">
           <DatePicker id="payment-date" value={date} onValueChange={setDate} ariaLabel={isRefund ? "Data do estorno" : "Data do pagamento"} />

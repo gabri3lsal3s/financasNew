@@ -97,6 +97,7 @@ export function ReportsPage() {
                 byCategory={data.byCategory}
                 byMethod={data.byMethod}
                 byWeekday={data.byWeekday}
+                byChargeKind={data.byChargeKind}
                 expenses={data.expenses}
                 onOpenFinancialReport={() => state.setFinancialReportOpen(true)}
                 onShowDetail={(title, expenseList) => state.setDetailModal({ title, expenses: expenseList })}

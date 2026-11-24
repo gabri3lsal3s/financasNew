@@ -24,6 +24,9 @@ import {
   AI_ALLOWED_CONFIDENCE_LEVELS,
   AI_ALLOWED_PAYMENT_METHODS,
   AI_ALLOWED_RECEIPT_KINDS,
+  AI_CUT_TIERS,
+  AI_SERVICE_SEGMENTS,
+  AI_STATEMENT_ENTRY_TYPES,
   AiAssistantRequestSchema,
   AiSingleReceiptOutputSchema,
   AiStatementPdfRowsOutputSchema,
@@ -34,6 +37,7 @@ import {
   MAX_AI_SINGLE_RECEIPT_TEXT_CHARS,
   MAX_AI_STATEMENT_PDF_TEXT_CHARS,
   normalizeSingleReceiptAiPayload,
+  normalizeStatementPdfRowsAiPayload,
   sanitizeBatchDescriptionForAi,
   stripBase64DataPrefix,
   stripJsonMarkdownFences,
@@ -53,7 +57,7 @@ declare const Deno:
     }
   | undefined;
 
-const GEMINI_PRIMARY_TIMEOUT_MS = 9_000;
+const GEMINI_PRIMARY_TIMEOUT_MS = 7_000;
 const GEMINI_FALLBACK_TIMEOUT_MS = 10_000;
 const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite";
 const DEFAULT_FALLBACK_MODELS = ["gemini-3.5-flash", "gemini-flash-lite-latest"] as const;
@@ -85,12 +89,21 @@ const GEMINI_SINGLE_RECEIPT_RESPONSE_SCHEMA = {
     receiptKind: { type: "STRING", enum: [...AI_ALLOWED_RECEIPT_KINDS] },
     description: { type: "STRING" },
     merchantOrBeneficiary: { type: "STRING", nullable: true },
+    merchantCnpj: { type: "STRING", nullable: true },
     payerOrSource: { type: "STRING", nullable: true },
     bankName: { type: "STRING", nullable: true },
     cardLastDigits: { type: "STRING", nullable: true },
     cardBrand: { type: "STRING", nullable: true },
     installmentsCount: { type: "INTEGER", nullable: true },
     isSameTitularity: { type: "BOOLEAN", nullable: true },
+    categoryId: { type: "STRING", nullable: true },
+    originalCurrency: { type: "STRING", nullable: true },
+    originalAmountCents: { type: "INTEGER", nullable: true },
+    semanticTags: {
+      type: "ARRAY",
+      nullable: true,
+      items: { type: "STRING" },
+    },
     confidence: { type: "STRING", enum: [...AI_ALLOWED_CONFIDENCE_LEVELS] },
     fieldConfidence: {
       type: "OBJECT",
@@ -125,6 +138,15 @@ const GEMINI_CATEGORIZE_BATCH_RESPONSE_SCHEMA = {
           index: { type: "INTEGER" },
           friendlyName: { type: "STRING" },
           categoryId: { type: "STRING", nullable: true },
+          canonicalMerchant: { type: "STRING", nullable: true },
+          serviceSegment: { type: "STRING", enum: [...AI_SERVICE_SEGMENTS], nullable: true },
+          cutTier: { type: "STRING", enum: [...AI_CUT_TIERS], nullable: true },
+          isSubscription: { type: "BOOLEAN", nullable: true },
+          semanticTags: {
+            type: "ARRAY",
+            nullable: true,
+            items: { type: "STRING" },
+          },
         },
         required: ["index", "friendlyName", "categoryId"],
       },
@@ -146,6 +168,7 @@ const GEMINI_STATEMENT_PDF_ROWS_RESPONSE_SCHEMA = {
           amountCents: { type: "INTEGER" },
           installmentCurrent: { type: "INTEGER", nullable: true },
           installmentTotal: { type: "INTEGER", nullable: true },
+          entryType: { type: "STRING", enum: [...AI_STATEMENT_ENTRY_TYPES], nullable: true },
         },
         required: ["date", "description", "amountCents"],
       },
@@ -154,20 +177,33 @@ const GEMINI_STATEMENT_PDF_ROWS_RESPONSE_SCHEMA = {
   required: ["rows"],
 };
 
-function buildSingleReceiptPrompt(userFullName?: string): string {
+function buildSingleReceiptPrompt(
+  userFullName?: string,
+  categories?: readonly { id: string; name: string; type?: "expense" | "income" }[],
+): string {
   const titularLine = userFullName
-    ? `Titular autenticado da conta no app: "${userFullName}". Compare pagador/origem e recebedor/destino para definir nature ("income" se o titular recebeu o valor, "expense" se o titular pagou/enviou) e isSameTitularity (true somente se o mesmo titular aparece claramente nos dois polos).`
-    : 'Defina nature ("expense" ou "income") e isSameTitularity (boolean) apenas com base explicita no documento.';
+    ? `Titular do app: "${userFullName}". Compare pagador e recebedor para definir nature ("income" se recebeu, "expense" se pagou) e isSameTitularity (true somente se mesmo titular nos dois polos, senao false/null).`
+    : 'Defina nature ("expense" ou "income") e isSameTitularity apenas com base explicita no documento.';
 
-  return [
-    "Voce e um extrator financeiro estruturado brasileiro. Extraia somente os campos do comprovante financeiro fornecido.",
-    "Regras obrigatorias:",
-    "1) amountCents DEVE ser inteiro positivo em centavos (ex.: R$ 45,00 => 4500; R$ 1.250,90 => 125090). Se houver saldo em conta, valor original e valor pago com desconto/juros, selecione o VALOR EFETIVAMENTE PAGO/RECEBIDO.",
-    "2) date em formato ISO YYYY-MM-DD ou null se ausente.",
+  const lines = [
+    "Extrator financeiro estruturado BR. Retorne JSON estrito.",
+    "1) amountCents: inteiro positivo em centavos do valor efetivamente pago/recebido (desconsidere saldo/descontos nao pagos).",
+    "2) date: YYYY-MM-DD ou null se ausente.",
     `3) ${titularLine}`,
-    "4) description curta e limpa com o nome comercial da contraparte (sem banco, sem frases como 'comprovante de').",
-    "5) Nunca invente campos ausentes: retorne null nos opcionais incertos e sinalize fieldConfidence realista ('high' apenas quando nitido e inequivoco).",
-  ].join("\n");
+    "4) description: nome comercial limpo da contraparte (sem banco, sem 'comprovante de'); merchantCnpj: apenas os 14 digitos do CNPJ do estabelecimento/recebedor (NUNCA CPF) ou null.",
+    "5) originalCurrency e originalAmountCents: preencha com codigo ISO-4217 de 3 letras (ex.: USD, EUR, ARS) e valor em centavos somente se o recibo estiver em moeda estrangeira != BRL; caso contrario null.",
+    "6) semanticTags: ate 4 tags curtas em portugues (sem acento/minusculas) dos produtos/servicos do recibo para busca futura (ex.: ['pet','racao'], ['reforma','eletrica']); ou null.",
+    "7) Nunca invente campos opcionais ausentes (use null) e sinalize fieldConfidence realista ('high' somente quando inequivoco).",
+  ];
+
+  if (categories && categories.length > 0) {
+    lines.push(
+      "8) categoryId: analise o estabelecimento E os produtos/itens listados no comprovante (priorize os itens de maior valor se houver varios) e escolha o id EXATO mais adequado ao tipo (expense/income) da lista abaixo, ou null se nenhuma encaixar. PROIBIDO inventar id.",
+      `Categorias do usuario: ${JSON.stringify(categories)}`,
+    );
+  }
+
+  return lines.join("\n");
 }
 
 function buildCategorizeBatchPrompt(
@@ -179,6 +215,11 @@ function buildCategorizeBatchPrompt(
     "Para cada item indexado em `descriptions`, gere:",
     "1) `friendlyName`: nome comercial limpo e legivel (ex.: 'PAG*PadariaEstrela SP' -> 'Padaria Estrela', 'IFD*RESTAURANTE XYZ' -> 'Restaurante Xyz').",
     "2) `categoryId`: selecione EXCLUSIVAMENTE um `id` exato da lista `categories` abaixo ou `null` caso nao tenha certeza.",
+    "3) `canonicalMerchant`: nome canonico curto da marca sem prefixos de maquininha/assinatura (ex.: 'DL*GOOGLE YOUTUB' -> 'YouTube', 'MP *MELI+' -> 'Meli+') ou null.",
+    "4) `isSubscription`: true somente se for assinatura/mensalidade recorrente tipica (streaming, academia, nuvem/IA, clube), senao false/null.",
+    "5) `serviceSegment`: streaming|fitness|cloud_ai|telecom|mobility|delivery|utilities|health|education|other (ou null).",
+    "6) `cutTier`: essential|discretionary|can_cut (ou null).",
+    "7) `semanticTags`: ate 4 palavras-chave curtas de busca em pt-BR (ex.: ['pet','veterinario'] ou ['streaming','musica']), ou null.",
     "PROIBIDO inventar ou alterar qualquer `categoryId`. Responda em JSON estrito.",
     "",
     "Categorias disponiveis (whitelist):",
@@ -189,24 +230,28 @@ function buildCategorizeBatchPrompt(
   ].join("\n");
 }
 
-function buildStatementPdfRowsPrompt(text: string, referenceYear?: number): string {
-  const yearHint = referenceYear
-    ? `Ano de referencia da fatura caso a linha tenha apenas DD/MM: ${referenceYear}.`
-    : "Use o ano explicito do cabecalho ou dos lancamentos quando a data estiver em DD/MM.";
+function buildStatementPdfRowsPrompt(params: {
+  competenceMonth?: string;
+  referenceYear?: number;
+  hasImage: boolean;
+}): string {
+  const competenceHint = params.competenceMonth
+    ? `Competencia da fatura: ${params.competenceMonth} (se a linha tiver apenas DD/MM e o mes for posterior ao mes da competencia, ex.: DEZ numa fatura JAN, use o ano anterior).`
+    : params.referenceYear
+      ? `Ano de referencia para datas DD/MM: ${params.referenceYear}.`
+      : "Use o ano explicito do documento para datas DD/MM.";
 
   return [
-    "Voce e um extrator estruturado de linhas de fatura de cartao de credito em PDF.",
-    yearHint,
-    "Regras obrigatorias:",
-    "1) Extraia APENAS as linhas individuais de lancamentos/compras/estornos.",
-    "2) IGNORE totais de fatura, saldo anterior, pagamento minimo, encargos resumidos, cabeçalhos e rodapes.",
-    "3) `date` sempre no formato ISO `YYYY-MM-DD`; `description` concisa com o nome do estabelecimento.",
-    "4) `amountCents` em centavos inteiros: POSITIVO para compras/despesas e NEGATIVO apenas para estornos/creditos na fatura.",
-    "5) Se houver indicacao de parcela (ex.: 02/10), preencha `installmentCurrent` e `installmentTotal`; senao use null.",
-    "6) NUNCA some valores nem calcule totais.",
-    "",
-    "Texto da fatura:",
-    text,
+    params.hasImage
+      ? "Extrator estruturado de fatura de cartao (imagem/print). Retorne JSON estrito."
+      : "Extrator estruturado de linhas de fatura de cartao. Retorne JSON estrito.",
+    competenceHint,
+    "1) Extraia APENAS lancamentos individuais (compras, encargos/IOF/anuidade, estornos e pagamentos de fatura anterior).",
+    "2) IGNORE totais, resumos, limites, pagamento minimo, cabecalhos e simulacoes de parcelamento da fatura (ex.: '12x de R$').",
+    "3) date: YYYY-MM-DD; description: nome limpo do estabelecimento/lancamento.",
+    "4) Compras internacionais: use SEMPRE o valor final convertido em BRL (R$), nunca USD/EUR puro.",
+    "5) entryType e amountCents (centavos inteiros, nunca 0): 'purchase' ou 'charge' (IOF/juros/multa/anuidade) -> POSITIVO; 'refund' (estorno/credito) ou 'payment' (pagamento da fatura anterior) -> NEGATIVO.",
+    "6) Parcelas (ex.: 02/10): preencha installmentCurrent e installmentTotal (total >= 2); senao null. NUNCA some valores.",
   ].join("\n");
 }
 
@@ -283,7 +328,6 @@ async function callGeminiJson(params: {
         const retryable =
           response.status === 429 || response.status >= 500 || response.status === 404;
         if (retryable && hasNext) {
-          await new Promise((resolve) => setTimeout(resolve, 250));
           continue;
         }
         return { ok: false, reason: "upstream_unavailable" };
@@ -419,9 +463,13 @@ Deno?.serve?.(async (req: Request) => {
     }
 
     const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
+    const requestData = parsedRequest.data;
+    const bucket: AiQuotaBucket =
+      requestData.mode === "single_receipt" ? "receipt_calls" : "batch_calls";
+    const { periodMonth, periodDay, nextDayResetAtIso, nextMonthResetAtIso } = getBrtQuotaPeriods();
 
-    // 4. Checagem Fail-Closed de perfil ativo, assinatura e feature flag `ai_extraction`
-    const [profileRes, subRes, featureRes, overrideRes] = await Promise.all([
+    // 4. Buscas paralelas de acesso, Cache LGPD (0 debitos em hit) e snapshot de cota (1 unico round-trip ao DB)
+    const [profileRes, subRes, featureRes, overrideRes, cacheRes, quotaRes] = await Promise.all([
       serviceClient
         .from("profiles")
         .select("status, role")
@@ -442,6 +490,21 @@ Deno?.serve?.(async (req: Request) => {
         .select("is_enabled")
         .eq("user_id", authUser.id)
         .eq("feature_key", "ai_extraction")
+        .maybeSingle(),
+      serviceClient
+        .from("receipt_extractions_cache")
+        .select("extracted_json, created_at")
+        .eq("user_id", authUser.id)
+        .eq("sha256", requestData.sha256)
+        .eq("mode", requestData.mode)
+        .maybeSingle(),
+      serviceClient
+        .from("user_ai_quotas")
+        .select(
+          "period_day, receipt_calls_month, receipt_calls_day, batch_calls_month, batch_calls_day",
+        )
+        .eq("user_id", authUser.id)
+        .eq("period_month", periodMonth)
         .maybeSingle(),
     ]);
 
@@ -490,43 +553,53 @@ Deno?.serve?.(async (req: Request) => {
     }
 
     const planGroup: AiPlanGroup = isAdmin || isLifetime || isActivePro ? "pro" : "trial";
-    const requestData = parsedRequest.data;
-    const bucket: AiQuotaBucket =
-      requestData.mode === "single_receipt" ? "receipt_calls" : "batch_calls";
 
-    const allowedCategoryIds =
+    const allowedBatchCategoryIds =
       requestData.mode === "categorize_batch"
         ? new Set(requestData.categories.map((c) => c.id))
         : null;
 
-    // 5. Consulta Cache LGPD por (user_id, sha256, mode) ANTES de checar ou debitar cota
-    const { data: cacheRow } = await serviceClient
-      .from("receipt_extractions_cache")
-      .select("extracted_json, created_at")
-      .eq("user_id", authUser.id)
-      .eq("sha256", requestData.sha256)
-      .eq("mode", requestData.mode)
-      .maybeSingle();
+    const allowedSingleReceiptCategoryIds =
+      requestData.mode === "single_receipt" && requestData.categories?.length
+        ? new Set(requestData.categories.map((c) => c.id))
+        : undefined;
 
+    // 5. Verifica Cache LGPD por (user_id, sha256, mode) ANTES de debitar cota
+    const cacheRow = cacheRes.data as { extracted_json?: unknown; created_at?: string } | null;
     if (
       cacheRow?.extracted_json &&
-      isAiCacheEntryFresh((cacheRow as { created_at?: string }).created_at, requestData.mode)
+      isAiCacheEntryFresh(cacheRow.created_at, requestData.mode)
     ) {
       if (requestData.mode === "single_receipt") {
-        const validatedCached = AiSingleReceiptOutputSchema.safeParse(
-          normalizeSingleReceiptAiPayload(cacheRow.extracted_json),
-        );
-        if (validatedCached.success) {
-          return jsonResponse(req, {
-            ok: true,
-            mode: "single_receipt",
-            cached: true,
-            source: "cache_remote",
-            data: validatedCached.data,
-          });
+        const cachedRecord =
+          cacheRow.extracted_json && typeof cacheRow.extracted_json === "object"
+            ? (cacheRow.extracted_json as Record<string, unknown>)
+            : null;
+        const isLegacyCacheMissingCategory =
+          Boolean(requestData.categories?.length) &&
+          Boolean(cachedRecord) &&
+          !("categoryId" in cachedRecord);
+        if (!isLegacyCacheMissingCategory) {
+          const validatedCached = AiSingleReceiptOutputSchema.safeParse(
+            normalizeSingleReceiptAiPayload(
+              cacheRow.extracted_json,
+              allowedSingleReceiptCategoryIds,
+            ),
+          );
+          if (validatedCached.success) {
+            return jsonResponse(req, {
+              ok: true,
+              mode: "single_receipt",
+              cached: true,
+              source: "cache_remote",
+              data: validatedCached.data,
+            });
+          }
         }
       } else if (requestData.mode === "statement_pdf_rows") {
-        const validatedCached = AiStatementPdfRowsOutputSchema.safeParse(cacheRow.extracted_json);
+        const validatedCached = AiStatementPdfRowsOutputSchema.safeParse(
+          normalizeStatementPdfRowsAiPayload(cacheRow.extracted_json),
+        );
         if (validatedCached.success && validatedCached.data.rows.length > 0) {
           return jsonResponse(req, {
             ok: true,
@@ -536,10 +609,10 @@ Deno?.serve?.(async (req: Request) => {
             data: validatedCached.data,
           });
         }
-      } else if (requestData.mode === "categorize_batch" && allowedCategoryIds) {
+      } else if (requestData.mode === "categorize_batch" && allowedBatchCategoryIds) {
         const validatedCached = validateCategorizeBatchOutput(
           cacheRow.extracted_json,
-          allowedCategoryIds,
+          allowedBatchCategoryIds,
           requestData.descriptions.length - 1,
         );
         if (validatedCached.success) {
@@ -555,23 +628,19 @@ Deno?.serve?.(async (req: Request) => {
     }
 
     // 6. Pre-checagem de cota considerando 0 para uso diario quando period_day !== todayBrt (Ajuste #3)
-    const { periodMonth, periodDay, nextDayResetAtIso, nextMonthResetAtIso } = getBrtQuotaPeriods();
-    const { data: quotaRow } = await serviceClient
-      .from("user_ai_quotas")
-      .select(
-        "period_day, receipt_calls_month, receipt_calls_day, batch_calls_month, batch_calls_day",
-      )
-      .eq("user_id", authUser.id)
-      .eq("period_month", periodMonth)
-      .maybeSingle();
+    const callPriority =
+      requestData.mode === "categorize_batch"
+        ? (requestData.priority ?? "passive")
+        : "active";
 
     const allowance = evaluateAiQuotaAllowance({
       planGroup,
       bucket,
-      row: (quotaRow as UserAiQuotaRowSnapshot | null) ?? null,
+      row: (quotaRes.data as UserAiQuotaRowSnapshot | null) ?? null,
       todayBrt: periodDay,
       nextDayResetAtIso,
       nextMonthResetAtIso,
+      priority: callPriority,
     });
 
     if (!allowance.allowed) {
@@ -595,7 +664,7 @@ Deno?.serve?.(async (req: Request) => {
       responseSource = hasImage ? "ai_vision" : "ai_text";
 
       const parts: Array<Record<string, unknown>> = [
-        { text: buildSingleReceiptPrompt(requestData.userFullName) },
+        { text: buildSingleReceiptPrompt(requestData.userFullName, requestData.categories) },
       ];
       if (hasImage) {
         parts.push({
@@ -623,7 +692,7 @@ Deno?.serve?.(async (req: Request) => {
       if (!gemini.ok) return fallbackResponse(req, gemini.reason, 200);
 
       const parsed = AiSingleReceiptOutputSchema.safeParse(
-        normalizeSingleReceiptAiPayload(gemini.payload),
+        normalizeSingleReceiptAiPayload(gemini.payload, allowedSingleReceiptCategoryIds),
       );
       if (!parsed.success) {
         console.warn("[ai-financial-assistant] single_receipt zod failed", {
@@ -631,8 +700,12 @@ Deno?.serve?.(async (req: Request) => {
         });
         return fallbackResponse(req, "invalid_ai_output", 200);
       }
-      validatedOutput = parsed.data;
-    } else if (requestData.mode === "categorize_batch" && allowedCategoryIds) {
+      validatedOutput = {
+        ...parsed.data,
+        merchantCnpj: parsed.data.merchantCnpj ?? null,
+        categoryId: parsed.data.categoryId ?? null,
+      };
+    } else if (requestData.mode === "categorize_batch" && allowedBatchCategoryIds) {
       const sanitizedDescriptions = requestData.descriptions.map((d) =>
         sanitizeBatchDescriptionForAi(d) || d.slice(0, 120),
       );
@@ -650,27 +723,57 @@ Deno?.serve?.(async (req: Request) => {
 
       const parsed = validateCategorizeBatchOutput(
         gemini.payload,
-        allowedCategoryIds,
+        allowedBatchCategoryIds,
         sanitizedDescriptions.length - 1,
       );
       if (!parsed.success) return fallbackResponse(req, "invalid_ai_output", 200);
       validatedOutput = parsed.data;
     } else if (requestData.mode === "statement_pdf_rows") {
-      const sanitizedText = maskSensitivePiiForAi(requestData.text)
-        .trim()
-        .slice(0, MAX_AI_STATEMENT_PDF_TEXT_CHARS);
-      if (!sanitizedText) return fallbackResponse(req, "invalid_payload", 400);
+      const sanitizedText = requestData.text
+        ? maskSensitivePiiForAi(requestData.text).trim().slice(0, MAX_AI_STATEMENT_PDF_TEXT_CHARS)
+        : "";
+      const cleanImage = requestData.imageBase64
+        ? stripBase64DataPrefix(requestData.imageBase64)
+        : "";
+      const hasImage = cleanImage.length > 0;
+      if (!sanitizedText && !hasImage) {
+        return fallbackResponse(req, "invalid_payload", 400);
+      }
+      responseSource = hasImage ? "ai_vision" : "ai_text";
+
+      const parts: Array<Record<string, unknown>> = [
+        {
+          text: buildStatementPdfRowsPrompt({
+            competenceMonth: requestData.competenceMonth,
+            referenceYear: requestData.referenceYear,
+            hasImage,
+          }),
+        },
+      ];
+      if (hasImage) {
+        parts.push({
+          inlineData: {
+            mimeType: requestData.imageMimeType ?? "image/jpeg",
+            data: cleanImage,
+          },
+        });
+      }
+      if (sanitizedText) {
+        parts.push({ text: `Fatura:\n${sanitizedText}` });
+      }
 
       const gemini = await callGeminiJson({
         apiKey: geminiApiKey,
         models: modelCandidates,
-        parts: [{ text: buildStatementPdfRowsPrompt(sanitizedText, requestData.referenceYear) }],
+        parts,
         responseSchema: GEMINI_STATEMENT_PDF_ROWS_RESPONSE_SCHEMA,
         maxOutputTokens: 8_192,
       });
       if (!gemini.ok) return fallbackResponse(req, gemini.reason, 200);
 
-      const parsed = AiStatementPdfRowsOutputSchema.safeParse(gemini.payload);
+      const parsed = AiStatementPdfRowsOutputSchema.safeParse(
+        normalizeStatementPdfRowsAiPayload(gemini.payload),
+      );
       if (!parsed.success || parsed.data.rows.length === 0) {
         return fallbackResponse(req, "invalid_ai_output", 200);
       }

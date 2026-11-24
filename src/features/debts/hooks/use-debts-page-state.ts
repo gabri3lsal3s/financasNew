@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
+import { filterDebtsByViewScope } from "@/domain/business";
 import { calculateDebtsSummary, todayISO } from "@/domain/debts";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
+import { useSafeViewScope } from "@/hooks/use-safe-business-scope";
 import { currentMonth } from "@/lib/date";
 import { useDebts, useDeleteDebt, useLoans, usePermission, useUpdateDebt } from "@/state";
 import type { Debt, InstallmentDeleteMode } from "@/types";
@@ -95,7 +97,11 @@ export function useDebtsPageState() {
     await deleteDebt.mutateAsync({ id: debt.id, mode });
   };
 
-  const debts = useMemo(() => debtsQuery.data ?? [], [debtsQuery.data]);
+  const { effectiveViewScope } = useSafeViewScope();
+  const debts = useMemo(
+    () => filterDebtsByViewScope(debtsQuery.data ?? [], effectiveViewScope),
+    [debtsQuery.data, effectiveViewScope],
+  );
   const loans = useMemo(() => loansQuery.data ?? [], [loansQuery.data]);
   const payableDebts = useMemo(() => debts.filter((d) => d.type === "payable"), [debts]);
   const receivableDebts = useMemo(() => debts.filter((d) => d.type === "receivable"), [debts]);

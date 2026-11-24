@@ -11,6 +11,8 @@
  *   • Validação de período customizado (máx. 366 dias).
  */
 
+import type { ChargeKind } from "@/types";
+
 /** Valor efetivo de um lançamento em centavos (base × peso, arredondado). */
 export function weightedCents(baseCents: number, reportWeight: number): number {
   if (reportWeight < 0 || reportWeight > 1) {
@@ -44,6 +46,8 @@ export interface ReportEntry {
   baseCents: number;
   /** Peso de relatório (0–1, default 1). */
   weight: number;
+  /** Tipo de encargo financeiro (Fase 1 do Blueprint v2.1). */
+  chargeKind?: ChargeKind | null;
 }
 
 export interface CategoryTotal {
@@ -87,6 +91,48 @@ export function aggregateByCategory(entries: readonly ReportEntry[]): CategoryTo
     .map((item) => ({
       ...item,
       totalCents: item.ponderadoCents,
+    }))
+    .sort((a, b) => b.ponderadoCents - a.ponderadoCents);
+}
+
+export interface ChargeKindTotal {
+  kind: ChargeKind;
+  /** Total nominal bruto em centavos. */
+  brutoCents: number;
+  /** Total ponderado em centavos. */
+  ponderadoCents: number;
+  /** Alias retrocompatível para ponderadoCents. */
+  totalCents: number;
+  count: number;
+}
+
+/** Agrega despesas por tipo de encargo (Consumo vs Juros, Multa, IOF, Tarifas). */
+export function aggregateExpensesByChargeKind(
+  entries: readonly ReportEntry[],
+): ChargeKindTotal[] {
+  const map = new Map<ChargeKind, { brutoCents: number; ponderadoCents: number; count: number }>();
+  for (const entry of entries) {
+    if (entry.kind !== "expense") continue;
+    const kind = entry.chargeKind ?? "regular";
+    const existing = map.get(kind);
+    const bruto = entry.baseCents;
+    const ponderado = entryCents(entry);
+    if (existing) {
+      existing.brutoCents += bruto;
+      existing.ponderadoCents += ponderado;
+      existing.count += 1;
+    } else {
+      map.set(kind, { brutoCents: bruto, ponderadoCents: ponderado, count: 1 });
+    }
+  }
+
+  return [...map.entries()]
+    .map(([kind, totals]) => ({
+      kind,
+      brutoCents: totals.brutoCents,
+      ponderadoCents: totals.ponderadoCents,
+      totalCents: totals.ponderadoCents,
+      count: totals.count,
     }))
     .sort((a, b) => b.ponderadoCents - a.ponderadoCents);
 }

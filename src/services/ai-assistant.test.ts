@@ -628,4 +628,147 @@ describe("ai-assistant (Resiliência FinOps G6, Lock inFlightBySha256 & LGPD)", 
       expect(universal.isSameTitularity).toBeUndefined();
     }
   });
+
+  it("14. envia categories em single_receipt, filtra categoryId fora da whitelist e mapeia merchantCnpj -> taxId e categoryId -> aiCategoryId", async () => {
+    let capturedBody: Record<string, unknown> = {};
+    globalThis.fetch = vi
+      .fn()
+      .mockImplementationOnce(async (_url, init) => {
+        capturedBody = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            mode: "single_receipt",
+            cached: false,
+            source: "ai_vision",
+            data: {
+              amountCents: 27000,
+              date: "2024-05-09",
+              nature: "expense",
+              paymentMethod: "cash",
+              receiptKind: "invoice_danfe",
+              description: "REDE MOLEZA",
+              merchantOrBeneficiary: "REDE MOLEZA",
+              merchantCnpj: "88709563000102",
+              categoryId: "cat-casa",
+              confidence: "high",
+            },
+          }),
+          { status: 200 },
+        );
+      })
+      .mockImplementationOnce(async () => {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            mode: "single_receipt",
+            cached: false,
+            source: "ai_text",
+            data: {
+              amountCents: 9900,
+              date: "2024-05-10",
+              nature: "expense",
+              paymentMethod: "pix",
+              receiptKind: "pix",
+              description: "LOJA TESTE",
+              merchantOrBeneficiary: "LOJA TESTE",
+              merchantCnpj: "12345678000199",
+              categoryId: "cat-nao-existe",
+              confidence: "high",
+            },
+          }),
+          { status: 200 },
+        );
+      }) as unknown as typeof fetch;
+
+    const img = new Blob(["jpeg-bytes"], { type: "image/jpeg" });
+    const categories = [
+      { id: "cat-casa", name: "Casa", type: "expense" as const },
+      { id: "cat-lazer", name: "Lazer", type: "expense" as const },
+    ];
+
+    const validRes = await extractSingleReceiptWithAi({
+      sha256: VALID_SHA,
+      imageBlob: img,
+      preferVision: true,
+      userId: "user-1",
+      categories,
+    });
+
+    expect(Array.isArray(capturedBody.categories)).toBe(true);
+    expect(capturedBody.categories).toHaveLength(2);
+    expect(validRes.ok).toBe(true);
+    if (validRes.ok) {
+      expect(validRes.data.categoryId).toBe("cat-casa");
+      expect(validRes.data.merchantCnpj).toBe("88709563000102");
+      const universal = convertAiReceiptToUniversalData(validRes.data, validRes.source);
+      expect(universal.taxId).toBe("88709563000102");
+      expect(universal.aiCategoryId).toBe("cat-casa");
+    }
+
+    const hallucinatedRes = await extractSingleReceiptWithAi({
+      sha256: VALID_SHA_2,
+      text: "COMPROVANTE PIX LOJA TESTE LTDA VALOR R$ 99,00 DATA 10/05/2024",
+      userId: "user-1",
+      categories,
+    });
+    expect(hallucinatedRes.ok).toBe(true);
+    if (hallucinatedRes.ok) {
+      expect(hallucinatedRes.data.categoryId).toBeNull();
+      const universal = convertAiReceiptToUniversalData(
+        hallucinatedRes.data,
+        hallucinatedRes.source,
+      );
+      expect(universal.aiCategoryId).toBeUndefined();
+    }
+  });
+
+  it("15. extractStatementPdfRowsWithAi suporta print/imagem (ai_vision), competenceMonth e normaliza entryType/linhas R$ 0,00", async () => {
+    let capturedBody: Record<string, unknown> = {};
+    globalThis.fetch = vi.fn().mockImplementationOnce(async (_url, init) => {
+      capturedBody = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          mode: "statement_pdf_rows",
+          cached: false,
+          source: "ai_vision",
+          data: {
+            rows: [
+              {
+                date: "2026-08-14",
+                description: "IOF Compra Internacional",
+                amountCents: 450,
+                entryType: "charge",
+              },
+              {
+                date: "2026-08-14",
+                description: "Isencao Tarifa",
+                amountCents: 0,
+              },
+            ],
+          },
+        }),
+        { status: 200 },
+      );
+    }) as unknown as typeof fetch;
+
+    const printBlob = new Blob(["fake-print-jpeg"], { type: "image/jpeg" });
+    const res = await extractStatementPdfRowsWithAi({
+      sha256: VALID_SHA,
+      imageBlob: printBlob,
+      competenceMonth: "2026-08",
+      referenceYear: 2026,
+      userId: "user-1",
+    });
+
+    expect(res.ok).toBe(true);
+    expect(capturedBody.competenceMonth).toBe("2026-08");
+    expect(typeof capturedBody.imageBase64).toBe("string");
+    if (res.ok) {
+      expect(res.source).toBe("ai_vision");
+      expect(res.data.rows).toHaveLength(1);
+      expect(res.data.rows[0]?.entryType).toBe("charge");
+    }
+  });
 });

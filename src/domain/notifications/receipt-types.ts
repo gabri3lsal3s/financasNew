@@ -98,4 +98,12 @@ export interface UniversalReceiptData {
   fieldConfidence?: ReceiptFieldConfidence;
   isSameTitularity?: boolean;
   extractionSource?: ReceiptExtractionSource;
+  /** ID da categoria escolhida pela IA entre as categorias cadastradas do usuário. */
+  aiCategoryId?: string;
+  /** Código ISO-4217 da moeda original do recibo quando diferente de BRL (ex.: "USD", "EUR"). */
+  originalCurrency?: string;
+  /** Valor na moeda original em centavos inteiros antes da conversão para BRL. */
+  originalAmountCents?: number;
+  /** Tags semânticas curtas deduzidas dos itens/serviços pela IA para busca e radar. */
+  semanticTags?: string[];
 }

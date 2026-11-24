@@ -296,10 +296,23 @@ const STATEMENT_SUMMARY_OR_NOISE_KEYWORDS = [
   "fatura anterior",
   "resumo da fatura",
   "demonstrativo",
+  "valor total desta fatura",
+  "custo efetivo total",
+  "opcoes de parcelamento",
+  "opções de parcelamento",
+  "parcelamento da fatura",
+  "parcelamento automatico",
+  "parcelamento automático",
+  "juros do rotativo",
+  "credito rotativo",
+  "crédito rotativo",
 ];
 
 const METADATA_NOISE_REGEX =
-  /^(?:extrato\b|comprovante\b|p[aá]gina\s+\d+|ag[eê]ncia\b|agencia\b|conta\s*:\s*[\d-]+|per[ií]odo\b|periodo\b|cnpj\b|cpf\b|impresso\s+em|emitido\s+em|gerado\s+em|relat[oó]rio\b|relatorio\b|banco\b|transa[çc][oõ]es\s+sujeitas|informa[çc][oõ]es\s+de\s+uso)\b/i;
+  /^(?:extrato\b|comprovante\b|p[aá]gina\s+\d+|ag[eê]ncia\b|agencia\b|conta\s*:\s*[\d-]+|per[ií]odo\b|periodo\b|cnpj\b|cpf\b|impresso\s+em|emitido\s+em|gerado\s+em|relat[oó]rio\b|relatorio\b|banco\b|transa[çc][oõ]es\s+sujeitas|informa[çc][oõ]es\s+de\s+uso|central\s+de\s+atendimento|sac\b|ouvidoria\b)\b/i;
+
+const RATE_OR_BARCODE_NOISE_REGEX =
+  /(?:\b\d+[.,]\d+\s*%\s*a\.[ma]\b|\bcet\s+\d+[.,]\d+\s*%|^(?:[\d.\s-]{44,65})$)/i;
 
 const DIVIDER_LINE_REGEX = /^[-–—=_*.#\s]{3,}$/;
 
@@ -312,6 +325,7 @@ export function isStatementNoiseOrSummary(text: string): boolean {
   const trimmed = text.trim();
   if (DIVIDER_LINE_REGEX.test(trimmed)) return true;
   if (METADATA_NOISE_REGEX.test(trimmed)) return true;
+  if (RATE_OR_BARCODE_NOISE_REGEX.test(trimmed)) return true;
 
   const lower = trimmed.toLowerCase();
   return STATEMENT_SUMMARY_OR_NOISE_KEYWORDS.some((kw) => lower.includes(kw));

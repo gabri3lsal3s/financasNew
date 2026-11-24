@@ -29,6 +29,7 @@ export interface OverviewDashboardContentProps {
   donutSlices: DonutSlice[];
   alertItems: (DashboardAlertItem | null | undefined | false)[];
   detectedPix: DetectedPixTransaction | null;
+  showPixClipboardBanner?: boolean;
   onDismissDetectedPix: () => void;
   guardAction: (action: () => void, label: string) => void;
   onStartQuickTour: (track: OnboardingQuickTourTrack) => void;
@@ -45,6 +46,7 @@ export function OverviewDashboardContent({
   donutSlices,
   alertItems,
   detectedPix,
+  showPixClipboardBanner = true,
   onDismissDetectedPix,
   guardAction,
   onStartQuickTour,
@@ -90,7 +92,7 @@ export function OverviewDashboardContent({
         />
       ) : (
         <>
-          {detectedPix ? (
+          {showPixClipboardBanner && detectedPix ? (
             <div className="w-full animate-fade-slide-in">
               <DashboardPixClipboardCard
                 detected={detectedPix}
@@ -100,7 +102,7 @@ export function OverviewDashboardContent({
             </div>
           ) : null}
 
-          <DashboardAlertsCarousel items={alertItems} maxItems={5} />
+          <DashboardAlertsCarousel items={alertItems} maxItems={2} />
 
           {data.subscription.isReadOnly ? <ReadOnlyBanner /> : null}
 
@@ -162,6 +164,8 @@ export function OverviewDashboardContent({
                 ? data.surplusCapacity.suggestedAporteCents
                 : 0
             }
+            allocationIntent={data.surplusCapacity.allocationIntent}
+            suggestedEmergencyAllocationCents={data.surplusCapacity.suggestedEmergencyAllocationCents}
           />
 
           {!hasMonthIncomesOrExpenses ? (

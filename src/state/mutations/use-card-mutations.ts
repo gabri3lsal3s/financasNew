@@ -10,6 +10,15 @@ import { creditCardsKey } from "@/state/queries/use-credit-cards";
 import { cardPaymentsKey, cardExpensesKey } from "@/state/queries/use-card-payments";
 import { incomesKey } from "@/state/queries/use-incomes";
 import { expensesKey } from "@/state/queries/use-expenses";
+import {
+  payCardBillWithCharges,
+  type CardBillChargeItem,
+  type PayCardBillWithChargesParams,
+  type PayCardBillWithChargesResult,
+} from "@/data/rpc/cards";
+export type { CardBillChargeItem, PayCardBillWithChargesParams, PayCardBillWithChargesResult };
+import { formatCentsAsCurrency } from "@/services/masks/money";
+import { triggerSensory } from "@/services/sensory";
 import { getErrorMessage } from "@/services/errors";
 import { pushToast } from "@/services/toast";
 import { cancelDueReminderNotification } from "@/services/native";
@@ -55,6 +64,41 @@ export function useDeleteCard() {
   return useMutation({
     mutationFn: (id: string) => deleteCreditCard(id),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: creditCardsKey }),
+  });
+}
+
+export function usePayCardBillWithCharges() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: PayCardBillWithChargesParams) => payCardBillWithCharges(input),
+    onSuccess: (data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: cardPaymentsKey });
+      void queryClient.invalidateQueries({ queryKey: expensesKey });
+      void queryClient.invalidateQueries({ queryKey: cardExpensesKey });
+      void queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      void queryClient.invalidateQueries({ queryKey: ["cash-checkpoints"] });
+      void queryClient.invalidateQueries({ queryKey: ["overview"] });
+      void queryClient.invalidateQueries({ queryKey: ["budgets"] });
+      void queryClient.invalidateQueries({ queryKey: ["reports"] });
+      void cancelDueReminderNotification(`bill:${variables.cardId}:${variables.competenceMonth}`);
+      triggerSensory("success");
+      const formattedCharges = formatCentsAsCurrency(Math.round(data.charges_amount * 100));
+      pushToast({
+        title: "Pagamento registrado com sucesso",
+        description: data.charges_amount > 0
+          ? `Fatura quitada e encargos de ${formattedCharges} lançados na competência ${data.charges_competence}.`
+          : "Fatura quitada com sucesso.",
+        variant: "default",
+      });
+    },
+    onError: (err) => {
+      triggerSensory("error");
+      pushToast({
+        title: "Erro ao registrar pagamento",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    },
   });
 }
 

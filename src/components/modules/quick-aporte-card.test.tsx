@@ -119,4 +119,24 @@ describe("QuickAporteCard — Atalho de Aporte Rápido na Home (Fase 5 — Taref
     expect(navigateMock).toHaveBeenCalledWith("/investments?tab=aporte");
     expect(triggerSensoryMock).toHaveBeenCalledWith("action");
   });
+
+  it("exibe botão discreto Priorizar reserva em vez de sugestão em ativos quando a reserva está incompleta", () => {
+    render(
+      <QuickAporteCard
+        currentMonthAporteCents={0}
+        suggestedAporteCents={100000}
+        allocationIntent="emergency_fund"
+        suggestedEmergencyAllocationCents={100000}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: /Preencher com sugestão de aporte/i }),
+    ).not.toBeInTheDocument();
+
+    const reserveBtn = screen.getByRole("button", { name: /Priorizar reserva de emergência/i });
+    expect(reserveBtn).toBeInTheDocument();
+    fireEvent.click(reserveBtn);
+    expect(navigateMock).toHaveBeenCalledWith("/insights?aba=projection");
+  });
 });

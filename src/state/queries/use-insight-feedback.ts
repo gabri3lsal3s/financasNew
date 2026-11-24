@@ -3,9 +3,28 @@ import { listFeedback, setFeedback } from "@/data/repositories/insight-feedback"
 import { getErrorMessage } from "@/services/errors";
 import { pushToast } from "@/services/toast";
 import type { FeedbackDecision } from "@/domain/insights/feedback";
+import type { FeedbackEntry } from "@/domain/insights/learning-graph";
 import { STATIC_GC_TIME, STALE_TIMES } from "@/state/cache-policy";
 
 export const feedbackKey = ["insight-feedback"] as const;
+export const feedbackEntriesKey = ["insight-feedback-entries"] as const;
+
+/** Lista completa de decisões persistidas com timestamp (`created_at`) para escopo temporal (ex.: `one_off`). */
+export function useFeedbackEntries() {
+  return useQuery({
+    queryKey: feedbackEntriesKey,
+    queryFn: async (): Promise<FeedbackEntry[]> => {
+      const rows = await listFeedback();
+      return rows.map((row) => ({
+        occurrenceKey: row.occurrence_key,
+        decision: row.decision,
+        createdAt: row.created_at ?? null,
+      }));
+    },
+    staleTime: STALE_TIMES.static,
+    gcTime: STATIC_GC_TIME,
+  });
+}
 
 /** Mapa occurrence_key → decisão persistida (aprendizado do usuário). */
 export function useFeedback() {
@@ -36,7 +55,9 @@ export function useSetFeedback() {
       setFeedback(occurrenceKey, decision),
     onMutate: async ({ occurrenceKey, decision }) => {
       await queryClient.cancelQueries({ queryKey: feedbackKey });
+      await queryClient.cancelQueries({ queryKey: feedbackEntriesKey });
       const previous = queryClient.getQueryData<Record<string, FeedbackDecision>>(feedbackKey);
+      const previousEntries = queryClient.getQueryData<FeedbackEntry[]>(feedbackEntriesKey);
 
       queryClient.setQueryData<Record<string, FeedbackDecision>>(feedbackKey, (old = {}) => {
         if (decision === null) {
@@ -47,11 +68,29 @@ export function useSetFeedback() {
         return { ...old, [occurrenceKey]: decision };
       });
 
-      return { previous };
+      queryClient.setQueryData<FeedbackEntry[]>(feedbackEntriesKey, (old = []) => {
+        const filtered = old.filter((entry) => entry.occurrenceKey !== occurrenceKey);
+        if (decision === null) {
+          return filtered;
+        }
+        return [
+          ...filtered,
+          {
+            occurrenceKey,
+            decision,
+            createdAt: new Date().toISOString(),
+          },
+        ];
+      });
+
+      return { previous, previousEntries };
     },
     onError: (error, _variables, context) => {
       if (context?.previous !== undefined) {
         queryClient.setQueryData(feedbackKey, context.previous);
+      }
+      if (context?.previousEntries !== undefined) {
+        queryClient.setQueryData(feedbackEntriesKey, context.previousEntries);
       }
       pushToast({
         title: "Não foi possível salvar a avaliação",
@@ -61,6 +100,7 @@ export function useSetFeedback() {
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: feedbackKey });
+      void queryClient.invalidateQueries({ queryKey: feedbackEntriesKey });
       void queryClient.invalidateQueries({ queryKey: ["insights"] });
       void queryClient.invalidateQueries({ queryKey: ["overview"] });
     },

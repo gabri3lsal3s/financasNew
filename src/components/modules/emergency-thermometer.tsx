@@ -25,7 +25,8 @@ export interface EmergencyThermometerProps {
   onOpenConfig?: () => void;
 }
 
-const HEALTH_BADGE_VARIANTS: Record<EmergencyHealth, "critical" | "warning" | "positive" | "portfolio"> = {
+const HEALTH_BADGE_VARIANTS: Record<EmergencyHealth, "muted" | "critical" | "warning" | "positive" | "portfolio"> = {
+  indefinido: "muted",
   critico: "critical",
   baixo: "warning",
   adequado: "positive",
@@ -98,11 +99,17 @@ export function EmergencyThermometer({
             ) : null}
           </div>
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            Cobertura atual:{" "}
-            <strong className="font-semibold text-foreground tabular-nums">
-              {result.currentMonthsCovered} {result.currentMonthsCovered === 1 ? "mês" : "meses"}
-            </strong>{" "}
-            {result.currentMonthsCovered > 0 ? `(~${Math.round(result.currentMonthsCovered * 30)} dias)` : null} de custo de vida.
+            {result.health === "indefinido" ? (
+              "Registre despesas ou ajuste a simulação para calcular sua autonomia mensal."
+            ) : (
+              <>
+                Cobertura atual:{" "}
+                <strong className="font-semibold text-foreground tabular-nums">
+                  {result.currentMonthsCovered} {result.currentMonthsCovered === 1 ? "mês" : "meses"}
+                </strong>{" "}
+                {result.currentMonthsCovered > 0 ? `(~${Math.round(result.currentMonthsCovered * 30)} dias)` : null} de custo de vida.
+              </>
+            )}
           </p>
         </div>
 
@@ -142,9 +149,11 @@ export function EmergencyThermometer({
           <p className="text-muted-foreground">Autonomia estimada</p>
           <div className="flex items-baseline gap-1 mt-0.5">
             <span className="text-sm font-semibold text-foreground tabular-nums">
-              {result.currentMonthsCovered} {result.currentMonthsCovered === 1 ? "mês" : "meses"}
+              {result.health === "indefinido"
+                ? "Aguardando base"
+                : `${result.currentMonthsCovered} ${result.currentMonthsCovered === 1 ? "mês" : "meses"}`}
             </span>
-            {result.currentMonthsCovered > 0 ? (
+            {result.health !== "indefinido" && result.currentMonthsCovered > 0 ? (
               <span className="text-[11px] text-muted-foreground">
                 (~{Math.round(result.currentMonthsCovered * 30)} dias)
               </span>

@@ -1,10 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { buildPaceProjectionBreakdown } from "@/domain/calculation-memory";
 import { PaceAlertBanner } from "./pace-alert-banner";
 
-describe("PaceAlertBanner (§3.8)", () => {
-  it("renderiza o banner com aviso de ritmo acelerado quando não há déficit projetado", async () => {
+describe("PaceAlertBanner (§3.8 / Fase 3)", () => {
+  it("renderiza o banner com tom consultivo quando ritmo está acelerado sem déficit", async () => {
     const user = userEvent.setup();
     const onNavigateInsights = vi.fn();
 
@@ -19,15 +20,15 @@ describe("PaceAlertBanner (§3.8)", () => {
       />,
     );
 
-    expect(screen.getByText("Ritmo de gastos acima do previsto")).toBeInTheDocument();
-    expect(screen.getByText("Fora do trilho")).toBeInTheDocument();
+    expect(screen.getByText("Ritmo acima do planejado")).toBeInTheDocument();
+    expect(screen.getByText("Ritmo acelerado")).toBeInTheDocument();
     expect(
       screen.getByText((_content, element) => {
         const text = element?.textContent ?? "";
         return (
           element?.tagName.toLowerCase() === "p" &&
-          text.includes("Consumido 75% do orçamento") &&
-          text.includes("50% do mês decorrido")
+          text.includes("Você utilizou 75% da referência mensal") &&
+          text.includes("50% do mês")
         );
       }),
     ).toBeInTheDocument();
@@ -45,7 +46,22 @@ describe("PaceAlertBanner (§3.8)", () => {
     expect(onNavigateInsights).toHaveBeenCalledTimes(1);
   });
 
-  it("renderiza o banner com alerta crítico quando há déficit projetado", () => {
+  it("renderiza selo transparente de base provisória e botão (?) de Memória de Cálculo quando déficit é projetado", () => {
+    const breakdown = buildPaceProjectionBreakdown({
+      month: "2026-08",
+      referenceBudgetCents: 600000,
+      referenceBudgetSource: "expected_income",
+      isProvisionalReference: true,
+      fixedPaidCents: 220000,
+      pendingFixedCents: 30000,
+      oneOffAndTripCents: 0,
+      projectedVariableCents: 390000,
+      projectedSurplusCents: -40000,
+      dailyCents: 0,
+      dayOfMonth: 18,
+      daysInMonth: 31,
+    });
+
     render(
       <PaceAlertBanner
         spentPercent={85}
@@ -53,21 +69,41 @@ describe("PaceAlertBanner (§3.8)", () => {
         dailyCents={0}
         daysRemaining={12}
         surplusCents={-40000}
+        isProvisionalReference
+        referenceBudgetSource="expected_income"
+        calculationBreakdown={breakdown}
         onNavigateInsights={vi.fn()}
       />,
     );
 
-    expect(screen.getByText("Projeção de déficit no mês")).toBeInTheDocument();
-    expect(screen.getByText("Fora do trilho")).toBeInTheDocument();
+    expect(screen.getByText("Projeção pede ajuste no mês")).toBeInTheDocument();
+    expect(screen.getByText("Atenção ao ritmo")).toBeInTheDocument();
     expect(
       screen.getByText((_content, element) => {
         const text = element?.textContent ?? "";
         return (
           element?.tagName.toLowerCase() === "p" &&
-          text.includes("Consumido 85% do orçamento") &&
-          text.includes("60% do mês decorrido")
+          text.includes("85% da renda habitual prevista") &&
+          text.includes("Orçamento mensal atingido.")
         );
       }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Ver memória de cálculo: Memória do cálculo do ritmo de gastos|Memória de cálculo do ritmo de gastos/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("não renderiza nada quando não há base válida (guarda defensiva anti-500000%)", () => {
+    const { container } = render(
+      <PaceAlertBanner
+        spentPercent={0}
+        elapsedPercent={77}
+        dailyCents={null}
+        daysRemaining={9}
+        surplusCents={null}
+        onNavigateInsights={vi.fn()}
+      />,
+    );
+    expect(container.firstChild).toBeNull();
   });
 });

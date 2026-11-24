@@ -4,7 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { CategoryIcon } from "@/components/modules/category-icon";
 import { MoneyText, type MoneyTextProps } from "@/components/ui/money-text";
 import { usePrivacyMask } from "@/hooks/use-privacy-mask";
+import { CHARGE_KIND_LABELS } from "@/lib/labels";
 import { triggerSensory } from "@/services/sensory";
+import type { ChargeKind } from "@/types";
 
 export interface TransactionRowProps {
   title: string;
@@ -18,6 +20,8 @@ export interface TransactionRowProps {
   reportWeight?: number;
   /** Indica que o lançamento está vinculado a um Racha compartilhado. */
   hasLinkedSplit?: boolean;
+  /** Tipo de encargo da fatura (juros, multa, IOF, tarifas). */
+  chargeKind?: ChargeKind | string | null;
   kind: "income" | "expense" | "neutral";
   icon?: string | null;
   iconColor?: string | null;
@@ -53,6 +57,7 @@ export function TransactionRow({
   weightedAmountCents,
   reportWeight,
   hasLinkedSplit,
+  chargeKind,
   kind,
   icon,
   iconColor,
@@ -109,6 +114,16 @@ export function TransactionRow({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5 min-w-0">
           <p className="truncate text-sm font-medium text-foreground">{title}</p>
+          {chargeKind && chargeKind !== "regular" ? (
+            <Badge
+              variant="warning"
+              size="xs"
+              className="shrink-0 font-medium"
+              title={`Encargo: ${CHARGE_KIND_LABELS[chargeKind as ChargeKind] ?? chargeKind}`}
+            >
+              {CHARGE_KIND_LABELS[chargeKind as ChargeKind] ?? chargeKind}
+            </Badge>
+          ) : null}
           {hasLinkedSplit ? (
             <Badge
               variant="portfolio"

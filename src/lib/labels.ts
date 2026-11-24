@@ -1,11 +1,58 @@
 import type { RecurrenceKind } from "@/domain/insights";
-import type { PaymentMethod, PortfolioTransactionType, ReceiveType, RecurrenceFrequency } from "@/types";
+import type {
+  BusinessProfileKind,
+  CategoryScope,
+  ChargeKind,
+  CreditCardScope,
+  InternalTransferKind,
+  PaymentMethod,
+  PortfolioTransactionType,
+  ReceiveType,
+  RecurrenceFrequency,
+  TransactionScope,
+} from "@/types";
 
 /**
  * Labels pt-BR compartilhados (DRY) — formas de pagamento, tipos de
- * recebimento e níveis de recorrência. Fonte única: telas, wizard,
- * relatórios, insights e busca global importam daqui (nunca duplicam strings).
+ * recebimento, encargos de fatura, escopos PF/PJ e níveis de recorrência.
  */
+
+export const INTERNAL_TRANSFER_KIND_LABELS: Record<InternalTransferKind, string> = {
+  pro_labore: "Pró-Labore (PJ para PF)",
+  capital_injection: "Aporte de Capital (PF para PJ)",
+  card_reimbursement: "Reembolso de Cartão Misto (PJ para PF)",
+};
+
+export const TRANSACTION_SCOPE_LABELS: Record<TransactionScope, string> = {
+  personal: "Pessoal",
+  business: "Negócio",
+};
+
+export const CREDIT_CARD_SCOPE_LABELS: Record<CreditCardScope, string> = {
+  personal: "Pessoal (PF)",
+  business: "Empresarial (PJ)",
+  mixed: "Uso Misto (PF e PJ)",
+};
+
+export const CATEGORY_SCOPE_LABELS: Record<CategoryScope, string> = {
+  personal: "Pessoal",
+  business: "Negócio",
+  both: "Ambos (PF e PJ)",
+};
+
+export const BUSINESS_PROFILE_LABELS: Record<BusinessProfileKind, string> = {
+  mei: "MEI (Microempreendedor Individual)",
+  liberal: "Profissional Liberal / Autônomo",
+  micro_business: "Pequena Empresa / Loja",
+};
+
+export const CHARGE_KIND_LABELS: Record<ChargeKind, string> = {
+  regular: "Consumo normal",
+  interest: "Juros",
+  fine: "Multa",
+  tax: "IOF / Tributos",
+  bank_fee: "Tarifa / Encargos",
+};
 
 export const RECURRENCE_LEVEL_LABELS: Record<RecurrenceKind, string> = {
   subscription: "Assinatura",

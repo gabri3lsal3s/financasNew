@@ -28,6 +28,8 @@ const pageLoaders: Record<string, () => Promise<PageModule>> = {
   "/viagens": () => import("@/features/trips/pages/trip-list-page").then((m) => ({ default: m.TripListPage })),
   "/viagens/:id": () =>
     import("@/features/trips/pages/trip-details-page").then((m) => ({ default: m.TripDetailsPage })),
+  "/negocio": () =>
+    import("@/features/business/pages/business-page").then((m) => ({ default: m.BusinessPage })),
 };
 
 

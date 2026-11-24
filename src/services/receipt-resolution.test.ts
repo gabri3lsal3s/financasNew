@@ -4,7 +4,9 @@ import {
   computeFileSha256,
   resolveAndScanReceiptFile,
   resolveReceiptFromText,
+  resolveReceiptTransaction,
 } from "./receipt-resolution";
+import type { MerchantLearningMemory, UniversalReceiptData } from "@/domain/notifications";
 import * as nativeService from "@/services/native";
 import { setActiveUserId } from "@/services/user-storage";
 import type { CreditCard } from "@/types/schema";
@@ -24,6 +26,7 @@ vi.mock("@/services/ai-assistant", async (importOriginal) => {
 
 vi.mock("@/services/native", () => ({
   MAX_RECEIPT_FILE_SIZE_BYTES: 15 * 1024 * 1024,
+  isNativePlatform: () => false,
   extractReceiptTextFromFile: (...args: unknown[]) => mockExtractReceiptTextFromFile(...args),
   processPixShare: (...args: unknown[]) => mockProcessPixShare(...args),
 }));
@@ -398,7 +401,8 @@ describe("receipt-resolution", () => {
     expect(quotaRes.ok).toBe(false);
     expect(quotaRes.status).toBe("empty_text");
     expect(quotaRes.aiFallbackReason).toBe("quota_exceeded");
-    expect(quotaRes.errorMessage).toMatch(/renova em 24\/11/);
+    expect(quotaRes.errorMessage).not.toMatch(/cota|renova/i);
+    expect(quotaRes.errorMessage).toMatch(/PDF digital|nítido/i);
   });
 
   it("quando confiança local < 0.85 e Micro-IA falha/esgota, degrada silenciosamente para resultado local", async () => {
@@ -575,5 +579,119 @@ describe("receipt-resolution", () => {
     expect(unstableRes.status).toBe("empty_text");
     expect(unstableRes.aiFallbackReason).toBe("upstream_unavailable");
     expect(unstableRes.errorMessage).toMatch(/temporariamente instável/i);
+  });
+
+  it("usa fast-path AI Vision direto em imagem Web sem chamar OCR local quando IA retorna categoria/CNPJ, e faz fallback local sem rechamar IA na cota", async () => {
+    const categories = [
+      { id: "cat-casa", name: "Casa", type: "expense" as const },
+      { id: "cat-lazer", name: "Lazer", type: "expense" as const },
+    ];
+    mockExtractSingleReceiptWithAi.mockResolvedValueOnce({
+      ok: true,
+      cached: false,
+      source: "ai_vision",
+      data: {
+        amountCents: 27000,
+        date: "2024-05-09",
+        nature: "expense",
+        paymentMethod: "cash",
+        receiptKind: "invoice_danfe",
+        description: "REDE MOLEZA",
+        merchantOrBeneficiary: "REDE MOLEZA",
+        merchantCnpj: "88709563000102",
+        categoryId: "cat-casa",
+        isSameTitularity: null,
+        confidence: "high",
+      },
+    });
+
+    const jpgFile = new File(["jpg-fast-path"], "moleza-fast.jpg", {
+      type: "image/jpeg",
+    });
+    const fastRes = await resolveAndScanReceiptFile(jpgFile, {
+      userId: "user-1",
+      categories,
+      preferFastAiVisionForWebImages: true,
+    });
+
+    expect(fastRes.ok).toBe(true);
+    expect(mockExtractReceiptTextFromFile).not.toHaveBeenCalled();
+    expect(mockExtractSingleReceiptWithAi).toHaveBeenCalledTimes(1);
+    expect(mockExtractSingleReceiptWithAi).toHaveBeenCalledWith(
+      expect.objectContaining({
+        preferVision: true,
+        categories,
+      }),
+    );
+    expect(fastRes.parsed?.aiCategoryId).toBe("cat-casa");
+    expect(fastRes.parsed?.taxId).toBe("88709563000102");
+
+    // Se fast-path falhar por cota excedida, cai para OCR local sem rechamar IA uma 2a vez
+    mockExtractSingleReceiptWithAi.mockResolvedValueOnce({
+      ok: false,
+      reason: "quota_exceeded",
+      fallbackToLocal: true,
+    });
+    mockExtractReceiptTextFromFile.mockResolvedValueOnce(
+      "Comprovante Pix Nubank\nValor: R$ 85,00\nPara: Padaria Central\nData: 22/10/2026",
+    );
+
+    const quotaFallbackFile = new File(["jpg-quota-fallback"], "quota-fallback.jpg", {
+      type: "image/jpeg",
+    });
+    const fallbackRes = await resolveAndScanReceiptFile(quotaFallbackFile, {
+      userId: "user-1",
+      categories,
+      preferFastAiVisionForWebImages: true,
+    });
+
+    expect(fallbackRes.ok).toBe(true);
+    expect(fallbackRes.parsed?.amountCents).toBe(8500);
+    expect(mockExtractReceiptTextFromFile).toHaveBeenCalledTimes(1);
+    expect(mockExtractSingleReceiptWithAi).toHaveBeenCalledTimes(2);
+  });
+
+  it("prioriza memória aprendida do usuário sobre aiCategoryId no resolveReceiptTransaction e preserva aiCategoryId quando não há memória", () => {
+    const learnedMemory: MerchantLearningMemory = {
+      "88709563000102": {
+        friendlyName: "Rede Moleza Favorita",
+        categorySlug: "uuid-cat-aprendida",
+        cnpjOrCpf: "88709563000102",
+        rawAliases: ["REDE MOLEZA"],
+        usageCount: 3,
+        lastUsedAt: "2026-11-23T12:00:00.000Z",
+      },
+    };
+
+    const baseReceipt: UniversalReceiptData = {
+      id: "ai-test-1",
+      kind: "invoice_danfe",
+      nature: "expense",
+      amountCents: 27000,
+      date: "2024-05-09",
+      description: "REDE MOLEZA",
+      merchantOrBeneficiary: "REDE MOLEZA",
+      taxId: "88709563000102",
+      paymentMethod: "cash",
+      rawCleanText: "",
+      aiCategoryId: "cat-casa",
+      confidence: "high",
+      extractionSource: "ai_vision",
+    };
+
+    const withMemory = resolveReceiptTransaction(baseReceipt, {
+      userMemory: learnedMemory,
+    });
+
+    expect(withMemory.identity.isLearned).toBe(true);
+    expect(withMemory.identity.categorySlug).toBe("uuid-cat-aprendida");
+    expect(withMemory.parsed.aiCategoryId).toBe("cat-casa");
+
+    const withoutMemory = resolveReceiptTransaction(baseReceipt, {
+      userMemory: {},
+    });
+
+    expect(withoutMemory.identity.isLearned).toBe(false);
+    expect(withoutMemory.parsed.aiCategoryId).toBe("cat-casa");
   });
 });

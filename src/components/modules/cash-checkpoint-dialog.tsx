@@ -9,11 +9,15 @@ import { FormField } from "@/components/ui/form-field";
 import { todayISO } from "@/domain/debts";
 import { useCreateCashCheckpoint } from "@/state";
 import { triggerSensory } from "@/services/sensory";
+import type { TransactionScope } from "@/types";
 
 export interface CashCheckpointDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currentBalanceCents?: number;
+  scope?: TransactionScope;
+  title?: string;
+  description?: string;
   onSave?: (data: { date: string; balance_cents: number; notes: string | null }) => Promise<void> | void;
   isSaving?: boolean;
 }
@@ -22,6 +26,9 @@ export function CashCheckpointDialog({
   open,
   onOpenChange,
   currentBalanceCents = 0,
+  scope = "personal",
+  title = "Calibrar Saldo com o Banco",
+  description = "Informe a soma real do dinheiro disponível nas suas contas bancárias hoje. O app usará este valor como âncora a partir de agora.",
   onSave,
   isSaving,
 }: CashCheckpointDialogProps) {
@@ -50,6 +57,7 @@ export function CashCheckpointDialog({
       date,
       balance_cents: balanceCents,
       notes: notes.trim() || null,
+      ...(scope !== "personal" ? { scope } : {}),
     };
 
     if (onSave) {
@@ -66,8 +74,8 @@ export function CashCheckpointDialog({
     <Modal
       open={open}
       onOpenChange={onOpenChange}
-      title="Calibrar Saldo com o Banco"
-      description="Informe a soma real do dinheiro disponível nas suas contas bancárias hoje. O app usará este valor como âncora a partir de agora."
+      title={title}
+      description={description}
       showCalculator
       footer={
         <ModalFooter borderless>

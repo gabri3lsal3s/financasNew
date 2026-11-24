@@ -15,6 +15,9 @@ export interface SmartAdvisorCardFooterProps {
   hasExternalConfirmExpense: boolean;
   onConfirmRecurrence: () => void;
   onIgnoreRecurrence: (reason: CalibrationDecision) => void;
+  onMarkTxOneOff?: () => void;
+  onPauseFamily?: () => void;
+  canPauseFamily?: boolean;
   onConfirmIncome: () => void;
   onConfirmExpense: () => void;
   onActionClick: () => void;
@@ -34,6 +37,9 @@ export function SmartAdvisorCardFooter({
   hasExternalConfirmExpense,
   onConfirmRecurrence,
   onIgnoreRecurrence,
+  onMarkTxOneOff,
+  onPauseFamily,
+  canPauseFamily = false,
   onConfirmIncome,
   onConfirmExpense,
   onActionClick,
@@ -44,6 +50,7 @@ export function SmartAdvisorCardFooter({
     insight.category === "savings" &&
     (insight.primaryAction?.kind === "cut_subscription" ||
       insight.primaryAction?.kind === "set_category_budget");
+  const isTxOneOffCalibration = insight.primaryAction?.kind === "mark_tx_one_off";
 
   return (
     <>
@@ -54,7 +61,32 @@ export function SmartAdvisorCardFooter({
             : "flex flex-wrap items-center gap-2 pt-0.5"
         }
       >
-        {insight.category === "calibration" ? (
+        {isTxOneOffCalibration ? (
+          <>
+            <Button
+              size="sm"
+              variant="default"
+              sensoryIntent={false}
+              onClick={onMarkTxOneOff}
+              disabled={isSubmitting}
+              className="gap-1.5 text-xs h-8 cursor-pointer"
+            >
+              <Check className="size-3.5" aria-hidden="true" />
+              <span>{insight.primaryAction?.label ?? "Sim, foi pontual"}</span>
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              sensoryIntent="action"
+              onClick={onDismiss}
+              disabled={isSubmitting}
+              className="gap-1.5 text-xs h-8 text-muted-foreground hover:text-foreground cursor-pointer"
+            >
+              <X className="size-3.5" aria-hidden="true" />
+              <span>{insight.secondaryAction?.label ?? "Faz parte da rotina"}</span>
+            </Button>
+          </>
+        ) : insight.category === "calibration" ? (
           <>
             <Button
               size="sm"
@@ -143,6 +175,19 @@ export function SmartAdvisorCardFooter({
           >
             <span>{insight.primaryAction.label}</span>
             <ChevronRight className="size-3.5" aria-hidden="true" />
+          </Button>
+        ) : null}
+
+        {canPauseFamily && onPauseFamily ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            sensoryIntent="action"
+            onClick={onPauseFamily}
+            disabled={isSubmitting}
+            className="text-xs h-8 text-muted-foreground hover:text-foreground cursor-pointer"
+          >
+            Pausar este tema
           </Button>
         ) : null}
       </div>

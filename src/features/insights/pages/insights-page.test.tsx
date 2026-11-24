@@ -17,6 +17,7 @@ const setFeedbackMock = vi.fn();
 const expenseCategories = [
   { id: "c1", name: "Alimentação", icon: "alimentacao", color: null, type: "expense" },
   { id: "c2", name: "Lazer", icon: "lazer", color: null, type: "expense" },
+  { id: "c4", name: "Compras", icon: "compras", color: null, type: "expense" },
 ];
 const incomeCategories = [{ id: "c3", name: "Salário", icon: "salario", color: null, type: "income" }];
 
@@ -195,34 +196,42 @@ describe("InsightsPage (motor de insights §3.7)", () => {
     expect(screen.getByText("0,0%")).toBeInTheDocument();
   });
 
-  it("diagnósticos: gastos de fim de semana comparáveis exibem a razão e sem alerta absurdo (F27)", async () => {
+  it("diagnósticos: gastos de fim de semana comparáveis exibem a razão com massa crítica (>= 4 despesas) e sem alerta absurdo (F27 + Fase 4)", async () => {
     const user = userEvent.setup();
+    fixture.monthlyExpenses = (month) => [
+      { id: `${month}-1`, description: "Streaming", category_id: "c2", value: 19.9, report_weight: 1, date: `${month}-03`, installment_group_id: null },
+      { id: `${month}-2`, description: "Academia", category_id: "c2", value: 99, report_weight: 1, date: `${month}-04`, installment_group_id: null },
+      { id: `${month}-3`, description: "Cinema", category_id: "c2", value: 45, report_weight: 1, date: `${month}-05`, installment_group_id: null },
+      { id: `${month}-4`, description: "Livro", category_id: "c4", value: 60, report_weight: 1, date: `${month}-06`, installment_group_id: null },
+    ];
     renderInsights();
     await user.click(screen.getByRole("tab", { name: "Diagnósticos" }));
-    // Fixture: despesas só em dias úteis → razão 0,0× (comparável, sem alerta).
+    // Fixture: 4 despesas só em dias úteis → razão 0,0× (comparável, sem alerta).
     expect(screen.getByText("0,0×")).toBeInTheDocument();
     expect(screen.queryByText(/gastos de fim de semana.*maiores/i)).not.toBeInTheDocument();
   });
 
-  it("desafios: linha '30% em não essenciais' some quando duplica o desafio individual (F27 — dedup)", async () => {
+  it("desafios: linha '30% em não essenciais' some quando duplica o desafio individual e Alimentação nunca entra como corte (F27 + Blindagem)", async () => {
     const user = userEvent.setup();
-    // Lazer como única categoria de alto gasto não essencial (60.000 ≥ 10% da renda).
+    // Lazer (não essencial) + Alimentação (essencial, deve ser blindada mesmo com alto gasto).
     fixture.monthlyExpenses = (month) => [
-      { id: `${month}-1`, description: "Viagem", category_id: "c2", value: 60_000, report_weight: 1, date: `${month}-05`, installment_group_id: null },
+      { id: `${month}-1`, description: "Viagem", category_id: "c2", value: 800, report_weight: 1, date: `${month}-05`, installment_group_id: null },
+      { id: `${month}-2`, description: "Mercado e Feira", category_id: "c1", value: 900, report_weight: 1, date: `${month}-08`, installment_group_id: null },
     ];
     renderInsights();
     await user.click(screen.getByRole("tab", { name: "Projeção" }));
-    // O desafio individual aparece (corta 30% da Lazer).
+    // O desafio individual aparece apenas para Lazer; Alimentação jamais vira desafio de corte!
     expect(screen.getByText(/Lazer — cortar 30%/)).toBeInTheDocument();
-    // A linha agregada fica oculta (mesma base de 1 categoria — repetição).
+    expect(screen.queryByText(/Alimentação — cortar/)).not.toBeInTheDocument();
+    // A linha agregada fica oculta (apenas 1 categoria discricionária elegível).
     expect(screen.queryByText("30% em não essenciais")).not.toBeInTheDocument();
   });
 
-  it("desafios: linha '30% em não essenciais' aparece com 2+ categorias elegíveis (F27)", async () => {
+  it("desafios: linha '30% em não essenciais' aparece com 2+ categorias discricionárias elegíveis (F27)", async () => {
     const user = userEvent.setup();
     fixture.monthlyExpenses = (month) => [
-      { id: `${month}-1`, description: "Viagem", category_id: "c2", value: 60_000, report_weight: 1, date: `${month}-05`, installment_group_id: null },
-      { id: `${month}-2`, description: "Delivery", category_id: "c1", value: 55_000, report_weight: 1, date: `${month}-10`, installment_group_id: null },
+      { id: `${month}-1`, description: "Shows", category_id: "c2", value: 600, report_weight: 1, date: `${month}-05`, installment_group_id: null },
+      { id: `${month}-2`, description: "Roupas", category_id: "c4", value: 550, report_weight: 1, date: `${month}-10`, installment_group_id: null },
     ];
     renderInsights();
     await user.click(screen.getByRole("tab", { name: "Projeção" }));
@@ -240,11 +249,13 @@ describe("InsightsPage (motor de insights §3.7)", () => {
     expect(screen.getByText(/Poupança saudável:/)).toBeInTheDocument();
   });
 
-  it("exibe aviso de saldo negativo quando as despesas superam receitas", () => {
+  it("exibe aviso consultivo quando as despesas superam receitas e renderiza Ritual de Fechamento nos dias 1–5", () => {
     // Renda R$ 50, despesas R$ 11.890
     fixture.incomeCents = 5_000;
+    vi.setSystemTime(new Date("2026-08-03T12:00:00Z"));
     renderInsights();
-    expect(screen.getByText(/Saldo negativo:/)).toBeInTheDocument();
+    expect(screen.getByText(/Despesas acima das receitas do período:/)).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Ritual de fechamento mensal" })).toBeInTheDocument();
   });
 
   it("renderiza a aba Projeção com fechamento, runway e termometro de reserva", async () => {

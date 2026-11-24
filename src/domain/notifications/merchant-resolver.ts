@@ -20,7 +20,10 @@ import {
   cleanTaxId,
   extractTaxIdFromText,
   findLearnedMerchant,
+  type LearnedCutTier,
+  type LearnedServiceSegment,
   type MerchantLearningMemory,
+  type MerchantLearningRecord,
 } from "./merchant-memory";
 
 export type MerchantResolutionConfidence =
@@ -66,6 +69,33 @@ export interface ResolvedMerchantIdentity {
   preferredPaymentMethod?: PaymentMethod;
   /** ID do cartão de crédito preferencial memorizado para o estabelecimento (se aprendido). */
   preferredCardId?: string;
+  /** Peso proporcional nos relatórios (somente quando confirmado >= 2x e < 1). */
+  preferredReportWeight?: number;
+  /** Flag familiar habitual (somente quando confirmado >= 2x). */
+  preferredIsFamily?: boolean;
+  /** Tags semânticas memorizadas para o estabelecimento. */
+  semanticTags?: string[];
+  /** Segmento de serviço memorizado. */
+  serviceSegment?: LearnedServiceSegment;
+  /** Grau de corte memorizado. */
+  cutTier?: LearnedCutTier;
+}
+
+function buildLearnedHabitsFields(record: MerchantLearningRecord) {
+  return {
+    ...(record.preferredReportWeight !== undefined &&
+    record.preferredReportWeight < 1 &&
+    (record.consistentWeightCount ?? 0) >= 2
+      ? { preferredReportWeight: record.preferredReportWeight }
+      : {}),
+    ...(record.preferredIsFamily !== undefined &&
+    (record.consistentFamilyCount ?? 0) >= 2
+      ? { preferredIsFamily: record.preferredIsFamily }
+      : {}),
+    ...(record.semanticTags?.length ? { semanticTags: record.semanticTags } : {}),
+    ...(record.serviceSegment ? { serviceSegment: record.serviceSegment } : {}),
+    ...(record.cutTier ? { cutTier: record.cutTier } : {}),
+  };
 }
 
 const LOWERCASE_CONNECTORS = new Set([
@@ -143,6 +173,7 @@ export function resolveMerchantIdentity(
         layer: 1,
         preferredPaymentMethod: learnedByPix.preferredPaymentMethod || "pix",
         preferredCardId: learnedByPix.preferredCardId,
+        ...buildLearnedHabitsFields(learnedByPix),
       };
     }
   }
@@ -170,6 +201,7 @@ export function resolveMerchantIdentity(
           layer: 1,
           preferredPaymentMethod: learnedByTax.preferredPaymentMethod,
           preferredCardId: learnedByTax.preferredCardId,
+          ...buildLearnedHabitsFields(learnedByTax),
         };
       }
     }
@@ -221,6 +253,7 @@ export function resolveMerchantIdentity(
         layer: 2,
         preferredPaymentMethod: learnedByAlias.preferredPaymentMethod,
         preferredCardId: learnedByAlias.preferredCardId,
+        ...buildLearnedHabitsFields(learnedByAlias),
       };
     }
   }

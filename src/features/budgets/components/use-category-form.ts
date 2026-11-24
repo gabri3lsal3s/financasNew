@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { categoryFormSchema, suggestCategory } from "@/domain/budgets";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
+import { useSafeBusinessMode } from "@/hooks/use-safe-business-scope";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { useCreateCategory, useFamilyMode, useMyFamily, useUpdateCategory } from "@/state";
-import type { Category, CategoryType } from "@/types";
+import type { Category, CategoryScope, CategoryType } from "@/types";
 
 export interface UseCategoryFormParams {
   category: Category | null;
@@ -20,9 +21,11 @@ export function useCategoryForm({ category, defaultType, onClose, onSuccess }: U
   const [icon, setIcon] = useState(category?.icon ?? "");
   const [color, setColor] = useState(category?.color ?? "");
   const [isFamily, setIsFamily] = useState(Boolean(category?.is_family));
+  const [scope, setScope] = useState<CategoryScope>(category?.scope ?? "personal");
   const [error, setError] = useState<string | null>(null);
 
   const { isFamilyModeEnabled } = useFamilyMode();
+  const { isBusinessModeEnabled } = useSafeBusinessMode();
   const { data: myFamilyData } = useMyFamily();
   const isFamilyActive = Boolean(isFamilyModeEnabled);
   const createCategory = useCreateCategory();
@@ -52,6 +55,7 @@ export function useCategoryForm({ category, defaultType, onClose, onSuccess }: U
       icon: icon || null,
       color: color || null,
       is_family: isFamilyActive ? isFamily : Boolean(category?.is_family),
+      ...(isBusinessModeEnabled || category?.scope ? { scope } : {}),
     });
     if (!parsed.success) {
       triggerSensory("error");
@@ -72,6 +76,7 @@ export function useCategoryForm({ category, defaultType, onClose, onSuccess }: U
             color: parsed.data.color ?? null,
             is_family: parsed.data.is_family,
             family_id: familyId,
+            ...(parsed.data.scope !== undefined ? { scope: parsed.data.scope } : {}),
           },
         });
         triggerSensory("success");
@@ -84,6 +89,7 @@ export function useCategoryForm({ category, defaultType, onClose, onSuccess }: U
           color: parsed.data.color ?? null,
           is_family: parsed.data.is_family,
           family_id: familyId,
+          ...(parsed.data.scope !== undefined ? { scope: parsed.data.scope } : {}),
         });
         triggerSensory("success");
         if (created) onSuccess?.(created);
@@ -100,7 +106,8 @@ export function useCategoryForm({ category, defaultType, onClose, onSuccess }: U
       type !== category.type ||
       icon !== (category.icon ?? "") ||
       color !== (category.color ?? "") ||
-      isFamily !== Boolean(category.is_family)
+      isFamily !== Boolean(category.is_family) ||
+      (isBusinessModeEnabled && scope !== (category.scope ?? "personal"))
     : name.trim() !== "" || icon !== "" || color !== "";
 
   return {
@@ -114,6 +121,9 @@ export function useCategoryForm({ category, defaultType, onClose, onSuccess }: U
     setColor,
     isFamily,
     setIsFamily,
+    scope,
+    setScope,
+    isBusinessActive: isBusinessModeEnabled,
     error,
     isFamilyActive,
     pending,

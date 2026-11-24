@@ -5,7 +5,7 @@
  * já ordenados para exibição. Motor puro — nenhuma consulta aqui.
  */
 
-export type AlertSeverity = "critical" | "warning" | "praise";
+export type AlertSeverity = "critical" | "warning" | "praise" | "info";
 
 export interface InsightAlert {
   /** Chave estável (usada também como occurrence_key no aprendizado). */
@@ -42,6 +42,8 @@ export interface CriticalAlertInput {
   committedObligationsCents?: number;
   /** Taxa de poupança efetiva do ciclo (considerando compromissos pendentes). */
   cycleSavingsRatePercent?: number;
+  /** Indica se a referência orçamentária usa estimativa provisória/histórica (ex.: recebimento fracionado). */
+  isProvisionalReference?: boolean;
 }
 
 const CRITICAL_RITMO = 1.05; // > 5% acima do esperado
@@ -50,15 +52,40 @@ const PRAISE_MIN_SAVINGS = 20; // ≥ 20% da renda
 
 /** Gera os alertas verdadeiros, ordenados por prioridade. */
 export function criticalAlerts(input: CriticalAlertInput): InsightAlert[] {
+  const effectiveExpenseCents =
+    input.expenseCents != null
+      ? input.expenseCents
+      : input.incomeCents - input.balanceCents;
+
+  const hasNoIncomeWithExpenses = input.incomeCents <= 0 && effectiveExpenseCents > 0;
+
+  // Root-Cause Deduplication: quando não há renda registrada, o usuário não deve
+  // receber múltiplos alertas redundantes (saldo negativo, burn_rate, ritmo e déficit).
+  if (hasNoIncomeWithExpenses) {
+    return [
+      {
+        id: "sem_renda_registrada",
+        priority: 1,
+        severity: "info",
+        title: "Aguardando registro de renda no mês",
+        description:
+          "Você já registrou despesas neste período, mas ainda não há entradas de renda. Cadastre suas receitas para liberar diagnósticos completos de ritmo, poupança e projeção.",
+      },
+    ];
+  }
+
   const alerts: InsightAlert[] = [];
+  const provisionalSuffix = input.isProvisionalReference
+    ? " (estimativa baseada em referência provisória/histórica)"
+    : "";
 
   if (input.balanceCents < 0) {
     alerts.push({
       id: "saldo_negativo",
       priority: 1,
       severity: "critical",
-      title: "Saldo negativo",
-      description: "Suas despesas superaram as receitas neste período.",
+      title: "Despesas acima das receitas do período",
+      description: "As saídas registradas até o momento superaram as entradas confirmadas deste ciclo.",
     });
   }
 
@@ -68,7 +95,7 @@ export function criticalAlerts(input: CriticalAlertInput): InsightAlert[] {
       priority: 2,
       severity: "warning",
       title: "Ritmo de gastos acima do esperado",
-      description: `O consumo acumulado está ${((input.paceRatio - 1) * 100).toFixed(0)}% acima do previsto para o período.`,
+      description: `O consumo acumulado está ${((input.paceRatio - 1) * 100).toFixed(0)}% acima do ritmo esperado para a data${provisionalSuffix}.`,
     });
   }
 
@@ -77,30 +104,21 @@ export function criticalAlerts(input: CriticalAlertInput): InsightAlert[] {
       id: "limites_estourados",
       priority: 3,
       severity: "warning",
-      title: "Orçamentos estourados",
+      title: "Orçamentos acima do teto",
       description:
         input.overspentBudgets === 1
-          ? "1 categoria excedeu o limite definido."
-          : `${input.overspentBudgets} categorias excederam o limite definido.`,
+          ? "1 categoria ultrapassou o teto definido para o mês."
+          : `${input.overspentBudgets} categorias ultrapassaram o teto definido para o mês.`,
     });
   }
 
-  const effectiveExpenseCents =
-    input.expenseCents != null
-      ? input.expenseCents
-      : input.incomeCents - input.balanceCents;
-
-  const hasNoIncomeWithExpenses = input.incomeCents === 0 && effectiveExpenseCents > 0;
-
-  if (hasNoIncomeWithExpenses || input.burnRatePercent > BURN_LIMIT) {
+  if (input.incomeCents > 0 && input.burnRatePercent > BURN_LIMIT) {
     alerts.push({
       id: "burn_rate",
       priority: 4,
-      severity: "critical",
-      title: hasNoIncomeWithExpenses ? "Consumo sem renda registrada" : "Gastos acima de 85% da renda",
-      description: hasNoIncomeWithExpenses
-        ? "Existem despesas no período sem nenhuma entrada de renda registrada."
-        : `As despesas consomem ${input.burnRatePercent.toFixed(0)}% da renda — acima de 85%.`,
+      severity: "warning",
+      title: "Gastos acima de 85% da renda",
+      description: `As despesas consomem ${input.burnRatePercent.toFixed(0)}% da renda registrada${provisionalSuffix}.`,
     });
   }
 
@@ -109,8 +127,8 @@ export function criticalAlerts(input: CriticalAlertInput): InsightAlert[] {
       id: "deficit_projetado",
       priority: 5,
       severity: "warning",
-      title: "Déficit projetado para o fim do mês",
-      description: "No ritmo atual, o mês deve fechar no vermelho. Reveja os gastos restantes.",
+      title: "Projeção de fechamento pressionada",
+      description: `No ritmo atual, o fechamento do mês tende a ficar apertado${provisionalSuffix}. Vale revisar os próximos gastos variáveis.`,
     });
   }
 

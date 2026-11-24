@@ -622,7 +622,7 @@ describe("StatementImportDialog", () => {
       });
     });
 
-    it("aciona fallback statement_pdf_rows em PDF multi-coluna desalinhado e preserva parcelas/estornos na conciliação determinística", async () => {
+    it("aciona fallback statement_pdf_rows em PDF multi-coluna desalinhado, pula mapeamento redundante e preserva parcelas/estornos", async () => {
       const user = userEvent.setup();
       // Texto desalinhado que o parser tabular local não consegue fatiar sozinho
       mockUnpdfExtractText.mockResolvedValueOnce({
@@ -642,6 +642,7 @@ describe("StatementImportDialog", () => {
               amountCents: 12000,
               installmentCurrent: 2,
               installmentTotal: 3,
+              entryType: "purchase",
             },
             {
               date: "2026-08-11",
@@ -649,6 +650,7 @@ describe("StatementImportDialog", () => {
               amountCents: -4000,
               installmentCurrent: null,
               installmentTotal: null,
+              entryType: "refund",
             },
           ],
         },
@@ -671,11 +673,12 @@ describe("StatementImportDialog", () => {
       const input = document.querySelector('input[type="file"]') as HTMLInputElement;
       await user.upload(input, pdfFile);
 
-      expect(await screen.findByText(/Livraria Cultura 2\/3/i)).toBeInTheDocument();
-      expect(screen.getByText(/Estorno Livraria/i)).toBeInTheDocument();
+      // Como a IA já estruturou a tabela, vai direto para a etapa de Conciliação sem forçar mapeamento manual
+      expect(await screen.findByText("Livraria Cultura")).toBeInTheDocument();
+      expect(screen.getByText("2/3")).toBeInTheDocument();
+      expect(screen.getByText("Estorno Livraria")).toBeInTheDocument();
+      expect(screen.getByText("Organizado automaticamente")).toBeInTheDocument();
       expect(mockExtractStatementPdfRowsWithAi).toHaveBeenCalledTimes(1);
-
-      await advanceFromMapping(user);
 
       // Compra positiva fica selecionada; estorno (-40,00) fica desmarcado pelo motor determinístico
       const importBtn = await screen.findByRole("button", { name: /Importar 1 Lançamento/i });
@@ -693,6 +696,171 @@ describe("StatementImportDialog", () => {
           }),
         ],
       });
+    });
+
+    it("detecta falso positivo parcial em PDF, poda texto jurídico/CET antes da IA e valida checksum do Total da Fatura", async () => {
+      const user = userEvent.setup();
+      mockUnpdfExtractText.mockResolvedValueOnce({
+        text: [
+          "Valor total desta fatura: R$ 450,00",
+          "Custo Efetivo Total",
+          "Juros do rotativo 14,90% a.m. CET 412,50% a.a.",
+          "Opções de parcelamento da fatura: 12x de R$ 55,00",
+          "Lançamentos: Compras nacionais",
+          // 1 linha legível pelo parser local + várias linhas quebradas em colunas que o parser local perde
+          "10/08/2026\tLoja Isolada\t50,00",
+          "R$ 100,00",
+          "R$ 100,00",
+          "R$ 100,00",
+          "R$ 100,00",
+        ],
+        totalPages: 1,
+      });
+
+      mockExtractStatementPdfRowsWithAi.mockResolvedValueOnce({
+        ok: true,
+        cached: false,
+        source: "ai_text",
+        data: {
+          rows: [
+            { date: "2026-08-10", description: "Loja Isolada", amountCents: 5000, entryType: "purchase" },
+            { date: "2026-08-11", description: "Compra Coluna B1", amountCents: 20000, entryType: "purchase" },
+            { date: "2026-08-12", description: "Compra Coluna B2", amountCents: 20000, entryType: "purchase" },
+          ],
+        },
+      });
+
+      render(
+        <StatementImportDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          card={mockCard}
+          competenceMonth="2026-08"
+          userId="user-1"
+          aiExtractionEnabled={true}
+        />,
+      );
+
+      const pdfFile = new File(["pdf-falso-positivo"], "fatura-parcial.pdf", {
+        type: "application/pdf",
+      });
+      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+      await user.upload(input, pdfFile);
+
+      expect(await screen.findByText("Compra Coluna B1")).toBeInTheDocument();
+      expect(screen.getByText("Soma conferida")).toBeInTheDocument();
+
+      // Garante que o pré-processador removeu o bloco de CET/parcelamento antes de enviar tokens à IA
+      const sentArg = mockExtractStatementPdfRowsWithAi.mock.calls[0]?.[0] as { text?: string };
+      expect(sentArg.text).not.toContain("412,50%");
+      expect(sentArg.text).not.toContain("12x de R$");
+    });
+
+    it("suporta aba de colagem direta de texto, planilha .xls HTML (0 IA) e prints de fatura via Vision", async () => {
+      const user = userEvent.setup();
+
+      const { unmount } = render(
+        <StatementImportDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          card={mockCard}
+          competenceMonth="2026-08"
+          userId="user-1"
+          aiExtractionEnabled={true}
+        />,
+      );
+
+      // 1. Aba de colar texto direto
+      await user.click(screen.getByRole("tab", { name: /Colar texto ou tabela/i }));
+      const textarea = screen.getByLabelText("Conteúdo colado da fatura");
+      await user.type(textarea, "15/08/2026\tPadaria Estrela\t32,00");
+      await user.click(screen.getByRole("button", { name: /Organizar fatura/i }));
+
+      expect(await screen.findByText(/Prévia das primeiras linhas do extrato/i)).toBeInTheDocument();
+      expect(mockExtractStatementPdfRowsWithAi).not.toHaveBeenCalled();
+      unmount();
+
+      // 2. Planilha .xls HTML estilo Itaú (0 chamadas de IA)
+      const { unmount: unmountXls } = render(
+        <StatementImportDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          card={mockCard}
+          competenceMonth="2026-08"
+          userId="user-1"
+          aiExtractionEnabled={true}
+        />,
+      );
+      const htmlXls = new File(
+        ["<table><tr><th>Data</th><th>Estabelecimento</th><th>Valor</th></tr><tr><td>12/08/2026</td><td>Padaria Estrela</td><td>44,90</td></tr></table>"],
+        "fatura-itau.xls",
+        { type: "application/vnd.ms-excel" },
+      );
+      const xlsInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+      await user.upload(xlsInput, htmlXls);
+      expect(await screen.findByText(/Prévia das primeiras linhas do extrato/i)).toBeInTheDocument();
+      expect(mockExtractStatementPdfRowsWithAi).not.toHaveBeenCalled();
+      unmountXls();
+
+      // 3. Print de fatura aberta (.jpg) via Vision direto para conciliação
+      mockExtractStatementPdfRowsWithAi.mockResolvedValueOnce({
+        ok: true,
+        cached: false,
+        source: "ai_vision",
+        data: {
+          rows: [
+            { date: "2026-08-18", description: "Padaria Estrela", amountCents: 2990, entryType: "purchase" },
+          ],
+        },
+      });
+
+      render(
+        <StatementImportDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          card={mockCard}
+          competenceMonth="2026-08"
+          userId="user-1"
+          aiExtractionEnabled={true}
+        />,
+      );
+      const printFile = new File(["jpeg-bytes"], "print-fatura-aberta.jpg", { type: "image/jpeg" });
+      const printInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+      await user.upload(printInput, printFile);
+
+      expect(await screen.findByText("Padaria Estrela")).toBeInTheDocument();
+      expect(screen.getByText("Organizado automaticamente")).toBeInTheDocument();
+      expect(mockExtractStatementPdfRowsWithAi).toHaveBeenCalledWith(
+        expect.objectContaining({
+          imageBlob: expect.any(File),
+          competenceMonth: "2026-08",
+        }),
+      );
+    });
+
+    it("categoriza marcas brasileiras canônicas (ex.: iFood) localmente com 0 chamadas ao categorize_batch", async () => {
+      const user = userEvent.setup();
+
+      render(
+        <StatementImportDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          card={mockCard}
+          competenceMonth="2026-08"
+          userId="user-1"
+          aiExtractionEnabled={true}
+        />,
+      );
+
+      await uploadMockStatementFile(
+        user,
+        "Data\tDescricao\tValor\n20/08/2026\tIFOOD *HAMBURGUERIA\t68,90",
+      );
+      await advanceFromMapping(user);
+
+      // Como IFOOD/restaurante casa localmente com Alimentação via catálogo/keywords, não gasta cota de IA
+      expect(await screen.findByRole("button", { name: /Importar 1 Lançamento/i })).toBeInTheDocument();
+      expect(mockCategorizeDescriptionsBatchWithAi).not.toHaveBeenCalled();
     });
   });
 });

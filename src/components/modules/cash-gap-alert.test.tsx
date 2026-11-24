@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { buildCashGapBreakdown } from "@/domain/calculation-memory";
 import { CashGapAlert } from "./cash-gap-alert";
 import type { CashGapAnalysisResult } from "@/domain/projection";
 
@@ -52,6 +53,18 @@ describe("CashGapAlert (§F51)", () => {
     fireEvent.click(button);
 
     expect(navigateMock).toHaveBeenCalledWith("/dividas?type=payable");
+  });
+
+  it("exibe o gatilho (?) da Memória de Cálculo quando breakdown for fornecido", () => {
+    const breakdown = buildCashGapBreakdown({
+      result: mockResult,
+      currentBalanceCents: 100000,
+    });
+    render(<CashGapAlert result={mockResult} calculationBreakdown={breakdown} />);
+
+    expect(
+      screen.getByRole("button", { name: /Memória de cálculo do descasamento de caixa/i }),
+    ).toBeInTheDocument();
   });
 
   it("não renderiza nada quando isCashGapDetected é false", () => {

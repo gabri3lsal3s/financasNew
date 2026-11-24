@@ -36,6 +36,9 @@ export function defaultLaunchState(
     splitPeopleCount: overrides?.splitPeopleCount ?? 2,
     tripId: overrides?.tripId ?? null,
     splitDebtMode: overrides?.splitDebtMode ?? "single_total",
+    chargeKind: overrides?.chargeKind ?? "regular",
+    scope: overrides?.scope ?? "personal",
+    isTaxDeductible: overrides?.isTaxDeductible ?? false,
   };
   return overrides ? { ...base, ...overrides } : base;
 }

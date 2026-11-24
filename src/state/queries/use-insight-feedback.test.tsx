@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { feedbackKey, useFeedback, useSetFeedback } from "./use-insight-feedback";
+import { feedbackEntriesKey, feedbackKey, useFeedback, useFeedbackEntries, useSetFeedback } from "./use-insight-feedback";
 import * as feedbackRepo from "@/data/repositories/insight-feedback";
 import { pushToast } from "@/services/toast";
 
@@ -68,6 +68,29 @@ describe("useInsightFeedback — Persistência e Aprendizado Ativo (Tarefa 5.3)"
       });
 
       expect(result.current.data).toEqual({});
+    });
+
+    it("useFeedbackEntries retorna entradas completas com createdAt para escopo mensal de one_off", async () => {
+      vi.mocked(feedbackRepo.listFeedback).mockResolvedValueOnce([
+        { occurrence_key: "recurring:oficina", decision: "one_off", created_at: "2026-11-05T10:00:00Z" },
+      ]);
+
+      const { result } = renderHook(() => useFeedbackEntries(), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true);
+      });
+
+      expect(result.current.data).toEqual([
+        {
+          occurrenceKey: "recurring:oficina",
+          decision: "one_off",
+          createdAt: "2026-11-05T10:00:00Z",
+        },
+      ]);
+      expect(queryClient.getQueryData(feedbackEntriesKey)).toHaveLength(1);
     });
   });
 

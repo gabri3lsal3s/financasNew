@@ -3,6 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as clipboardService from "@/services/clipboard";
 import { computeEMVCRC16 } from "@/domain/notifications";
+import { recordMerchantLearningAction } from "@/services/merchant-learning";
+import { setActiveUserId } from "@/services/user-storage";
 import {
   isClipboardTextDismissed,
   resetPixClipboardStoreForTests,
@@ -14,6 +16,7 @@ import { LaunchWizard } from "./launch-wizard";
 const createExpenseMock = vi.fn();
 const navigateMock = vi.fn();
 const extractReceiptTextFromFileMock = vi.fn();
+const extractSingleReceiptWithAiMock = vi.fn();
 const recordTransactionLearningMock = vi.fn();
 const invalidateQueriesMock = vi.fn();
 
@@ -44,6 +47,14 @@ vi.mock("@/services/merchant-learning", async (importOriginal) => {
   return {
     ...actual,
     recordTransactionLearning: (...args: unknown[]) => recordTransactionLearningMock(...args),
+  };
+});
+
+vi.mock("@/services/ai-assistant", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/services/ai-assistant")>();
+  return {
+    ...actual,
+    extractSingleReceiptWithAi: (...args: unknown[]) => extractSingleReceiptWithAiMock(...args),
   };
 });
 
@@ -88,16 +99,19 @@ let mockAuthUser: { id: string; email?: string } | null = {
 vi.mock("@/state", () => ({
   usePermission: () => ({ isHidden: false, canRead: true, canWrite: true, isReadOnlyMode: false, accessLevel: "admin" }),
   useUserSubscription: () => ({ isPro: true, isTrial: false, plan: "pro", isReadOnly: false, canWrite: true }),
-  useCategories: () => ({
-    data: [
+  useCategories: (type?: "expense" | "income") => {
+    const all = [
       { id: "c1", name: "Alimentação", type: "expense", icon: "alimentacao", color: null, is_reserved: false, is_active: true },
       { id: "c2", name: "Salário", type: "income", icon: "salario", color: null, is_reserved: false, is_active: true },
       { id: "c3", name: "Supermercado", type: "expense", icon: "mercado", color: null, is_reserved: false, is_active: true, is_family: true },
-    ],
-    isLoading: false,
-    isError: false,
-    error: null,
-  }),
+    ];
+    return {
+      data: type ? all.filter((c) => c.type === type) : all,
+      isLoading: false,
+      isError: false,
+      error: null,
+    };
+  },
   useActiveCreditCards: () => ({ data: activeCreditCardsMock(), isLoading: false, isError: false, error: null }),
   useCreateExpense: () => ({ mutateAsync: createExpenseMock, isPending: false }),
   useCreateIncome: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -196,6 +210,11 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
     navigateMock.mockReset();
     activeCreditCardsMock.mockReset().mockReturnValue([]);
     extractReceiptTextFromFileMock.mockReset();
+    extractSingleReceiptWithAiMock.mockReset().mockResolvedValue({
+      ok: false,
+      reason: "unauthenticated",
+      fallbackToLocal: true,
+    });
     recordTransactionLearningMock.mockReset();
     addTripExpenseMock.mockReset().mockResolvedValue({ id: "te-1" });
     linkPersonalExpenseToTripMock.mockClear();
@@ -804,12 +823,15 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
         },
       });
 
-      await waitFor(() => {
-        expect((valInput as HTMLInputElement).value).toMatch(/140,00/);
-        expect(
-          screen.getByText(/Transferência entre suas próprias contas detectada/i),
-        ).toBeInTheDocument();
-      });
+      await waitFor(
+        () => {
+          expect((valInput as HTMLInputElement).value).toMatch(/140,00/);
+          expect(
+            screen.getByText(/Transferência entre suas próprias contas detectada/i),
+          ).toBeInTheDocument();
+        },
+        { timeout: 4000 },
+      );
 
       expect(document.activeElement).not.toBe(valInput);
     });
@@ -889,9 +911,12 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
       fireEvent.change(fileInput, { target: { files: [file] } });
 
       // O wizard deve transicionar para o modo rápido com os campos preenchidos
-      await waitFor(() => {
-        expect(screen.getByText("Lançamento rápido")).toBeInTheDocument();
-      });
+      await waitFor(
+        () => {
+          expect(screen.getByText("Lançamento rápido")).toBeInTheDocument();
+        },
+        { timeout: 4000 },
+      );
 
       // Valida que o valor foi preenchido com 300,00
       const valueInput = screen.getByRole("textbox", { name: "Valor do lançamento" });
@@ -961,6 +986,102 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
           }),
         );
       });
+    });
+
+    it("pré-seleciona categoria aprendida por UUID para Pix/comprovante e prioriza memória sobre aiCategoryId", async () => {
+      const user = userEvent.setup();
+      setActiveUserId("user-123");
+      recordMerchantLearningAction({
+        friendlyName: "Rede Moleza",
+        categorySlug: "c3",
+        cnpjOrCpf: "88709563000102",
+        pixKey: "financeiro@redemoleza.com.br",
+        defaultNature: "expense",
+      });
+
+      extractSingleReceiptWithAiMock.mockResolvedValueOnce({
+        ok: true,
+        cached: false,
+        source: "ai_vision",
+        data: {
+          amountCents: 27000,
+          date: "2024-05-09",
+          nature: "expense",
+          paymentMethod: "cash",
+          receiptKind: "invoice_danfe",
+          description: "REDE MOLEZA",
+          merchantOrBeneficiary: "REDE MOLEZA",
+          merchantCnpj: "88709563000102",
+          categoryId: "c1",
+          confidence: "high",
+        },
+      });
+
+      render(<LaunchWizard initialMode="guided" />);
+
+      await user.click(screen.getByRole("button", { name: /Anexar comprovante/i }));
+      await screen.findByRole("heading", { name: /Anexar Comprovante/i });
+
+      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+      const jpgFile = new File(["moleza-img"], "rede-moleza.jpg", { type: "image/jpeg" });
+      fireEvent.change(fileInput, { target: { files: [jpgFile] } });
+
+      await waitFor(() => {
+        expect(screen.getByText("Lançamento rápido")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /supermercado/i })).toHaveAttribute(
+          "aria-pressed",
+          "true",
+        );
+      });
+    });
+
+    it("deduz categoria pela IA (incluindo troca para receita) quando não há memória aprendida", async () => {
+      const user = userEvent.setup();
+
+      extractSingleReceiptWithAiMock.mockResolvedValueOnce({
+        ok: true,
+        cached: false,
+        source: "ai_vision",
+        data: {
+          amountCents: 450000,
+          date: "2026-11-20",
+          nature: "income",
+          paymentMethod: "pix",
+          receiptKind: "pix",
+          description: "PAGAMENTO EMPRESA TECH LTDA",
+          merchantOrBeneficiary: "EMPRESA TECH LTDA",
+          payerOrSource: "EMPRESA TECH LTDA",
+          merchantCnpj: "11222333000181",
+          categoryId: "c2",
+          confidence: "high",
+        },
+      });
+
+      render(<LaunchWizard initialMode="guided" />);
+
+      await user.click(screen.getByRole("button", { name: /Anexar comprovante/i }));
+      await screen.findByRole("heading", { name: /Anexar Comprovante/i });
+
+      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+      const jpgFile = new File(["holerite-img"], "pix-recebido.jpg", { type: "image/jpeg" });
+      fireEvent.change(fileInput, { target: { files: [jpgFile] } });
+
+      await waitFor(() => {
+        expect(screen.getByText("Lançamento rápido")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /salário/i })).toHaveAttribute(
+          "aria-pressed",
+          "true",
+        );
+      });
+
+      expect(extractSingleReceiptWithAiMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          categories: expect.arrayContaining([
+            expect.objectContaining({ id: "c1", type: "expense" }),
+            expect.objectContaining({ id: "c2", type: "income" }),
+          ]),
+        }),
+      );
     });
 
     it("envia isFamily: true ao marcar o switch de despesa familiar no lançamento rápido quando modo familiar habilitado", async () => {

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { calculateSplitSummary } from "@/domain/finance/split-math";
 import { todayISO } from "@/domain/debts";
 import type { HabitualEntry } from "@/domain/predictions";
-import type { Category, PaymentMethod, ReceiveType } from "@/types";
+import type { Category, PaymentMethod, ReceiveType, TransactionScope } from "@/types";
 import { defaultLaunchState, getStoredWizardMode, setStoredWizardMode } from "./wizard-state";
 import type { EntryType, LaunchState, WizardMode } from "./wizard-types";
 
@@ -13,6 +13,8 @@ export interface UseLaunchWizardStateParams {
   categories: Category[] | undefined;
   preferredTripCategoryId?: string | null;
   isFamilyActive: boolean;
+  isBusinessActive?: boolean;
+  defaultScope?: TransactionScope;
   onSetCategoryUnconfirmed: (unconfirmed: boolean) => void;
 }
 
@@ -23,12 +25,19 @@ export function useLaunchWizardState({
   categories,
   preferredTripCategoryId,
   isFamilyActive,
+  isBusinessActive = false,
+  defaultScope = "personal",
   onSetCategoryUnconfirmed,
 }: UseLaunchWizardStateParams) {
   const [mode, setMode] = useState<WizardMode>(() =>
     initialMode === "quick" ? "quick" : (getStoredWizardMode() ?? initialMode),
   );
-  const [state, setState] = useState<LaunchState>(() => defaultLaunchState(initialType, initialValues));
+  const [state, setState] = useState<LaunchState>(() =>
+    defaultLaunchState(initialType, {
+      ...(defaultScope === "business" ? { scope: "business" } : {}),
+      ...initialValues,
+    }),
+  );
 
   useEffect(() => {
     if (!state.tripId || state.categoryId) return;
@@ -121,6 +130,35 @@ export function useLaunchWizardState({
     onSetCategoryUnconfirmed(false);
     const cat = categories?.find((c) => c.id === categoryId);
     if (isFamilyActive && cat?.is_family) set("isFamily", true);
+    if (isBusinessActive && cat?.scope === "business") {
+      setState((prev) => ({
+        ...prev,
+        scope: "business",
+        isFamily: false,
+        tripId: null,
+        splitEnabled: false,
+      }));
+    }
+  };
+
+  const handleScopeChange = (nextScope: TransactionScope) => {
+    setState((prev) => {
+      if ((prev.scope ?? "personal") === nextScope) return prev;
+      const selectedCat = categories?.find((c) => c.id === prev.categoryId);
+      const keepCat =
+        !selectedCat ||
+        !selectedCat.scope ||
+        selectedCat.scope === "both" ||
+        selectedCat.scope === nextScope;
+      return {
+        ...prev,
+        scope: nextScope,
+        categoryId: keepCat ? prev.categoryId : "",
+        ...(nextScope === "business"
+          ? { isFamily: false, tripId: null, splitEnabled: false }
+          : { isTaxDeductible: false }),
+      };
+    });
   };
 
   const switchToQuick = () => {
@@ -161,6 +199,7 @@ export function useLaunchWizardState({
     handleValueChange,
     handleTypeChange,
     handleCategorySelect,
+    handleScopeChange,
     applyHabitual,
     switchToQuick,
     switchToGuided,

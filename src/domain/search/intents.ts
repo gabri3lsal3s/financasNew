@@ -7,12 +7,51 @@
  */
 
 import { todayISO as getTodayISO } from "@/domain/debts";
+import { numberToCents } from "@/domain/money";
+import type { MerchantLearningMemory } from "@/domain/notifications";
+import {
+  buildStructuredQueryBadges,
+  hasStructuredFilters,
+  matchesStructuredTransactionQuery,
+  parseStructuredSearchQuery,
+} from "./structured-query";
 
 export type SearchIntentKind =
   | "category_spending"
+  | "structured_analytics"
   | "upcoming_due"
   | "balance_and_reserve"
   | "system_action";
+
+export interface SearchIntentExpenseLike {
+  id: string;
+  description?: string | null;
+  date: string;
+  value: number;
+  report_weight?: number | null;
+  category_id: string;
+  payment_method?: string;
+  card_id?: string | null;
+  bill_competence?: string | null;
+  installments_total?: number;
+  recurrence_id?: string | null;
+  is_family?: boolean;
+  trip_id?: string | null;
+  charge_kind?: string | null;
+}
+
+export interface SearchIntentIncomeLike {
+  id: string;
+  description?: string | null;
+  date: string;
+  value: number;
+  report_weight?: number | null;
+  category_id: string;
+  receive_type?: string;
+  recurrence_id?: string | null;
+  is_family?: boolean;
+  source_ref?: string | null;
+}
 
 export interface SearchIntentContext {
   todayISO: string; // YYYY-MM-DD
@@ -20,6 +59,12 @@ export interface SearchIntentContext {
   categorySpendingCurrentMonth?: Record<string, number>;
   /** Gastos no mês anterior */
   categorySpendingPreviousMonth?: Record<string, number>;
+  /** Lançamentos completos em cache para respostas analíticas estruturadas locais */
+  rawExpenses?: readonly SearchIntentExpenseLike[];
+  rawIncomes?: readonly SearchIntentIncomeLike[];
+  categoryNameById?: ReadonlyMap<string, string>;
+  cardNameById?: ReadonlyMap<string, string>;
+  merchantLearning?: MerchantLearningMemory;
   /** Contas e faturas a vencer nos próximos dias */
   upcomingBills?: Array<{
     title: string;
@@ -255,7 +300,147 @@ export function resolveSearchIntent(
     };
   }
 
-  // 4. Gasto por Categoria
+  // 4. Análise Estruturada Multi-Atributo sobre Lançamentos em Cache (< 2 ms offline)
+  const parsedStructured = parseStructuredSearchQuery(query, {
+    todayISO: context.todayISO,
+    referenceMonth: context.todayISO.slice(0, 7),
+    merchantLearning: context.merchantLearning,
+  });
+  const hasFilters = hasStructuredFilters(parsedStructured);
+
+  if (
+    (context.rawExpenses || context.rawIncomes) &&
+    (parsedStructured.hasAnalyticalIntent ||
+      (hasFilters &&
+        (parsedStructured.minAmountCents !== undefined ||
+          parsedStructured.maxAmountCents !== undefined ||
+          parsedStructured.onlyInstallments ||
+          parsedStructured.onlyCardCharges ||
+          parsedStructured.isBiggestQuery ||
+          parsedStructured.monthScope !== null)))
+  ) {
+    const currentMonthStr = context.todayISO.slice(0, 7);
+    const effectiveParsed =
+      !parsedStructured.monthScope && parsedStructured.hasAnalyticalIntent
+        ? {
+            ...parsedStructured,
+            monthScope: { kind: "current_month" as const, month: currentMonthStr },
+          }
+        : parsedStructured;
+
+    const targetNature = effectiveParsed.nature ?? (effectiveParsed.isBiggestQuery ? "expense" : undefined);
+    const matchedRows: Array<{ label: string; cents: number; date: string }> = [];
+
+    if (targetNature !== "income") {
+      for (const exp of context.rawExpenses ?? []) {
+        const catName = context.categoryNameById?.get(exp.category_id) ?? "";
+        const cardName = exp.card_id ? context.cardNameById?.get(exp.card_id) ?? "" : "";
+        const cents = numberToCents(exp.value * (exp.report_weight ?? 1));
+        if (
+          matchesStructuredTransactionQuery(
+            {
+              id: exp.id,
+              kind: "expense",
+              description: exp.description ?? "",
+              categoryName: catName,
+              cardName,
+              date: exp.date,
+              billCompetence: exp.bill_competence,
+              amountCents: cents,
+              paymentMethod: exp.payment_method,
+              installmentsTotal: exp.installments_total,
+              recurrenceId: exp.recurrence_id,
+              isFamily: exp.is_family,
+              tripId: exp.trip_id,
+              chargeKind: exp.charge_kind,
+            },
+            effectiveParsed,
+          )
+        ) {
+          matchedRows.push({
+            label: exp.description || catName || "Despesa",
+            cents,
+            date: exp.date,
+          });
+        }
+      }
+    }
+
+    if (targetNature === "income" || (!targetNature && effectiveParsed.textTokens.length > 0)) {
+      for (const inc of context.rawIncomes ?? []) {
+        const catName = context.categoryNameById?.get(inc.category_id) ?? "";
+        const cents = numberToCents(inc.value * (inc.report_weight ?? 1));
+        if (
+          matchesStructuredTransactionQuery(
+            {
+              id: inc.id,
+              kind: "income",
+              description: inc.description ?? "",
+              categoryName: catName,
+              date: inc.date,
+              amountCents: cents,
+              paymentMethod: inc.receive_type,
+              recurrenceId: inc.recurrence_id,
+              isFamily: inc.is_family,
+              sourceRef: inc.source_ref,
+            },
+            effectiveParsed,
+          )
+        ) {
+          matchedRows.push({
+            label: inc.description || catName || "Receita",
+            cents,
+            date: inc.date,
+          });
+        }
+      }
+    }
+
+    if (matchedRows.length > 0 || hasFilters) {
+      const totalCents = matchedRows.reduce((acc, r) => acc + r.cents, 0);
+      const topRow = [...matchedRows].sort((a, b) => b.cents - a.cents)[0];
+      const badges = buildStructuredQueryBadges(effectiveParsed);
+      const topicLabel =
+        effectiveParsed.textTokens.length > 0
+          ? effectiveParsed.textTokens.join(" ")
+          : badges[0] || "Lançamentos";
+
+      const title = effectiveParsed.isBiggestQuery
+        ? "Maiores gastos filtrados"
+        : `Resumo: ${topicLabel}`;
+      const headline =
+        matchedRows.length === 0
+          ? "Nenhum lançamento encontrado com estes critérios"
+          : effectiveParsed.isBiggestQuery && topRow
+            ? `Maior: ${topRow.label} (${formatCentsToBRL(topRow.cents)})`
+            : `${formatCentsToBRL(totalCents)} em ${matchedRows.length} ${
+                matchedRows.length === 1 ? "lançamento" : "lançamentos"
+              }`;
+      const detail =
+        matchedRows.length > 0 && topRow && !effectiveParsed.isBiggestQuery
+          ? `Maior: ${topRow.label} (${formatCentsToBRL(topRow.cents)})${
+              badges.length > 0 ? ` · ${badges.slice(0, 2).join(" · ")}` : ""
+            }`
+          : badges.length > 0
+            ? badges.join(" · ")
+            : undefined;
+
+      return {
+        kind: "structured_analytics",
+        matchedQuery: rawQuery,
+        title,
+        headline,
+        detail,
+        action: {
+          label: "Ver lançamentos filtrados",
+          path: "/transacoes",
+          params: { busca: rawQuery.trim() },
+        },
+      };
+    }
+  }
+
+  // 5. Gasto por Categoria (fallback agregado leve quando rawExpenses não estiver carregado)
   const catMatch = normalized.match(REGEX_CATEGORY_SPENDING);
   if (catMatch || normalized.startsWith("quanto ") || normalized.startsWith("total ")) {
     // Procura palavra-chave de categoria no texto da consulta

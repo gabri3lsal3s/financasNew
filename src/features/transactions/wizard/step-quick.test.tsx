@@ -363,4 +363,37 @@ describe("StepQuick (Lançamento Rápido em Tela Única)", () => {
 
     expect(handleApplyHabitual).toHaveBeenCalledWith(mockHabits[0]);
   });
+
+  it("exibe seletor de esfera PF/PJ e toggle dedutível quando Modo Negócio está ativo", async () => {
+    const user = userEvent.setup();
+    const onScopeChange = vi.fn();
+    const onTaxDeductibleChange = vi.fn();
+
+    const { rerender } = render(
+      <StepQuick
+        {...defaultProps}
+        isBusinessModeEnabled
+        onScopeChange={onScopeChange}
+        onTaxDeductibleChange={onTaxDeductibleChange}
+      />,
+    );
+
+    const pjRadio = screen.getByRole("radio", { name: /Meu Negócio \(PJ\)/i });
+    await user.click(pjRadio);
+    expect(onScopeChange).toHaveBeenCalledWith("business");
+
+    rerender(
+      <StepQuick
+        {...defaultProps}
+        state={{ ...defaultProps.state, scope: "business", isTaxDeductible: false }}
+        isBusinessModeEnabled
+        onScopeChange={onScopeChange}
+        onTaxDeductibleChange={onTaxDeductibleChange}
+      />,
+    );
+
+    const deductibleSwitch = screen.getByRole("switch", { name: /Despesa dedutível para impostos/i });
+    await user.click(deductibleSwitch);
+    expect(onTaxDeductibleChange).toHaveBeenCalledWith(true);
+  });
 });

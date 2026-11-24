@@ -82,6 +82,26 @@ function IncomeDetailDialogContent({
         {actions.editPending ? "Salvando…" : "Salvar alterações"}
       </Button>
     </ModalFooter>
+  ) : actions.isInternalTransfer ? (
+    <ModalFooter
+      borderless
+      destructiveAction={
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="text-critical hover:bg-critical/10 hover:text-critical gap-1.5"
+          onClick={() => guardAction(() => setConfirmOpen(true), "Excluir Transferência Pareada")}
+        >
+          <Trash2 className="size-3.5 shrink-0" aria-hidden="true" />
+          <span>Excluir transferência pareada</span>
+        </Button>
+      }
+    >
+      <Button type="button" variant="outline" onClick={() => resetAndClose(false)}>
+        Fechar
+      </Button>
+    </ModalFooter>
   ) : actions.isReadOnly ? (
     <ModalFooter borderless>
       <Button type="button" variant="outline" onClick={() => resetAndClose(false)}>
@@ -177,6 +197,7 @@ function IncomeDetailDialogContent({
                 income={income}
                 currentCategory={actions.currentCategory}
                 isFamilyActive={actions.isFamilyActive}
+                isBusinessActive={actions.isBusinessActive}
                 isReadOnly={actions.isReadOnly}
                 isInstallment={actions.isInstallment}
                 isRecurring={actions.isRecurring}
@@ -189,13 +210,17 @@ function IncomeDetailDialogContent({
       <TransactionDeleteScopeModal
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title="Excluir receita?"
-        description="Esta ação não pode ser desfeita."
+        title={actions.isInternalTransfer ? "Excluir transferência interna pareada PF/PJ?" : "Excluir receita?"}
+        description={
+          actions.isInternalTransfer
+            ? "Esta ação exclui simultaneamente a saída e a entrada correspondentes nos dois caixas (PF e PJ) e não pode ser desfeita."
+            : "Esta ação não pode ser desfeita."
+        }
         confirmLabel={actions.deletePending ? "Excluindo…" : "Excluir"}
         confirmPending={actions.deletePending}
         onConfirm={() => void actions.handleConfirmDelete()}
-        isGrouped={actions.isGrouped}
-        isRecurring={actions.isRecurring}
+        isGrouped={actions.isInternalTransfer ? false : actions.isGrouped}
+        isRecurring={actions.isInternalTransfer ? false : actions.isRecurring}
         mode={mode}
         onModeChange={setMode}
       />

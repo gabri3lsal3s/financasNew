@@ -233,5 +233,40 @@ describe("resolveCategorySemantics — inteligência para categorias padrão e c
         canonicalSlug: "salario",
       });
     });
+
+    it("blinda categorias essenciais sem ícone e obrigações contratuais contra cortes percentuais, mantendo Delivery/Restaurante cortáveis", () => {
+      expect(resolveCategorySemantics({ name: "Alimentação", icon: null })).toMatchObject({
+        isEssential: true,
+        isCuttableCategory: false,
+      });
+      expect(resolveCategorySemantics({ name: "Mercado", icon: null })).toMatchObject({
+        isEssential: true,
+        isCuttableCategory: false,
+      });
+      expect(resolveCategorySemantics({ name: "Transporte", icon: null })).toMatchObject({
+        isEssential: true,
+        isCuttableCategory: false,
+      });
+      expect(resolveCategorySemantics({ name: "Empréstimo Pessoal", icon: "emprestimo" })).toMatchObject({
+        isNonCuttableObligation: true,
+        isCuttableCategory: false,
+      });
+      expect(resolveCategorySemantics({ name: "Impostos e Taxas", icon: "impostos" })).toMatchObject({
+        isNonCuttableObligation: true,
+        isCuttableCategory: false,
+      });
+      expect(resolveCategorySemantics({ name: "Investimentos", icon: "investimentos" })).toMatchObject({
+        nature: "investment",
+        isCuttableCategory: false,
+      });
+      expect(resolveCategorySemantics({ name: "Delivery e iFood", icon: "alimentacao" })).toMatchObject({
+        isEssential: false,
+        isCuttableCategory: true,
+      });
+      expect(resolveCategorySemantics({ name: "Restaurantes e Bares", icon: "alimentacao" })).toMatchObject({
+        isEssential: false,
+        isCuttableCategory: true,
+      });
+    });
   });
 });

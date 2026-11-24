@@ -16,6 +16,47 @@ export interface MerchantCategoryMapping {
   [normalizedMerchant: string]: string; // slug ou categoryId
 }
 
+export type LearnedServiceSegment =
+  | "streaming"
+  | "fitness"
+  | "cloud_ai"
+  | "telecom"
+  | "mobility"
+  | "delivery"
+  | "utilities"
+  | "health"
+  | "education"
+  | "other";
+
+export type LearnedCutTier = "essential" | "discretionary" | "can_cut";
+export type LearnedIncomeProfile = "fixed" | "frequent_client";
+
+export const LEARNED_SERVICE_SEGMENTS = [
+  "streaming",
+  "fitness",
+  "cloud_ai",
+  "telecom",
+  "mobility",
+  "delivery",
+  "utilities",
+  "health",
+  "education",
+  "other",
+] as const;
+
+export const LEARNED_CUT_TIERS = ["essential", "discretionary", "can_cut"] as const;
+
+/** Normaliza uma tag semântica para busca offline instantânea. */
+export function normalizeSemanticTag(tag: string): string {
+  return tag
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(0, 30);
+}
+
 /**
  * Registro semântico aprendido de estabelecimento (§2.1).
  */
@@ -36,6 +77,28 @@ export interface MerchantLearningRecord {
   preferredPaymentMethod?: PaymentMethod;
   /** ID do cartão de crédito preferencial memorizado para o estabelecimento. */
   preferredCardId?: string;
+  /** Últimos 4 dígitos do cartão preferencial memorizado (via comprovante/OCR). */
+  preferredCardLastDigits?: string;
+  /** Bandeira do cartão preferencial memorizado (via comprovante/OCR). */
+  preferredCardBrand?: string;
+  /** Segmento de serviço aprendido via IA ou catálogo (ex.: "streaming", "fitness"). */
+  serviceSegment?: LearnedServiceSegment;
+  /** Grau de discricionariedade aprendido ("essential", "discretionary", "can_cut"). */
+  cutTier?: LearnedCutTier;
+  /** Indica se o estabelecimento é uma assinatura/mensalidade conhecida do usuário. */
+  isLearnedSubscription?: boolean;
+  /** Perfil aprendido quando for pagador recorrente de renda ("fixed" | "frequent_client"). */
+  incomeProfile?: LearnedIncomeProfile;
+  /** Tags semânticas curtas para busca por intenção offline (ex.: ["pet", "racao"]). */
+  semanticTags?: string[];
+  /** Fração proporcional habitual nos relatórios (ex.: 0.5 para racha 50/50 com cônjuge). */
+  preferredReportWeight?: number;
+  /** Quantas vezes consecutivas esse `reportWeight` foi confirmado. */
+  consistentWeightCount?: number;
+  /** Flag habitual "Despesa da casa / familiar" memorizada após confirmação repetida. */
+  preferredIsFamily?: boolean;
+  /** Quantas vezes consecutivas esse `isFamily` foi confirmado. */
+  consistentFamilyCount?: number;
   /** Contador de vezes que esta regra foi aplicada ou confirmada pelo usuário. */
   usageCount: number;
   /** Timestamp ISO da última utilização/atualização (ex.: "2026-10-21T17:47:00.000Z"). */
@@ -57,6 +120,15 @@ export interface RecordMerchantLearningParams {
   rawAliases?: string[];
   preferredPaymentMethod?: PaymentMethod;
   preferredCardId?: string;
+  preferredCardLastDigits?: string;
+  preferredCardBrand?: string;
+  serviceSegment?: LearnedServiceSegment;
+  cutTier?: LearnedCutTier;
+  isLearnedSubscription?: boolean;
+  incomeProfile?: LearnedIncomeProfile;
+  semanticTags?: readonly string[];
+  reportWeight?: number;
+  isFamily?: boolean;
 }
 
 export interface FindLearnedMerchantQuery {
@@ -216,11 +288,36 @@ export function recordMerchantLearning(
   const normalizedFriendly = normalizeMerchantText(params.friendlyName);
   if (!normalizedFriendly && !cleanTax) return existingMemory;
 
-  // Chave canônica primária: prioriza o taxId limpo, ou o friendlyName normalizado com underscores
-  const key = cleanTax
+  // Chave canônica primária: prioriza o taxId limpo, reutiliza registro compatível existente ou usa friendlyName normalizado
+  let key = cleanTax
     ? `tax_${cleanTax}`
     : `name_${normalizedFriendly.replace(/\s+/g, "_")}`;
-  const existing = existingMemory[key];
+  let existing = existingMemory[key];
+
+  if (!cleanTax && !existing) {
+    const aliasNorm = params.alias ? normalizeMerchantText(params.alias) : "";
+    const matchedEntry = Object.entries(existingMemory).find(([, rec]) => {
+      const recFriendly = normalizeMerchantText(rec.friendlyName);
+      if (normalizedFriendly && recFriendly === normalizedFriendly) return true;
+      if (
+        aliasNorm &&
+        (recFriendly === aliasNorm ||
+          (rec.rawAliases || []).some((a) => normalizeMerchantText(a) === aliasNorm))
+      ) {
+        return true;
+      }
+      if (
+        normalizedFriendly &&
+        (rec.rawAliases || []).some((a) => normalizeMerchantText(a) === normalizedFriendly)
+      ) {
+        return true;
+      }
+      return false;
+    });
+    if (matchedEntry) {
+      [key, existing] = matchedEntry;
+    }
+  }
 
   // Agrega e normaliza aliases sem duplicatas
   const aliasesSet = new Set<string>();
@@ -258,15 +355,94 @@ export function recordMerchantLearning(
   }
   const cleanPixKeys = Array.from(pixKeysSet);
 
+  // Mescla tags semânticas normalizadas sem duplicatas (máx 12)
+  const tagsSet = new Set<string>();
+  if (existing?.semanticTags) {
+    for (const tag of existing.semanticTags) {
+      const norm = normalizeSemanticTag(tag);
+      if (norm) tagsSet.add(norm);
+    }
+  }
+  if (params.semanticTags) {
+    for (const tag of params.semanticTags) {
+      const norm = normalizeSemanticTag(tag);
+      if (norm) tagsSet.add(norm);
+    }
+  }
+  const cleanTags = Array.from(tagsSet).slice(0, 12);
+
+  // Rastreia consistência de peso de relatório (ex.: racha habitual 0.5)
+  let nextReportWeight = existing?.preferredReportWeight;
+  let nextWeightCount = existing?.consistentWeightCount;
+  if (
+    typeof params.reportWeight === "number" &&
+    Number.isFinite(params.reportWeight) &&
+    params.reportWeight >= 0 &&
+    params.reportWeight <= 1
+  ) {
+    const roundedWeight = Number(params.reportWeight.toFixed(4));
+    if (
+      nextReportWeight !== undefined &&
+      Math.abs(nextReportWeight - roundedWeight) < 0.005
+    ) {
+      nextWeightCount = (nextWeightCount ?? 1) + 1;
+    } else {
+      nextReportWeight = roundedWeight;
+      nextWeightCount = 1;
+    }
+  }
+
+  // Rastreia consistência de lançamento familiar / da casa
+  let nextIsFamily = existing?.preferredIsFamily;
+  let nextFamilyCount = existing?.consistentFamilyCount;
+  if (typeof params.isFamily === "boolean") {
+    if (nextIsFamily === params.isFamily) {
+      nextFamilyCount = (nextFamilyCount ?? 1) + 1;
+    } else {
+      nextIsFamily = params.isFamily;
+      nextFamilyCount = 1;
+    }
+  }
+
   const updatedRecord: MerchantLearningRecord = {
     friendlyName: params.friendlyName.trim() || existing?.friendlyName || normalizedFriendly,
-    categorySlug: params.categorySlug,
+    categorySlug: params.categorySlug || existing?.categorySlug || "",
     cnpjOrCpf: cleanTax || existing?.cnpjOrCpf,
     pixKeys: cleanPixKeys.length > 0 ? cleanPixKeys : existing?.pixKeys,
     defaultNature: params.defaultNature ?? existing?.defaultNature,
     rawAliases: cleanAliases.length > 0 ? cleanAliases : [params.friendlyName.toLowerCase().trim()],
     preferredPaymentMethod: params.preferredPaymentMethod ?? existing?.preferredPaymentMethod,
     preferredCardId: params.preferredCardId ?? existing?.preferredCardId,
+    preferredCardLastDigits: params.preferredCardLastDigits ?? existing?.preferredCardLastDigits,
+    preferredCardBrand: params.preferredCardBrand ?? existing?.preferredCardBrand,
+    ...(params.serviceSegment ?? existing?.serviceSegment
+      ? { serviceSegment: params.serviceSegment ?? existing?.serviceSegment }
+      : {}),
+    ...(params.cutTier ?? existing?.cutTier
+      ? { cutTier: params.cutTier ?? existing?.cutTier }
+      : {}),
+    ...(params.isLearnedSubscription !== undefined || existing?.isLearnedSubscription !== undefined
+      ? {
+          isLearnedSubscription:
+            params.isLearnedSubscription ?? existing?.isLearnedSubscription,
+        }
+      : {}),
+    ...(params.incomeProfile ?? existing?.incomeProfile
+      ? { incomeProfile: params.incomeProfile ?? existing?.incomeProfile }
+      : {}),
+    ...(cleanTags.length > 0 ? { semanticTags: cleanTags } : {}),
+    ...(nextReportWeight !== undefined
+      ? {
+          preferredReportWeight: nextReportWeight,
+          consistentWeightCount: nextWeightCount,
+        }
+      : {}),
+    ...(nextIsFamily !== undefined
+      ? {
+          preferredIsFamily: nextIsFamily,
+          consistentFamilyCount: nextFamilyCount,
+        }
+      : {}),
     usageCount: (existing?.usageCount ?? 0) + 1,
     lastUsedAt: now,
   };

@@ -259,4 +259,78 @@ describe("resolveSearchIntent — Parser Determinístico de Intenções de Busca
       expect(elapsed).toBeLessThan(200);
     });
   });
+
+  describe("Análise Estruturada Multi-Atributo sobre Lançamentos (Fase 3)", () => {
+    it("responde perguntas multi-mês, tags do merchantLearning e filtros de valor em centavos inteiros", () => {
+      const richContext: SearchIntentContext = {
+        todayISO: "2026-11-23",
+        categoryNameById: new Map([
+          ["c-trans", "Transporte"],
+          ["c-pet", "Casa & Pets"],
+          ["c-elet", "Eletrônicos"],
+        ]),
+        cardNameById: new Map([["card-1", "Nubank"]]),
+        merchantLearning: {
+          tax_pet: {
+            friendlyName: "Cobasi Jardins",
+            categorySlug: "c-pet",
+            rawAliases: ["cobasi"],
+            semanticTags: ["pet", "racao", "veterinario"],
+            usageCount: 3,
+            lastUsedAt: "2026-11-10T10:00:00.000Z",
+          },
+        },
+        rawExpenses: [
+          {
+            id: "exp-1",
+            description: "Cobasi Jardins",
+            date: "2026-11-05",
+            value: 180.5,
+            report_weight: 1,
+            category_id: "c-pet",
+            payment_method: "credit_card",
+            card_id: "card-1",
+          },
+          {
+            id: "exp-2",
+            description: "Cobasi Jardins",
+            date: "2026-09-12",
+            value: 120.0,
+            report_weight: 1,
+            category_id: "c-pet",
+            payment_method: "pix",
+          },
+          {
+            id: "exp-3",
+            description: "Monitor LG",
+            date: "2026-11-18",
+            value: 350.0,
+            report_weight: 1,
+            category_id: "c-elet",
+            payment_method: "credit_card",
+            card_id: "card-1",
+            installments_total: 6,
+          },
+        ],
+      };
+
+      const petRes = resolveSearchIntent(
+        "quanto gastei com pet nos últimos 3 meses",
+        richContext,
+      );
+      expect(petRes?.kind).toBe("structured_analytics");
+      expect(petRes?.headline).toContain("300,50");
+      expect(petRes?.headline).toContain("2 lançamentos");
+      expect(petRes?.action).toEqual({
+        label: "Ver lançamentos filtrados",
+        path: "/transacoes",
+        params: { busca: "quanto gastei com pet nos últimos 3 meses" },
+      });
+
+      const parceladoRes = resolveSearchIntent("compras parceladas acima de 200", richContext);
+      expect(parceladoRes?.kind).toBe("structured_analytics");
+      expect(parceladoRes?.headline).toContain("350,00");
+      expect(parceladoRes?.detail).toContain("Monitor LG");
+    });
+  });
 });

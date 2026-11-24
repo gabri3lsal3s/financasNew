@@ -4,6 +4,7 @@ import {
   resolveEffectiveLimit,
   spentByCategoryMap,
 } from "@/domain/budgets";
+import { buildPaceProjectionBreakdown, type CalculationBreakdown } from "@/domain/calculation-memory";
 import { numberToCents, sumGrossCents } from "@/domain/money";
 import { computeOverview } from "@/domain/overview";
 import {
@@ -13,7 +14,17 @@ import {
   spendingPace,
   type EmergencyFundComposition,
 } from "@/domain/projection";
-import type { Budget, Category, CreditCard, Debt, Expense, FamilyConsolidationResult, Income } from "@/types";
+import type {
+  Budget,
+  Category,
+  CreditCard,
+  Debt,
+  Expense,
+  FamilyConsolidationResult,
+  Income,
+  Recurrence,
+  UserCustomSettings,
+} from "@/types";
 import { criticalAlerts } from "./alerts";
 import { buildInsightsAnalytics, type InsightsAnalyticsResult } from "./build-insights-analytics";
 import {
@@ -21,7 +32,16 @@ import {
   type InsightsWarningItem,
   type PortfolioWarningRow,
 } from "./build-insights-warnings";
-import type { FeedbackMap } from "./feedback";
+import type { FeedbackDecision, FeedbackMap } from "./feedback";
+import { buildUserFinancialContext } from "./financial-context";
+import {
+  buildUnifiedLearningGraph,
+  type FeedbackEntry,
+  type InsightThemeFamily,
+  type LearningMerchantRecordLike,
+  type PaydayProfile,
+  type SmartDecayRecord,
+} from "./learning-graph";
 
 export interface BuildInsightsDashboardInput {
   month: string;
@@ -29,11 +49,15 @@ export interface BuildInsightsDashboardInput {
   now: Date;
   expensesByMonth: readonly (readonly Expense[])[];
   incomes: readonly Income[];
+  historicalIncomes?: readonly Income[];
   budgets: readonly Budget[];
   categories: readonly Category[];
   cards: readonly CreditCard[];
   debts: readonly Debt[];
+  recurrences?: readonly Recurrence[];
   feedbackMap: FeedbackMap;
+  feedbackEntries?: readonly FeedbackEntry[];
+  customSettings?: UserCustomSettings | null;
   portfolioRows: readonly PortfolioWarningRow[];
   monthlyContributionCents: number;
   committedObligationsCents: number;
@@ -51,6 +75,10 @@ export interface InsightsDashboardModel extends InsightsAnalyticsResult {
   effectiveSavingsRateForHealth: number;
   overspentBudgets: number;
   hasTransactions: boolean;
+  hasIncome: boolean;
+  dayOfMonth: number;
+  daysInMonth: number;
+  isProvisionalReference: boolean;
   warnings: InsightsWarningItem[];
   dailyCents: number | null;
   projectedExpensesCents: number | null;
@@ -59,9 +87,12 @@ export interface InsightsDashboardModel extends InsightsAnalyticsResult {
   spentPercent: number;
   elapsedPercent: number;
   paceActive: boolean;
+  paceBreakdown: CalculationBreakdown | null;
   pendingSummary: { receivablesCents: number; payablesCents: number; balanceCents: number };
   baselineMonthlyExpensesCents: number;
   detectedReserveCents: number;
+  paydayProfile: PaydayProfile;
+  decayByFamily: Readonly<Partial<Record<InsightThemeFamily, SmartDecayRecord>>>;
 }
 
 function toLocalIso(now: Date): string {
@@ -89,14 +120,61 @@ export function buildInsightsDashboard(input: BuildInsightsDashboardInput): Insi
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const dayOfMonth = now.getDate();
   const todayISOStr = toLocalIso(now);
-  const effectiveMonthlyBudgetCents =
-    incomeCents > 0 ? Math.max(incomeCents, averagePastExpensesCents) : Math.max(1, averagePastExpensesCents);
-  const pace = spendingPace({
-    spentCents: expenseCents,
-    monthlyBudgetCents: effectiveMonthlyBudgetCents,
-    dayOfMonth,
-    daysInMonth,
+  const isCurrentMonth = month === currentCalendarMonth;
+
+  const learning = buildUnifiedLearningGraph({
+    referenceMonth: month,
+    feedbackEntries: input.feedbackEntries,
+    feedbackMap: input.feedbackMap as Record<string, FeedbackDecision>,
+    budgets,
+    merchantLearning: (input.customSettings?.merchantLearning ?? null) as Readonly<
+      Record<string, LearningMerchantRecordLike>
+    > | null,
+    historicalIncomes: input.historicalIncomes ?? incomes,
+    decayByFamily: input.customSettings?.advisorDecayMeta ?? undefined,
   });
+
+  const financialContext = buildUserFinancialContext({
+    month,
+    todayISO: todayISOStr,
+    isCurrentMonth,
+    monthIncomes: incomes,
+    monthExpenses: month0,
+    historicalIncomes: input.historicalIncomes ?? [],
+    historicalExpensesByMonth: [month1, month2, month3],
+    categories,
+    learning,
+    liquidity: {
+      committedObligationsCents: input.committedObligationsCents,
+    },
+    wealth: {
+      emergencyReserveCents: input.emergencyComposition.totalReserveCents,
+      emergencyTargetMonths: input.emergencyComposition.targetMonths,
+      monthlyContributionsCents: input.monthlyContributionCents,
+    },
+  });
+
+  const effectiveMonthlyBudgetCents =
+    financialContext.referenceBudgetCents > 0
+      ? financialContext.referenceBudgetCents
+      : incomeCents > 0
+        ? Math.max(incomeCents, averagePastExpensesCents)
+        : averagePastExpensesCents;
+
+  const hasValidReference = effectiveMonthlyBudgetCents > 0;
+  const pace = hasValidReference
+    ? spendingPace({
+        spentCents: expenseCents,
+        monthlyBudgetCents: effectiveMonthlyBudgetCents,
+        dayOfMonth,
+        daysInMonth,
+      })
+    : {
+        active: false,
+        spentPercent: 0,
+        elapsedPercent: Math.round((dayOfMonth / daysInMonth) * 1000) / 10,
+        gapPoints: 0,
+      };
   const paceRatio = pace.active ? 1 + pace.gapPoints / 100 : 1;
 
   const limitsByCategory = budgetLimitsByCategory(budgets);
@@ -109,16 +187,34 @@ export function buildInsightsDashboard(input: BuildInsightsDashboardInput): Insi
     }))
     .filter((row) => row.limitCents > 0 && budgetStatus(row.spentCents, row.limitCents) === "exceeded").length;
 
-  const projection = endOfMonthProjection({
-    phase: "current",
-    incomesCents: incomeCents,
-    investmentsCents: input.monthlyContributionCents,
-    expensesCents: expenseCents,
-    dayOfMonth,
-    daysInMonth,
-  });
-  const projectedDeficit = dayOfMonth >= 10 && projection.onTrack === false;
-  const isCurrentMonth = month === currentCalendarMonth;
+  const projection = hasValidReference
+    ? endOfMonthProjection({
+        phase: "current",
+        incomesCents: incomeCents,
+        referenceBudgetCents: effectiveMonthlyBudgetCents,
+        investmentsCents: input.monthlyContributionCents,
+        expensesCents: expenseCents,
+        fixedPaidCents: financialContext.lens.consumption.fixedPaidCents,
+        pendingFixedCents: financialContext.lens.liquidity.pendingRecurringExpensesCents,
+        oneOffAndTripCents: financialContext.lens.consumption.oneOffAndTripCents,
+        variableExpensesCents: financialContext.lens.consumption.variableExpenseCents,
+        historicalVariableMedianCents: financialContext.lens.consumption.historicalVariableMedianCents,
+        dayOfMonth,
+        daysInMonth,
+      })
+    : {
+        projectedExpensesCents: null,
+        surplusCents: null,
+        onTrack: null,
+        burnRateCents: null,
+      };
+
+  const projectedDeficit =
+    financialContext.maturity !== "cold_start" &&
+    hasValidReference &&
+    dayOfMonth >= 10 &&
+    projection.onTrack === false;
+
   const committedObligationsCents = isCurrentMonth ? input.committedObligationsCents : 0;
   const cycleBalanceCents = balanceCents - committedObligationsCents;
   const cycleSavingsRate = incomeCents > 0 ? (cycleBalanceCents / incomeCents) * 100 : 0;
@@ -137,6 +233,7 @@ export function buildInsightsDashboard(input: BuildInsightsDashboardInput): Insi
     daysInMonth: isCurrentMonth ? daysInMonth : undefined,
     committedObligationsCents,
     cycleSavingsRatePercent: cycleSavingsRate,
+    isProvisionalReference: financialContext.isProvisionalReference,
   });
 
   const analytics = buildInsightsAnalytics({
@@ -154,16 +251,22 @@ export function buildInsightsDashboard(input: BuildInsightsDashboardInput): Insi
     incomeCents,
     expenseCents,
     effectiveSavingsRateForHealth,
+    hasIncome: incomeCents > 0,
+    referenceIncomeCents:
+      financialContext.referenceBudgetCents > 0 ? financialContext.referenceBudgetCents : incomeCents,
+    learning,
   });
 
-  const daily = dailyBudget({
-    phase: "current",
-    incomesCents: incomeCents,
-    investmentsCents: input.monthlyContributionCents,
-    expensesCents: expenseCents,
-    dayOfMonth,
-    daysInMonth,
-  });
+  const daily = hasValidReference
+    ? dailyBudget({
+        phase: "current",
+        incomesCents: effectiveMonthlyBudgetCents,
+        investmentsCents: input.monthlyContributionCents,
+        expensesCents: expenseCents,
+        dayOfMonth,
+        daysInMonth,
+      })
+    : { dailyCents: null };
 
   const rangeStart = `${month}-01`;
   const pending = debts
@@ -202,6 +305,34 @@ export function buildInsightsDashboard(input: BuildInsightsDashboardInput): Insi
       ? input.emergencyComposition.totalReserveCents
       : Math.max(0, balanceCents);
 
+  const paceBreakdown =
+    hasValidReference && projection.projectedExpensesCents !== null
+      ? buildPaceProjectionBreakdown({
+          month,
+          referenceBudgetCents: effectiveMonthlyBudgetCents,
+          referenceBudgetSource: financialContext.referenceBudgetSource,
+          isProvisionalReference: financialContext.isProvisionalReference,
+          fixedPaidCents: financialContext.lens.consumption.fixedPaidCents,
+          pendingFixedCents: financialContext.lens.liquidity.pendingRecurringExpensesCents,
+          oneOffAndTripCents: financialContext.lens.consumption.oneOffAndTripCents,
+          projectedVariableCents:
+            projection.projectedVariableCents ??
+            Math.max(
+              0,
+              projection.projectedExpensesCents - financialContext.lens.consumption.fixedPaidCents,
+            ),
+          historicalVariableMedianCents: financialContext.lens.consumption.historicalVariableMedianCents,
+          blendedWeight: projection.blendedWeight,
+          refundsNeutralizedCents: financialContext.lens.consumption.refundsNeutralizedCents,
+          priorCycleRefundCreditCents: financialContext.lens.consumption.priorCycleRefundCreditCents,
+          investmentCents: input.monthlyContributionCents,
+          projectedSurplusCents: projection.surplusCents,
+          dailyCents: daily.dailyCents,
+          dayOfMonth,
+          daysInMonth,
+        })
+      : null;
+
   return {
     incomeCents,
     expenseCents,
@@ -210,6 +341,10 @@ export function buildInsightsDashboard(input: BuildInsightsDashboardInput): Insi
     effectiveSavingsRateForHealth,
     overspentBudgets,
     hasTransactions: month0.length > 0 || incomes.length > 0,
+    hasIncome: incomeCents > 0,
+    dayOfMonth,
+    daysInMonth,
+    isProvisionalReference: financialContext.isProvisionalReference,
     warnings,
     dailyCents: daily.dailyCents,
     projectedExpensesCents: projection.projectedExpensesCents,
@@ -218,9 +353,12 @@ export function buildInsightsDashboard(input: BuildInsightsDashboardInput): Insi
     spentPercent: pace.spentPercent,
     elapsedPercent: pace.elapsedPercent,
     paceActive: pace.active,
+    paceBreakdown,
     pendingSummary: pendingProjection(pending),
     baselineMonthlyExpensesCents,
     detectedReserveCents,
+    paydayProfile: learning.paydayProfile,
+    decayByFamily: learning.decayByFamily,
     ...analytics,
   };
 }

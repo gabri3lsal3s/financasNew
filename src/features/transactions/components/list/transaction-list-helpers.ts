@@ -8,6 +8,14 @@ import {
 import { serializeUnifiedTransactionsCsv, type ExportUnifiedTransactionRow } from "@/domain/export";
 import { evaluateExpensePriceEvolution, type ExpensePriceEvolution } from "@/domain/insights";
 import { sumGrossCents, sumWeightedCents } from "@/domain/money";
+import { findLearnedMerchant, type MerchantLearningMemory } from "@/domain/notifications";
+import {
+  buildStructuredQueryBadges,
+  hasStructuredFilters,
+  matchesStructuredTransactionQuery,
+  parseStructuredSearchQuery,
+} from "@/domain/search";
+import { todayLocalIso } from "@/lib/date";
 import { PAYMENT_METHOD_LABELS, RECEIVE_TYPE_LABELS } from "@/lib/labels";
 import { downloadCsv } from "@/services/export-actions";
 import type { Category, Expense, Income } from "@/types";
@@ -55,6 +63,10 @@ export function computePagedFeed(params: {
   filter: FeedFilter;
   searchQuery: string;
   categoryById: Map<string, Category>;
+  cardById?: Map<string, string>;
+  merchantLearning?: MerchantLearningMemory;
+  referenceMonth?: string;
+  todayISO?: string;
   highlightId: string | null;
   visibleCount: number;
 }): {
@@ -62,17 +74,80 @@ export function computePagedFeed(params: {
   effectiveVisibleCount: number;
   hasMore: boolean;
   feedGroups: DailyFeedGroup[];
+  structuredFilterBadges: string[];
 } {
-  const { expenses, incomes, filter, searchQuery, categoryById, highlightId, visibleCount } = params;
+  const {
+    expenses,
+    incomes,
+    filter,
+    searchQuery,
+    categoryById,
+    cardById,
+    merchantLearning,
+    referenceMonth,
+    todayISO = todayLocalIso(),
+    highlightId,
+    visibleCount,
+  } = params;
   const feedItems = buildUnifiedFeedItems(expenses, incomes, filter);
-  const q = searchQuery.trim().toLowerCase();
-  const filteredFeedItems = q
-    ? feedItems.filter((item) => {
+  const trimmed = searchQuery.trim();
+  const q = trimmed.toLowerCase();
+
+  let filteredFeedItems = feedItems;
+  let structuredFilterBadges: string[] = [];
+
+  if (q) {
+    const parsed = parseStructuredSearchQuery(trimmed, {
+      todayISO,
+      referenceMonth: referenceMonth ?? todayISO.slice(0, 7),
+      merchantLearning,
+    });
+    const usesStructured = hasStructuredFilters(parsed) || Boolean(merchantLearning);
+    if (hasStructuredFilters(parsed)) {
+      structuredFilterBadges = buildStructuredQueryBadges(parsed);
+    }
+
+    filteredFeedItems = feedItems.filter((item) => {
+      if (item.id.toLowerCase() === q) return true;
+      const catName = categoryById.get(item.categoryId)?.name ?? "";
+      const cardName = item.creditCardId && cardById ? cardById.get(item.creditCardId) ?? "" : "";
+      if (!usesStructured) {
         const desc = (item.description ?? "").toLowerCase();
-        const catName = (categoryById.get(item.categoryId)?.name ?? "").toLowerCase();
-        return desc.includes(q) || catName.includes(q);
-      })
-    : feedItems;
+        return desc.includes(q) || catName.toLowerCase().includes(q) || cardName.toLowerCase().includes(q);
+      }
+
+      const learned = merchantLearning
+        ? findLearnedMerchant({ merchant: item.description }, merchantLearning)
+        : undefined;
+      const extraTerms = [
+        ...(learned?.semanticTags ?? []),
+        ...(learned?.friendlyName ? [learned.friendlyName] : []),
+        ...(learned?.serviceSegment ? [learned.serviceSegment] : []),
+      ];
+
+      return matchesStructuredTransactionQuery(
+        {
+          id: item.id,
+          kind: item.kind,
+          description: item.description ?? "",
+          categoryName: catName,
+          cardName,
+          date: item.date,
+          billCompetence: item.rawExpense?.bill_competence,
+          amountCents: item.amountCents,
+          paymentMethod: item.paymentMethod,
+          installmentsTotal: item.installmentsTotal,
+          recurrenceId: item.recurrenceId,
+          isFamily: item.isFamily,
+          tripId: item.rawExpense?.trip_id,
+          sourceRef: item.rawIncome?.source_ref,
+          chargeKind: item.rawExpense?.charge_kind,
+          extraTerms,
+        },
+        parsed,
+      );
+    });
+  }
 
   const highlightIndex = highlightId
     ? filteredFeedItems.findIndex((it) => it.id === highlightId)
@@ -88,6 +163,7 @@ export function computePagedFeed(params: {
     effectiveVisibleCount,
     hasMore: filteredFeedItems.length > effectiveVisibleCount,
     feedGroups: groupFeedByDay(visibleFeedItems),
+    structuredFilterBadges,
   };
 }
 

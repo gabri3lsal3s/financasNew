@@ -6,7 +6,8 @@ export type AdvisorIconKind =
   | "critical"
   | "income"
   | "savings"
-  | "calibration";
+  | "calibration"
+  | "celebration";
 
 export interface SmartAdvisorPresentation {
   iconKind: AdvisorIconKind;
@@ -53,6 +54,14 @@ export function resolveSmartAdvisorPresentation(
     };
   }
 
+  if (insight.primaryAction?.kind === "navigate_cards" || insight.themeKey.startsWith("charges:")) {
+    return {
+      iconKind: "critical",
+      badgeVariant: "critical",
+      badgeLabel: "Juros & Multas",
+    };
+  }
+
   if (insight.themeKey.startsWith("income_goal:")) {
     return {
       iconKind: "income",
@@ -93,7 +102,17 @@ export function resolveSmartAdvisorPresentation(
     };
   }
 
+  if (insight.themeKey.startsWith("calib_tx:")) {
+    return {
+      iconKind: "calibration",
+      badgeVariant: "muted",
+      badgeLabel: "Calibração Rápida",
+    };
+  }
+
   switch (insight.category) {
+    case "celebration":
+      return { iconKind: "celebration", badgeVariant: "positive", badgeLabel: "Conquista" };
     case "critical":
       return {
         iconKind: "critical",
@@ -140,6 +159,10 @@ export function resolveSmartAdvisorActionRoute(
     return p?.valorCents && p.valorCents > 0
       ? `/investments?tab=aporte&valor=${p.valorCents}`
       : "/investments?tab=aporte";
+  }
+
+  if (insight.primaryAction?.kind === "navigate_cards" || insight.themeKey.startsWith("charges:")) {
+    return "/cartoes";
   }
 
   if (

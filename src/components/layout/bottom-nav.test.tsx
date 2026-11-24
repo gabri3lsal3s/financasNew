@@ -47,6 +47,20 @@ vi.mock("@/state", () => ({
     isLoading: false,
     toggleTripMode: vi.fn(),
   }),
+  useBusinessMode: () => ({
+    isBusinessModeEnabled: false,
+    businessProfile: null,
+    toggleBusinessMode: vi.fn().mockResolvedValue(true),
+    updateBusinessProfile: vi.fn().mockResolvedValue(true),
+    isLoading: false,
+    isPending: false,
+  }),
+  useViewScope: () => ({
+    viewScope: "all" as const,
+    effectiveViewScope: "all" as const,
+    setViewScope: vi.fn(),
+    isBusinessModeEnabled: false,
+  }),
   usePermission: () => ({
     canWrite: true,
     canRead: true,

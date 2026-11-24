@@ -8,6 +8,50 @@ export interface CreateCardPaymentParams {
   note?: string | null;
 }
 
+export interface CardBillChargeItem {
+  charge_kind: "interest" | "fine" | "tax" | "bank_fee";
+  amount: number;
+  category_id?: string | null;
+  description?: string | null;
+  payment_date?: string | null;
+}
+
+export interface PayCardBillWithChargesParams {
+  cardId: string;
+  competenceMonth: string;
+  nominalAmount: number;
+  charges?: CardBillChargeItem[];
+  chargeCompetenceMode?: "current" | "next";
+  paymentDate?: string;
+  note?: string | null;
+}
+
+export interface PayCardBillWithChargesResult {
+  payment_id: string;
+  total_paid: number;
+  nominal_amount: number;
+  charges_amount: number;
+  charges_competence: string;
+  created_expense_ids: string[];
+}
+
+/** Pagamento de fatura com encargos (Fase 1 do Blueprint v2.1) — RPC auditado. */
+export async function payCardBillWithCharges(
+  params: PayCardBillWithChargesParams,
+): Promise<PayCardBillWithChargesResult> {
+  return unwrapRpc(
+    callRpc("pay_card_bill_with_charges", {
+      p_card_id: params.cardId,
+      p_competence_month: params.competenceMonth,
+      p_nominal_amount: params.nominalAmount,
+      p_charges: params.charges ?? [],
+      p_charge_competence_mode: params.chargeCompetenceMode ?? "current",
+      p_payment_date: params.paymentDate ?? new Date().toISOString().slice(0, 10),
+      p_note: params.note ?? null,
+    }),
+  );
+}
+
 /** Pagamento de fatura — RPC auditado (D2/§3.3.3). Estorno usa `createRefund`. */
 export async function createCardPayment(params: CreateCardPaymentParams): Promise<string> {
   return unwrapRpc(
@@ -31,6 +75,7 @@ export interface UpdateCreditCardParams {
   color: string | null;
   isActive: boolean;
   lastFourDigits?: string | null;
+  scope?: "personal" | "business" | "mixed";
 }
 
 /** Alteração de regras do cartão — RPC auditado (D2). */
@@ -46,6 +91,7 @@ export async function updateCreditCardRpc(params: UpdateCreditCardParams): Promi
       p_color: params.color,
       p_is_active: params.isActive,
       p_last_four_digits: params.lastFourDigits ?? null,
+      ...(params.scope ? { p_scope: params.scope } : {}),
     }),
     true,
   );

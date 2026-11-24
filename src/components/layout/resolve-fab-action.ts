@@ -30,6 +30,13 @@ export function resolveFabAction(
     return { to: `${normalizedPath}?${params.toString()}`, label: "Nova Viagem" };
   }
 
+  // Meu Negócio (/negocio)
+  if (normalizedPath === "/negocio" && hasFeature("transactions")) {
+    params.set("novo", "transacao");
+    params.set("escopo", "business");
+    return { to: `${normalizedPath}?${params.toString()}`, label: "Novo lançamento PJ" };
+  }
+
   // Modo Família (/familia ou /modo-familia)
   if ((normalizedPath === "/familia" || normalizedPath === "/modo-familia") && hasFeature("transactions")) {
     params.set("novo", "despesa");

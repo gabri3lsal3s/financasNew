@@ -1,11 +1,18 @@
+import { inferChargeKindFromDescription } from "@/domain/cards/charges";
 import { numberToCents } from "@/domain/money";
 import {
+  MAX_STATEMENT_AI_CHUNKS,
   STATEMENT_IMPORT_CHUNK_SIZE,
   buildTransactionsFromRows,
   chunkArray,
+  evaluateDeterministicStatementQuality,
   generateStatementHash,
+  isSpreadsheetOrHtmlFileName,
+  parseSpreadsheetOrHtmlToRows,
   parseStatementInput,
+  preprocessStatementTextForAi,
   reconcileStatementTransactions,
+  sniffColumnMapping,
   type CategoryPredictionSource,
   type ColumnMapping,
   type ExistingExpenseForReconciliation,
@@ -17,9 +24,49 @@ import {
   computeTextSha256,
   extractStatementPdfRowsWithAi,
 } from "@/services/ai-assistant";
+import { computeFileSha256 } from "@/services/receipt-resolution";
 import type { Expense } from "@/types";
 import type { AiStatementPdfRow } from "../../../../supabase/functions/_shared/ai-schemas";
 import type { StatementImportProgress } from "./statement-reconcile-step";
+
+export const MAX_STATEMENT_VISION_PAGES_OR_IMAGES = 3;
+
+const RASTER_STATEMENT_EXTENSIONS = [
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".webp",
+  ".avif",
+  ".bmp",
+  ".gif",
+  ".heic",
+  ".heif",
+] as const;
+
+export function isRasterStatementImage(file: File): boolean {
+  const mime = file.type.trim().toLowerCase();
+  if (mime.startsWith("image/") && mime !== "image/svg+xml") {
+    return true;
+  }
+  const lower = file.name.trim().toLowerCase();
+  return RASTER_STATEMENT_EXTENSIONS.some((ext) => lower.endsWith(ext));
+}
+
+function isStructuredTabularFileName(fileNameOrType: string, content: string | ArrayBuffer): boolean {
+  const lower = fileNameOrType.trim().toLowerCase();
+  if (
+    lower.endsWith(".csv") ||
+    lower.endsWith(".tsv") ||
+    lower.endsWith(".ofx") ||
+    isSpreadsheetOrHtmlFileName(lower)
+  ) {
+    return true;
+  }
+  if (typeof content === "string") {
+    return content.includes("<OFX>") || content.includes("<STMTTRN>");
+  }
+  return false;
+}
 
 export interface StatementItemPatch {
   date: string;
@@ -29,21 +76,52 @@ export interface StatementItemPatch {
   installment?: { current: number; total: number };
 }
 
-export async function readStatementFileContent(file: File): Promise<string | ArrayBuffer> {
+export type LoadedStatementSource =
+  | { kind: "pdf_text"; text: string; buffer: ArrayBuffer; fileName: string; sha256: string | null }
+  | { kind: "pdf_scanned"; buffer: ArrayBuffer; fileName: string; sha256: string | null }
+  | { kind: "spreadsheet"; buffer: ArrayBuffer; fileName: string }
+  | { kind: "binary_or_text"; content: ArrayBuffer | string; fileName: string };
+
+export async function readStatementFileContent(file: File): Promise<LoadedStatementSource> {
   const lowerName = file.name.toLowerCase();
   if (lowerName.endsWith(".pdf") || file.type === "application/pdf") {
-    const buffer = await file.arrayBuffer();
+    const [buffer, sha256] = await Promise.all([
+      file.arrayBuffer(),
+      computeFileSha256(file),
+    ]);
     const { extractText } = await import("unpdf");
-    const { text } = await extractText(buffer);
+    const { text } = await extractText(buffer.slice(0));
     const fullText = Array.isArray(text) ? text.join("\n") : (text ?? "");
     if (!fullText.trim()) {
-      throw new Error(
-        "Não foi possível extrair os dados da fatura em PDF. Se o arquivo for protegido ou escaneado (imagem), utilize o arquivo CSV ou OFX exportado pelo seu banco.",
-      );
+      return {
+        kind: "pdf_scanned",
+        buffer,
+        fileName: file.name,
+        sha256,
+      };
     }
-    return fullText;
+    return {
+      kind: "pdf_text",
+      text: fullText,
+      buffer,
+      fileName: file.name,
+      sha256,
+    };
   }
-  return file.arrayBuffer();
+
+  if (isSpreadsheetOrHtmlFileName(file.name) || isSpreadsheetOrHtmlFileName(file.type)) {
+    return {
+      kind: "spreadsheet",
+      buffer: await file.arrayBuffer(),
+      fileName: file.name,
+    };
+  }
+
+  return {
+    kind: "binary_or_text",
+    content: await file.arrayBuffer(),
+    fileName: file.name,
+  };
 }
 
 export function mapExpensesForReconciliation(
@@ -61,6 +139,7 @@ export function mapExpensesForReconciliation(
       installmentNumber: e.installment_number,
       installmentsTotal: e.installments_total,
       statementHash: e.statement_hash,
+      chargeKind: e.charge_kind,
     }));
 }
 
@@ -92,6 +171,7 @@ export function createManualReconciliationItem(params: {
     isPayment: false,
     installment: item.installment,
     statementHash: newHash,
+    inferredChargeKind: inferChargeKindFromDescription(item.cleanDescription),
   };
 
   return {
@@ -133,6 +213,7 @@ export function applyEditedReconciliationItem(params: {
       amountCents: updated.amountCents,
       installment: updated.installment,
       statementHash: newHash,
+      inferredChargeKind: inferChargeKindFromDescription(updated.cleanDescription),
     },
   };
 }
@@ -146,6 +227,7 @@ export interface ChunkedImportExpenseInput {
   installment_number: number;
   report_weight: number;
   statement_hash: string;
+  charge_kind?: string;
 }
 
 export async function executeChunkedStatementImport(params: {
@@ -169,6 +251,7 @@ export async function executeChunkedStatementImport(params: {
     installment_number: it.transaction.installment?.current ?? 1,
     report_weight: 1.0,
     statement_hash: it.transaction.statementHash,
+    charge_kind: it.transaction.inferredChargeKind ?? "regular",
   }));
 
   const chunks = chunkArray(payload, STATEMENT_IMPORT_CHUNK_SIZE);
@@ -236,8 +319,16 @@ function formatStatementAmountCell(amountCents: number): string {
   return amountCents < 0 ? `-${absFormatted}` : absFormatted;
 }
 
+const CANONICAL_AI_MAPPING: ColumnMapping = {
+  dateColIndex: 0,
+  descriptionColIndex: 1,
+  amountColIndex: 2,
+  hasHeader: false,
+  startRowIndex: 0,
+};
+
 /**
- * Converte linhas extraídas de PDF multi-coluna em `RawParsedRow[]` para alimentar
+ * Converte linhas extraídas pela IA em `RawParsedRow[]` para alimentar
  * os motores determinísticos `buildTransactionsFromRows` e `reconcileStatementTransactions`.
  */
 export function convertAiStatementRowsToRawParsedRows(
@@ -253,7 +344,11 @@ export function convertAiStatementRowsToRawParsedRows(
       hasInstallment && !alreadyHasInstallmentTag
         ? `${row.description.trim()} ${row.installmentCurrent}/${row.installmentTotal}`
         : row.description.trim();
-    const amountCell = formatStatementAmountCell(row.amountCents);
+    const signedCents =
+      row.entryType === "refund" || row.entryType === "payment"
+        ? -Math.abs(row.amountCents)
+        : row.amountCents;
+    const amountCell = formatStatementAmountCell(signedCents);
 
     return {
       rowIndex: index,
@@ -261,6 +356,53 @@ export function convertAiStatementRowsToRawParsedRows(
       cells: [row.date, descriptionCell, amountCell],
     };
   });
+}
+
+export function buildTransactionsFromAiRows(
+  aiRowsData: readonly AiStatementPdfRow[],
+  params: { cardId: string; competenceMonth: string },
+): { rows: RawParsedRow[]; transactions: StatementTransaction[]; mapping: ColumnMapping } {
+  const rawRows = convertAiStatementRowsToRawParsedRows(aiRowsData);
+  const baseTransactions = buildTransactionsFromRows(rawRows, CANONICAL_AI_MAPPING, params);
+
+  const enrichedTransactions = baseTransactions.map((tx, idx) => {
+    const sourceRow = aiRowsData[idx];
+    if (!sourceRow?.entryType) return tx;
+
+    if (sourceRow.entryType === "payment") {
+      return {
+        ...tx,
+        isPayment: true,
+        isRefund: false,
+      };
+    }
+
+    if (sourceRow.entryType === "refund") {
+      return {
+        ...tx,
+        isRefund: true,
+        isPayment: false,
+      };
+    }
+
+    if (sourceRow.entryType === "charge") {
+      const inferred = inferChargeKindFromDescription(sourceRow.description);
+      return {
+        ...tx,
+        isPayment: false,
+        isRefund: false,
+        inferredChargeKind: inferred === "regular" ? "bank_fee" : inferred,
+      };
+    }
+
+    return tx;
+  });
+
+  return {
+    rows: rawRows,
+    transactions: enrichedTransactions,
+    mapping: CANONICAL_AI_MAPPING,
+  };
 }
 
 export interface ParseStatementWithFallbackParams {
@@ -280,73 +422,229 @@ export interface ParsedStatementWithFallbackResult {
   mapping: ColumnMapping;
   isOfx: boolean;
   usedAiFallback: boolean;
+  printedTotalCents: number | null;
 }
 
 /**
- * Interpreta extratos/faturas com o parser determinístico local e, exclusivamente
- * para PDFs multi-coluna cujo parser tabular local retornar vazio, aciona o fallback
- * `statement_pdf_rows` (Balde 2) mantendo soma, hash e conciliação determinísticos.
+ * Interpreta extratos/faturas priorizando sempre custo zero de IA:
+ * 1) Planilhas (.xlsx/.xls/.html), OFX e CSV/TSV resolvem 100% localmente;
+ * 2) PDFs digitais e textos colados rodam parser determinístico + auditoria de cobertura;
+ * 3) Somente se o parser local falhar ou perder linhas (PDF multi-coluna / colagem desestruturada),
+ *    envia apenas o texto cirurgicamente pré-processado (60%-85% menor) ao modo `statement_pdf_rows`.
  */
 export async function parseStatementWithPdfAiFallback(
   params: ParseStatementWithFallbackParams,
 ): Promise<ParsedStatementWithFallbackResult> {
+  const lowerName = params.fileNameOrType.trim().toLowerCase();
+
+  // 1. Planilhas Excel (.xlsx, .xls) e tabelas HTML exportadas por bancos — 0 tokens de IA
+  if (isSpreadsheetOrHtmlFileName(lowerName)) {
+    const sheetRows = await parseSpreadsheetOrHtmlToRows(params.content);
+    const mapping = sniffColumnMapping(sheetRows);
+    const transactions = buildTransactionsFromRows(sheetRows, mapping, {
+      cardId: params.cardId,
+      competenceMonth: params.competenceMonth,
+    });
+    return {
+      transactions,
+      rows: sheetRows,
+      mapping,
+      isOfx: false,
+      usedAiFallback: false,
+      printedTotalCents: null,
+    };
+  }
+
+  // 2. Parser determinístico local (OFX, CSV, TSV, PDF digital ou texto livre)
   const deterministic = parseStatementInput(params.content, params.fileNameOrType, {
     cardId: params.cardId,
     competenceMonth: params.competenceMonth,
   });
 
-  if (deterministic.transactions.length > 0 || deterministic.rows.length > 0) {
-    return { ...deterministic, usedAiFallback: false };
+  if (deterministic.isOfx) {
+    return {
+      ...deterministic,
+      usedAiFallback: false,
+      printedTotalCents: null,
+    };
   }
 
-  const isPdfText =
-    params.fileNameOrType.toLowerCase().endsWith(".pdf") &&
-    typeof params.content === "string" &&
-    params.content.trim().length > 0;
-
-  if (!isPdfText) {
-    return { ...deterministic, usedAiFallback: false };
+  const structuredTabular = isStructuredTabularFileName(params.fileNameOrType, params.content);
+  if (structuredTabular) {
+    return {
+      ...deterministic,
+      usedAiFallback: false,
+      printedTotalCents: null,
+    };
   }
 
-  const pdfText = params.content as string;
-  const resolvedSha = params.fileSha256 || (await computeTextSha256(pdfText));
-  const parsedYear = Number.parseInt(params.competenceMonth.slice(0, 4), 10);
+  const textContent =
+    typeof params.content === "string"
+      ? params.content
+      : new TextDecoder("utf-8", { fatal: false }).decode(params.content);
 
-  const aiRes = await extractStatementPdfRowsWithAi({
-    sha256: resolvedSha,
-    text: pdfText,
-    referenceYear: Number.isFinite(parsedYear) ? parsedYear : undefined,
-    userId: params.userId,
-    isReadOnlyMode: params.isReadOnlyMode,
-    featureEnabled: params.aiFallbackEnabled,
+  const preprocessed = preprocessStatementTextForAi(textContent);
+  const quality = evaluateDeterministicStatementQuality({
+    rawText: textContent,
+    transactions: deterministic.transactions,
+    candidateAmountLineCount: preprocessed.candidateAmountLineCount,
+    printedTotalCents: preprocessed.printedTotalCents,
+    isStructuredTabularFile: false,
   });
 
-  if (!aiRes.ok || aiRes.data.rows.length === 0) {
-    return { ...deterministic, usedAiFallback: false };
+  if (quality.isSufficient) {
+    return {
+      ...deterministic,
+      usedAiFallback: false,
+      printedTotalCents: preprocessed.printedTotalCents,
+    };
   }
 
-  const aiRows = convertAiStatementRowsToRawParsedRows(aiRes.data.rows);
-  const canonicalMapping: ColumnMapping = {
-    dateColIndex: 0,
-    descriptionColIndex: 1,
-    amountColIndex: 2,
-    hasHeader: false,
-    startRowIndex: 0,
-  };
-  const transactions = buildTransactionsFromRows(aiRows, canonicalMapping, {
+  // 3. Fallback IA enxuto (apenas texto podado localmente)
+  if (!textContent.trim() || params.aiFallbackEnabled === false || params.isReadOnlyMode) {
+    return {
+      ...deterministic,
+      usedAiFallback: false,
+      printedTotalCents: preprocessed.printedTotalCents,
+    };
+  }
+
+  const parsedYear = Number.parseInt(params.competenceMonth.slice(0, 4), 10);
+  const chunksToSend = (
+    preprocessed.chunks.length > 0 ? preprocessed.chunks : [preprocessed.compactedText]
+  ).slice(0, MAX_STATEMENT_AI_CHUNKS);
+  const collectedAiRows: AiStatementPdfRow[] = [];
+
+  for (let idx = 0; idx < chunksToSend.length; idx++) {
+    const chunkText = chunksToSend[idx]?.trim() ?? "";
+    if (!chunkText) continue;
+
+    const chunkSha =
+      chunksToSend.length === 1 && params.fileSha256
+        ? params.fileSha256
+        : await computeTextSha256(`stmt_chunk_${idx}:${params.competenceMonth}:${chunkText}`);
+
+    const aiRes = await extractStatementPdfRowsWithAi({
+      sha256: chunkSha,
+      text: chunkText,
+      referenceYear: Number.isFinite(parsedYear) ? parsedYear : undefined,
+      competenceMonth: params.competenceMonth,
+      userId: params.userId,
+      isReadOnlyMode: params.isReadOnlyMode,
+      featureEnabled: params.aiFallbackEnabled,
+    });
+
+    if (!aiRes.ok) {
+      break;
+    }
+    collectedAiRows.push(...aiRes.data.rows);
+  }
+
+  if (collectedAiRows.length === 0) {
+    return {
+      ...deterministic,
+      usedAiFallback: false,
+      printedTotalCents: preprocessed.printedTotalCents,
+    };
+  }
+
+  const built = buildTransactionsFromAiRows(collectedAiRows, {
     cardId: params.cardId,
     competenceMonth: params.competenceMonth,
   });
 
-  if (transactions.length === 0) {
-    return { ...deterministic, usedAiFallback: false };
+  const meaningfulLocalCount = deterministic.transactions.filter((tx) => {
+    const desc = tx.cleanDescription.trim();
+    return Boolean(desc && desc !== "Transação" && !/^[\d\s/.,+-]+$/.test(desc));
+  }).length;
+
+  // Never-degrade: só substitui resultado parcial local se a IA extraiu pelo menos tantos lançamentos íntegros quanto o local
+  if (built.transactions.length === 0 || built.transactions.length < meaningfulLocalCount) {
+    return {
+      ...deterministic,
+      usedAiFallback: false,
+      printedTotalCents: preprocessed.printedTotalCents,
+    };
   }
 
   return {
-    transactions,
-    rows: aiRows,
-    mapping: canonicalMapping,
+    transactions: built.transactions,
+    rows: built.rows,
+    mapping: built.mapping,
     isOfx: false,
     usedAiFallback: true,
+    printedTotalCents: preprocessed.printedTotalCents,
+  };
+}
+
+/**
+ * Extrai lançamentos via IA Vision a partir de prints de fatura (até 3 imagens)
+ * ou páginas renderizadas de PDF escaneado sem camada de texto digital.
+ */
+export async function parseStatementVisionBlobsWithAi(params: {
+  blobs: readonly { blob: Blob; sha256?: string | null }[];
+  cardId: string;
+  competenceMonth: string;
+  userId?: string | null;
+  isReadOnlyMode?: boolean;
+  aiFallbackEnabled?: boolean;
+}): Promise<ParsedStatementWithFallbackResult> {
+  const emptyResult: ParsedStatementWithFallbackResult = {
+    transactions: [],
+    rows: [],
+    mapping: CANONICAL_AI_MAPPING,
+    isOfx: false,
+    usedAiFallback: false,
+    printedTotalCents: null,
+  };
+
+  if (
+    params.blobs.length === 0 ||
+    params.aiFallbackEnabled === false ||
+    params.isReadOnlyMode
+  ) {
+    return emptyResult;
+  }
+
+  const parsedYear = Number.parseInt(params.competenceMonth.slice(0, 4), 10);
+  const limited = params.blobs.slice(0, MAX_STATEMENT_VISION_PAGES_OR_IMAGES);
+  const collectedRows: AiStatementPdfRow[] = [];
+
+  for (const entry of limited) {
+    const aiRes = await extractStatementPdfRowsWithAi({
+      sha256: entry.sha256,
+      imageBlob: entry.blob,
+      referenceYear: Number.isFinite(parsedYear) ? parsedYear : undefined,
+      competenceMonth: params.competenceMonth,
+      userId: params.userId,
+      isReadOnlyMode: params.isReadOnlyMode,
+      featureEnabled: params.aiFallbackEnabled,
+    });
+
+    if (aiRes.ok && aiRes.data.rows.length > 0) {
+      collectedRows.push(...aiRes.data.rows);
+    }
+  }
+
+  if (collectedRows.length === 0) {
+    return emptyResult;
+  }
+
+  const built = buildTransactionsFromAiRows(collectedRows, {
+    cardId: params.cardId,
+    competenceMonth: params.competenceMonth,
+  });
+
+  if (built.transactions.length === 0) {
+    return emptyResult;
+  }
+
+  return {
+    transactions: built.transactions,
+    rows: built.rows,
+    mapping: built.mapping,
+    isOfx: false,
+    usedAiFallback: true,
+    printedTotalCents: null,
   };
 }

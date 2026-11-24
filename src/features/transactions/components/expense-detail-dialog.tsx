@@ -118,7 +118,8 @@ function ExpenseDetailDialogContent({
         footer={
           <ExpenseDetailFooter
             expense={expense}
-            isEditing={isEditing}
+            isEditing={isEditing && !actions.isInternalTransfer}
+            isInternalTransfer={actions.isInternalTransfer}
             editPending={actions.editPending}
             repeatPending={actions.repeatPending}
             hasLinkedSplit={actions.hasLinkedSplit}
@@ -128,6 +129,7 @@ function ExpenseDetailDialogContent({
               setError(null);
               setEditScope("single");
             }}
+            onClose={() => resetAndClose(false)}
             onSubmitEdit={() => editSubmitRef.current?.()}
             onGoToTrip={(tripId) => {
               onOpenChange(false);
@@ -137,7 +139,9 @@ function ExpenseDetailDialogContent({
             onManageSplit={handleOpenManageSplit}
             onShare={() => void actions.handleShare()}
             onRepeat={() => guardAction(() => void actions.handleRepeat(), "Duplicar Despesa")}
-            onStartEdit={() => guardAction(() => setIsEditing(true), "Editar Despesa")}
+            onStartEdit={() => {
+              if (!actions.isInternalTransfer) guardAction(() => setIsEditing(true), "Editar Despesa");
+            }}
             onDelete={() => guardAction(() => setConfirmOpen(true), "Excluir Despesa")}
           />
         }
@@ -145,7 +149,7 @@ function ExpenseDetailDialogContent({
         {expense ? (
           <div className="flex flex-col gap-4 min-w-0">
             {error ? <Alert variant="error">{error}</Alert> : null}
-            {isEditing ? (
+            {isEditing && !actions.isInternalTransfer ? (
               <ExpenseEditForm
                 key={expense.id}
                 expense={expense}
@@ -168,6 +172,7 @@ function ExpenseDetailDialogContent({
                 expense={expense}
                 currentCategory={actions.currentCategory}
                 isFamilyActive={actions.isFamilyActive}
+                isBusinessActive={actions.isBusinessActive}
                 isInstallment={actions.isInstallment}
                 isRecurring={actions.isRecurring}
                 priceEvolution={actions.priceEvolution}
@@ -212,31 +217,35 @@ function ExpenseDetailDialogContent({
           if (next) setTripDeleteMode("both");
         }}
         title={
-          actions.isRachaExpense
-            ? "Excluir despesa e racha vinculado?"
-            : expense?.trip_id
-              ? "Excluir despesa vinculada?"
-              : "Excluir despesa?"
+          actions.isInternalTransfer
+            ? "Excluir transferência interna pareada PF/PJ?"
+            : actions.isRachaExpense
+              ? "Excluir despesa e racha vinculado?"
+              : expense?.trip_id
+                ? "Excluir despesa vinculada?"
+                : "Excluir despesa?"
         }
         description={
-          expense?.trip_id
-            ? "Esta despesa está vinculada ao Modo Viagem. Escolha como deseja prosseguir com a exclusão:"
-            : actions.isRachaExpense
-              ? "Esta ação não pode ser desfeita e cancelará o racha vinculado."
-              : actions.isGrouped
-                ? "A exclusão remove também as dívidas pendentes vinculadas. Dívidas quitadas não são alteradas."
-                : "Esta ação não pode ser desfeita. Dívidas pendentes vinculadas também serão removidas."
+          actions.isInternalTransfer
+            ? "Esta ação exclui simultaneamente a saída e a entrada correspondentes nos dois caixas (PF e PJ) e não pode ser desfeita."
+            : expense?.trip_id
+              ? "Esta despesa está vinculada ao Modo Viagem. Escolha como deseja prosseguir com a exclusão:"
+              : actions.isRachaExpense
+                ? "Esta ação não pode ser desfeita e cancelará o racha vinculado."
+                : actions.isGrouped
+                  ? "A exclusão remove também as dívidas pendentes vinculadas. Dívidas quitadas não são alteradas."
+                  : "Esta ação não pode ser desfeita. Dívidas pendentes vinculadas também serão removidas."
         }
         confirmLabel={actions.deletePending ? "Excluindo…" : "Excluir"}
         confirmPending={actions.deletePending}
         onConfirm={() => void actions.handleConfirmDelete()}
         isRachaExpense={actions.isRachaExpense}
-        tripId={expense?.trip_id}
+        tripId={actions.isInternalTransfer ? null : expense?.trip_id}
         tripName={actions.tripName}
         tripDeleteMode={tripDeleteMode}
         onTripDeleteModeChange={setTripDeleteMode}
-        isGrouped={actions.isGrouped}
-        isRecurring={actions.isRecurring}
+        isGrouped={actions.isInternalTransfer ? false : actions.isGrouped}
+        isRecurring={actions.isInternalTransfer ? false : actions.isRecurring}
         mode={mode}
         onModeChange={setMode}
       />

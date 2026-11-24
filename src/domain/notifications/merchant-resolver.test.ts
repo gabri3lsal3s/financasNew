@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { MerchantLearningMemory } from "./merchant-memory";
+import { recordMerchantLearning, type MerchantLearningMemory } from "./merchant-memory";
 import {
   formatFriendlyTitle,
   resolveMerchantIdentity,
@@ -289,5 +289,41 @@ describe("merchant-resolver — Fallback Seguro", () => {
     expect(resolved.categorySlug).toBe("compras");
     expect(resolved.confidence).toBe("fallback");
     expect(resolved.layer).toBe("fallback");
+  });
+
+  it("só aplica preferredReportWeight e preferredIsFamily após >= 2 confirmações consistentes", () => {
+    let mem: MerchantLearningMemory = recordMerchantLearning({
+      friendlyName: "Restaurante Dois",
+      categorySlug: "cat-food",
+      reportWeight: 0.5,
+      isFamily: true,
+      semanticTags: ["almoco", "familia"],
+    });
+
+    // 1ª confirmação: ainda não aplica peso/familiar automaticamente
+    const afterOne = resolveMerchantIdentity({
+      merchantOrDescription: "Restaurante Dois",
+      userMemory: mem,
+    });
+    expect(afterOne.preferredReportWeight).toBeUndefined();
+    expect(afterOne.preferredIsFamily).toBeUndefined();
+    expect(afterOne.semanticTags).toEqual(["almoco", "familia"]);
+
+    // 2ª confirmação consistente: ativa autofill de peso proporcional e familiar
+    mem = recordMerchantLearning(
+      {
+        friendlyName: "Restaurante Dois",
+        categorySlug: "cat-food",
+        reportWeight: 0.5,
+        isFamily: true,
+      },
+      mem,
+    );
+    const afterTwo = resolveMerchantIdentity({
+      merchantOrDescription: "Restaurante Dois",
+      userMemory: mem,
+    });
+    expect(afterTwo.preferredReportWeight).toBe(0.5);
+    expect(afterTwo.preferredIsFamily).toBe(true);
   });
 });

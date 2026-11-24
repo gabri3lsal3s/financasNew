@@ -47,12 +47,24 @@ export interface SubscriptionClassification {
 /** Tolerância do sinal de valor exato (default ±5%). */
 const VALUE_TOLERANCE = 0.05;
 
-import { matchesServiceKey, stripTemporalSuffixes, valuesWithinTolerance } from "./shared";
+import {
+  matchesServiceKey,
+  normalizeText,
+  stripTemporalSuffixes,
+  valuesWithinTolerance,
+} from "./shared";
 import { resolveCategorySemantics } from "./category-semantics";
 
 export interface KnownServiceDef {
   tier: CutTier;
   segment: ServiceSegment;
+}
+
+export interface LearnedServiceDef {
+  canonicalKey?: string;
+  tier: CutTier;
+  segment: ServiceSegment;
+  isSubscription?: boolean;
 }
 
 /** Serviços de assinatura conhecidos (nome normalizado → tier e segmento). */
@@ -200,24 +212,55 @@ const KNOWN_SERVICES: Record<string, KnownServiceDef> = {
   bahiagas: { tier: "essential", segment: "utilities" },
 };
 
+function findLearnedServiceMatch(
+  cleanName: string,
+  learnedServices?: ReadonlyMap<string, LearnedServiceDef>,
+): { key: string; def: LearnedServiceDef } | null {
+  if (!learnedServices || learnedServices.size === 0 || !cleanName) return null;
+  const norm = normalizeText(cleanName);
+  if (!norm) return null;
+
+  const direct = learnedServices.get(norm);
+  if (direct) {
+    return { key: direct.canonicalKey || norm, def: direct };
+  }
+
+  for (const [aliasKey, def] of learnedServices.entries()) {
+    if (aliasKey.length >= 4 && matchesServiceKey(cleanName, aliasKey)) {
+      return { key: def.canonicalKey || aliasKey, def };
+    }
+  }
+  return null;
+}
+
 /**
- * Retorna a chave canônica do catálogo que corresponde à descrição informada,
+ * Retorna a chave canônica do catálogo (ou assinatura aprendida) que corresponde à descrição informada,
  * ou null caso a despesa não pertença a um serviço conhecido.
  * Útil para unificar repetições com nomes variantes (ex.: "Netflix Brasil" e "Netflix Com").
  */
-export function findMatchingServiceKey(name: string): string | null {
+export function findMatchingServiceKey(
+  name: string,
+  learnedServices?: ReadonlyMap<string, LearnedServiceDef>,
+): string | null {
   const cleanName = stripTemporalSuffixes(name);
   for (const key of Object.keys(KNOWN_SERVICES)) {
     if (matchesServiceKey(cleanName, key)) {
       return key;
     }
   }
+  const learnedMatch = findLearnedServiceMatch(cleanName, learnedServices);
+  if (learnedMatch && learnedMatch.def.isSubscription === true) {
+    return learnedMatch.key;
+  }
   return null;
 }
 
 /** Sinal 1 — nome conhecido no catálogo de serviços (com correspondência segura por token). */
-function isKnownService(name: string): boolean {
-  return findMatchingServiceKey(name) !== null;
+function isKnownService(
+  name: string,
+  learnedServices?: ReadonlyMap<string, LearnedServiceDef>,
+): boolean {
+  return findMatchingServiceKey(name, learnedServices) !== null;
 }
 
 /** Sinal 2 — categoria de assinatura (por ícone ou nome personalizado). */
@@ -230,30 +273,40 @@ function hasStableValue(monthlyValuesCents: readonly number[], tolerance = VALUE
   return valuesWithinTolerance(monthlyValuesCents, tolerance);
 }
 
-/** Segmento do serviço a partir do catálogo ou categoria. */
+/** Segmento do serviço a partir do catálogo, memória aprendida ou categoria. */
 export function segmentOf(
   name: string,
   categoryIcon?: string | null,
   categoryName?: string | null,
+  learnedServices?: ReadonlyMap<string, LearnedServiceDef>,
 ): ServiceSegment {
   const cleanName = stripTemporalSuffixes(name);
   for (const [key, def] of Object.entries(KNOWN_SERVICES)) {
     if (matchesServiceKey(cleanName, key)) return def.segment;
+  }
+  const learnedMatch = findLearnedServiceMatch(cleanName, learnedServices);
+  if (learnedMatch && learnedMatch.def.segment !== "other") {
+    return learnedMatch.def.segment;
   }
   const semantics = resolveCategorySemantics({ name: categoryName, icon: categoryIcon });
   if (semantics.segment !== "other") return semantics.segment;
   return "other";
 }
 
-/** Tier a partir do catálogo (com fallback por categoria). */
+/** Tier a partir do catálogo ou memória aprendida (com fallback por categoria). */
 function tierOf(
   name: string,
   categoryIcon?: string | null,
   categoryName?: string | null,
+  learnedServices?: ReadonlyMap<string, LearnedServiceDef>,
 ): CutTier {
   const cleanName = stripTemporalSuffixes(name);
   for (const [key, def] of Object.entries(KNOWN_SERVICES)) {
     if (matchesServiceKey(cleanName, key)) return def.tier;
+  }
+  const learnedMatch = findLearnedServiceMatch(cleanName, learnedServices);
+  if (learnedMatch) {
+    return learnedMatch.def.tier;
   }
   return resolveCategorySemantics({ name: categoryName, icon: categoryIcon }).tier;
 }
@@ -262,8 +315,12 @@ function tierOf(
  * Árvore de decisão: confiança pela combinação de sinais (0.40–0.98).
  * Candidato SEM nenhum sinal não é assinatura (retorna null).
  */
-export function classifySubscription(candidate: SubscriptionCandidate): SubscriptionClassification | null {
-  const knownName = isKnownService(candidate.name);
+export function classifySubscription(
+  candidate: SubscriptionCandidate,
+  options?: { learnedServices?: ReadonlyMap<string, LearnedServiceDef> },
+): SubscriptionClassification | null {
+  const learnedServices = options?.learnedServices;
+  const knownName = isKnownService(candidate.name, learnedServices);
   const subscriptionCategory = isSubscriptionCategory(candidate.categoryName, candidate.categoryIcon);
   const stableValue = hasStableValue(candidate.monthlyValuesCents);
   const signs = { knownName, subscriptionCategory, stableValue };
@@ -283,8 +340,8 @@ export function classifySubscription(candidate: SubscriptionCandidate): Subscrip
 
   return {
     confidence: Math.min(0.98, Math.max(0.4, confidence)),
-    tier: tierOf(candidate.name, candidate.categoryIcon, candidate.categoryName),
-    segment: segmentOf(candidate.name, candidate.categoryIcon, candidate.categoryName),
+    tier: tierOf(candidate.name, candidate.categoryIcon, candidate.categoryName, learnedServices),
+    segment: segmentOf(candidate.name, candidate.categoryIcon, candidate.categoryName, learnedServices),
     savingsIfCutCents: averageCents,
     signs,
   };

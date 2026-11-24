@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { normalizeSpaces } from "../formatters";
 import {
+  buildCashGapBreakdown,
   buildRealCashBreakdown,
   buildSafeToSpendBreakdown,
 } from "./cash-breakdown";
@@ -102,6 +103,40 @@ describe("Builders de Memória de Cálculo: Cash", () => {
       expect(breakdown.result.rawValue).toBe(400000);
       expect(normalizeSpaces(breakdown.result.formattedValue ?? "")).toBe("R$ 4.000,00");
       expect(breakdown.formulaExpression).toBe("Saldo em Conta + Recebíveis Previstos − Obrigações do Ciclo");
+    });
+  });
+
+  describe("buildCashGapBreakdown", () => {
+    it("detalha saldo atual, obrigações causadoras e entradas previstas em regime de caixa", () => {
+      const breakdown = buildCashGapBreakdown({
+        currentBalanceCents: 100000,
+        predictedInflowsTotalCents: 50000,
+        result: {
+          isCashGapDetected: true,
+          severity: "warning",
+          gapDate: "2026-08-20",
+          daysUntilGap: 5,
+          maxDeficitCents: 150000,
+          nextInflowDate: "2026-08-25",
+          causingObligations: [
+            {
+              id: "inv-1",
+              name: "Fatura Nubank",
+              dueDate: "2026-08-20",
+              amountCents: 250000,
+              kind: "invoice",
+            },
+          ],
+          recommendationMessage: "Risco de saldo negativo em 20/08.",
+          runway: [],
+        },
+      });
+
+      expect(breakdown.id).toBe("dash-cash-gap");
+      expect(breakdown.steps.some((s) => s.label === "Fatura Nubank" && s.rawValue === 250000)).toBe(true);
+      expect(breakdown.steps.some((s) => s.label === "Entradas Previstas no Horizonte" && s.rawValue === 50000)).toBe(true);
+      expect(breakdown.result.rawValue).toBe(-150000);
+      expect(breakdown.notes?.[0]).toContain("Lente Caixa estrita");
     });
   });
 });

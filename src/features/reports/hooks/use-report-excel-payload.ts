@@ -7,7 +7,7 @@ import {
   type PeriodRedemptionItem,
 } from "@/domain/reports";
 import type { PointInTimeResult } from "@/domain/portfolio";
-import type { ExcelWorkbookData } from "@/services/excel-export";
+import type { ExcelBusinessDreData, ExcelWorkbookData } from "@/services/excel-export";
 import type { PortfolioPosition, PortfolioPositionRow } from "@/state";
 import type { Debt, Expense, Income, PortfolioAsset, PortfolioDividend } from "@/types";
 
@@ -34,6 +34,7 @@ export interface UseReportExcelPayloadParams {
   allocationAnalysis: AllocationAnalysisResult;
   consolidatedBalance: ConsolidatedBalanceSheetResult;
   freedomAnalysis: FreedomAnalysisResult;
+  businessDre?: ExcelBusinessDreData | null;
 }
 
 /**
@@ -63,6 +64,7 @@ export function useReportExcelPayload(params: UseReportExcelPayloadParams) {
     allocationAnalysis,
     consolidatedBalance,
     freedomAnalysis,
+    businessDre,
   } = params;
 
   const workbookData: ExcelWorkbookData = useMemo(
@@ -92,13 +94,14 @@ export function useReportExcelPayload(params: UseReportExcelPayloadParams) {
         allocationAnalysis,
         consolidatedBalance,
         freedomAnalysis,
+        ...(businessDre ? { businessDre } : {}),
       }),
     [
       month, isCurrentPeriod, isDateInPeriod, totalPatrimonyBRL, totalInvestedCostBRL,
       cashBalanceBRL, yearDividendsBRL, usdRate, historicalPit, positionQuery.unrealizedPnlBRL,
       positionQuery.unrealizedPct, positionQuery.totalReturnPct, positionQuery.portfolioIrr,
       positionQuery.allTimeEconomicPnlBRL, positionRows, assets, dividends, debts,
-      periodRedemptions, allocationAnalysis, consolidatedBalance, freedomAnalysis,
+      periodRedemptions, allocationAnalysis, consolidatedBalance, freedomAnalysis, businessDre,
     ],
   );
 

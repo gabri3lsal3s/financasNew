@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSmartAdvisorBreakdown } from "./insights-breakdown";
+import { buildPaceProjectionBreakdown, buildSmartAdvisorBreakdown } from "./insights-breakdown";
 import type { SmartAdvisorInsight } from "@/domain/insights/advisor";
 
 describe("buildSmartAdvisorBreakdown", () => {
@@ -132,5 +132,37 @@ describe("buildSmartAdvisorBreakdown", () => {
     expect(breakdown.steps[1]?.rawValue).toBe(30000);
     expect(breakdown.steps[2]?.rawValue).toBe(10000);
     expect(breakdown.steps[3]?.rawValue).toBe(3000); // 30000 / 10 = 3000/dia
+  });
+
+  it("buildPaceProjectionBreakdown detalha base, fixos (1x), suavização e nota entre lentes", () => {
+    const breakdown = buildPaceProjectionBreakdown({
+      month: "2026-08",
+      referenceBudgetCents: 600000,
+      referenceBudgetSource: "expected_income",
+      isProvisionalReference: true,
+      fixedPaidCents: 220000,
+      pendingFixedCents: 30000,
+      oneOffAndTripCents: 50000,
+      projectedVariableCents: 180000,
+      historicalVariableMedianCents: 180000,
+      blendedWeight: 0.25,
+      refundsNeutralizedCents: 10000,
+      priorCycleRefundCreditCents: 0,
+      investmentCents: 40000,
+      projectedSurplusCents: 80000,
+      dailyCents: 6500,
+      dayOfMonth: 7,
+      daysInMonth: 31,
+    });
+
+    expect(breakdown.id).toBe("pace-projection-2026-08");
+    expect(breakdown.steps.some((s) => s.label.includes("Base Provisória") && s.rawValue === 600000)).toBe(true);
+    expect(breakdown.steps.some((s) => s.label.includes("Fixas") && s.rawValue === 220000)).toBe(true);
+    expect(breakdown.steps.some((s) => s.label.includes("Pendentes") && s.rawValue === 30000)).toBe(true);
+    expect(breakdown.steps.some((s) => s.label.includes("Pontuais") && s.rawValue === 50000)).toBe(true);
+    expect(breakdown.steps.some((s) => s.hint?.includes("Suavização quadrática"))).toBe(true);
+    expect(breakdown.result.rawValue).toBe(80000);
+    expect(breakdown.notes?.some((n) => n.includes("Lente Consumo (competência)"))).toBe(true);
+    expect(breakdown.notes?.some((n) => n.includes("neutralização"))).toBe(true);
   });
 });

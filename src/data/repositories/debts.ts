@@ -2,7 +2,7 @@ import { getSupabase } from "@/data/client";
 import { currentUserId } from "@/data/session";
 import { resolveQuery } from "@/data/query";
 import { AppError, classifyError } from "@/services/errors";
-import type { DbInsert, DbUpdate, Debt } from "@/types";
+import type { DbInsert, DbUpdate, Debt, TransactionScope } from "@/types";
 
 /**
  * Dívidas / contas a pagar e receber — integração remota.
@@ -12,7 +12,7 @@ import type { DbInsert, DbUpdate, Debt } from "@/types";
  */
 
 function mapDebt(row: Debt): Debt {
-  return { ...row, amount: Number(row.amount) };
+  return { ...row, amount: Number(row.amount), scope: row.scope ?? "personal" };
 }
 
 /** Todas as dívidas do usuário — ordenadas por vencimento (ESPECIFICAÇÃO §3.4). */
@@ -55,6 +55,7 @@ export interface CreateLinkedReceivableDebtInput {
   due_date: string;
   expense_id: string | null;
   installment_group_id?: string | null;
+  scope?: TransactionScope;
 }
 
 /** Cria uma cobrança a receber vinculada a uma despesa (ex.: ao rachar uma despesa já existente). */
@@ -72,6 +73,7 @@ export async function createLinkedReceivableDebt(input: CreateLinkedReceivableDe
         paid_at: null,
         expense_id: input.expense_id,
         installment_group_id: input.installment_group_id ?? null,
+        ...(input.scope ? { scope: input.scope } : {}),
       })
       .select()
       .single(),

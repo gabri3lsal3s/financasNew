@@ -8,16 +8,30 @@
  */
 
 import { isOccurrenceIgnored, type FeedbackMap } from "./feedback";
+import {
+  isFamilyUnderDecay,
+  resolveInsightThemeFamily,
+} from "./attention-budget";
+import type { UserFinancialContext } from "./financial-context";
+import {
+  buildTxOneOffKey,
+  type InsightThemeFamily,
+  type SmartDecayRecord,
+} from "./learning-graph";
 import type { ExpenseLike, RecurrenceOccurrence, RecurringIncomeOccurrence } from "./recurrences";
-import { formatBRL } from "./recurrences";
+import { formatBRL, medianOf } from "./recurrences";
 import { learnBrokerAportePattern } from "./aporte-learning";
 import { detectAnnualCommitments, detectWeeklyCommitments } from "./extended-periodicity";
 import { getNextInvoiceClosingDate } from "./card-radar";
 import { detectSpendingHabits, type SpendingHabit } from "./habits";
+import {
+  computeEndingInstallmentsRelief,
+  detectCrossMethodDuplicateSubscriptions,
+} from "./holistic-opportunities";
 import { findMatchingServiceKey } from "./subscriptions";
 import type { Category, FamilyConsolidationResult, IncomeGoal } from "@/types";
 
-export type SmartAdvisorCategory = "critical" | "income" | "savings" | "calibration";
+export type SmartAdvisorCategory = "critical" | "income" | "savings" | "calibration" | "celebration";
 
 export interface SmartAdvisorCardContext {
   cardId: string;
@@ -56,10 +70,13 @@ export interface SmartAdvisorAction {
     | "ignore_recurrence"
     | "navigate_aporte"
     | "navigate_family"
+    | "navigate_cards"
     | "open_family_settlement"
     | "open_income_goals"
     | "dismiss"
-    | "mark_essential";
+    | "mark_essential"
+    | "mark_tx_one_off"
+    | "pause_family";
   payload?: Record<string, unknown>;
 }
 
@@ -68,8 +85,8 @@ export interface SmartAdvisorInsight {
   id: string;
   /** Chave estável do tema para controle de dismiss e feedback (ex: "dup:netflix", "income:salario"). */
   themeKey: string;
-  /** Prioridade canônica (1 = Crítica, 2 = Entrada, 3 = Economia, 4 = Calibração). */
-  priority: 1 | 2 | 3 | 4;
+  /** Prioridade canônica (1 = Crítica, 2 = Entrada, 3 = Economia, 3.5 = Celebração, 4 = Calibração). */
+  priority: 1 | 2 | 3 | 3.5 | 4;
   /** Categoria do insight. */
   category: SmartAdvisorCategory;
   /** Título conciso e editorial sem emojis. */
@@ -77,7 +94,13 @@ export interface SmartAdvisorInsight {
   /** Descrição explicativa contextual. */
   description: string;
   /** Nome do ícone representativo lucide-react (tamanho size-4). */
-  iconName: "alert-triangle" | "arrow-down-left" | "trending-down" | "help-circle" | "trending-up";
+  iconName:
+    | "alert-triangle"
+    | "arrow-down-left"
+    | "trending-down"
+    | "help-circle"
+    | "trending-up"
+    | "sparkles";
   /** Ação primária de 1 toque recomendada. */
   primaryAction?: SmartAdvisorAction;
   /** Ação secundária (ex.: descartar ou discordar). */
@@ -134,6 +157,14 @@ export interface GenerateSmartAdvisorInsightsInput {
   spendingHabits?: readonly SpendingHabit[];
   /** Catálogo de categorias para validação de status e enriquecimento contextual. */
   categories?: readonly Category[];
+  /** Contexto holístico unificado (Fase 5 — orçamentos, reserva, proventos, medianas e pontuais). */
+  financialContext?: UserFinancialContext;
+  /** Overrides diretos opcionais para testes e callers sem UserFinancialContext completo. */
+  budgetedCategoryLimits?: ReadonlyMap<string, number>;
+  isEmergencyFundComplete?: boolean;
+  monthlySettledDividendsCents?: number;
+  historicalVariableMedianCents?: number;
+  oneOffExpenseIds?: ReadonlySet<string>;
 }
 
 /**
@@ -371,6 +402,54 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
           cardId: occ.cardId ?? undefined,
           cardName: occ.cardName ?? undefined,
           cardContext,
+        },
+      });
+    }
+  }
+
+  // 1.2b Assinaturas duplicadas em cartões ou meios distintos no mês atual (mesmo no 1º mês)
+  if (allExpenses.length > 0) {
+    const crossMethodDups = detectCrossMethodDuplicateSubscriptions(allExpenses, {
+      referenceMonth: todayISO.slice(0, 7),
+      merchantAliasMap: input.financialContext?.learning.merchantAliasMap,
+      learnedServices: input.financialContext?.learning.learnedServices,
+    });
+
+    for (const dup of crossMethodDups) {
+      const dupKey = `dup:${dup.key}`;
+      const subDupKey = `dup:sub:${dup.key}`;
+      if (
+        isOccurrenceIgnored(feedbackMap[dupKey]) ||
+        isOccurrenceIgnored(feedbackMap[subDupKey]) ||
+        isOccurrenceIgnored(feedbackMap[dup.key]) ||
+        isOccurrenceIgnored(feedbackMap[`sub:${dup.key}`])
+      ) {
+        continue;
+      }
+      if (candidates.some((c) => c.themeKey === dupKey || c.themeKey === subDupKey)) {
+        continue;
+      }
+
+      candidates.push({
+        id: dupKey,
+        themeKey: dupKey,
+        priority: 1,
+        category: "critical",
+        title: "Assinatura cobrada em dois meios",
+        description: `Identificamos ${dup.count} cobranças de ${dup.name} neste mês (${dup.sourcesLabel}), somando ${formatBRL(dup.totalChargedCents)}.`,
+        iconName: "alert-triangle",
+        primaryAction: {
+          label: "Ver cobranças",
+          kind: "cut_subscription",
+          payload: { key: dup.key, name: dup.name },
+        },
+        secondaryAction: {
+          label: "Dispensar por 30 dias",
+          kind: "dismiss",
+        },
+        metadata: {
+          duplicateCount: dup.count,
+          valueCents: dup.totalChargedCents,
         },
       });
     }
@@ -649,8 +728,20 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
 
       const day = Number(todayISO.slice(8, 10));
       const hasPendingObligations = (committedObligationsCents ?? 0) > 0;
-      const description =
-        day < 25 && hasPendingObligations
+      const isEmergencyComplete =
+        input.financialContext?.lens.wealth.isEmergencyFundComplete ??
+        input.isEmergencyFundComplete ??
+        true;
+
+      const title = isEmergencyComplete
+        ? "Aporte para rebalanceamento"
+        : "Reforçar Reserva de Emergência";
+
+      const actionLabel = isEmergencyComplete ? "Realizar aporte" : "Reforçar reserva";
+
+      const description = !isEmergencyComplete
+        ? `Você possui ${formatBRL(effectiveSavingsSurplusCents)} livres após as obrigações. Como sua reserva de emergência ainda está em formação, priorize reforçar sua liquidez.`
+        : day < 25 && hasPendingObligations
           ? `Você possui ${formatBRL(effectiveSavingsSurplusCents)} de saldo livre real após cobrir as obrigações do ciclo. Deseja realizar o aporte planejado para rebalancear sua carteira?`
           : `Você poupou ${formatBRL(effectiveSavingsSurplusCents)} neste mês. Deseja realizar o aporte planejado para rebalancear sua carteira?`;
 
@@ -659,14 +750,15 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
         themeKey: "aporte:rebalance",
         priority: 3,
         category: "savings",
-        title: "Aporte para rebalanceamento",
+        title,
         description,
         iconName: "trending-down",
         primaryAction: {
-          label: "Realizar aporte",
+          label: actionLabel,
           kind: "navigate_aporte",
           payload: {
             valorCents: suggestedValueCents,
+            ...(!isEmergencyComplete ? { intent: "emergency_fund" } : {}),
           },
         },
         secondaryAction: {
@@ -681,7 +773,9 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
     }
   }
 
-  // 3.2 Hábitos de consumo frequentes e microvazamentos consolidados (F30)
+  // 3.2 Hábitos de consumo frequentes e microvazamentos consolidados (F30 + Fase 5 Consciência de Orçamento)
+  const effectiveBudgetedLimits =
+    input.financialContext?.learning.budgetedCategoryLimits ?? input.budgetedCategoryLimits;
   const effectiveHabits =
     spendingHabits ??
     (allExpenses.length > 0 ? detectSpendingHabits(allExpenses, { todayISO }) : []);
@@ -691,13 +785,35 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
   for (const habit of effectiveHabits) {
     if (isOccurrenceIgnored(feedbackMap[habit.key])) continue;
     if (feedbackMap[habit.key] === "essential") continue;
+    if (input.financialContext?.learning.essentialKeys.has(habit.key)) continue;
     if (candidates.some((c) => c.themeKey === habit.key)) continue;
 
-    const title = habit.isMicroLeakage
-      ? `Atenção a microgastos: ${habit.name}`
-      : `Hábito frequente: ${habit.name}`;
+    // Gastos frequentes de saúde/farmácia são cuidado essencial, nunca "microgasto" ou alerta de corte
+    if (habit.intentKind === "health:pharmacy") continue;
 
-    const description = `Você realizou ${habit.occurrencesCount} despesas neste mês totalizando ${formatBRL(habit.totalMonthCents)} (média de ${formatBRL(habit.averageTicketCents)} por gasto). Projeção de ${formatBRL(habit.annualProjectedCents)} ao ano.`;
+    const existingLimitCents = effectiveBudgetedLimits?.get(habit.categoryId) ?? 0;
+    const hasBudget = existingLimitCents > 0;
+    const budgetUsageRatio = hasBudget ? habit.totalMonthCents / existingLimitCents : 0;
+
+    // Se o usuário já possui orçamento na categoria e o consumo está abaixo de 85%, silencia "Definir teto"
+    if (hasBudget && budgetUsageRatio < 0.85) {
+      continue;
+    }
+
+    const isEssentialRoutineIntent =
+      habit.intentKind === "pantry:groceries" || habit.intentKind === "mobility:commute";
+
+    const title = hasBudget
+      ? budgetUsageRatio >= 1
+        ? `Orçamento excedido: ${habit.name}`
+        : `Orçamento próximo do limite: ${habit.name}`
+      : habit.isMicroLeakage && !isEssentialRoutineIntent
+        ? `Atenção a microgastos: ${habit.name}`
+        : `Hábito frequente: ${habit.name}`;
+
+    const description = hasBudget
+      ? `Você já consumiu ${Math.round(budgetUsageRatio * 100)}% do teto de ${formatBRL(existingLimitCents)} (${formatBRL(habit.totalMonthCents)} gastos neste mês). Vale revisar o ritmo ou ajustar o limite.`
+      : `Você realizou ${habit.occurrencesCount} despesas neste mês totalizando ${formatBRL(habit.totalMonthCents)} (média de ${formatBRL(habit.averageTicketCents)} por gasto). Projeção de ${formatBRL(habit.annualProjectedCents)} ao ano.`;
 
     candidates.push({
       id: habit.key,
@@ -708,7 +824,7 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
       description,
       iconName: "trending-down",
       primaryAction: {
-        label: habit.actionLabel,
+        label: hasBudget ? "Revisar teto" : habit.actionLabel,
         kind: "set_category_budget",
         payload: {
           key: habit.key,
@@ -823,8 +939,16 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
     for (const weekly of weeklyCommitments) {
       if (!weekly.active) continue;
       if (isOccurrenceIgnored(feedbackMap[weekly.key])) continue;
-      if (feedbackMap[weekly.key] === "confirm") continue;
+      if (feedbackMap[weekly.key] === "confirm" || feedbackMap[weekly.key] === "essential") continue;
+      if (input.financialContext?.learning.essentialKeys.has(weekly.key)) continue;
       if (candidates.some((c) => c.themeKey === weekly.key)) continue;
+
+      if (weekly.categoryId) {
+        const weeklyLimit = effectiveBudgetedLimits?.get(weekly.categoryId) ?? 0;
+        if (weeklyLimit > 0 && weekly.monthlyConsolidatedCents < weeklyLimit * 0.85) {
+          continue;
+        }
+      }
 
       candidates.push({
         id: weekly.key,
@@ -914,6 +1038,7 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
   // 4. PRIORIDADE 4: CALIBRAÇÃO (Pergunta simples para ensinar o motor)
   for (const occ of occurrences) {
     if (occ.lifecycle === "lapsed") continue;
+    if (occ.isFormalRecurrence) continue;
 
     // Se esta ocorrência pertence a uma categoria com hábito consolidado já ativo e não for assinatura de serviço único,
     // não polui com perguntas de calibração para gastos pontuais de rotina
@@ -961,6 +1086,195 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
     }
   }
 
+  // 3.5 PRIORIDADE 3.5: INSIGHTS POSITIVOS & CELEBRATÓRIOS (máximo 1 ativo)
+  let celebrationAdded = false;
+  const currentMonth = todayISO.slice(0, 7);
+  const currentDay = Number(todayISO.slice(8, 10));
+  const [yrStr, moStr] = currentMonth.split("-");
+  const daysInCurrentMonth =
+    yrStr && moStr ? new Date(Number(yrStr), Number(moStr), 0).getDate() : 30;
+
+  const historicalVariableMedian =
+    input.financialContext?.lens.consumption.historicalVariableMedianCents ??
+    input.historicalVariableMedianCents ??
+    0;
+  const currentVariableExpense =
+    input.financialContext?.lens.consumption.variableExpenseCents ?? 0;
+
+  if (
+    currentDay >= 15 &&
+    historicalVariableMedian > 0 &&
+    !isOccurrenceIgnored(feedbackMap["celebration:real_savings"])
+  ) {
+    const expectedProRata = Math.round(
+      historicalVariableMedian * (currentDay / Math.max(1, daysInCurrentMonth)),
+    );
+    const savedCents = expectedProRata - currentVariableExpense;
+    if (
+      expectedProRata > 0 &&
+      currentVariableExpense <= expectedProRata * 0.85 &&
+      savedCents >= 10_000
+    ) {
+      const pctSaved = Math.round((savedCents / expectedProRata) * 100);
+      candidates.push({
+        id: "celebration:real_savings",
+        themeKey: "celebration:real_savings",
+        priority: 3.5,
+        category: "celebration",
+        title: "Economia real no mês",
+        description: `Seus gastos variáveis estão ${pctSaved}% abaixo da sua mediana histórica para este ponto do mês — uma economia de ${formatBRL(savedCents)}.`,
+        iconName: "sparkles",
+        secondaryAction: {
+          label: "Dispensar por 30 dias",
+          kind: "dismiss",
+        },
+        metadata: {
+          valueCents: savedCents,
+        },
+      });
+      celebrationAdded = true;
+    }
+  }
+
+  const settledDividendsCents =
+    input.financialContext?.lens.wealth.monthlySettledDividendsCents ??
+    input.monthlySettledDividendsCents ??
+    0;
+  const totalFixedCents =
+    input.financialContext?.fixedCommitmentsSummary.totalMonthlyFixedCents ?? 0;
+
+  if (
+    !celebrationAdded &&
+    settledDividendsCents > 0 &&
+    !isOccurrenceIgnored(feedbackMap["celebration:dividends_cover_fixed"])
+  ) {
+    const coveredOcc = [...occurrences]
+      .filter((o) => o.lifecycle !== "lapsed" && o.averageCents >= 2000 && settledDividendsCents >= o.averageCents)
+      .sort((a, b) => b.averageCents - a.averageCents)[0];
+    const coversFixedPct =
+      totalFixedCents > 0 && settledDividendsCents >= totalFixedCents * 0.2
+        ? Math.min(100, Math.round((settledDividendsCents / totalFixedCents) * 100))
+        : null;
+
+    if (coveredOcc || coversFixedPct !== null) {
+      const description = coveredOcc
+        ? `Seus proventos de ${formatBRL(settledDividendsCents)} neste mês já cobrem integralmente ${coveredOcc.name} (${formatBRL(coveredOcc.averageCents)}).`
+        : `Seus proventos de ${formatBRL(settledDividendsCents)} já cobrem ${coversFixedPct}% dos seus custos fixos mensais.`;
+
+      candidates.push({
+        id: "celebration:dividends_cover_fixed",
+        themeKey: "celebration:dividends_cover_fixed",
+        priority: 3.5,
+        category: "celebration",
+        title: "Proventos cobrindo custos fixos",
+        description,
+        iconName: "sparkles",
+        secondaryAction: {
+          label: "Dispensar por 30 dias",
+          kind: "dismiss",
+        },
+        metadata: {
+          valueCents: settledDividendsCents,
+        },
+      });
+      celebrationAdded = true;
+    }
+  }
+
+  // 3.5c Celebração de fôlego mensal com parcelamentos chegando ao fim (N/N)
+  const endingsKey = `celebration:installments_ending:${currentMonth}`;
+  if (
+    !celebrationAdded &&
+    allExpenses.length > 0 &&
+    !isOccurrenceIgnored(feedbackMap[endingsKey])
+  ) {
+    const relief = computeEndingInstallmentsRelief(allExpenses, currentMonth);
+    if (relief.count > 0 && relief.totalFreedMonthlyCents >= 5_000) {
+      const topLabel = relief.items[0]?.description ?? "parcelamento";
+      const description =
+        relief.count === 1
+          ? `A última parcela de ${topLabel} vence neste mês, liberando ${formatBRL(relief.totalFreedMonthlyCents)} por mês a partir do próximo ciclo.`
+          : `${relief.count} parcelamentos chegam à última parcela neste mês, liberando ${formatBRL(relief.totalFreedMonthlyCents)} por mês a partir do próximo ciclo.`;
+
+      candidates.push({
+        id: endingsKey,
+        themeKey: endingsKey,
+        priority: 3.5,
+        category: "celebration",
+        title: "Parcelamentos chegando ao fim",
+        description,
+        iconName: "sparkles",
+        secondaryAction: {
+          label: "Dispensar por 30 dias",
+          kind: "dismiss",
+        },
+        metadata: {
+          valueCents: relief.totalFreedMonthlyCents,
+        },
+      });
+    }
+  }
+
+  // 4.1 MICRO-CALIBRAÇÃO DE 1 TOQUE (Outlier pontual de despesa única: tx_one_off:<expenseId>)
+  if (allExpenses.length > 0) {
+    const knownOneOffIds = input.financialContext?.learning.oneOffExpenseIds ?? input.oneOffExpenseIds;
+    const referenceIncome =
+      input.financialContext?.referenceBudgetCents ??
+      incomes.reduce((acc, i) => acc + i.averageCents, 0);
+
+    const historicalByCat = new Map<string, number[]>();
+    for (const exp of allExpenses) {
+      if (exp.month === currentMonth || !exp.categoryId) continue;
+      const list = historicalByCat.get(exp.categoryId) ?? [];
+      list.push(exp.valueCents);
+      historicalByCat.set(exp.categoryId, list);
+    }
+
+    const currentOutlier = allExpenses
+      .filter((exp) => {
+        if (exp.month !== currentMonth) return false;
+        if (exp.valueCents < 10_000) return false;
+        if (exp.tripId || exp.installmentGroupId || exp.recurrenceId) return false;
+        const txKey = buildTxOneOffKey(exp.id);
+        if (knownOneOffIds?.has(exp.id) || feedbackMap[txKey] === "one_off") return false;
+        const catMedian = exp.categoryId ? medianOf(historicalByCat.get(exp.categoryId) ?? []) : 0;
+        const hitsIncomeRule = referenceIncome > 0 && exp.valueCents >= referenceIncome * 0.25;
+        const hitsMedianRule = catMedian > 0 && exp.valueCents >= catMedian * 3;
+        return hitsIncomeRule || hitsMedianRule;
+      })
+      .sort((a, b) => b.valueCents - a.valueCents)[0];
+
+    if (currentOutlier) {
+      const txKey = buildTxOneOffKey(currentOutlier.id);
+      candidates.push({
+        id: `calib_tx:${currentOutlier.id}`,
+        themeKey: `calib_tx:${currentOutlier.id}`,
+        priority: 4,
+        category: "calibration",
+        title: "Este gasto foi pontual?",
+        description: `"${currentOutlier.description}" (${formatBRL(currentOutlier.valueCents)}) está bem acima do seu padrão. Marcar como pontual evita distorcer a projeção do mês.`,
+        iconName: "help-circle",
+        primaryAction: {
+          label: "Sim, foi pontual",
+          kind: "mark_tx_one_off",
+          payload: {
+            expenseId: currentOutlier.id,
+            occurrenceKey: txKey,
+            name: currentOutlier.description,
+          },
+        },
+        secondaryAction: {
+          label: "Não, faz parte da rotina",
+          kind: "dismiss",
+        },
+        metadata: {
+          valueCents: currentOutlier.valueCents,
+          categoryId: currentOutlier.categoryId ?? undefined,
+        },
+      });
+    }
+  }
+
   return candidates;
 }
 
@@ -974,11 +1288,13 @@ export interface FilterAndRankAdvisorInsightsOptions {
    * mesmo se o dia estiver marcado como dispensado para itens regulares.
    */
   allowCriticalOnDismissedDay?: boolean;
+  /** Metadados de Smart Decay por família de insight (7d -> 30d -> 90d / mute). */
+  decayByFamily?: Readonly<Partial<Record<InsightThemeFamily, SmartDecayRecord>>>;
 }
 
 /**
  * Retorna todos os insights elegíveis ordenados estritamente pela Matriz de Prioridade
- * e desempate por valor financeiro, respeitando cooldown de 30 dias e discrição diária.
+ * e desempate por valor financeiro, respeitando cooldown de 30 dias, Smart Decay e discrição diária.
  */
 export function filterAndRankAllAdvisorInsights(
   insights: readonly SmartAdvisorInsight[],
@@ -990,17 +1306,25 @@ export function filterAndRankAllAdvisorInsights(
     currentDayISO,
     nowMs = Date.now(),
     allowCriticalOnDismissedDay = true,
+    decayByFamily,
   } = options;
 
   const isDismissedToday = Boolean(
     currentDayISO && lastDismissedDay && currentDayISO === lastDismissedDay,
   );
 
-  // Filtra temas em cooldown de 30 dias
+  // Filtra temas em cooldown de 30 dias ou sob Smart Decay da família
   const eligible = insights.filter((insight) => {
     const dismissedUntil = dismissals[insight.themeKey];
     if (dismissedUntil != null && dismissedUntil > nowMs) {
       return false;
+    }
+
+    if (decayByFamily) {
+      const family = resolveInsightThemeFamily(insight.themeKey);
+      if (isFamilyUnderDecay(decayByFamily[family], nowMs)) {
+        return false;
+      }
     }
 
     // Regra de discrição: se já dispensado hoje, apenas alertas críticos (prioridade 1)

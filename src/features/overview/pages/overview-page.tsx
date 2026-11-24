@@ -9,9 +9,11 @@ import {
   PendingSuggestionsCard,
 } from "@/components/modules";
 import { getTourTrackMeta } from "@/domain/demo-simulation";
+import { selectOperationalHomeBanner } from "@/domain/insights";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { currentMonth } from "@/lib/date";
 import { openDividendReviewModal } from "@/services/dividend-review-modal";
+import { useAutoRegisteredBanner, usePendingSuggestions } from "@/services/native";
 import { startDemo, useAssetGovernanceInsights, useMarketQuotesSwr, useUserAccess } from "@/state";
 import {
   buildOverviewAlertItems,
@@ -102,7 +104,20 @@ export function OverviewPage() {
     surplusSuggestedAporteCents: data.surplusCapacity.suggestedAporteCents,
     hasSurplus: data.surplusCapacity.hasSurplus,
     liveGoalProgress: data.liveGoalProgress,
+    advisorDecayMeta: data.advisorDecayMeta,
+    onPersistDecayMeta: (nextMeta) => {
+      data.updateCustomSettingsMutation.mutate({ advisorDecayMeta: nextMeta });
+    },
   });
+
+  const autoRegisteredItem = useAutoRegisteredBanner();
+  const pendingSuggestions = usePendingSuggestions();
+  const operationalBannerPlan = selectOperationalHomeBanner([
+    { kind: "auto_registered", active: Boolean(autoRegisteredItem) },
+    { kind: "pending_split_signals", active: data.hasPendingSplitSignals },
+    { kind: "pending_suggestions", active: pendingSuggestions.length > 0 },
+    { kind: "pix_clipboard", active: Boolean(detectedPix && !data.showVirginGuide) },
+  ]);
 
   const handleStartQuickTour = useCallback(
     (track: OnboardingQuickTourTrack) => {
@@ -202,9 +217,13 @@ export function OverviewPage() {
 
       <div className="flex flex-col gap-6 w-full min-w-0">
         <MonthPicker value={month} onValueChange={setMonth} />
-        <AutoRegisteredBanner />
-        <PendingSuggestionsCard />
-        <PendingSplitSignalsCard />
+        {operationalBannerPlan.visibleKinds.includes("auto_registered") ? <AutoRegisteredBanner /> : null}
+        {operationalBannerPlan.visibleKinds.includes("pending_suggestions") ? (
+          <PendingSuggestionsCard />
+        ) : null}
+        {operationalBannerPlan.visibleKinds.includes("pending_split_signals") ? (
+          <PendingSplitSignalsCard />
+        ) : null}
 
         <OverviewDashboardContent
           month={month}
@@ -213,6 +232,7 @@ export function OverviewPage() {
           donutSlices={donutSlices}
           alertItems={alertItems}
           detectedPix={detectedPix}
+          showPixClipboardBanner={operationalBannerPlan.visibleKinds.includes("pix_clipboard")}
           onDismissDetectedPix={dismissDetectedPix}
           guardAction={guardAction}
           onStartQuickTour={handleStartQuickTour}

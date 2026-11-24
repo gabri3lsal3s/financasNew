@@ -18,6 +18,7 @@ export interface InvoiceCompetenceToolbarProps {
   previousUnpaidSummaries: CompetenceSummary[];
   onOpenPayment: (mode: CardPaymentDialogMode) => void;
   onOpenBatchPayment: () => void;
+  onOpenCharge?: () => void;
 }
 
 /**
@@ -34,6 +35,7 @@ export function InvoiceCompetenceToolbar({
   previousUnpaidSummaries,
   onOpenPayment,
   onOpenBatchPayment,
+  onOpenCharge,
 }: InvoiceCompetenceToolbarProps) {
   const currMonth = currentMonth();
   const prevMonth = shiftMonth(currMonth, -1);
@@ -120,7 +122,12 @@ export function InvoiceCompetenceToolbar({
 
         {/* Ações principais da fatura */}
         {selectedCard ? (
-          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+          <div
+            className={cn(
+              onOpenCharge ? "grid grid-cols-3 sm:flex" : "grid grid-cols-2 sm:flex",
+              "sm:items-center gap-2 w-full sm:w-auto",
+            )}
+          >
             <Button
               type="button"
               variant="outline"
@@ -131,6 +138,17 @@ export function InvoiceCompetenceToolbar({
               <Undo2 className="size-3.5" aria-hidden="true" />
               <span>Estorno</span>
             </Button>
+            {onOpenCharge ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onOpenCharge}
+                className="gap-1.5 justify-center"
+              >
+                <span>Encargo</span>
+              </Button>
+            ) : null}
             <Button
               type="button"
               size="sm"

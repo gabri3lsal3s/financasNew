@@ -7,8 +7,9 @@ import {
 import { resolveBillCompetence } from "@/domain/competence";
 import { getErrorMessage } from "@/services/errors";
 import { formatCentsAsBRL } from "@/services/masks";
+import { useSafeBusinessMode } from "@/hooks/use-safe-business-scope";
 import { useFamilyMode } from "@/state";
-import type { Category, CreditCard, Expense, InstallmentDeleteMode, PaymentMethod } from "@/types";
+import type { Category, ChargeKind, CreditCard, Expense, InstallmentDeleteMode, PaymentMethod, TransactionScope } from "@/types";
 import { REPORT_WEIGHT_PRESETS } from "./report-weight-constants";
 import { ReportWeightField } from "./report-weight-field";
 import { EDIT_SCOPE_OPTIONS, MONTH_KEY_RE, PAYMENT_OPTIONS } from "./transaction-group-constants";
@@ -24,6 +25,9 @@ export interface ExpenseEditSavePayload {
   report_weight: number;
   is_family?: boolean;
   convertToSplit?: boolean;
+  charge_kind?: ChargeKind;
+  scope?: TransactionScope;
+  is_tax_deductible?: boolean;
 }
 
 export interface ExpenseEditFormProps {
@@ -55,7 +59,10 @@ export function ExpenseEditForm({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(expense.payment_method);
   const [cardId, setCardId] = useState<string>(expense.card_id || "");
   const [billCompetence, setBillCompetence] = useState<string>(expense.bill_competence || "");
+  const [chargeKind, setChargeKind] = useState<ChargeKind>(expense.charge_kind ?? "regular");
   const [isFamily, setIsFamily] = useState(Boolean(expense.is_family));
+  const [scopeState, setScopeState] = useState<TransactionScope>(expense.scope ?? "personal");
+  const [isTaxDeductible, setIsTaxDeductible] = useState(Boolean(expense.is_tax_deductible));
   const [competenceTouched, setCompetenceTouched] = useState(false);
 
   const isPreset = REPORT_WEIGHT_PRESETS.includes(expense.report_weight);
@@ -64,6 +71,7 @@ export function ExpenseEditForm({
   const [formError, setFormError] = useState<string | null>(null);
   const { isFamilyModeEnabled } = useFamilyMode();
   const isFamilyActive = Boolean(isFamilyModeEnabled);
+  const { isBusinessModeEnabled } = useSafeBusinessMode();
 
   const handleDateChange = (next: string) => {
     setDate(next);
@@ -105,6 +113,13 @@ export function ExpenseEditForm({
         report_weight: weight,
         is_family: convertToSplit ? false : isFamilyActive ? isFamily : Boolean(expense.is_family),
         convertToSplit: Boolean(convertToSplit),
+        charge_kind: paymentMethod === "credit_card" ? chargeKind : "regular",
+        ...(isBusinessModeEnabled && !grouped
+          ? {
+              scope: scopeState,
+              is_tax_deductible: scopeState === "business" ? isTaxDeductible : false,
+            }
+          : {}),
       });
     } catch (err) { setFormError(getErrorMessage(err)); }
   };
@@ -121,7 +136,11 @@ export function ExpenseEditForm({
   const categoryOptions = categories.map((c) => ({ value: c.id, label: c.name }));
   const cardOptions = cards.map((card) => ({ value: card.id, label: `${card.name} (fechamento dia ${card.closing_day})` }));
   const valueDisabled = grouped && scope !== "single" && !isRecurring;
-  const hasAdvancedInitial = !isPreset || expense.report_weight !== 1 || (isFamilyActive && Boolean(expense.is_family));
+  const hasAdvancedInitial =
+    !isPreset ||
+    expense.report_weight !== 1 ||
+    (isFamilyActive && Boolean(expense.is_family)) ||
+    (isBusinessModeEnabled && !grouped && (expense.scope === "business" || Boolean(expense.is_tax_deductible)));
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); if (!isPending) void handleSubmit(); }} className="flex flex-col gap-3.5">
@@ -198,6 +217,21 @@ export function ExpenseEditForm({
                 />
               </FormField>
             ) : null}
+            <FormField label="Tipo de encargo da fatura" htmlFor="edit-charge-kind">
+              <Select
+                id="edit-charge-kind"
+                value={chargeKind}
+                onValueChange={(val) => setChargeKind(val as ChargeKind)}
+                options={[
+                  { value: "regular", label: "Consumo normal" },
+                  { value: "interest", label: "Juros" },
+                  { value: "fine", label: "Multa" },
+                  { value: "tax", label: "IOF / Tributos" },
+                  { value: "bank_fee", label: "Tarifa / Encargos" },
+                ]}
+                ariaLabel="Tipo de encargo da fatura"
+              />
+            </FormField>
           </>
         ) : null}
       </div>
@@ -245,7 +279,36 @@ export function ExpenseEditForm({
                 />
               </div>
             ) : null}
-            {isFamilyActive ? (
+            {isBusinessModeEnabled && !grouped ? (
+              <div className="flex flex-col gap-3 rounded-xl border border-border/80 bg-surface p-3">
+                <FormField label="Esfera do lançamento">
+                  <Select
+                    value={scopeState}
+                    onValueChange={(value) => {
+                      const next = value as TransactionScope;
+                      setScopeState(next);
+                      if (next === "business") setIsFamily(false);
+                      else setIsTaxDeductible(false);
+                    }}
+                    options={[
+                      { value: "personal", label: "Pessoal (PF)" },
+                      { value: "business", label: "Meu Negócio (PJ)" },
+                    ]}
+                    ariaLabel="Esfera do lançamento"
+                  />
+                </FormField>
+                {scopeState === "business" ? (
+                  <Switch
+                    id="edit-expense-deductible"
+                    checked={isTaxDeductible}
+                    onCheckedChange={setIsTaxDeductible}
+                    label="Despesa dedutível para impostos"
+                    description="Considerada no Livro-Caixa / Escudo Fiscal do negócio"
+                  />
+                ) : null}
+              </div>
+            ) : null}
+            {isFamilyActive && (!isBusinessModeEnabled || scopeState !== "business") ? (
               <div className="rounded-xl border border-border/80 bg-surface p-3">
                 <Switch
                   id="edit-expense-family"

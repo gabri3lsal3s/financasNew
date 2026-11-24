@@ -179,6 +179,7 @@ const ROUTE_FEATURE_MAP: Record<string, string> = {
   "/modo-familia": "transactions",
   "/viagens": "transactions",
   "/viagens/:id": "transactions",
+  "/negocio": "transactions",
 };
 
 /**

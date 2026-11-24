@@ -6,6 +6,7 @@ import {
 } from "@/domain/notifications";
 import {
   buildTransactionsFromRows,
+  chunkArray,
   predictCategoryForDescription,
   type ColumnMapping,
   type ExistingExpenseForReconciliation,
@@ -17,6 +18,8 @@ import { getErrorMessage } from "@/services/errors";
 import {
   autoLearnExpenseCategory,
   getMerchantLearningMemory,
+  recordBatchAiMerchantTeachings,
+  type BatchAiMerchantTeachingItem,
 } from "@/services/merchant-learning";
 import { computeFileSha256 } from "@/services/receipt-resolution";
 import { triggerSensory } from "@/services/sensory";
@@ -31,10 +34,13 @@ import {
 import type { CreditCard } from "@/types";
 import { MAX_AI_CATEGORIZE_BATCH_ITEMS } from "../../../../supabase/functions/_shared/ai-schemas";
 import {
+  MAX_STATEMENT_VISION_PAGES_OR_IMAGES,
   applyEditedReconciliationItem,
   createManualReconciliationItem,
   executeChunkedStatementImport,
+  isRasterStatementImage,
   mapExpensesForReconciliation,
+  parseStatementVisionBlobsWithAi,
   parseStatementWithPdfAiFallback,
   readStatementFileContent,
   runStatementReconciliation,
@@ -54,6 +60,7 @@ export interface UseStatementImportParams {
 }
 
 const NO_HISTORY_SENTINEL = "__NO_HISTORY_MATCH__";
+const MAX_CATEGORIZE_BATCH_CHUNKS = 2;
 
 export function useStatementImport({
   card,
@@ -73,6 +80,8 @@ export function useStatementImport({
   >([]);
   const [importProgress, setImportProgress] = useState<StatementImportProgress | null>(null);
   const [isReadingFile, setIsReadingFile] = useState(false);
+  const [usedAiStructurer, setUsedAiStructurer] = useState(false);
+  const [printedTotalCents, setPrintedTotalCents] = useState<number | null>(null);
 
   const reconcileRunIdRef = useRef(0);
   const manuallyEditedIdsRef = useRef<Set<string>>(new Set());
@@ -99,9 +108,17 @@ export function useStatementImport({
 
   const applyReconciliation = (
     transactions: Parameters<typeof runStatementReconciliation>[0]["transactions"],
+    meta?: { usedAiStructurer?: boolean; printedTotalCents?: number | null },
   ) => {
     const runId = ++reconcileRunIdRef.current;
     manuallyEditedIdsRef.current.clear();
+
+    if (meta?.usedAiStructurer !== undefined) {
+      setUsedAiStructurer(meta.usedAiStructurer);
+    }
+    if (meta?.printedTotalCents !== undefined) {
+      setPrintedTotalCents(meta.printedTotalCents);
+    }
 
     const history = historyQuery.entries ?? [];
     const reconciliation = runStatementReconciliation({
@@ -112,10 +129,12 @@ export function useStatementImport({
     });
 
     const userMemory = getMerchantLearningMemory();
-    const unknownDescriptions: string[] = [];
-    const unknownDescIndexByKey = new Map<string, number>();
+    const unknownMerchantImpact = new Map<
+      string,
+      { cleanText: string; totalAmountCents: number }
+    >();
 
-    // Camada 1-2 local imediata (R$ 0,00 em meses recorrentes) + coleta para Camada 4
+    // Camadas 1, 2 e 3 locais (histórico + memória aprendida + catálogo canônico/keywords = 0 tokens!)
     const preResolvedItems = reconciliation.items.map((item) => {
       if (
         item.status !== "unmatched_new" ||
@@ -140,10 +159,11 @@ export function useStatementImport({
         userMemory,
       });
 
-      if (identity.isLearned && identity.categorySlug) {
-        const matchedCat =
-          categories.find((c) => c.id === identity.categorySlug) ??
-          matchCategoryBySlug(categories, identity.categorySlug as CanonicalCategorySlug);
+      if (identity.categorySlug) {
+        const matchedCat = matchCategoryBySlug(
+          categories,
+          identity.categorySlug as CanonicalCategorySlug | string,
+        );
 
         if (matchedCat) {
           return {
@@ -158,11 +178,17 @@ export function useStatementImport({
         }
       }
 
-      const normalizedKey = item.transaction.cleanDescription.trim().toLowerCase();
-      if (normalizedKey && !unknownDescIndexByKey.has(normalizedKey)) {
-        if (unknownDescriptions.length < MAX_AI_CATEGORIZE_BATCH_ITEMS) {
-          unknownDescIndexByKey.set(normalizedKey, unknownDescriptions.length);
-          unknownDescriptions.push(item.transaction.cleanDescription.trim());
+      const cleanTrimmed = item.transaction.cleanDescription.trim();
+      const normalizedKey = cleanTrimmed.toLowerCase();
+      if (normalizedKey) {
+        const prev = unknownMerchantImpact.get(normalizedKey);
+        if (prev) {
+          prev.totalAmountCents += item.transaction.amountCents;
+        } else {
+          unknownMerchantImpact.set(normalizedKey, {
+            cleanText: cleanTrimmed,
+            totalAmountCents: item.transaction.amountCents,
+          });
         }
       }
 
@@ -173,8 +199,13 @@ export function useStatementImport({
     setUnmatchedAppExpenses(reconciliation.unmatchedExistingExpenses);
     setStep("reconcile");
 
+    // Ordena descrições genuinamente inéditas pelo maior impacto financeiro (FinOps)
+    const prioritizedUnknowns = [...unknownMerchantImpact.entries()]
+      .sort((a, b) => b[1].totalAmountCents - a[1].totalAmountCents)
+      .slice(0, MAX_AI_CATEGORIZE_BATCH_ITEMS * MAX_CATEGORIZE_BATCH_CHUNKS);
+
     const canRunBackgroundAi =
-      unknownDescriptions.length > 0 &&
+      prioritizedUnknowns.length > 0 &&
       categories.length > 1 &&
       !isReadOnlyMode &&
       aiExtractionEnabled &&
@@ -184,49 +215,82 @@ export function useStatementImport({
       return;
     }
 
+    const batches = chunkArray(prioritizedUnknowns, MAX_AI_CATEGORIZE_BATCH_ITEMS);
+
     // Camada 4 silenciosa em background (Balde 2: categorize_batch)
     void (async () => {
+      const allowedIds = new Set(categories.map((c) => c.id));
+      const suggestionByNormalizedKey = new Map<
+        string,
+        { friendlyName: string; categoryId: string }
+      >();
+      const collectedAiTeachings: BatchAiMerchantTeachingItem[] = [];
+
       try {
-        const aiResult = await categorizeDescriptionsBatchWithAi({
-          descriptions: unknownDescriptions,
-          categories: categories.map((c) => ({ id: c.id, name: c.name })),
-          userId: resolvedUserId,
-          isReadOnlyMode,
-          featureEnabled: aiExtractionEnabled,
-        });
+        for (const batch of batches) {
+          if (reconcileRunIdRef.current !== runId) return;
 
-        if (!aiResult.ok || reconcileRunIdRef.current !== runId) {
-          return;
-        }
+          const aiResult = await categorizeDescriptionsBatchWithAi({
+            descriptions: batch.map(([, entry]) => entry.cleanText),
+            categories: categories.map((c) => ({ id: c.id, name: c.name })),
+            userId: resolvedUserId,
+            isReadOnlyMode,
+            featureEnabled: aiExtractionEnabled,
+          });
 
-        const allowedIds = new Set(categories.map((c) => c.id));
-        const suggestionByIndex = new Map<
-          number,
-          { friendlyName: string; categoryId: string }
-        >();
+          if (!aiResult.ok || reconcileRunIdRef.current !== runId) {
+            break;
+          }
 
-        for (const entry of aiResult.data.items) {
-          if (entry.categoryId && allowedIds.has(entry.categoryId)) {
-            suggestionByIndex.set(entry.index, {
-              friendlyName: entry.friendlyName,
-              categoryId: entry.categoryId,
-            });
+          for (const entry of aiResult.data.items) {
+            const sourceTuple = batch[entry.index];
+            if (!sourceTuple) continue;
+
+            const hasRichMetadata =
+              Boolean(entry.canonicalMerchant) ||
+              Boolean(entry.serviceSegment) ||
+              Boolean(entry.cutTier) ||
+              typeof entry.isSubscription === "boolean" ||
+              Boolean(entry.semanticTags?.length);
+
+            if (hasRichMetadata || (entry.categoryId && allowedIds.has(entry.categoryId))) {
+              collectedAiTeachings.push({
+                rawDescription: sourceTuple[1].cleanText,
+                friendlyName: entry.canonicalMerchant || entry.friendlyName,
+                canonicalMerchant: entry.canonicalMerchant,
+                categoryId:
+                  entry.categoryId && allowedIds.has(entry.categoryId) ? entry.categoryId : null,
+                serviceSegment: entry.serviceSegment,
+                cutTier: entry.cutTier,
+                isSubscription: entry.isSubscription,
+                semanticTags: entry.semanticTags,
+              });
+            }
+
+            if (entry.categoryId && allowedIds.has(entry.categoryId)) {
+              suggestionByNormalizedKey.set(sourceTuple[0], {
+                friendlyName: entry.canonicalMerchant || entry.friendlyName,
+                categoryId: entry.categoryId,
+              });
+            }
           }
         }
 
-        if (suggestionByIndex.size === 0) {
+        if (collectedAiTeachings.length > 0 && typeof recordBatchAiMerchantTeachings === "function") {
+          recordBatchAiMerchantTeachings(collectedAiTeachings);
+        }
+
+        if (suggestionByNormalizedKey.size === 0 || reconcileRunIdRef.current !== runId) {
           return;
         }
 
-        // Retroalimenta memória semântica fora do updater puro do React (deduplicado por comerciante no lote)
+        // Retroalimenta memória semântica fora do updater puro do React (deduplicado por comerciante)
         const learnedMerchantKeys = new Set<string>();
         for (const item of preResolvedItems) {
           if (manuallyEditedIdsRef.current.has(item.transaction.id)) continue;
-          const descIdx = unknownDescIndexByKey.get(
+          const suggestion = suggestionByNormalizedKey.get(
             item.transaction.cleanDescription.trim().toLowerCase(),
           );
-          if (descIdx === undefined) continue;
-          const suggestion = suggestionByIndex.get(descIdx);
           if (!suggestion) continue;
           const merchantKey = suggestion.friendlyName.trim().toLowerCase();
           if (!merchantKey || learnedMerchantKeys.has(merchantKey)) continue;
@@ -242,11 +306,9 @@ export function useStatementImport({
         setReconciledItems((prev) =>
           prev.map((it) => {
             if (manuallyEditedIdsRef.current.has(it.transaction.id)) return it;
-            const descIdx = unknownDescIndexByKey.get(
+            const suggestion = suggestionByNormalizedKey.get(
               it.transaction.cleanDescription.trim().toLowerCase(),
             );
-            if (descIdx === undefined) return it;
-            const suggestion = suggestionByIndex.get(descIdx);
             if (!suggestion) return it;
 
             return {
@@ -285,28 +347,125 @@ export function useStatementImport({
       });
 
       if (result.transactions.length === 0 && result.rows.length === 0) {
-        setError("Nenhuma linha de transação válida foi encontrada no extrato.");
+        setError("Nenhuma linha de transação válida foi encontrada nos dados informados.");
         return;
       }
 
       setParsedRows(result.rows);
       setColumnMapping(result.mapping);
-      if (result.isOfx || result.rows.length === 0) applyReconciliation(result.transactions);
-      else setStep("mapping");
+      setUsedAiStructurer(result.usedAiFallback);
+      setPrintedTotalCents(result.printedTotalCents);
+
+      if (result.isOfx || result.usedAiFallback || result.rows.length === 0) {
+        applyReconciliation(result.transactions, {
+          usedAiStructurer: result.usedAiFallback,
+          printedTotalCents: result.printedTotalCents,
+        });
+      } else {
+        setStep("mapping");
+      }
     } catch (err) {
       setError(getErrorMessage(err));
     }
   };
 
-  const handleFileSelect = async (file: File) => {
+  const handleFilesSelect = async (files: File[]) => {
+    if (files.length === 0) return;
     setError(null);
     setIsReadingFile(true);
+
     try {
-      const isPdf =
-        file.name.toLowerCase().endsWith(".pdf") || file.type === "application/pdf";
-      const fileSha256 = isPdf ? await computeFileSha256(file) : null;
-      const content = await readStatementFileContent(file);
-      await handleProcessInput(content, file.name, fileSha256);
+      const imageFiles = files.filter((f) => isRasterStatementImage(f));
+      if (imageFiles.length > 0) {
+        const limitedImages = imageFiles.slice(0, MAX_STATEMENT_VISION_PAGES_OR_IMAGES);
+        const blobsWithSha = await Promise.all(
+          limitedImages.map(async (img) => ({
+            blob: img,
+            sha256: await computeFileSha256(img),
+          })),
+        );
+
+        const visionResult = await parseStatementVisionBlobsWithAi({
+          blobs: blobsWithSha,
+          cardId: card.id,
+          competenceMonth,
+          userId: resolvedUserId,
+          isReadOnlyMode,
+          aiFallbackEnabled: aiExtractionEnabled,
+        });
+
+        if (visionResult.transactions.length === 0) {
+          setError(
+            "Não foi possível extrair lançamentos das imagens enviadas. Verifique a nitidez do print ou utilize o arquivo PDF, CSV ou OFX da fatura.",
+          );
+          return;
+        }
+
+        setParsedRows(visionResult.rows);
+        setColumnMapping(visionResult.mapping);
+        applyReconciliation(visionResult.transactions, {
+          usedAiStructurer: true,
+          printedTotalCents: null,
+        });
+        return;
+      }
+
+      const primaryFile = files[0]!;
+      const loaded = await readStatementFileContent(primaryFile);
+
+      if (loaded.kind === "pdf_scanned") {
+        const { renderScannedPdfPageToBlob } = await import(
+          "@/services/native/receipt-extractor"
+        );
+        const pageBlobs: Array<{ blob: Blob; sha256?: string | null }> = [];
+        for (let page = 1; page <= MAX_STATEMENT_VISION_PAGES_OR_IMAGES; page++) {
+          const blob = await renderScannedPdfPageToBlob(loaded.buffer, page);
+          if (!blob) break;
+          pageBlobs.push({
+            blob,
+            sha256:
+              page === 1 && loaded.sha256
+                ? loaded.sha256
+                : undefined,
+          });
+        }
+
+        const scannedVision = await parseStatementVisionBlobsWithAi({
+          blobs: pageBlobs,
+          cardId: card.id,
+          competenceMonth,
+          userId: resolvedUserId,
+          isReadOnlyMode,
+          aiFallbackEnabled: aiExtractionEnabled,
+        });
+
+        if (scannedVision.transactions.length === 0) {
+          setError(
+            "Não foi possível extrair os dados da fatura em PDF. Se o arquivo estiver protegido por senha, desbloqueie-o ou exporte em CSV/OFX.",
+          );
+          return;
+        }
+
+        setParsedRows(scannedVision.rows);
+        setColumnMapping(scannedVision.mapping);
+        applyReconciliation(scannedVision.transactions, {
+          usedAiStructurer: true,
+          printedTotalCents: null,
+        });
+        return;
+      }
+
+      if (loaded.kind === "pdf_text") {
+        await handleProcessInput(loaded.text, loaded.fileName, loaded.sha256);
+        return;
+      }
+
+      if (loaded.kind === "spreadsheet") {
+        await handleProcessInput(loaded.buffer, loaded.fileName, null);
+        return;
+      }
+
+      await handleProcessInput(loaded.content, loaded.fileName, null);
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -314,7 +473,21 @@ export function useStatementImport({
     }
   };
 
-  const handleTextSubmit = (text: string) => handleProcessInput(text, "pasted-statement.txt");
+  const handleFileSelect = async (file: File) => handleFilesSelect([file]);
+
+  const handleTextSubmit = async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) {
+      setError("Cole os lançamentos ou o conteúdo da fatura antes de processar.");
+      return;
+    }
+    setIsReadingFile(true);
+    try {
+      await handleProcessInput(trimmed, "pasted-statement.txt", null);
+    } finally {
+      setIsReadingFile(false);
+    }
+  };
 
   const handleConfirmMapping = (mapping: ColumnMapping) => {
     setColumnMapping(mapping);
@@ -444,8 +617,12 @@ export function useStatementImport({
     categories,
     selectedCount,
     isReadingFile,
+    usedAiStructurer,
+    printedTotalCents,
+    canOpenMapping: parsedRows.length > 0,
     isPending: importMutation.isPending || importProgress !== null,
     handleFileSelect,
+    handleFilesSelect,
     handleTextSubmit,
     handleConfirmMapping,
     handleToggleItem,

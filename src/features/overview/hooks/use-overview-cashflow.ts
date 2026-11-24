@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import type { UserFinancialContext } from "@/domain/insights";
 import {
   calculateSurplusCapacity,
   computeCurrentMonthProjectionMetrics,
@@ -20,6 +21,7 @@ interface UseOverviewCashflowParams {
   expenseCategories?: readonly Category[];
   committedObligationsCents: number;
   safeToSpendCents: number;
+  financialContext?: UserFinancialContext;
 }
 
 const EMPTY_INCOMES: readonly Income[] = [];
@@ -45,6 +47,7 @@ export function useOverviewCashflow({
   expenseCategories = EMPTY_CATEGORIES,
   committedObligationsCents,
   safeToSpendCents,
+  financialContext,
 }: UseOverviewCashflowParams) {
   const cashflow = useMemo(
     () =>
@@ -61,8 +64,10 @@ export function useOverviewCashflow({
   );
 
   const now = new Date();
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const dayOfMonth = now.getDate();
+  const daysInMonth =
+    financialContext?.daysInMonth ??
+    new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const dayOfMonth = financialContext?.dayOfMonth ?? now.getDate();
 
   const projectionMetrics = useMemo(
     () =>
@@ -73,6 +78,7 @@ export function useOverviewCashflow({
         investmentCents: cashflow.investmentCents,
         dayOfMonth,
         daysInMonth,
+        financialContext,
       }),
     [
       isCurrentMonth,
@@ -81,19 +87,29 @@ export function useOverviewCashflow({
       cashflow.investmentCents,
       dayOfMonth,
       daysInMonth,
+      financialContext,
     ],
   );
 
   const surplusCapacity = useMemo(
     () =>
       calculateSurplusCapacity({
-        incomeCents: cashflow.totals.incomeCents,
-        expenseCents: cashflow.totals.expenseCents,
+        incomeCents: financialContext
+          ? financialContext.lens.consumption.operatingIncomeCents
+          : cashflow.totals.incomeCents,
+        expenseCents: financialContext
+          ? financialContext.lens.consumption.netExpenseCents
+          : cashflow.totals.expenseCents,
         openInvoicesCents: committedObligationsCents,
+        pendingRecurringObligationsCents:
+          financialContext?.lens.liquidity.pendingRecurringExpensesCents ?? 0,
         contributionsAlreadyMadeCents: cashflow.totals.investmentCents,
         safeToSpendCents,
+        emergencyGapCents: financialContext?.lens.wealth.emergencyGapCents ?? 0,
+        hasExternalEmergencyFund:
+          financialContext?.lens.wealth.hasExternalEmergencyFund ?? false,
       }),
-    [cashflow.totals, committedObligationsCents, safeToSpendCents],
+    [financialContext, cashflow.totals, committedObligationsCents, safeToSpendCents],
   );
 
   const budgetAndDonut = useMemo(

@@ -3,12 +3,13 @@ import { Link } from "react-router";
 import { Landmark, Plus } from "lucide-react";
 import { Button, buttonVariants, EmptyState } from "@/components/ui";
 import { ReportTable } from "@/components/modules";
-import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
+import { CHARGE_KIND_LABELS, PAYMENT_METHOD_LABELS } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import {
   WEEKDAY_LABELS,
   mondayFirstWeekday,
   type CategoryTotal,
+  type ChargeKindTotal,
   type PaymentMethodTotal,
   type WeekdayTotal,
 } from "@/domain/reports";
@@ -21,6 +22,7 @@ export interface FinancialExpensesBreakdownCardProps {
   byCategory: CategoryTotal[];
   byMethod: PaymentMethodTotal[];
   byWeekday: WeekdayTotal[];
+  byChargeKind?: ChargeKindTotal[];
   expenses: Expense[];
   grossExpenseBrutoCents: number;
   currentExpenseCents: number;
@@ -31,6 +33,7 @@ const AGGREGATION_OPTIONS: readonly { value: AggregationTab; label: string }[] =
   { value: "category", label: "Categorias" },
   { value: "method", label: "Formas de Pgto" },
   { value: "weekday", label: "Dias da Semana" },
+  { value: "charges", label: "Encargos" },
 ];
 
 /** Painel de agregações de despesas por Categoria, Forma de Pagamento ou Dia da Semana. */
@@ -40,6 +43,7 @@ export function FinancialExpensesBreakdownCard({
   byCategory,
   byMethod,
   byWeekday,
+  byChargeKind = [],
   expenses,
   grossExpenseBrutoCents,
   currentExpenseCents,
@@ -123,6 +127,28 @@ export function FinancialExpensesBreakdownCard({
             onShowDetail(
               `Despesas: ${typeof row.label === "string" ? row.label : "Forma de Pagamento"}`,
               methodExpenses,
+            );
+          }}
+        />
+      ) : aggregationTab === "charges" ? (
+        <ReportTable
+          title="Por Tipo de Encargo"
+          totalBrutoCents={grossExpenseBrutoCents}
+          totalPonderadoCents={currentExpenseCents}
+          totalCents={grossExpenseBrutoCents}
+          rows={byChargeKind.map((c) => ({
+            key: c.kind,
+            label: CHARGE_KIND_LABELS[c.kind] ?? c.kind,
+            brutoCents: c.brutoCents,
+            ponderadoCents: c.ponderadoCents,
+            valueCents: c.brutoCents,
+            percent: grossExpenseBrutoCents > 0 ? (c.brutoCents / grossExpenseBrutoCents) * 100 : 0,
+          }))}
+          onRowClick={(row) => {
+            const chargeExpenses = expenses.filter((e) => (e.charge_kind ?? "regular") === row.key);
+            onShowDetail(
+              `Encargos: ${typeof row.label === "string" ? row.label : "Tipo"}`,
+              chargeExpenses,
             );
           }}
         />

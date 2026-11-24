@@ -13,7 +13,7 @@ import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { useAppUpdate } from "@/hooks/use-app-update";
 import { applyPWAUpdate, getPWAUpdateAvailable, subscribePWAUpdate } from "@/app/pwa";
 import { useNotificationCenter } from "@/hooks/use-notification-center";
-import { useFamilyMode, useTripMode, useUserAccess } from "@/state";
+import { useBusinessMode, useFamilyMode, useTripMode, useUserAccess } from "@/state";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 
@@ -43,11 +43,13 @@ export function MoreMenuSheet({ open, onOpenChange }: MoreMenuSheetProps) {
   const { isAdmin, hasFeature } = useUserAccess();
   const { isFamilyModeEnabled } = useFamilyMode();
   const { isTripModeEnabled } = useTripMode();
+  const { isBusinessModeEnabled } = useBusinessMode();
   const isFamilyActive = Boolean(isFamilyModeEnabled);
   const isTripActive = Boolean(isTripModeEnabled);
+  const isBusinessActive = Boolean(isBusinessModeEnabled);
 
   const groups = useMemo(() => {
-    const allowedItems = filterNavItems(navItems, isAdmin, hasFeature, isFamilyActive, isTripActive);
+    const allowedItems = filterNavItems(navItems, isAdmin, hasFeature, isFamilyActive, isTripActive, isBusinessActive);
     const { primarySlots } = resolveBottomNavSlots(allowedItems);
     const bottomNavPaths = new Set(primarySlots.map((s) => s.path));
 
@@ -60,10 +62,11 @@ export function MoreMenuSheet({ open, onOpenChange }: MoreMenuSheetProps) {
           hasFeature,
           isFamilyActive,
           isTripActive,
+          isBusinessActive,
         ),
       }))
       .filter((group) => group.items.length > 0);
-  }, [isAdmin, hasFeature, isFamilyActive, isTripActive]);
+  }, [isAdmin, hasFeature, isFamilyActive, isTripActive, isBusinessActive]);
 
   return (
     <>

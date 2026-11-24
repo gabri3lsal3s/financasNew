@@ -12,6 +12,11 @@ import {
   type AccountCompositionItem,
   type PortfolioAssetCompositionItem,
 } from "@/domain/goals";
+import type {
+  PaydayProfile,
+  ReferenceBudgetSource,
+  UserFinancialContext,
+} from "@/domain/insights";
 import { numberToCents, sumGrossCents, sumWeightedCents } from "@/domain/money";
 import { contributionsInMonthCents } from "@/domain/portfolio";
 import {
@@ -22,6 +27,7 @@ import {
   projectCardInvoiceObligations,
   spendingPace,
   type CashGapAnalysisResult,
+  type CashGapInflow,
   type WeeklyRadarSummary,
 } from "@/domain/projection";
 import type {
@@ -36,6 +42,7 @@ import type {
   Income,
   PortfolioContribution,
   PublicShare,
+  Recurrence,
   SplitSharePayload,
 } from "@/types";
 import { shouldShowGoalAlert } from "./alert-dismissals";
@@ -122,6 +129,16 @@ export function computeMonthlyCashflowMetrics(params: {
   };
 }
 
+export interface CurrentMonthProjectionMetricsResult {
+  pace: ReturnType<typeof spendingPace>;
+  daily: ReturnType<typeof dailyBudget>;
+  projection: ReturnType<typeof endOfMonthProjection>;
+  showPaceAlert: boolean;
+  referenceBudgetCents: number;
+  referenceBudgetSource: ReferenceBudgetSource;
+  isProvisionalReference: boolean;
+}
+
 export function computeCurrentMonthProjectionMetrics(params: {
   isCurrentMonth: boolean;
   grossIncomeCents: number;
@@ -129,46 +146,380 @@ export function computeCurrentMonthProjectionMetrics(params: {
   investmentCents: number;
   dayOfMonth: number;
   daysInMonth: number;
-}) {
-  const { isCurrentMonth, grossIncomeCents, grossExpenseCents, investmentCents, dayOfMonth, daysInMonth } = params;
+  financialContext?: UserFinancialContext;
+}): CurrentMonthProjectionMetricsResult {
+  const {
+    isCurrentMonth,
+    grossIncomeCents,
+    grossExpenseCents,
+    investmentCents,
+    dayOfMonth,
+    daysInMonth,
+    financialContext,
+  } = params;
 
-  const pace = isCurrentMonth
-    ? spendingPace({
-        spentCents: grossExpenseCents,
-        monthlyBudgetCents: Math.max(1, grossIncomeCents),
-        dayOfMonth,
-        daysInMonth,
-      })
-    : { active: false, spentPercent: 0, elapsedPercent: 0, gapPoints: 0, ahead: false };
+  if (!isCurrentMonth) {
+    return {
+      pace: { active: false, spentPercent: 0, elapsedPercent: 0, gapPoints: 0, ahead: false },
+      daily: { dailyCents: null, monthlyNetCents: 0, daysRemaining: null },
+      projection: {
+        projectedExpensesCents: null,
+        surplusCents: null,
+        onTrack: null,
+        burnRateCents: null,
+      },
+      showPaceAlert: false,
+      referenceBudgetCents: financialContext
+        ? financialContext.referenceBudgetCents
+        : Math.max(0, grossIncomeCents),
+      referenceBudgetSource: financialContext
+        ? financialContext.referenceBudgetSource
+        : grossIncomeCents > 0
+          ? "current_income"
+          : "none",
+      isProvisionalReference: financialContext ? financialContext.isProvisionalReference : false,
+    };
+  }
 
-  const daily = isCurrentMonth
-    ? dailyBudget({
-        phase: "current",
-        incomesCents: grossIncomeCents,
-        investmentsCents: investmentCents,
-        expensesCents: grossExpenseCents,
-        dayOfMonth,
-        daysInMonth,
-      })
-    : { dailyCents: null, monthlyNetCents: 0, daysRemaining: null };
+  if (financialContext) {
+    const {
+      referenceBudgetCents,
+      referenceBudgetSource,
+      isProvisionalReference,
+      maturity,
+      lens,
+    } = financialContext;
+    const {
+      operatingIncomeCents,
+      netExpenseCents,
+      fixedPaidCents,
+      oneOffAndTripCents,
+      variableExpenseCents,
+      variableTxCount,
+      variableDaysCount,
+      historicalVariableMedianCents,
+      priorCycleRefundCreditCents,
+    } = lens.consumption;
+    const pendingFixedCents = lens.liquidity.pendingRecurringExpensesCents;
 
-  const projection = isCurrentMonth
-    ? endOfMonthProjection({
-        phase: "current",
-        incomesCents: grossIncomeCents,
-        investmentsCents: investmentCents,
-        expensesCents: grossExpenseCents,
-        dayOfMonth,
-        daysInMonth,
-      })
-    : { projectedExpensesCents: null, surplusCents: null, onTrack: null, burnRateCents: null };
+    const pace = spendingPace({
+      spentCents: netExpenseCents,
+      monthlyBudgetCents: referenceBudgetCents,
+      dayOfMonth,
+      daysInMonth,
+    });
+
+    const daily = dailyBudget({
+      phase: "current",
+      incomesCents: operatingIncomeCents,
+      referenceBudgetCents,
+      investmentsCents: investmentCents,
+      expensesCents: netExpenseCents,
+      pendingFixedCents,
+      dayOfMonth,
+      daysInMonth,
+    });
+
+    const projection = endOfMonthProjection({
+      phase: "current",
+      incomesCents: operatingIncomeCents,
+      referenceBudgetCents,
+      investmentsCents: investmentCents,
+      expensesCents: netExpenseCents,
+      fixedPaidCents,
+      pendingFixedCents,
+      oneOffAndTripCents,
+      variableExpensesCents: variableExpenseCents,
+      historicalVariableMedianCents,
+      priorCycleRefundCreditCents,
+      variableTxCount,
+      variableDaysCount,
+      dayOfMonth,
+      daysInMonth,
+    });
+
+    // Regra anti-falso-alarme: contas fixas pagas no ciclo (ex.: Aluguel) não disparam PaceAlert sozinhas;
+    // exige base válida, fim de cold_start/early_month e déficit projetado OU aceleração real do consumo variável.
+    const availableAfterInvestments = Math.max(0, referenceBudgetCents - investmentCents);
+    const variableEnvelope = Math.max(
+      0,
+      availableAfterInvestments - fixedPaidCents - pendingFixedCents - oneOffAndTripCents,
+    );
+    const variableSpentPercent =
+      variableEnvelope > 0 ? (variableExpenseCents / variableEnvelope) * 100 : 0;
+    const isProjectedDeficit =
+      projection.onTrack === false || (projection.surplusCents !== null && projection.surplusCents < 0);
+    const isVariableAccelerating =
+      variableEnvelope > 0 && variableTxCount >= 2 && variableSpentPercent > pace.elapsedPercent + 10;
+    const isApproachingCeilingEarly =
+      projection.projectedExpensesCents !== null &&
+      availableAfterInvestments > 0 &&
+      projection.projectedExpensesCents >= availableAfterInvestments * 0.9 &&
+      pace.elapsedPercent < 85 &&
+      pace.spentPercent > pace.elapsedPercent;
+
+    const showPaceAlert =
+      pace.active &&
+      referenceBudgetCents > 0 &&
+      maturity !== "cold_start" &&
+      maturity !== "early_month" &&
+      (isProjectedDeficit || isVariableAccelerating || isApproachingCeilingEarly);
+
+    return {
+      pace,
+      daily,
+      projection,
+      showPaceAlert,
+      referenceBudgetCents,
+      referenceBudgetSource,
+      isProvisionalReference,
+    };
+  }
+
+  const safeBudgetCents = Math.max(0, grossIncomeCents);
+  const pace = spendingPace({
+    spentCents: grossExpenseCents,
+    monthlyBudgetCents: safeBudgetCents,
+    dayOfMonth,
+    daysInMonth,
+  });
+
+  const daily = dailyBudget({
+    phase: "current",
+    incomesCents: safeBudgetCents,
+    investmentsCents: investmentCents,
+    expensesCents: grossExpenseCents,
+    dayOfMonth,
+    daysInMonth,
+  });
+
+  const projection = endOfMonthProjection({
+    phase: "current",
+    incomesCents: safeBudgetCents,
+    investmentsCents: investmentCents,
+    expensesCents: grossExpenseCents,
+    dayOfMonth,
+    daysInMonth,
+  });
 
   const showPaceAlert =
-    isCurrentMonth &&
+    safeBudgetCents > 0 &&
     pace.active &&
     (pace.ahead || projection.onTrack === false || (projection.surplusCents !== null && projection.surplusCents < 0));
 
-  return { pace, daily, projection, showPaceAlert };
+  return {
+    pace,
+    daily,
+    projection,
+    showPaceAlert,
+    referenceBudgetCents: safeBudgetCents,
+    referenceBudgetSource: safeBudgetCents > 0 ? "current_income" : "none",
+    isProvisionalReference: false,
+  };
+}
+
+function getMonthDaysCount(month: string): number {
+  const [yStr, mStr] = month.split("-");
+  const y = Number(yStr ?? 2026);
+  const m = Number(mStr ?? 1);
+  return new Date(y, m, 0).getDate();
+}
+
+function resolveIncomeRecurrenceDatesInMonth(
+  recurrence: Recurrence,
+  month: string,
+  daysInMonth: number,
+): string[] {
+  const startMonth = recurrence.start_date.slice(0, 7);
+  if (startMonth > month) return [];
+
+  const [sy, sm] = startMonth.split("-").map(Number);
+  const [ty, tm] = month.split("-").map(Number);
+  if (sy === undefined || sm === undefined || ty === undefined || tm === undefined) return [];
+  const diffMonths = (ty - sy) * 12 + (tm - sm);
+  if (diffMonths < 0) return [];
+
+  const dates: string[] = [];
+  if (recurrence.frequency === "weekly") {
+    const startUtc = new Date(`${recurrence.start_date}T12:00:00Z`);
+    const monthEnd = `${month}-${String(daysInMonth).padStart(2, "0")}`;
+    const cursor = new Date(startUtc);
+    let safety = 0;
+    while (safety < 400) {
+      const iso = cursor.toISOString().slice(0, 10);
+      if (iso > monthEnd) break;
+      if (iso.slice(0, 7) === month) {
+        if (recurrence.occurrences_total != null && safety >= recurrence.occurrences_total) break;
+        if (!recurrence.end_date || iso <= recurrence.end_date) {
+          dates.push(iso);
+        }
+      }
+      cursor.setUTCDate(cursor.getUTCDate() + 7);
+      safety += 1;
+    }
+    return dates;
+  }
+
+  let intervalMonths = 1;
+  if (recurrence.frequency === "quarterly") intervalMonths = 3;
+  else if (recurrence.frequency === "yearly") intervalMonths = 12;
+
+  if (diffMonths % intervalMonths !== 0) return [];
+
+  const occurrenceIndex = Math.floor(diffMonths / intervalMonths);
+  if (recurrence.occurrences_total != null && occurrenceIndex >= recurrence.occurrences_total) {
+    return [];
+  }
+
+  const startDay = parseInt(recurrence.start_date.slice(8, 10), 10) || 1;
+  const clampedDay = Math.min(startDay, daysInMonth);
+  const candidateDate = `${month}-${String(clampedDay).padStart(2, "0")}`;
+  if (candidateDate < recurrence.start_date) return [];
+  if (recurrence.end_date && candidateDate > recurrence.end_date) return [];
+  return [candidateDate];
+}
+
+export interface BuildPredictedUpcomingCashInflowsParams {
+  month: string;
+  today: string;
+  isCurrentMonth: boolean;
+  monthIncomes: readonly Pick<Income, "id" | "date" | "value" | "category_id" | "recurrence_id" | "source_ref">[];
+  paydayProfile: PaydayProfile;
+  expectedUpcomingInflowsCents: number;
+  formalIncomeRecurrences?: readonly Recurrence[];
+}
+
+/**
+ * Converte rendas recorrentes formais e parcelas esperadas do `PaydayProfile` (confiança >= 0.6)
+ * em entradas futuras previstas (`CashGapInflow`) para evitar falsos alarmes de fluxo de caixa antes do salário cair.
+ */
+export function buildPredictedUpcomingCashInflows(
+  params: BuildPredictedUpcomingCashInflowsParams,
+): CashGapInflow[] {
+  const {
+    month,
+    today,
+    isCurrentMonth,
+    monthIncomes,
+    paydayProfile,
+    expectedUpcomingInflowsCents,
+    formalIncomeRecurrences = [],
+  } = params;
+
+  if (!isCurrentMonth || today.slice(0, 7) !== month) {
+    return [];
+  }
+
+  const daysInMonth = getMonthDaysCount(month);
+  const currentDay = parseInt(today.slice(8, 10), 10) || 1;
+  const operationalIncomes = monthIncomes.filter(
+    (inc) => !inc.source_ref?.startsWith("[REFUND]") && numberToCents(inc.value) > 0,
+  );
+
+  const predicted: CashGapInflow[] = [];
+  const consumedIncomeIds = new Set<string>();
+  const coveredDays: number[] = operationalIncomes.map((inc) => parseInt(inc.date.slice(8, 10), 10) || 1);
+  let formalSumCents = 0;
+
+  // Passo A: Recorrências formais de receita ativas com vencimento >= hoje no mês atual
+  for (const rec of formalIncomeRecurrences) {
+    if (!rec.is_active || rec.kind !== "income") continue;
+    const expectedCents = numberToCents(rec.value);
+    if (expectedCents <= 0) continue;
+
+    const dates = resolveIncomeRecurrenceDatesInMonth(rec, month, daysInMonth);
+    for (const expectedDate of dates) {
+      const expectedDay = parseInt(expectedDate.slice(8, 10), 10) || 1;
+
+      const matchedIncome =
+        operationalIncomes.find(
+          (inc) =>
+            !consumedIncomeIds.has(inc.id) &&
+            inc.recurrence_id === rec.id &&
+            (recurrenceDayMatches(rec.frequency, inc.date, expectedDate)),
+        ) ??
+        operationalIncomes.find((inc) => {
+          if (consumedIncomeIds.has(inc.id)) return false;
+          const incDay = parseInt(inc.date.slice(8, 10), 10) || 1;
+          const sameCat = !rec.category_id || inc.category_id === rec.category_id;
+          const incCents = numberToCents(inc.value);
+          const nearValue = Math.abs(incCents - expectedCents) <= expectedCents * 0.25;
+          const nearDay = Math.abs(incDay - expectedDay) <= 3;
+          return sameCat && nearDay && nearValue;
+        });
+
+      if (matchedIncome) {
+        consumedIncomeIds.add(matchedIncome.id);
+        continue;
+      }
+
+      if (expectedDate < today) continue;
+
+      predicted.push({
+        id: `pred-rec-inc-${rec.id}-${expectedDate}`,
+        name: rec.description?.trim() || "Receita recorrente prevista",
+        expectedDate,
+        amountCents: expectedCents,
+      });
+      formalSumCents += expectedCents;
+      coveredDays.push(expectedDay);
+    }
+  }
+
+  // Passo B: Parcelas habituais previstas via PaydayProfile (confiança >= 0.6)
+  const remainingExpected = Math.max(0, Math.round(expectedUpcomingInflowsCents) - formalSumCents);
+  if (remainingExpected > 0 && paydayProfile.confidence >= 0.6) {
+    const candidateDays = paydayProfile.typicalIncomeDays
+      .map((d) => Math.min(Math.max(1, d), daysInMonth))
+      .filter((clampedDay) => clampedDay >= currentDay)
+      .filter((clampedDay) => !coveredDays.some((cd) => Math.abs(cd - clampedDay) <= 2));
+
+    let effectiveDates = candidateDays.map((d) => `${month}-${String(d).padStart(2, "0")}`);
+
+    if (effectiveDates.length === 0) {
+      const hasWithinTolerance = paydayProfile.typicalIncomeDays.some((d) => {
+        const clampedDay = Math.min(Math.max(1, d), daysInMonth);
+        return (
+          clampedDay < currentDay &&
+          currentDay <= Math.min(daysInMonth, clampedDay + 2) &&
+          !coveredDays.some((cd) => Math.abs(cd - clampedDay) <= 2)
+        );
+      });
+      if (hasWithinTolerance) {
+        effectiveDates = [today];
+      }
+    }
+
+    if (effectiveDates.length > 0) {
+      const baseAmount = Math.floor(remainingExpected / effectiveDates.length);
+      let remainder = remainingExpected - baseAmount * effectiveDates.length;
+
+      for (const expectedDate of effectiveDates) {
+        const slice = baseAmount + (remainder > 0 ? 1 : 0);
+        if (remainder > 0) remainder -= 1;
+        if (slice <= 0) continue;
+        predicted.push({
+          id: `pred-payday-${expectedDate}`,
+          name: "Renda habitual prevista",
+          expectedDate,
+          amountCents: slice,
+        });
+      }
+    }
+  }
+
+  return predicted;
+}
+
+function recurrenceDayMatches(
+  frequency: Recurrence["frequency"],
+  incomeDate: string,
+  expectedDate: string,
+): boolean {
+  if (frequency !== "weekly") return true;
+  const d1 = parseInt(incomeDate.slice(8, 10), 10) || 1;
+  const d2 = parseInt(expectedDate.slice(8, 10), 10) || 1;
+  return Math.abs(d1 - d2) <= 3;
 }
 
 export function buildOverviewCashGapResult(params: {
@@ -181,8 +532,63 @@ export function buildOverviewCashGapResult(params: {
   cardPayments: readonly CardPayment[];
   debts: readonly Debt[];
   incomes: readonly Income[];
+  hasLiquidityContext?: boolean;
+  predictedInflows?: readonly CashGapInflow[];
 }): CashGapAnalysisResult {
-  const { currentBalanceCents, today, month, rangeEnd, cards, cardExpenses, cardPayments, debts, incomes } = params;
+  const {
+    currentBalanceCents,
+    today,
+    month,
+    rangeEnd,
+    cards,
+    cardExpenses,
+    cardPayments,
+    debts,
+    incomes,
+    hasLiquidityContext,
+    predictedInflows = [],
+  } = params;
+
+  if (hasLiquidityContext === false) {
+    return {
+      isCashGapDetected: false,
+      severity: "none",
+      gapDate: null,
+      daysUntilGap: null,
+      maxDeficitCents: 0,
+      nextInflowDate: null,
+      causingObligations: [],
+      recommendationMessage: null,
+      runway: [],
+    };
+  }
+
+  const baseInflows: CashGapInflow[] = [
+    ...debts
+      .filter((d) => d.type === "receivable" && !d.paid_at && d.due_date && d.due_date >= today)
+      .map((d) => ({
+        id: `recv-${d.id}`,
+        name: d.name,
+        expectedDate: d.due_date,
+        amountCents: numberToCents(d.amount),
+      })),
+    ...incomes
+      .filter((i) => !i.source_ref?.startsWith("[REFUND]") && i.date >= today)
+      .map((i) => ({
+        id: `income-${i.id}`,
+        name: "Renda prevista",
+        expectedDate: i.date,
+        amountCents: numberToCents(i.value),
+      })),
+  ];
+
+  const seenIds = new Set(baseInflows.map((inf) => inf.id));
+  const extraPredicted: CashGapInflow[] = [];
+  for (const inf of predictedInflows) {
+    if (seenIds.has(inf.id) || inf.expectedDate < today || inf.amountCents <= 0) continue;
+    seenIds.add(inf.id);
+    extraPredicted.push(inf);
+  }
 
   return analyzeCashGap({
     currentBalanceCents,
@@ -205,24 +611,7 @@ export function buildOverviewCashGapResult(params: {
           kind: "debt" as const,
         })),
     ],
-    inflows: [
-      ...debts
-        .filter((d) => d.type === "receivable" && !d.paid_at && d.due_date && d.due_date >= today)
-        .map((d) => ({
-          id: `recv-${d.id}`,
-          name: d.name,
-          expectedDate: d.due_date,
-          amountCents: numberToCents(d.amount),
-        })),
-      ...incomes
-        .filter((i) => i.date >= today)
-        .map((i) => ({
-          id: `income-${i.id}`,
-          name: "Renda prevista",
-          expectedDate: i.date,
-          amountCents: Math.round(i.value * 100),
-        })),
-    ],
+    inflows: [...baseInflows, ...extraPredicted],
   });
 }
 

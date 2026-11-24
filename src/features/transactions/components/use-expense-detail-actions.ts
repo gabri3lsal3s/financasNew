@@ -19,6 +19,7 @@ import { useDeletePublicShareMutation } from "@/state/mutations/use-public-share
 import {
   TRIP_QUERY_KEYS, useDeleteTripExpenseLinkedMutation, useTripDetails, useUpdateTripExpenseLinkedMutation,
 } from "@/state/queries/use-trips";
+import { useSafeBusinessMode, useSafeDeleteInternalTransferPair } from "@/hooks/use-safe-business-scope";
 import type { Expense, InstallmentDeleteMode, RecurrenceGroupFields, SplitSharePayload } from "@/types";
 import type { ExpenseEditSavePayload } from "./expense-edit-form";
 import type { TripDeleteMode } from "./transaction-group-constants";
@@ -47,9 +48,11 @@ export function useExpenseDetailActions({
   const categories = useCategories("expense").data ?? [];
   const cards = useCreditCards().data ?? [];
   const isFamilyActive = Boolean(useFamilyMode().isFamilyModeEnabled);
+  const { isBusinessModeEnabled: isBusinessActive } = useSafeBusinessMode();
   const { data: myFamilyData } = useMyFamily();
 
   const deleteExpense = useDeleteExpense();
+  const deleteTransferPair = useSafeDeleteInternalTransferPair();
   const deleteRecurrence = useDeleteRecurrenceOccurrences();
   const updateExpense = useUpdateExpense();
   const updateExpenseGrouped = useUpdateExpenseGrouped();
@@ -126,6 +129,7 @@ export function useExpenseDetailActions({
     return evaluateExpensePriceEvolution(expense, [...(expQ.data ?? []), ...(p1.data ?? []), ...(p2.data ?? []), ...(p3.data ?? [])]);
   }, [expense, expQ.data, p1.data, p2.data, p3.data]);
 
+  const isInternalTransfer = Boolean(expense?.is_internal_transfer && expense?.transfer_pair_id);
   const isInstallment = expense != null && expense.installments_total > 1;
   const isRecurring = expense?.recurrence_id != null;
   const isGrouped = isInstallment || isRecurring;
@@ -135,7 +139,11 @@ export function useExpenseDetailActions({
     updateRecurrence.isPending ||
     syncSplitFromExpenseEdit.isPending ||
     updateDebt.isPending;
-  const deletePending = deleteExpense.isPending || deleteRecurrence.isPending || deleteTripExpenseLinked.isPending;
+  const deletePending =
+    deleteExpense.isPending ||
+    deleteTransferPair.isPending ||
+    deleteRecurrence.isPending ||
+    deleteTripExpenseLinked.isPending;
 
   const deleteBaseExpense = async () => {
     if (!expense) return;
@@ -149,6 +157,14 @@ export function useExpenseDetailActions({
     setConfirmOpen(false);
     onOpenChange(false);
     try {
+      if (isInternalTransfer && expense.transfer_pair_id) {
+        await deleteTransferPair.mutateAsync(expense.transfer_pair_id);
+        pushToast({
+          title: "Transferência pareada removida das duas esferas (PF e PJ)",
+          variant: "success",
+        });
+        return;
+      }
       if (linkedSplitShare) {
         try { await deletePublicShare.mutateAsync(linkedSplitShare.id); } catch { /* segue */ }
       }
@@ -225,7 +241,13 @@ export function useExpenseDetailActions({
           report_weight: payload.report_weight,
           is_family: payload.is_family,
           family_id: resolvedFamilyId,
-          charge_kind: expense.charge_kind ?? "regular",
+          charge_kind: payload.charge_kind ?? expense.charge_kind ?? "regular",
+          ...(isBusinessActive && payload.scope !== undefined
+            ? {
+                scope: payload.scope,
+                is_tax_deductible: payload.scope === "business" ? Boolean(payload.is_tax_deductible) : false,
+              }
+            : {}),
         },
       });
     }
@@ -326,7 +348,7 @@ export function useExpenseDetailActions({
   };
 
   return {
-    categories, cards, currentCategory, isFamilyActive, tripName, priceEvolution, isRachaExpense,
+    categories, cards, currentCategory, isFamilyActive, isBusinessActive, isInternalTransfer, tripName, priceEvolution, isRachaExpense,
     hasLinkedSplit, linkedSplitShare, linkedRachaDebt, groupExpenses, groupTotalCents,
     isInstallment, isRecurring, isGrouped, editPending, deletePending, repeatPending: createExpense.isPending,
     handleConfirmDelete, handleSaveEdit, handleShare, handleRepeat,

@@ -48,16 +48,21 @@ describe("insight-feedback (repository — aprendizado §3.7.4)", () => {
     lastDeleteArgs = [];
   });
 
-  it("listFeedback devolve as linhas de decisão persistidas", async () => {
+  it("listFeedback devolve as linhas de decisão persistidas com created_at", async () => {
     builder = makeBuilder({
       data: [
-        { occurrence_key: "alert:overspend:2026-08", decision: "ignore" },
-        { occurrence_key: "sub:netflix:2026-08", decision: "confirm" },
+        { occurrence_key: "alert:overspend:2026-08", decision: "ignore", created_at: "2026-08-10T12:00:00Z" },
+        { occurrence_key: "sub:netflix:2026-08", decision: "confirm", created_at: "2026-08-11T12:00:00Z" },
       ],
     });
     const rows = await listFeedback();
+    expect(builder.select).toHaveBeenCalledWith("occurrence_key, decision, created_at");
     expect(rows).toHaveLength(2);
-    expect(rows[0]).toEqual({ occurrence_key: "alert:overspend:2026-08", decision: "ignore" });
+    expect(rows[0]).toEqual({
+      occurrence_key: "alert:overspend:2026-08",
+      decision: "ignore",
+      created_at: "2026-08-10T12:00:00Z",
+    });
   });
 
   it("setFeedback grava via upsert com chave de conflito user+occurrence", async () => {

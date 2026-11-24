@@ -77,6 +77,8 @@ const baseDetailsShape = {
   isFamily: z.boolean().default(false).optional(),
   tripId: z.string().nullable().optional(),
   splitDebtMode: z.enum(["single_total", "per_installment"]).default("single_total").optional(),
+  scope: z.enum(["personal", "business"]).default("personal").optional(),
+  isTaxDeductible: z.boolean().default(false).optional(),
 };
 
 interface DetailsRefinementInput {

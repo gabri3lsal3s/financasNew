@@ -98,24 +98,23 @@ describe("criticalAlerts (§3.7.1 — prioridade)", () => {
     expect(alerts.some((a) => a.id === "burn_rate")).toBe(false);
   });
 
-  it("dispara alerta crítico de consumo sem renda quando incomeCents === 0 e expenseCents > 0 (Fase 7 — Tarefa 7.3)", () => {
+  it("aplica Root-Cause Deduplication e emite 1 aviso informativo quando incomeCents === 0 e expenseCents > 0 (Fase 4)", () => {
     const alerts = criticalAlerts({
       balanceCents: -150000,
       incomeCents: 0,
       expenseCents: 150000,
-      paceRatio: 1,
+      paceRatio: 2,
       overspentBudgets: 0,
       burnRatePercent: 0,
-      projectedDeficit: false,
+      projectedDeficit: true,
       savingsRatePercent: 0,
     });
 
-    const alert = alerts.find((a) => a.id === "burn_rate");
-    expect(alert).toBeDefined();
-    expect(alert?.priority).toBe(4);
-    expect(alert?.severity).toBe("critical");
-    expect(alert?.title).toBe("Consumo sem renda registrada");
-    expect(alert?.description).toContain("sem nenhuma entrada de renda registrada");
+    expect(alerts).toHaveLength(1);
+    const alert = alerts[0];
+    expect(alert?.id).toBe("sem_renda_registrada");
+    expect(alert?.severity).toBe("info");
+    expect(alert?.title).toContain("Aguardando registro de renda");
     // Não deve disparar elogio de poupança com renda zero
     expect(alerts.some((a) => a.id === "poupanca_saudavel")).toBe(false);
   });
@@ -468,10 +467,11 @@ describe("diagnósticos (§3.7.6)", () => {
     expect(trend.isSignificant).toBe(false);
     expect(trend.previousComparableCents).toBe(45000);
 
-    // Quando não há despesas anteriores pro-rata
+    // Quando não há despesas anteriores pro-rata, não inventa +100%
     const trendZero = calculateProRataTrend(10000, 0);
-    expect(trendZero.percentChange).toBe(100);
-    expect(trendZero.isSignificant).toBe(true);
+    expect(trendZero.hasPreviousBase).toBe(false);
+    expect(trendZero.percentChange).toBe(0);
+    expect(trendZero.isSignificant).toBe(false);
 
     // Variação de mais de 15% (significativa)
     const trendBig = calculateProRataTrend(60000, 40000);

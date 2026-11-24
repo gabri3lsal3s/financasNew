@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui";
 import { TransactionRow } from "@/components/modules";
 import type { ExpensePriceEvolution } from "@/domain/insights";
+import { useSafeBusinessMode } from "@/hooks/use-safe-business-scope";
 import type { Category, Expense, Income } from "@/types";
 import { PriceIncreaseBadge } from "../price-increase-badge";
 
@@ -24,6 +25,7 @@ export function ExpenseRow({
   priceEvolution,
   onClick,
 }: ExpenseRowProps) {
+  const { isBusinessModeEnabled } = useSafeBusinessMode();
   const title = expense.description || category?.name || "Despesa";
   const subtitle =
     recurrenceLabel ??
@@ -40,11 +42,22 @@ export function ExpenseRow({
       amountCents={Math.round(expense.value * 100)}
       reportWeight={expense.report_weight}
       hasLinkedSplit={hasLinkedSplit}
+      chargeKind={expense.charge_kind}
       kind="expense"
       icon={category?.icon}
       iconColor={category?.color}
       badges={
         <div className="hidden sm:flex items-center gap-1.5 shrink-0 flex-wrap">
+          {isBusinessModeEnabled && expense.scope === "business" && (
+            <Badge variant="portfolio" size="xs" className="shrink-0 font-medium">
+              PJ
+            </Badge>
+          )}
+          {isBusinessModeEnabled && expense.is_internal_transfer && (
+            <Badge variant="muted" size="xs" className="shrink-0 font-medium">
+              Transf. interna
+            </Badge>
+          )}
           {isFamilyModeEnabled && expense.is_family && (
             <Badge variant="muted" size="xs" className="shrink-0 font-medium">
               Familiar
@@ -85,9 +98,14 @@ export function IncomeRow({
   isFamilyModeEnabled,
   onClick,
 }: IncomeRowProps) {
+  const { isBusinessModeEnabled } = useSafeBusinessMode();
   const title = income.description || category?.name || "Receita";
   const subtitle =
     recurrenceLabel ?? (category?.name && income.description ? category.name : undefined);
+
+  const showBadges =
+    (isBusinessModeEnabled && (income.scope === "business" || income.is_internal_transfer)) ||
+    (isFamilyModeEnabled && income.is_family);
 
   return (
     <TransactionRow
@@ -99,10 +117,24 @@ export function IncomeRow({
       icon={category?.icon}
       iconColor={category?.color}
       badges={
-        isFamilyModeEnabled && income.is_family ? (
-          <Badge variant="muted" size="xs" className="hidden sm:inline-flex shrink-0 font-medium">
-            Familiar
-          </Badge>
+        showBadges ? (
+          <div className="hidden sm:flex items-center gap-1.5 shrink-0 flex-wrap">
+            {isBusinessModeEnabled && income.scope === "business" ? (
+              <Badge variant="portfolio" size="xs" className="shrink-0 font-medium">
+                PJ
+              </Badge>
+            ) : null}
+            {isBusinessModeEnabled && income.is_internal_transfer ? (
+              <Badge variant="muted" size="xs" className="shrink-0 font-medium">
+                Transf. interna
+              </Badge>
+            ) : null}
+            {isFamilyModeEnabled && income.is_family ? (
+              <Badge variant="muted" size="xs" className="shrink-0 font-medium">
+                Familiar
+              </Badge>
+            ) : null}
+          </div>
         ) : undefined
       }
       onClick={onClick}

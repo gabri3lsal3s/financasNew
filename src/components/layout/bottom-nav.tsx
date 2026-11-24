@@ -6,7 +6,7 @@ import { filterNavItems, navItems } from "@/components/layout/nav-items";
 import { resolveBottomNavSlots } from "@/domain/navigation";
 import { triggerSensory } from "@/services/sensory";
 import { useNotificationCenter } from "@/hooks/use-notification-center";
-import { useFamilyMode, useTripMode, useUserAccess } from "@/state";
+import { useBusinessMode, useFamilyMode, useTripMode, useUserAccess } from "@/state";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { MoreMenuSheet } from "./more-menu-sheet";
 import { BottomNavItem } from "./bottom-nav-item";
@@ -17,13 +17,15 @@ export function BottomNav() {
   const { hasFeature, isAdmin } = useUserAccess();
   const { isFamilyModeEnabled } = useFamilyMode();
   const { isTripModeEnabled } = useTripMode();
+  const { isBusinessModeEnabled } = useBusinessMode();
   const isFamilyActive = Boolean(isFamilyModeEnabled);
   const isTripActive = Boolean(isTripModeEnabled);
+  const isBusinessActive = Boolean(isBusinessModeEnabled);
   const { totalRemindersPageCount: totalCount, criticalCount: urgentCount } =
     useNotificationCenter();
   const { guardAction, upgradeModal, isReadOnlyMode } = useMutationGuard();
 
-  const allowedItems = filterNavItems(navItems, isAdmin, hasFeature, isFamilyActive, isTripActive);
+  const allowedItems = filterNavItems(navItems, isAdmin, hasFeature, isFamilyActive, isTripActive, isBusinessActive);
   const { primarySlots, moreMenuSlots } = resolveBottomNavSlots(allowedItems);
 
   const create = resolveFabAction(location.pathname, location.search, hasFeature);

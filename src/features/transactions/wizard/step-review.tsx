@@ -18,6 +18,7 @@ export interface StepReviewProps {
   categoryName?: string;
   closingDay?: number | null;
   isFamilyModeEnabled?: boolean;
+  isBusinessModeEnabled?: boolean;
   tripName?: string;
   tripMemberName?: string;
 }
@@ -28,6 +29,7 @@ export function StepReview({
   categoryName,
   closingDay,
   isFamilyModeEnabled,
+  isBusinessModeEnabled = false,
   tripName,
   tripMemberName,
 }: StepReviewProps) {
@@ -75,7 +77,31 @@ export function StepReview({
             }
           />
         ) : null}
-        {isFamilyModeEnabled ? (
+        {isBusinessModeEnabled ? (
+          <Row
+            label="Esfera"
+            value={
+              state.scope === "business" ? (
+                <Badge variant="portfolio" size="xs">
+                  Meu Negócio (PJ)
+                </Badge>
+              ) : (
+                "Pessoal (PF)"
+              )
+            }
+          />
+        ) : null}
+        {isBusinessModeEnabled && state.scope === "business" && isExpense && state.isTaxDeductible ? (
+          <Row
+            label="Dedutibilidade"
+            value={
+              <Badge variant="positive" size="xs">
+                Dedutível para IR
+              </Badge>
+            }
+          />
+        ) : null}
+        {isFamilyModeEnabled && (!isBusinessModeEnabled || state.scope !== "business") ? (
           <Row
             label="Modo Família"
             value={

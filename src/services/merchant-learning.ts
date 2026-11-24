@@ -11,14 +11,25 @@ import { useCallback, useEffect, useState } from "react";
 import { updateCustomSettings } from "@/data/repositories/user-preferences";
 import {
   type CardDigitsMapping,
+  type LearnedCutTier,
+  type LearnedIncomeProfile,
+  type LearnedReceiptPreference,
+  type LearnedServiceSegment,
+  LEARNED_CUT_TIERS,
+  LEARNED_SERVICE_SEGMENTS,
   type MerchantLearningMemory,
   type MerchantLearningRecord,
   type RecordMerchantLearningParams,
+  RECEIPT_LEARNING_STORAGE_KEY,
+  findLearnedMerchant,
+  normalizeSemanticTag,
   recordCardDigitsLearning,
   forgetCardDigitsLearning,
   lookupCardByDigits,
+  migrateLegacyReceiptDictToMerchantMemory,
   recordMerchantLearning,
   forgetMerchantLearning,
+  registerReceiptLearningBridge,
   type ResolveMerchantIdentityParams,
   type ResolvedMerchantIdentity,
   resolveMerchantIdentity,
@@ -39,6 +50,9 @@ let syncTimeout: NodeJS.Timeout | null = null;
 let isSyncingToCloud = false;
 const syncStatusListeners = new Set<(syncing: boolean) => void>();
 
+const VALID_SEGMENTS_SET = new Set<string>(LEARNED_SERVICE_SEGMENTS);
+const VALID_CUT_TIERS_SET = new Set<string>(LEARNED_CUT_TIERS);
+
 /**
  * Normaliza e sanitiza o payload da memória de aprendizado.
  */
@@ -55,6 +69,26 @@ function sanitizeLearningMemory(raw: unknown): MerchantLearningMemory {
       "categorySlug" in value
     ) {
       const rec = value as Partial<MerchantLearningRecord>;
+      const rawSeg = typeof rec.serviceSegment === "string" ? rec.serviceSegment : "";
+      const rawTier = typeof rec.cutTier === "string" ? rec.cutTier : "";
+      const rawIncome = typeof rec.incomeProfile === "string" ? rec.incomeProfile : "";
+      const cleanTags = Array.isArray(rec.semanticTags)
+        ? Array.from(
+            new Set(
+              rec.semanticTags
+                .map((t) => normalizeSemanticTag(String(t || "")))
+                .filter(Boolean),
+            ),
+          ).slice(0, 12)
+        : undefined;
+      const validWeight =
+        typeof rec.preferredReportWeight === "number" &&
+        Number.isFinite(rec.preferredReportWeight) &&
+        rec.preferredReportWeight >= 0 &&
+        rec.preferredReportWeight <= 1
+          ? rec.preferredReportWeight
+          : undefined;
+
       result[key] = {
         friendlyName: String(rec.friendlyName || "").trim(),
         categorySlug: String(rec.categorySlug || "").trim(),
@@ -68,6 +102,41 @@ function sanitizeLearningMemory(raw: unknown): MerchantLearningMemory {
           : [],
         preferredPaymentMethod: rec.preferredPaymentMethod,
         preferredCardId: rec.preferredCardId ? String(rec.preferredCardId) : undefined,
+        preferredCardLastDigits: rec.preferredCardLastDigits
+          ? String(rec.preferredCardLastDigits).replace(/\D/g, "").slice(-4) || undefined
+          : undefined,
+        preferredCardBrand: rec.preferredCardBrand ? String(rec.preferredCardBrand).trim() : undefined,
+        ...(VALID_SEGMENTS_SET.has(rawSeg)
+          ? { serviceSegment: rawSeg as LearnedServiceSegment }
+          : {}),
+        ...(VALID_CUT_TIERS_SET.has(rawTier)
+          ? { cutTier: rawTier as LearnedCutTier }
+          : {}),
+        ...(typeof rec.isLearnedSubscription === "boolean"
+          ? { isLearnedSubscription: rec.isLearnedSubscription }
+          : {}),
+        ...(rawIncome === "fixed" || rawIncome === "frequent_client"
+          ? { incomeProfile: rawIncome as LearnedIncomeProfile }
+          : {}),
+        ...(cleanTags && cleanTags.length > 0 ? { semanticTags: cleanTags } : {}),
+        ...(validWeight !== undefined
+          ? {
+              preferredReportWeight: validWeight,
+              consistentWeightCount:
+                typeof rec.consistentWeightCount === "number" && rec.consistentWeightCount >= 1
+                  ? Math.round(rec.consistentWeightCount)
+                  : 1,
+            }
+          : {}),
+        ...(typeof rec.preferredIsFamily === "boolean"
+          ? {
+              preferredIsFamily: rec.preferredIsFamily,
+              consistentFamilyCount:
+                typeof rec.consistentFamilyCount === "number" && rec.consistentFamilyCount >= 1
+                  ? Math.round(rec.consistentFamilyCount)
+                  : 1,
+            }
+          : {}),
         usageCount: Number(rec.usageCount) || 1,
         lastUsedAt: String(rec.lastUsedAt || new Date().toISOString()),
       };
@@ -76,26 +145,82 @@ function sanitizeLearningMemory(raw: unknown): MerchantLearningMemory {
   return result;
 }
 
+function readStoredMerchantLearningMemory(): MerchantLearningMemory {
+  try {
+    const raw = getUserStorageItem(STORAGE_KEY);
+    if (!raw) return {};
+    return sanitizeLearningMemory(JSON.parse(raw));
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Reseta o cache em memória de estabelecimentos (útil para testes de cold load e alternância de conta).
+ */
+export function resetMerchantLearningCache(): void {
+  memoryCache = null;
+}
+
+/**
+ * Migra silenciosamente registros legados de comprovantes (`financas_receipt_learning_v1`)
+ * para a memória unificada `merchantLearning` e remove a chave legada após persistência.
+ */
+export function migrateLegacyReceiptLearningIfNeeded(
+  baseMemory?: MerchantLearningMemory,
+  scheduleCloud = true,
+): { memory: MerchantLearningMemory; migratedCount: number } {
+  const base =
+    baseMemory ?? (memoryCache !== null ? memoryCache : readStoredMerchantLearningMemory());
+
+  if (typeof window === "undefined" || !window.localStorage) {
+    return { memory: base, migratedCount: 0 };
+  }
+
+  try {
+    const rawLegacy = window.localStorage.getItem(RECEIPT_LEARNING_STORAGE_KEY);
+    if (!rawLegacy) {
+      return { memory: base, migratedCount: 0 };
+    }
+    const parsedLegacy = JSON.parse(rawLegacy);
+    if (!parsedLegacy || typeof parsedLegacy !== "object" || Array.isArray(parsedLegacy)) {
+      return { memory: base, migratedCount: 0 };
+    }
+
+    const migrated = migrateLegacyReceiptDictToMerchantMemory(
+      parsedLegacy as Record<string, LearnedReceiptPreference>,
+      base,
+    );
+
+    if (migrated.migratedCount > 0) {
+      setMerchantLearningMemory(migrated.memory, scheduleCloud);
+      try {
+        window.localStorage.removeItem(RECEIPT_LEARNING_STORAGE_KEY);
+      } catch {
+        // Ignora falha de remoção
+      }
+    }
+
+    return migrated;
+  } catch {
+    return { memory: base, migratedCount: 0 };
+  }
+}
+
 /**
  * Lê a memória de aprendizado do cache em memória ou localStorage isolado (< 2 ms).
+ * No carregamento inicial (cold load), executa migração silenciosa do legado `financas_receipt_learning_v1`.
  */
 export function getMerchantLearningMemory(): MerchantLearningMemory {
   if (memoryCache !== null) {
     return memoryCache;
   }
-  try {
-    const raw = getUserStorageItem(STORAGE_KEY);
-    if (!raw) {
-      memoryCache = {};
-      return memoryCache;
-    }
-    const parsed = JSON.parse(raw);
-    memoryCache = sanitizeLearningMemory(parsed);
-    return memoryCache;
-  } catch {
-    memoryCache = {};
-    return memoryCache;
+  const loaded = readStoredMerchantLearningMemory();
+  const migrated = migrateLegacyReceiptLearningIfNeeded(loaded, true);
+  if (migrated.migratedCount === 0) {
+    memoryCache = loaded;
   }
+  return memoryCache ?? migrated.memory;
 }
 
 /**
@@ -173,24 +298,61 @@ export function syncMerchantLearningFromCloud(
       const mergedPixKeys = Array.from(
         new Set([...(localRec.pixKeys || []), ...(cloudRec.pixKeys || [])]),
       );
+      const mergedTags = Array.from(
+        new Set([...(localRec.semanticTags || []), ...(cloudRec.semanticTags || [])]),
+      ).slice(0, 12);
+      const cloudNewer = cloudTime >= localTime;
 
       merged[key] = {
-        friendlyName: cloudTime >= localTime ? cloudRec.friendlyName : localRec.friendlyName,
-        categorySlug: cloudTime >= localTime ? cloudRec.categorySlug : localRec.categorySlug,
+        friendlyName: cloudNewer ? cloudRec.friendlyName : localRec.friendlyName,
+        categorySlug: cloudNewer ? cloudRec.categorySlug : localRec.categorySlug,
         cnpjOrCpf: cloudRec.cnpjOrCpf || localRec.cnpjOrCpf,
         pixKeys: mergedPixKeys.length > 0 ? mergedPixKeys : undefined,
-        defaultNature: cloudTime >= localTime ? cloudRec.defaultNature ?? localRec.defaultNature : localRec.defaultNature ?? cloudRec.defaultNature,
+        defaultNature: cloudNewer
+          ? cloudRec.defaultNature ?? localRec.defaultNature
+          : localRec.defaultNature ?? cloudRec.defaultNature,
         rawAliases: mergedAliases,
-        preferredPaymentMethod:
-          cloudTime >= localTime
-            ? cloudRec.preferredPaymentMethod ?? localRec.preferredPaymentMethod
-            : localRec.preferredPaymentMethod ?? cloudRec.preferredPaymentMethod,
-        preferredCardId:
-          cloudTime >= localTime
-            ? cloudRec.preferredCardId ?? localRec.preferredCardId
-            : localRec.preferredCardId ?? cloudRec.preferredCardId,
+        preferredPaymentMethod: cloudNewer
+          ? cloudRec.preferredPaymentMethod ?? localRec.preferredPaymentMethod
+          : localRec.preferredPaymentMethod ?? cloudRec.preferredPaymentMethod,
+        preferredCardId: cloudNewer
+          ? cloudRec.preferredCardId ?? localRec.preferredCardId
+          : localRec.preferredCardId ?? cloudRec.preferredCardId,
+        preferredCardLastDigits: cloudNewer
+          ? cloudRec.preferredCardLastDigits ?? localRec.preferredCardLastDigits
+          : localRec.preferredCardLastDigits ?? cloudRec.preferredCardLastDigits,
+        preferredCardBrand: cloudNewer
+          ? cloudRec.preferredCardBrand ?? localRec.preferredCardBrand
+          : localRec.preferredCardBrand ?? cloudRec.preferredCardBrand,
+        serviceSegment: cloudNewer
+          ? cloudRec.serviceSegment ?? localRec.serviceSegment
+          : localRec.serviceSegment ?? cloudRec.serviceSegment,
+        cutTier: cloudNewer
+          ? cloudRec.cutTier ?? localRec.cutTier
+          : localRec.cutTier ?? cloudRec.cutTier,
+        isLearnedSubscription: cloudNewer
+          ? cloudRec.isLearnedSubscription ?? localRec.isLearnedSubscription
+          : localRec.isLearnedSubscription ?? cloudRec.isLearnedSubscription,
+        incomeProfile: cloudNewer
+          ? cloudRec.incomeProfile ?? localRec.incomeProfile
+          : localRec.incomeProfile ?? cloudRec.incomeProfile,
+        ...(mergedTags.length > 0 ? { semanticTags: mergedTags } : {}),
+        preferredReportWeight: cloudNewer
+          ? cloudRec.preferredReportWeight ?? localRec.preferredReportWeight
+          : localRec.preferredReportWeight ?? cloudRec.preferredReportWeight,
+        consistentWeightCount:
+          (cloudRec.consistentWeightCount ?? 0) >= (localRec.consistentWeightCount ?? 0)
+            ? cloudRec.consistentWeightCount
+            : localRec.consistentWeightCount,
+        preferredIsFamily: cloudNewer
+          ? cloudRec.preferredIsFamily ?? localRec.preferredIsFamily
+          : localRec.preferredIsFamily ?? cloudRec.preferredIsFamily,
+        consistentFamilyCount:
+          (cloudRec.consistentFamilyCount ?? 0) >= (localRec.consistentFamilyCount ?? 0)
+            ? cloudRec.consistentFamilyCount
+            : localRec.consistentFamilyCount,
         usageCount: Math.max(localRec.usageCount, cloudRec.usageCount),
-        lastUsedAt: cloudTime >= localTime ? cloudRec.lastUsedAt : localRec.lastUsedAt,
+        lastUsedAt: cloudNewer ? cloudRec.lastUsedAt : localRec.lastUsedAt,
       };
       hasChanges = true;
     }
@@ -809,6 +971,13 @@ export interface RecordTransactionLearningParams {
   packageName?: string;
   pixKey?: string;
   nature?: "expense" | "income";
+  reportWeight?: number;
+  isFamily?: boolean;
+  semanticTags?: readonly string[];
+  serviceSegment?: LearnedServiceSegment;
+  cutTier?: LearnedCutTier;
+  isLearnedSubscription?: boolean;
+  incomeProfile?: LearnedIncomeProfile;
 }
 
 /**
@@ -817,7 +986,24 @@ export interface RecordTransactionLearningParams {
  * com o app bancário emissor simultaneamente.
  */
 export function recordTransactionLearning(params: RecordTransactionLearningParams): void {
-  const { merchant, categoryId, paymentMethod, cardId, cardLastDigits, taxId, packageName, pixKey, nature } = params;
+  const {
+    merchant,
+    categoryId,
+    paymentMethod,
+    cardId,
+    cardLastDigits,
+    taxId,
+    packageName,
+    pixKey,
+    nature,
+    reportWeight,
+    isFamily,
+    semanticTags,
+    serviceSegment,
+    cutTier,
+    isLearnedSubscription,
+    incomeProfile,
+  } = params;
 
   try {
     const trimmedMerchant = merchant?.trim();
@@ -832,6 +1018,13 @@ export function recordTransactionLearning(params: RecordTransactionLearningParam
         defaultNature: nature,
         preferredPaymentMethod: paymentMethod,
         preferredCardId: cardId,
+        reportWeight,
+        isFamily,
+        semanticTags,
+        serviceSegment,
+        cutTier,
+        isLearnedSubscription,
+        incomeProfile,
       });
     }
 
@@ -851,4 +1044,91 @@ export function recordTransactionLearning(params: RecordTransactionLearningParam
     // Aprendizado em background nunca bloqueia a experiência do usuário
   }
 }
+
+export interface BatchAiMerchantTeachingItem {
+  rawDescription: string;
+  friendlyName: string;
+  canonicalMerchant?: string | null;
+  categoryId?: string | null;
+  serviceSegment?: LearnedServiceSegment | null;
+  cutTier?: LearnedCutTier | null;
+  isSubscription?: boolean | null;
+  semanticTags?: readonly string[] | null;
+}
+
+/**
+ * Persiste silenciosamente aprendizados semânticos ensinados pela IA em lote
+ * (`categorize_batch` de faturas ou expansão semântica da busca), preservando sempre
+ * categorias já ensinadas manualmente pelo usuário.
+ */
+export function recordBatchAiMerchantTeachings(
+  items: readonly BatchAiMerchantTeachingItem[],
+): MerchantLearningMemory {
+  if (!items.length) {
+    return getMerchantLearningMemory();
+  }
+
+  let workingMemory = getMerchantLearningMemory();
+  let mutated = false;
+  const now = new Date().toISOString();
+
+  for (const item of items) {
+    const friendly = (item.canonicalMerchant || item.friendlyName || "").trim();
+    const raw = item.rawDescription.trim();
+    if (!friendly || !raw) continue;
+
+    const existing = findLearnedMerchant(
+      { merchant: friendly, rawText: raw },
+      workingMemory,
+    );
+    const preservedCategorySlug = existing?.categorySlug || item.categoryId || "";
+    const aliases = [raw, item.friendlyName].filter(Boolean);
+
+    const hasMetadata =
+      Boolean(preservedCategorySlug) ||
+      Boolean(item.semanticTags?.length) ||
+      Boolean(item.serviceSegment) ||
+      Boolean(item.cutTier) ||
+      typeof item.isSubscription === "boolean";
+
+    if (!hasMetadata) continue;
+
+    workingMemory = recordMerchantLearning(
+      {
+        friendlyName: existing?.friendlyName || friendly,
+        categorySlug: preservedCategorySlug,
+        alias: raw,
+        rawAliases: aliases,
+        serviceSegment: item.serviceSegment ?? undefined,
+        cutTier: item.cutTier ?? undefined,
+        isLearnedSubscription:
+          typeof item.isSubscription === "boolean" ? item.isSubscription : undefined,
+        semanticTags: item.semanticTags ?? undefined,
+      },
+      workingMemory,
+      now,
+    );
+    mutated = true;
+  }
+
+  if (mutated) {
+    setMerchantLearningMemory(workingMemory, true);
+    triggerSessionInsightsReevaluation();
+  }
+
+  return workingMemory;
+}
+
+// Registra a ponte de unificação para `domain/notifications/receipt-learning.ts`
+registerReceiptLearningBridge({
+  getMemory: () => getMerchantLearningMemory(),
+  record: (params) => {
+    const next = recordMerchantLearningAction(params);
+    triggerSessionInsightsReevaluation();
+    return next;
+  },
+  clear: () => {
+    setMerchantLearningMemory({}, false);
+  },
+});
 

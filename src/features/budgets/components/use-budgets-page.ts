@@ -1,8 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { budgetLimitsByCategory, realizedByCategoryMap } from "@/domain/budgets";
+import {
+  filterCategoriesForScope,
+  filterExpensesByViewScope,
+  filterIncomesByViewScope,
+} from "@/domain/business";
 import { numberToCents, sumWeightedCents } from "@/domain/money";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
+import { useSafeViewScope } from "@/hooks/use-safe-business-scope";
 import { currentMonth } from "@/lib/date";
 import {
   useAllCategories,
@@ -102,7 +108,25 @@ export function useBudgetsPage() {
     [cashBalance, positionRows, goalSharesQuery.data],
   );
 
-  const categories = useMemo(() => expenseCategories.data ?? [], [expenseCategories.data]);
+  const { effectiveViewScope } = useSafeViewScope();
+  const categories = useMemo(() => {
+    const raw = expenseCategories.data ?? [];
+    if (effectiveViewScope === "all") return raw;
+    return filterCategoriesForScope(raw, effectiveViewScope, false);
+  }, [expenseCategories.data, effectiveViewScope]);
+  const scopedExpenses = useMemo(
+    () => filterExpensesByViewScope(expensesQuery.data ?? [], effectiveViewScope, { mode: "dre" }),
+    [expensesQuery.data, effectiveViewScope],
+  );
+  const scopedIncomes = useMemo(
+    () => filterIncomesByViewScope(incomesQuery.data ?? [], effectiveViewScope, { mode: "dre" }),
+    [incomesQuery.data, effectiveViewScope],
+  );
+  const scopedIncomeCategories = useMemo(() => {
+    const raw = incomeCategories.data ?? [];
+    if (effectiveViewScope === "all") return raw;
+    return filterCategoriesForScope(raw, effectiveViewScope, false);
+  }, [incomeCategories.data, effectiveViewScope]);
   const allCategories = allCategoriesQuery.data ?? [];
   const siblings = allCategories.filter(
     (c) =>
@@ -148,7 +172,7 @@ export function useBudgetsPage() {
   const limitsDerived = deriveBudgetsLimitsData({
     categories,
     limitsByCategory,
-    expenses: expensesQuery.data ?? [],
+    expenses: scopedExpenses,
     month,
     spendMetric,
     showAllCategories,
@@ -187,7 +211,7 @@ export function useBudgetsPage() {
     navigate,
     ...limitsDerived,
     categoriesCount: categories.length,
-    totalIncomesCents: sumWeightedCents(incomesQuery.data ?? []),
+    totalIncomesCents: sumWeightedCents(scopedIncomes),
     limitsByCategory,
     isLimitsLoading: budgetsQuery.isLoading || expensesQuery.isLoading,
     effectiveHighlightId,
@@ -198,8 +222,8 @@ export function useBudgetsPage() {
     showArchivedCampaigns,
     toggleShowArchivedCampaigns: () => setShowArchivedCampaigns((prev) => !prev),
     liveGoalProgress,
-    incomeCategories: incomeCategories.data ?? [],
-    realizedByCategory: realizedByCategoryMap(incomesQuery.data ?? []),
+    incomeCategories: scopedIncomeCategories,
+    realizedByCategory: realizedByCategoryMap(scopedIncomes),
     goalsByCategory,
     goalShares: allGoalShares,
     nowMs,

@@ -120,4 +120,77 @@ describe("habits", () => {
     const habits = detectSpendingHabits(expenses, { todayISO: "2026-11-07" });
     expect(habits).toHaveLength(0);
   });
+
+  it("Cenário 3 (Viagens & Pontuais): 4 restaurantes de viagem na semana não geram hábito anual recorrente", () => {
+    const tripExpenses: ExpenseLike[] = [
+      { id: "t1", description: "Restaurante Orla", month: "2026-11", date: "2026-11-02", valueCents: 9500, categoryId: "cat_alim", tripId: "trip-ferias" },
+      { id: "t2", description: "Restaurante Centro", month: "2026-11", date: "2026-11-03", valueCents: 11000, categoryId: "cat_alim", tripId: "trip-ferias" },
+      { id: "t3", description: "Jantar Hotel", month: "2026-11", date: "2026-11-04", valueCents: 13000, categoryId: "cat_alim", tripId: "trip-ferias" },
+      { id: "t4", description: "Almoço Praia", month: "2026-11", date: "2026-11-05", valueCents: 8800, categoryId: "cat_alim", tripId: "trip-ferias" },
+    ];
+
+    expect(detectSpendingHabits(tripExpenses, { todayISO: "2026-11-08" })).toHaveLength(0);
+
+    // Também respeita oneOffExpenseIds e currentMonthOneOffKeys
+    const oneOffExpenses: ExpenseLike[] = [
+      { id: "o1", description: "Café Praça", month: "2026-11", date: "2026-11-02", valueCents: 1800, categoryId: "cat_alim" },
+      { id: "o2", description: "Café Esquina", month: "2026-11", date: "2026-11-03", valueCents: 1800, categoryId: "cat_alim" },
+      { id: "o3", description: "Café Livraria", month: "2026-11", date: "2026-11-04", valueCents: 1800, categoryId: "cat_alim" },
+    ];
+    expect(
+      detectSpendingHabits(oneOffExpenses, {
+        todayISO: "2026-11-08",
+        currentMonthOneOffKeys: new Set(["habit:cat_alim:food:coffee_snacks"]),
+      }),
+    ).toHaveLength(0);
+    expect(
+      detectSpendingHabits(oneOffExpenses, {
+        todayISO: "2026-11-08",
+        oneOffExpenseIds: new Set(["o1"]),
+        minOccurrences: 3,
+      }),
+    ).toHaveLength(0);
+  });
+
+  it("suaviza projeção anual com M-1..M-3 e expõe isRecurringAcrossMonths + categoryBudgetCents", () => {
+    const currentDelivery: ExpenseLike[] = [
+      { id: "d1", description: "iFood Lanche", month: "2026-11", date: "2026-11-02", valueCents: 4000, categoryId: "cat_delivery" },
+      { id: "d2", description: "iFood Jantar", month: "2026-11", date: "2026-11-04", valueCents: 4000, categoryId: "cat_delivery" },
+      { id: "d3", description: "iFood Almoço", month: "2026-11", date: "2026-11-06", valueCents: 4000, categoryId: "cat_delivery" },
+    ];
+
+    // Caso A: há 3 meses históricos (M-1..M-3) de outras despesas, mas o hábito só surgiu agora -> dilui por 4 meses em vez de x12
+    const otherHistory: ExpenseLike[] = [
+      { id: "h-ago", description: "Supermercado", month: "2026-08", date: "2026-08-10", valueCents: 50000, categoryId: "cat_merc" },
+      { id: "h-set", description: "Supermercado", month: "2026-09", date: "2026-09-10", valueCents: 50000, categoryId: "cat_merc" },
+      { id: "h-out", description: "Supermercado", month: "2026-10", date: "2026-10-10", valueCents: 50000, categoryId: "cat_merc" },
+    ];
+
+    const isolatedMonth = detectSpendingHabits(currentDelivery, {
+      todayISO: "2026-11-10",
+      historicalExpenses: otherHistory,
+      categoryBudgets: new Map([["cat_delivery", 60000]]),
+    });
+    expect(isolatedMonth).toHaveLength(1);
+    expect(isolatedMonth[0]?.isRecurringAcrossMonths).toBe(false);
+    expect(isolatedMonth[0]?.historicalMonthlyMedianCents).toBeUndefined();
+    expect(isolatedMonth[0]?.categoryBudgetCents).toBe(60000);
+    // 12.000 / 4 * 12 = 36.000 (não 144.000!)
+    expect(isolatedMonth[0]?.annualProjectedCents).toBe(36000);
+
+    // Caso B: hábito já recorrente nos meses anteriores -> usa mediana intermensal
+    const recurringHistory: ExpenseLike[] = [
+      ...otherHistory,
+      { id: "r-ago", description: "iFood Pedido", month: "2026-08", date: "2026-08-12", valueCents: 20000, categoryId: "cat_delivery" },
+      { id: "r-set", description: "iFood Pedido", month: "2026-09", date: "2026-09-12", valueCents: 24000, categoryId: "cat_delivery" },
+      { id: "r-out", description: "iFood Pedido", month: "2026-10", date: "2026-10-12", valueCents: 22000, categoryId: "cat_delivery" },
+    ];
+    const recurringHabits = detectSpendingHabits(currentDelivery, {
+      todayISO: "2026-11-10",
+      historicalExpenses: recurringHistory,
+    });
+    expect(recurringHabits[0]?.isRecurringAcrossMonths).toBe(true);
+    expect(recurringHabits[0]?.historicalMonthlyMedianCents).toBe(22000);
+    expect(recurringHabits[0]?.annualProjectedCents).toBe(21000 * 12);
+  });
 });

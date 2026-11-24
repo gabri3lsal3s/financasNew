@@ -56,7 +56,44 @@ export function calculateMatchScore(
   const similarity = jaccardTokens(tokensStmt, tokensExist);
   const scoreText = Math.round(similarity * 15);
 
-  return Math.min(100, scoreValue + scoreDate + scoreText);
+  // 4. Bônus Semântico de Encargo (Fase 1): se ambos forem do mesmo tipo de encargo (juros, multa, IOF, tarifa),
+  // adiciona bônus de 15 pontos para blindar correspondência exata contra descrições bancárias variantes.
+  let bonusCharge = 0;
+  if (
+    statement.inferredChargeKind &&
+    statement.inferredChargeKind !== "regular" &&
+    existing.chargeKind &&
+    existing.chargeKind !== "regular" &&
+    statement.inferredChargeKind === existing.chargeKind
+  ) {
+    bonusCharge = 15;
+  }
+
+  // 5. Bônus/Penalidade de Coincidência de Parcelamento:
+  // Em faturas de meses seguintes, bancos costumam repetir a data original da compra (ex.: 10/08 na fatura 2026-11),
+  // enquanto a parcela no app pode estar datada no mês da competência. Coincidir `current/total` blinda o exact_match.
+  let bonusInstallment = 0;
+  if (
+    statement.installment &&
+    statement.installment.total > 1 &&
+    existing.installmentNumber !== null &&
+    existing.installmentsTotal !== null &&
+    existing.installmentsTotal > 1
+  ) {
+    if (
+      statement.installment.current === existing.installmentNumber &&
+      statement.installment.total === existing.installmentsTotal
+    ) {
+      bonusInstallment = 25;
+    } else {
+      bonusInstallment = -20;
+    }
+  }
+
+  return Math.max(
+    0,
+    Math.min(100, scoreValue + scoreDate + scoreText + bonusCharge + bonusInstallment),
+  );
 }
 
 /**

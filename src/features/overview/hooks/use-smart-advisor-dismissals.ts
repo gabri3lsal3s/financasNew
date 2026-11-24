@@ -6,6 +6,12 @@ import {
   type SmartAdvisorInsight,
 } from "@/domain/insights/advisor";
 import {
+  advanceSmartDecay,
+  muteInsightFamily,
+  resolveInsightThemeFamily,
+} from "@/domain/insights/attention-budget";
+import type { InsightThemeFamily, SmartDecayRecord } from "@/domain/insights/learning-graph";
+import {
   computeDismissCooldownExpiry,
   mergeAndFilterValidDismissals,
 } from "@/domain/insights/smart-advisor-rules";
@@ -157,12 +163,20 @@ export function useSmartAdvisorCooldownController(params: {
   initialLastDismissedDay?: string;
   cloudDismissals?: Record<string, number>;
   cloudLastDismissedDay?: string | null;
+  cloudDecayMeta?: Partial<Record<InsightThemeFamily, SmartDecayRecord>>;
   nowMs: number;
   todayISOStr: string;
-  onPersistCloudDismissal: (payload: { advisorDismissals: Record<string, number>; advisorLastDismissedDay?: string }) => void;
+  onPersistCloudDismissal: (payload: {
+    advisorDismissals?: Record<string, number>;
+    advisorLastDismissedDay?: string;
+    advisorDecayMeta?: Partial<Record<InsightThemeFamily, SmartDecayRecord>>;
+  }) => void;
 }) {
   const [localDismissals, setLocalDismissals] = useState(params.initialDismissals);
   const [localLastDismissedDay, setLocalLastDismissedDay] = useState(params.initialLastDismissedDay);
+  const [localDecayMeta, setLocalDecayMeta] = useState<
+    Partial<Record<InsightThemeFamily, SmartDecayRecord>> | undefined
+  >(undefined);
   const storeDismissals = useSyncExternalStore(subscribe, getDismissalsSnapshot, () => ({}));
   const storeLastDismissedDay = useSyncExternalStore(subscribe, getLastDismissedDaySnapshot, () => null);
 
@@ -179,6 +193,10 @@ export function useSmartAdvisorCooldownController(params: {
   );
   const effectiveLastDismissedDay =
     localLastDismissedDay ?? params.cloudLastDismissedDay ?? storeLastDismissedDay;
+  const effectiveDecayMeta = useMemo(
+    () => localDecayMeta ?? params.cloudDecayMeta ?? {},
+    [localDecayMeta, params.cloudDecayMeta],
+  );
 
   const dismissInsight = useCallback(
     (
@@ -192,6 +210,14 @@ export function useSmartAdvisorCooldownController(params: {
         eligibleInsights.length <= 1 ||
         (keyToDismiss != null && eligibleInsights.length === 1 && eligibleInsights[0]?.themeKey === keyToDismiss);
       const effectiveDay = isLastRemaining ? params.todayISOStr : null;
+      const nextDecay = keyToDismiss
+        ? (() => {
+            const family = resolveInsightThemeFamily(keyToDismiss);
+            const evaluated = advanceSmartDecay(effectiveDecayMeta[family], params.nowMs);
+            return { ...effectiveDecayMeta, [family]: evaluated.record };
+          })()
+        : effectiveDecayMeta;
+      setLocalDecayMeta(nextDecay);
 
       if (localDismissals !== undefined || localLastDismissedDay !== undefined) {
         if (effectiveDay) setLocalLastDismissedDay(effectiveDay);
@@ -213,13 +239,29 @@ export function useSmartAdvisorCooldownController(params: {
         params.onPersistCloudDismissal({
           advisorDismissals: mergedCloud,
           advisorLastDismissedDay: effectiveDay ?? undefined,
+          advisorDecayMeta: nextDecay,
         });
       }
     },
-    [localDismissals, localLastDismissedDay, params],
+    [localDismissals, localLastDismissedDay, effectiveDecayMeta, params],
   );
 
-  return { effectiveDismissals, effectiveLastDismissedDay, dismissInsight };
+  const muteFamily = useCallback(
+    (themeKey: string) => {
+      const family = resolveInsightThemeFamily(themeKey);
+      const nextDecay = {
+        ...effectiveDecayMeta,
+        [family]: muteInsightFamily(effectiveDecayMeta[family], params.nowMs),
+      };
+      setLocalDecayMeta(nextDecay);
+      params.onPersistCloudDismissal({
+        advisorDecayMeta: nextDecay,
+      });
+    },
+    [effectiveDecayMeta, params],
+  );
+
+  return { effectiveDismissals, effectiveLastDismissedDay, effectiveDecayMeta, dismissInsight, muteFamily };
 }
 
 /**

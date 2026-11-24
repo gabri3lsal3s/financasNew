@@ -1,5 +1,6 @@
-import { Tags, Users } from "lucide-react";
+import { Briefcase, Tags, Users } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CategoryIcon } from "@/components/modules/category-icon";
@@ -15,6 +16,9 @@ export interface StepCategoryProps {
   selectedId: string;
   onSelect: (categoryId: string) => void;
   isFamilyModeEnabled?: boolean;
+  isBusinessModeEnabled?: boolean;
+  showAllCategories?: boolean;
+  onToggleShowAllCategories?: () => void;
 }
 
 /** Passo 2 — seleção visual de categoria (grid de botões com ícones). */
@@ -26,6 +30,9 @@ export function StepCategory({
   selectedId,
   onSelect,
   isFamilyModeEnabled = false,
+  isBusinessModeEnabled = false,
+  showAllCategories = false,
+  onToggleShowAllCategories,
 }: StepCategoryProps) {
   if (isError) {
     return <Alert variant="error">{getErrorMessage(error)}</Alert>;
@@ -52,35 +59,62 @@ export function StepCategory({
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-2.5">
-      {categories.map((category) => (
-        <button
-          key={category.id}
-          type="button"
-          onClick={() => onSelect(category.id)}
-          aria-pressed={selectedId === category.id}
-          className={cn(
-            "relative flex flex-col items-center gap-2 rounded-xl border p-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring select-none cursor-pointer",
-            selectedId === category.id
-              ? "border-primary bg-primary/10"
-              : "border-border bg-surface hover:bg-surface-hover",
-          )}
-        >
-          {isFamilyModeEnabled && category.is_family ? (
-            <span
-              className="absolute top-2 right-2 flex items-center justify-center text-muted-foreground"
-              title="Categoria Familiar Compartilhada"
-              aria-label="Categoria Familiar Compartilhada"
-            >
-              <Users className="size-3.5" aria-hidden="true" />
-            </span>
-          ) : null}
-          <span className="flex size-10 items-center justify-center">
-            <CategoryIcon icon={category.icon} color={category.color} className="size-5" />
+    <div className="flex flex-col gap-3">
+      {isBusinessModeEnabled && onToggleShowAllCategories ? (
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs text-muted-foreground">
+            {showAllCategories ? "Exibindo todas as categorias" : "Categorias da esfera selecionada"}
           </span>
-          <span className="text-center text-xs font-medium text-foreground truncate max-w-full">{category.name}</span>
-        </button>
-      ))}
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            sensoryIntent="selection"
+            onClick={onToggleShowAllCategories}
+            aria-pressed={showAllCategories}
+          >
+            {showAllCategories ? "Filtrar esfera" : "Mostrar todas"}
+          </Button>
+        </div>
+      ) : null}
+      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-2.5">
+        {categories.map((category) => (
+          <button
+            key={category.id}
+            type="button"
+            onClick={() => onSelect(category.id)}
+            aria-pressed={selectedId === category.id}
+            className={cn(
+              "relative flex flex-col items-center gap-2 rounded-xl border p-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring select-none cursor-pointer",
+              selectedId === category.id
+                ? "border-primary bg-primary/10"
+                : "border-border bg-surface hover:bg-surface-hover",
+            )}
+          >
+            {isBusinessModeEnabled && category.scope === "business" ? (
+              <span
+                className="absolute top-2 right-2 flex items-center justify-center text-portfolio"
+                title="Categoria do Meu Negócio (PJ)"
+                aria-label="Categoria do Meu Negócio (PJ)"
+              >
+                <Briefcase className="size-3.5" aria-hidden="true" />
+              </span>
+            ) : isFamilyModeEnabled && category.is_family ? (
+              <span
+                className="absolute top-2 right-2 flex items-center justify-center text-muted-foreground"
+                title="Categoria Familiar Compartilhada"
+                aria-label="Categoria Familiar Compartilhada"
+              >
+                <Users className="size-3.5" aria-hidden="true" />
+              </span>
+            ) : null}
+            <span className="flex size-10 items-center justify-center">
+              <CategoryIcon icon={category.icon} color={category.color} className="size-5" />
+            </span>
+            <span className="text-center text-xs font-medium text-foreground truncate max-w-full">{category.name}</span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

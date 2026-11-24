@@ -30,6 +30,8 @@ export interface StatementTransaction {
   statementHash: string;
   /** Identificador único do banco (FITID no OFX, se disponível). */
   fitid?: string;
+  /** Tipo de encargo inferido do extrato (juros, multa, IOF, tarifa bancária). */
+  inferredChargeKind?: import("@/types").ChargeKind | null;
 }
 
 /**
@@ -98,6 +100,7 @@ export interface ExistingExpenseForReconciliation {
   installmentNumber: number | null;
   installmentsTotal: number | null;
   statementHash?: string | null;
+  chargeKind?: import("@/types").ChargeKind | null;
 }
 
 /**

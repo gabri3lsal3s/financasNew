@@ -1,10 +1,11 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router";
-import { ArrowRight, ChevronRight, Sparkles, TrendingUp } from "lucide-react";
+import { ArrowRight, ChevronRight, ShieldCheck, Sparkles, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MoneyInput } from "@/components/ui/money-input";
 import { MoneyText } from "@/components/ui/money-text";
+import type { SurplusAllocationIntent } from "@/domain/overview";
 import { cn } from "@/lib/utils";
 import { triggerSensory } from "@/services/sensory";
 
@@ -14,6 +15,10 @@ export interface QuickAporteCardProps {
   currentMonthAporteCents?: number;
   /** Sugestão de aporte ou sobra de caixa estimada em centavos (opcional). */
   suggestedAporteCents?: number;
+  /** Direcionamento sugerido pela trava de reserva de emergência (Fase 3). */
+  allocationIntent?: SurplusAllocationIntent;
+  /** Parcela da sobra direcionada prioritariamente à reserva de emergência (centavos). */
+  suggestedEmergencyAllocationCents?: number;
   /** Callback customizado ao simular o aporte direcionado (para testes ou modo controlado). */
   onSimulate?: (valorCents: number) => void;
   /** Callback customizado ao navegar para a carteira completa. */
@@ -21,17 +26,28 @@ export interface QuickAporteCardProps {
 }
 
 /**
- * Bloco de Aporte Rápido e Investimentos da Home (Fase 5 — Tarefa 5.4).
+ * Bloco de Aporte Rápido e Investimentos da Home (Fase 5 — Tarefa 5.4 / Fase 3).
  */
 export function QuickAporteCard({
   className,
   currentMonthAporteCents = 0,
   suggestedAporteCents = 0,
+  allocationIntent = "portfolio_aporte",
+  suggestedEmergencyAllocationCents,
   onSimulate,
   onViewPortfolio,
 }: QuickAporteCardProps) {
   const navigate = useNavigate();
   const [aporteCents, setAporteCents] = useState<number>(0);
+
+  const portfolioSuggestedCents =
+    allocationIntent === "emergency_fund"
+      ? Math.max(0, suggestedAporteCents - (suggestedEmergencyAllocationCents ?? suggestedAporteCents))
+      : suggestedAporteCents;
+  const shouldPrioritizeEmergency =
+    allocationIntent === "emergency_fund" &&
+    suggestedAporteCents > 0 &&
+    portfolioSuggestedCents === 0;
 
   const handleSubmit = (e?: FormEvent) => {
     e?.preventDefault();
@@ -49,8 +65,8 @@ export function QuickAporteCard({
   };
 
   const handleUseSuggested = () => {
-    if (suggestedAporteCents > 0) {
-      setAporteCents(suggestedAporteCents);
+    if (portfolioSuggestedCents > 0) {
+      setAporteCents(portfolioSuggestedCents);
       triggerSensory("action");
     }
   };
@@ -106,7 +122,7 @@ export function QuickAporteCard({
             />
           </div>
 
-          {suggestedAporteCents > 0 ? (
+          {portfolioSuggestedCents > 0 ? (
             <button
               type="button"
               onClick={handleUseSuggested}
@@ -117,11 +133,23 @@ export function QuickAporteCard({
               <Sparkles className="size-3.5 shrink-0" aria-hidden="true" />
               <span className="hidden sm:inline">Sugerido:</span>
               <MoneyText
-                cents={suggestedAporteCents}
+                cents={portfolioSuggestedCents}
                 tone="portfolio"
                 className="font-bold tabular-nums"
               />
             </button>
+          ) : shouldPrioritizeEmergency ? (
+            <Button
+              type="button"
+              variant="positive"
+              size="xs"
+              onClick={() => navigate("/insights?aba=projection")}
+              aria-label="Priorizar reserva de emergência"
+              className="gap-1.5 shrink-0"
+            >
+              <ShieldCheck className="size-3.5 shrink-0" aria-hidden="true" />
+              <span>Priorizar reserva</span>
+            </Button>
           ) : null}
         </div>
 

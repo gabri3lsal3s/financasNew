@@ -7,6 +7,7 @@
 
 import { formatDateBR } from "@/lib/date";
 import type { CashCheckpointData } from "@/domain/cash";
+import type { CashGapAnalysisResult } from "@/domain/projection";
 import { enrichBreakdown } from "../formatters";
 import type { BreakdownStep, CalculationBreakdown } from "../types";
 
@@ -232,6 +233,105 @@ export function buildSafeToSpendBreakdown(params: SafeToSpendBreakdownParams): C
             `Visão Prudencial: valores a receber são omitidos do total disponível imediato para prevenir risco de inadimplência.`,
           ]
         : undefined,
+  };
+
+  return enrichBreakdown(breakdown);
+}
+
+export interface CashGapBreakdownParams {
+  result: CashGapAnalysisResult;
+  currentBalanceCents: number;
+  predictedInflowsTotalCents?: number;
+}
+
+/**
+ * Constrói a memória de cálculo do Radar Preditivo de Descasamento de Fluxo (Lente Caixa estrita).
+ */
+export function buildCashGapBreakdown(params: CashGapBreakdownParams): CalculationBreakdown {
+  const { result, currentBalanceCents, predictedInflowsTotalCents = 0 } = params;
+
+  const steps: BreakdownStep[] = [
+    {
+      label: "Saldo Atual em Contas",
+      operator: "+",
+      rawValue: currentBalanceCents,
+      hint: "Liquidez disponível hoje no regime de caixa bancário",
+      tone: currentBalanceCents >= 0 ? "positive" : "negative",
+      actionLink: {
+        to: "/transacoes",
+        label: "Ver extrato",
+      },
+    },
+  ];
+
+  const topObligations = result.causingObligations.slice(0, 4);
+  for (const obligation of topObligations) {
+    steps.push({
+      label: obligation.name,
+      operator: "-",
+      rawValue: obligation.amountCents,
+      hint: `Vencimento em ${formatDateBR(obligation.dueDate)} (valor bruto nominal)`,
+      tone: "negative",
+    });
+  }
+
+  if (result.causingObligations.length > 4) {
+    const remainingCents = result.causingObligations
+      .slice(4)
+      .reduce((acc, item) => acc + item.amountCents, 0);
+    if (remainingCents > 0) {
+      steps.push({
+        label: `Demais obrigações (${result.causingObligations.length - 4})`,
+        operator: "-",
+        rawValue: remainingCents,
+        hint: "Outras faturas ou compromissos previstos no horizonte",
+        tone: "negative",
+      });
+    }
+  }
+
+  if (predictedInflowsTotalCents > 0) {
+    steps.push({
+      label: "Entradas Previstas no Horizonte",
+      operator: "+",
+      rawValue: predictedInflowsTotalCents,
+      hint: "Rendas recorrentes e recebíveis esperados na janela projetada",
+      tone: "positive",
+    });
+  }
+
+  const breakdown: CalculationBreakdown = {
+    id: "dash-cash-gap",
+    title: "Memória do Descasamento de Caixa",
+    description:
+      "Simula dia a dia o cruzamento entre saldo bancário atual, vencimentos nominais de faturas/contas e entradas previstas.",
+    periodLabel: result.gapDate
+      ? `Descasamento em ${formatDateBR(result.gapDate)}`
+      : "Horizonte Atual",
+    formulaExpression:
+      "Fluxo Diário = Saldo Inicial + Entradas Previstas - Faturas e Contas por Data de Vencimento",
+    unit: "currency",
+    steps,
+    result: {
+      label: "Maior Déficit Projetado",
+      rawValue: -Math.abs(result.maxDeficitCents),
+      unit: "currency",
+      tone: "negative",
+      hint: result.nextInflowDate
+        ? `Próxima entrada esperada após o aperto em ${formatDateBR(result.nextInflowDate)}.`
+        : "Considere antecipar recebimentos, ajustar datas ou reforçar a conta antes do vencimento.",
+    },
+    inclusions: [
+      "Saldo em conta corrente reconciliado hoje",
+      "Faturas de cartão em aberto pelo valor bruto nominal integral",
+      "Contas a pagar e recebimentos recorrentes previstos no período",
+    ],
+    exclusions: [
+      "Compras futuras sem fatura lançada ou parcelas de meses seguintes",
+    ],
+    notes: [
+      "Lente Caixa estrita: avalia exatamente o dinheiro em conta na data de vencimento, distinta da Lente Consumo (competência).",
+    ],
   };
 
   return enrichBreakdown(breakdown);

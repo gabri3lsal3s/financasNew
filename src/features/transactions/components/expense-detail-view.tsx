@@ -8,14 +8,15 @@ import {
   sumSettledFromFriendsCents,
 } from "@/domain/finance";
 import { formatDateBR, monthLabel } from "@/lib/date";
-import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
-import type { Category, Debt, Expense, PublicShare, SplitSharePayload } from "@/types";
+import { INTERNAL_TRANSFER_KIND_LABELS, PAYMENT_METHOD_LABELS, TRANSACTION_SCOPE_LABELS } from "@/lib/labels";
+import type { Category, Debt, Expense, InternalTransferKind, PublicShare, SplitSharePayload } from "@/types";
 import { ExpensePriceEvolution, type PriceEvolutionData } from "./expense-price-evolution";
 
 export interface ExpenseDetailViewProps {
   expense: Expense;
   currentCategory?: Category;
   isFamilyActive: boolean;
+  isBusinessActive?: boolean;
   isInstallment: boolean;
   isRecurring: boolean;
   priceEvolution: PriceEvolutionData | null;
@@ -30,6 +31,7 @@ export function ExpenseDetailView({
   expense,
   currentCategory,
   isFamilyActive,
+  isBusinessActive = false,
   isInstallment,
   isRecurring,
   priceEvolution,
@@ -146,6 +148,40 @@ export function ExpenseDetailView({
             {PAYMENT_METHOD_LABELS[expense.payment_method] ?? expense.payment_method}
           </dd>
         </div>
+
+        {isBusinessActive || expense.is_internal_transfer ? (
+          <div className="flex items-center justify-between gap-2">
+            <dt className="text-xs text-muted-foreground">Esfera</dt>
+            <dd className="flex items-center gap-1.5 font-medium text-foreground text-xs">
+              <Badge variant={expense.scope === "business" ? "portfolio" : "muted"} size="xs">
+                {TRANSACTION_SCOPE_LABELS[expense.scope ?? "personal"]}
+              </Badge>
+              {expense.scope === "business" && expense.is_tax_deductible ? (
+                <Badge variant="positive" size="xs">
+                  Dedutível IR
+                </Badge>
+              ) : null}
+            </dd>
+          </div>
+        ) : null}
+
+        {expense.is_internal_transfer ? (
+          <div className="flex flex-col gap-1 border-t border-border/80 pt-2">
+            <div className="flex items-center justify-between gap-2">
+              <dt className="text-xs text-muted-foreground">Movimentação</dt>
+              <dd className="font-medium text-foreground text-xs">
+                <Badge variant="muted" size="xs">
+                  {expense.transfer_kind && expense.transfer_kind in INTERNAL_TRANSFER_KIND_LABELS
+                    ? INTERNAL_TRANSFER_KIND_LABELS[expense.transfer_kind as InternalTransferKind]
+                    : "Transferência Interna"}
+                </Badge>
+              </dd>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Transferência interna pareada PF/PJ — somente leitura (exclua o par para corrigir).
+            </p>
+          </div>
+        ) : null}
       </dl>
 
       {linkedSplitShare && splitPayload ? (

@@ -27,10 +27,12 @@ export {
   useUpdateCard,
   useDeleteCard,
   useCreateCardPayment,
+  usePayCardBillWithCharges,
   useBatchCreateCardPayments,
   useCreateRefund,
   useDeleteCardPayment,
   useRefinanceCreditCardBill,
+  type CardBillChargeItem,
 } from "./mutations/use-card-mutations";
 export { useImportStatementExpenses } from "./mutations/use-statement-mutations";
 export { useLoans } from "./queries/use-loans";
@@ -63,7 +65,7 @@ export {
   useDeleteCategory,
   useSeedDefaultCategories,
 } from "./mutations/use-category-mutations";
-export { useFeedback, useSetFeedback } from "./queries/use-insight-feedback";
+export { useFeedback, useFeedbackEntries, useSetFeedback } from "./queries/use-insight-feedback";
 export {
   useReminderStates,
   useSetReminderState,
@@ -72,6 +74,15 @@ export {
 export { useUserPreferences } from "./queries/use-user-preferences";
 export { useFamilyMode } from "./queries/use-family-mode";
 export { useTripMode } from "./queries/use-trip-mode";
+export { useBusinessMode } from "./queries/use-business-mode";
+export { useViewScope } from "./hooks/use-view-scope";
+export {
+  useCreateInternalTransferPair,
+  useDeleteInternalTransferPair,
+  type CreateInternalTransferPairParams,
+  type CreateInternalTransferPairResult,
+  type DeleteInternalTransferPairResult,
+} from "./mutations/use-internal-transfer-mutations";
 export {
   useUpdateReminderPreferences,
   useUpdateCustomSettings,

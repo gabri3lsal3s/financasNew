@@ -351,6 +351,23 @@ describe("Validação Zod dos Passos do Wizard (D10 / Fase 17)", () => {
     const parsed = step1ValueSchema.safeParse(overflowState);
     expect(parsed.success).toBe(false);
   });
+
+  it("preserva e valida esfera de negócio e dedutibilidade fiscal no estado do wizard", () => {
+    const biz = defaultLaunchState("expense", { scope: "business", isTaxDeductible: true });
+    expect(biz.scope).toBe("business");
+    expect(biz.isTaxDeductible).toBe(true);
+    const parsed = launchStateSchema.safeParse({
+      ...biz,
+      valueCents: 20000,
+      categoryId: "cat-pj",
+      date: "2026-08-15",
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.scope).toBe("business");
+      expect(parsed.data.isTaxDeductible).toBe(true);
+    }
+  });
 });
 
 

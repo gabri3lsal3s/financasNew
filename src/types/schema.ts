@@ -37,6 +37,38 @@ export type CategoryType = (typeof CATEGORY_TYPES)[number];
 export const DEBT_TYPES = ["payable", "receivable"] as const;
 export type DebtType = (typeof DEBT_TYPES)[number];
 
+export const TRANSACTION_SCOPES = ["personal", "business"] as const;
+export type TransactionScope = (typeof TRANSACTION_SCOPES)[number];
+
+export const CATEGORY_SCOPES = ["personal", "business", "both"] as const;
+export type CategoryScope = (typeof CATEGORY_SCOPES)[number];
+
+export const CREDIT_CARD_SCOPES = ["personal", "business", "mixed"] as const;
+export type CreditCardScope = (typeof CREDIT_CARD_SCOPES)[number];
+
+export const VIEW_SCOPES = ["all", "personal", "business"] as const;
+export type ViewScope = (typeof VIEW_SCOPES)[number];
+
+export const INTERNAL_TRANSFER_KINDS = [
+  "pro_labore",
+  "capital_injection",
+  "card_reimbursement",
+] as const;
+export type InternalTransferKind = (typeof INTERNAL_TRANSFER_KINDS)[number];
+
+export const BUSINESS_PROFILE_KINDS = ["mei", "liberal", "micro_business"] as const;
+export type BusinessProfileKind = (typeof BUSINESS_PROFILE_KINDS)[number];
+
+export type BusinessProfileSettings = {
+  profileKind: BusinessProfileKind;
+  businessName?: string | null;
+  annualCeilingCents?: number;
+  monthlyDasCents?: number;
+  taxProvisionRatePct?: number;
+  targetProLaboreCents?: number;
+  onboardingCompleted?: boolean;
+};
+
 export const PORTFOLIO_TX_TYPES = [
   "buy",
   "sell",
@@ -373,12 +405,17 @@ export type UserCustomSettings = {
   cardOrder?: string[];
   advisorDismissals?: Record<string, number>;
   advisorLastDismissedDay?: string | null;
+  advisorDecayMeta?: Record<string, SmartDecayMetaRecord>;
+  monthlyClosingDismissedMonth?: string;
   dashboardAlertDismissals?: DashboardAlertDismissals;
   emergencyFundConfig?: EmergencyFundConfig;
   splitPreferences?: SplitPreferences;
   familyModeEnabled?: boolean;
   tripModeEnabled?: boolean;
+  businessModeEnabled?: boolean;
+  businessProfile?: BusinessProfileSettings;
   preferredTripCategoryId?: string;
+  preferredChargeCategoryId?: string | null;
   initialGoal?: OnboardingGoalId;
   showCalculationMemory?: boolean;
   themePreference?: ThemePreference;
@@ -462,6 +499,13 @@ export type ZeroGuiltDismissalCheckpoint = {
 export type TimedAlertDismissalCheckpoint = {
   dismissedAt: string;
   dismissedUntil: number;
+};
+
+export type SmartDecayMetaRecord = {
+  dismissCount: number;
+  lastDismissedAt: string;
+  dismissedUntil: number;
+  muted?: boolean;
 };
 
 export type DashboardAlertDismissals = {
@@ -565,6 +609,8 @@ export type Category = {
   is_family?: boolean;
   /** Identificador da família vinculada se for categoria compartilhada. */
   family_id?: string | null;
+  /** Escopo de visibilidade no Modo Negócio ('personal' | 'business' | 'both'). */
+  scope?: CategoryScope;
 };
 
 export type Income = {
@@ -594,6 +640,14 @@ export type Income = {
   is_family?: boolean;
   /** Identificador da família vinculada se for receita familiar. */
   family_id?: string | null;
+  /** Escopo PF vs PJ (Fase 2A). */
+  scope?: TransactionScope;
+  /** Marca se esta entrada faz parte de uma transferência pareada PF/PJ. */
+  is_internal_transfer?: boolean;
+  /** UUID compartilhado entre as duas pernas da transferência pareada. */
+  transfer_pair_id?: string | null;
+  /** Natureza da transferência interna ('pro_labore' | 'capital_injection' | 'card_reimbursement'). */
+  transfer_kind?: InternalTransferKind | null;
   created_at: string;
 };
 
@@ -630,6 +684,16 @@ export type Expense = {
   family_id?: string | null;
   /** Identificador do grupo de viagem vinculado se pertencer a uma viagem. */
   trip_id?: string | null;
+  /** Escopo PF vs PJ (Fase 2A). */
+  scope?: TransactionScope;
+  /** Marca se esta saída faz parte de uma transferência pareada PF/PJ. */
+  is_internal_transfer?: boolean;
+  /** UUID compartilhado entre as duas pernas da transferência pareada. */
+  transfer_pair_id?: string | null;
+  /** Natureza da transferência interna ('pro_labore' | 'capital_injection' | 'card_reimbursement'). */
+  transfer_kind?: InternalTransferKind | null;
+  /** Indica se a despesa operacional PJ é dedutível para fins de Livro-Caixa / IR. */
+  is_tax_deductible?: boolean;
   created_at: string;
 };
 
@@ -652,6 +716,8 @@ export type Recurrence = {
   report_weight: number;
   charge_kind?: ChargeKind;
   is_family?: boolean;
+  scope?: TransactionScope;
+  is_tax_deductible?: boolean;
   is_active: boolean;
   created_at: string;
 };
@@ -673,6 +739,7 @@ export type CreditCard = {
   color: string | null;
   is_active: boolean;
   last_four_digits?: string | null;
+  scope?: CreditCardScope;
 };
 
 export type CardCompetenceOverride = {
@@ -709,6 +776,7 @@ export type Debt = {
   expense_id: string | null;
   installment_group_id: string | null;
   charge_kind?: ChargeKind;
+  scope?: TransactionScope;
   created_at: string;
 };
 
@@ -1185,6 +1253,7 @@ export type CashCheckpoint = {
   /** Saldo bancário em centavos (inteiro). */
   balance_cents: number;
   notes: string | null;
+  scope?: TransactionScope;
   created_at: string;
 };
 
@@ -1227,6 +1296,7 @@ export type CreditCardForm = {
   color: string | null;
   is_active: boolean;
   last_four_digits?: string | null;
+  scope?: CreditCardScope;
 };
 
 export type RecurrenceGroupFields = {

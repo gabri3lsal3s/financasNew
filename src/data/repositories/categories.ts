@@ -4,7 +4,7 @@ import { resolveQuery } from "@/data/query";
 import { deleteCategoryMigrate } from "@/data/rpc";
 import { CANONICAL_DEFAULT_CATEGORIES } from "@/domain/budgets";
 import { AppError, classifyError } from "@/services/errors";
-import type { Category, CategoryType, DbUpdate } from "@/types";
+import type { Category, CategoryScope, CategoryType, DbUpdate } from "@/types";
 
 /**
  * Categorias — integração remota.
@@ -16,6 +16,7 @@ function mapCategory(row: Category): Category {
   return {
     ...row,
     is_family: Boolean(row.is_family),
+    scope: row.scope ?? "personal",
   };
 }
 
@@ -54,6 +55,7 @@ export async function createCategory(input: {
   color?: string | null;
   is_family?: boolean;
   family_id?: string | null;
+  scope?: CategoryScope;
 }): Promise<Category> {
   const user_id = await currentUserId();
   const { data, error } = await resolveQuery<Category>(
@@ -65,6 +67,7 @@ export async function createCategory(input: {
         color: input.color ?? null,
         is_family: Boolean(input.is_family),
         family_id: input.family_id ?? null,
+        scope: input.scope ?? "personal",
         user_id,
         is_active: true,
         is_reserved: false,

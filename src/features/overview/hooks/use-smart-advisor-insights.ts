@@ -11,7 +11,10 @@ import {
   computeEffectiveAdvisorSurplusCents,
   evaluateSmartAdvisorInsights,
 } from "@/domain/insights/smart-advisor-rules";
+import type { InsightThemeFamily, SmartDecayRecord } from "@/domain/insights/attention-budget";
+import type { UserFinancialContext } from "@/domain/insights/financial-context";
 import { currentMonth, todayLocalIso } from "@/lib/date";
+import * as stateSelectors from "@/state/selectors";
 import type { Budget, Category } from "@/types";
 import {
   type SmartAdvisorActionSensoryOptions,
@@ -79,6 +82,9 @@ export interface UseSmartAdvisorInsightsResult {
     displayName?: string,
     options?: SmartAdvisorActionSensoryOptions,
   ) => Promise<void>;
+  markTxOneOff: (occurrenceKey: string, displayName?: string) => Promise<void>;
+  muteFamily: (themeKey: string) => void;
+  decayByFamily: Readonly<Partial<Record<InsightThemeFamily, SmartDecayRecord>>>;
   confirmExpense: (payload: {
     name: string;
     valueCents: number;
@@ -116,11 +122,32 @@ export function useSmartAdvisorInsights(
     committedObligationsCents: options.committedObligationsCents,
   });
 
+  let useUserFinancialContextSafe: (
+    opts: Parameters<typeof stateSelectors.useUserFinancialContext>[0],
+  ) => ReturnType<typeof stateSelectors.useUserFinancialContext> | undefined = () => undefined;
+  try {
+    const candidate = (stateSelectors as Record<string, unknown>).useUserFinancialContext;
+    if (typeof candidate === "function") {
+      useUserFinancialContextSafe = candidate as typeof stateSelectors.useUserFinancialContext;
+    }
+  } catch {
+    // Suporta mocks parciais do Vitest
+  }
+  const userFinancialContextResult = useUserFinancialContextSafe({
+    month: refMonth,
+    todayISO: todayISOStr,
+    enabled: queryEnabled,
+  });
+  const financialContext: UserFinancialContext | undefined = queryEnabled
+    ? userFinancialContextResult?.context
+    : undefined;
+
   const cooldown = useSmartAdvisorCooldownController({
     initialDismissals: options.initialDismissals,
     initialLastDismissedDay: options.initialLastDismissedDay,
     cloudDismissals: queries.cloudDismissals,
     cloudLastDismissedDay: queries.cloudLastDismissedDay,
+    cloudDecayMeta: queries.cloudDecayMeta,
     nowMs,
     todayISOStr,
     onPersistCloudDismissal: (payload) => queries.updateCustomSettingsMutation.mutate(payload),
@@ -174,6 +201,8 @@ export function useSmartAdvisorInsights(
       nowMs,
       categories: queries.categories,
       suppressedThemeKeys: options.suppressedThemeKeys,
+      financialContext,
+      decayByFamily: cooldown.effectiveDecayMeta,
     });
   }, [
     queries,
@@ -186,6 +215,8 @@ export function useSmartAdvisorInsights(
     options.suppressedThemeKeys,
     cooldown.effectiveDismissals,
     cooldown.effectiveLastDismissedDay,
+    cooldown.effectiveDecayMeta,
+    financialContext,
     nowMs,
   ]);
 
@@ -233,6 +264,8 @@ export function useSmartAdvisorInsights(
     isError: queries.isError,
     error: queries.error,
     dismiss,
+    muteFamily: cooldown.muteFamily,
+    decayByFamily: cooldown.effectiveDecayMeta,
     ...actions,
     refetch: queries.refetch,
   };

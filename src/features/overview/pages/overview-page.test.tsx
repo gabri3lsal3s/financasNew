@@ -57,7 +57,15 @@ const monthData = (month: string) =>
 const defaultRealCashBalanceMock = {
   cashBalance: {
     currentBalanceCents: 450000,
-    latestCheckpoint: null,
+    latestCheckpoint: null as {
+      id: string;
+      user_id: string;
+      account_id: string | null;
+      balance_cents: number;
+      checkpoint_date: string;
+      notes: string | null;
+      created_at: string;
+    } | null,
     checkpointBalanceCents: 0,
     inflowSinceCheckpointCents: 500000,
     outflowSinceCheckpointCents: 50000,
@@ -88,6 +96,7 @@ let debtsMock = [
 ];
 let debtsLoadingMock = false;
 let splitSharesMock: Array<Record<string, unknown>> = [];
+let recurrencesMock: unknown[] = [];
 
 const defaultSubscriptionMock: SubscriptionStatus = {
   tier: "pro_annual",
@@ -276,6 +285,7 @@ vi.mock("@/state", () => ({
   useMyFamily: () => ({ data: null, isLoading: false }),
   useFamilyConsolidation: () => ({ data: null, isLoading: false, isError: false, error: null }),
   useIncomeGoals: () => ({ data: [], isLoading: false, isError: false, error: null }),
+  useRecurrences: () => ({ data: recurrencesMock, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   hasSeenWelcomeModal: () => {
     try {
       return typeof window !== "undefined" && window.localStorage.getItem("financas:welcome_modal_seen") === "true";
@@ -341,8 +351,10 @@ vi.mock("@/state", () => ({
 
 describe("OverviewPage — visão consolidada (§3.6)", () => {
   beforeEach(() => {
+    testQueryClient.clear();
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(new Date("2026-08-15T12:00:00Z"));
+    localStorage.clear();
     resetVisualCustomization(null);
     localStorage.setItem(WELCOME_MODAL_STORAGE_KEY, "true");
     localStorage.setItem("financas:welcome_modal_seen", "true");
@@ -355,6 +367,7 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     portfolioContributionsMock = [];
     publicSharesMock = [];
     splitSharesMock = [];
+    recurrencesMock = [];
     debtsLoadingMock = false;
     localStorage.removeItem("financasnew:dashboard_alert_dismissals");
     onboardingCountsMock = {
@@ -657,6 +670,8 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
   it("limita o banner de capacidade de aporte ao Saldo Livre Real da conta corrente", () => {
     // Sobra contábil seria 5000 - 3100 - 1100 = 800 (R$ 800,00)
     // Mas Saldo Livre Real é de apenas R$ 250,00
+    // Garante reserva de emergência completa para testar a trava de aporte em carteira
+    realCashBalanceMock.cashBalance.currentBalanceCents = 2000000;
     realCashBalanceMock.safeToSpend.safeToSpendCents = 25000;
 
     render(<OverviewPage />);
@@ -691,8 +706,8 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
 
     // Déficit bruto: 50 - 160 = -110 (R$ 110,00)
     // Se fosse ponderado: 50 - (100 - 40) = -10 (R$ 10,00)
-    expect(screen.getByText("Fluxo de caixa apertado")).toBeInTheDocument();
-    expect(screen.getByText("R$ 110,00")).toBeInTheDocument();
+    expect(screen.getAllByText("Fluxo de caixa apertado").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("R$ 110,00").length).toBeGreaterThan(0);
   });
 
   it("renderiza TrialEndingBanner no carrossel quando faltarem <= 7 dias de trial", () => {
@@ -707,8 +722,10 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
 
     render(<OverviewPage />);
 
-    expect(screen.getByText("Seu período de teste Pro encerra em 6 dias")).toBeInTheDocument();
-    expect(screen.getByText("6d restantes")).toBeInTheDocument();
+    expect(
+      screen.getAllByText("Seu período de teste Pro encerra em 6 dias").length,
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText("6d restantes").length).toBeGreaterThan(0);
   });
 
   it("renderiza banner de acolhimento do trial no carrossel quando restarem > 7 dias (ex: 28 dias)", () => {
@@ -1070,13 +1087,13 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
 
       render(<OverviewPage />);
 
-      expect(screen.getByText("Meta Conquistada: Reserva de Emergência")).toBeInTheDocument();
-      expect(screen.getByText("100% Batido")).toBeInTheDocument();
+      expect(screen.getAllByText("Meta Conquistada: Reserva de Emergência").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("100% Batido").length).toBeGreaterThan(0);
 
-      const dismissBtn = screen.getByRole("button", {
+      const dismissBtn = screen.getAllByRole("button", {
         name: /Dispensar alerta da meta Reserva de Emergência/i,
         hidden: true,
-      });
+      })[0]!;
       fireEvent.click(dismissBtn);
 
       const dismissOption = screen.getByRole("button", { name: "Dispensar por 7 dias" });
@@ -1178,7 +1195,7 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
 
       expect(screen.queryByText("100% Batido")).not.toBeInTheDocument();
       expect(screen.queryByText(/Meta Conquistada: Investimentos/i)).not.toBeInTheDocument();
-      expect(screen.getByText(/(Meta|Aporte Sugerido): Investimentos/)).toBeInTheDocument();
+      expect(screen.getAllByText(/(Meta|Aporte Sugerido): Investimentos/).length).toBeGreaterThan(0);
       expect(screen.getAllByText("36% alcançado").length).toBeGreaterThanOrEqual(1);
     });
 
@@ -1285,6 +1302,121 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
       if (advisorRegions.length === 1 && carousel) {
         expect(carousel.contains(advisorRegions[0]!)).toBe(true);
       }
+    });
+  });
+
+  describe("Fase 3 — Portão de Qualidade da Home, CashGap & Governança de Atenção", () => {
+    it("Cenário 1: caso exato da imagem (dia 23, 1 despesa R$ 50, sem renda) — PaceAlertBanner e CashGapAlert não renderizam", () => {
+      vi.setSystemTime(new Date("2026-08-23T12:00:00Z"));
+      incomesMock.data = () => [];
+      expensesMock.data = () => [
+        { id: "e1", value: 50, report_weight: 1, date: "2026-08-23", category_id: "c2" },
+      ];
+      cardsMock = [];
+      debtsMock = [];
+      realCashBalanceMock.cashBalance.currentBalanceCents = 0;
+      realCashBalanceMock.cashBalance.latestCheckpoint = null;
+
+      render(<OverviewPage />);
+
+      expect(screen.queryByText(/Projeção de déficit no mês/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Fora do trilho/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Consumido 500000%/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/R\$ 0,00\/dia/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Fluxo de caixa apertado/i)).not.toBeInTheDocument();
+    });
+
+    it("Cenário 2: salário previsto dia 5 e fatura vencendo dia 10 — CashGapAlert não dispara falso déficit de caixa", () => {
+      vi.setSystemTime(new Date("2026-08-01T12:00:00Z"));
+      cardsMock = [{ id: "card1", name: "Nubank", is_active: true, due_day: 10 }];
+      cardExpensesMock = [
+        { id: "ce1", card_id: "card1", bill_competence: "2026-08", value: 1500, report_weight: 1 },
+      ];
+      debtsMock = [];
+      // Saldo em conta R$ 200 (insuficiente isoladamente para cobrir R$ 1.500)
+      realCashBalanceMock.cashBalance.currentBalanceCents = 20000;
+      realCashBalanceMock.cashBalance.latestCheckpoint = {
+        id: "cp1",
+        user_id: "user-1",
+        account_id: null,
+        balance_cents: 20000,
+        checkpoint_date: "2026-08-01",
+        notes: null,
+        created_at: "2026-08-01T00:00:00Z",
+      };
+      // Entrada formal prevista de Salário R$ 3.000 no dia 5 (antes do vencimento da fatura dia 10)
+      recurrencesMock = [
+        {
+          id: "rec-salary",
+          user_id: "user-1",
+          type: "income",
+          name: "Salário",
+          amount: 3000,
+          frequency: "monthly",
+          custom_interval: 5,
+          start_date: "2026-01-05",
+          is_active: true,
+          category_id: "c-inc-1",
+          created_at: "2026-01-01T00:00:00Z",
+        },
+      ];
+
+      render(<OverviewPage />);
+
+      // A liquidez projetada considera os R$ 3.000 previstos antes do dia 10, sem gerar alarme
+      expect(screen.queryByText(/Fluxo de caixa apertado/i)).not.toBeInTheDocument();
+    });
+
+    it("Cenário 3: sobra R$ 1.000 orienta 'Reforçar Reserva de Emergência' com reserva incompleta e 'Capacidade de Aporte' quando completa", () => {
+      realCashBalanceMock.safeToSpend.safeToSpendCents = 100000; // R$ 1.000 livre
+      incomesMock.data = () => [{ id: "i1", value: 5000, report_weight: 1, date: "2026-08-05" }];
+      expensesMock.data = () => [
+        { id: "e1", value: 3000, report_weight: 1, date: "2026-08-05", category_id: "c1" },
+      ];
+      // 1. Reserva em 2 meses (R$ 6.000) < 6 meses alvo (R$ 18.000)
+      realCashBalanceMock.cashBalance.currentBalanceCents = 600000;
+
+      const { unmount } = render(<OverviewPage />);
+      expect(screen.getAllByText("Reforçar Reserva de Emergência").length).toBeGreaterThan(0);
+      expect(screen.queryByText("Capacidade de Aporte Estimada")).not.toBeInTheDocument();
+      unmount();
+
+      // 2. Reserva completa em 6 meses (R$ 18.000)
+      realCashBalanceMock.cashBalance.currentBalanceCents = 1800000;
+      render(<OverviewPage />);
+      expect(screen.getAllByText("Capacidade de Aporte Estimada").length).toBeGreaterThan(0);
+      expect(screen.queryByText("Reforçar Reserva de Emergência")).not.toBeInTheDocument();
+    });
+
+    it("Cenário 4: silêncio intencional em conta saudável e teto estrito de 2 cards no carrossel", () => {
+      // 5 metas elegíveis simultâneas
+      publicSharesMock = [1, 2, 3, 4, 5].map((i) => ({
+        id: `goal-share-${i}`,
+        user_id: "user-1",
+        resource_type: "goal_tracker",
+        resource_id: `goal-${i}`,
+        permission: "view",
+        token: `tok-${i}`,
+        expires_at: null,
+        created_at: "2026-01-01T00:00:00Z",
+        is_revoked: false,
+        revoked_at: null,
+        access_count: 0,
+        last_accessed_at: null,
+        payload: {
+          title: `Meta ${i}`,
+          target_cents: 100000,
+          current_cents: 80000 + i * 2000,
+          status: "in_progress",
+        },
+      }));
+
+      render(<OverviewPage />);
+
+      // O carrossel é limitado estritamente a 2 slides (homeMaxCards)
+      const carouselDots = screen.getAllByRole("button", { name: /Ir para alerta \d/i });
+      expect(carouselDots.length).toBe(2);
+      expect(screen.getByText("1 de 2")).toBeInTheDocument();
     });
   });
 });

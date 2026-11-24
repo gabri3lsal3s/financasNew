@@ -38,6 +38,7 @@ export function CardsPage() {
         subtitle={category?.name && expense.description ? category.name : undefined}
         amountCents={numberToCents(expense.value)}
         reportWeight={expense.report_weight}
+        chargeKind={expense.charge_kind}
         kind="expense"
         icon={category?.icon}
         iconColor={category?.color}
@@ -148,6 +149,7 @@ export function CardsPage() {
               previousUnpaidSummaries={state.previousUnpaidSummaries}
               onOpenPayment={state.handleOpenPayment}
               onOpenBatchPayment={state.handleOpenBatchPayment}
+              onOpenCharge={state.handleOpenCharge}
             />
 
             <InvoiceKpisSection
@@ -155,6 +157,10 @@ export function CardsPage() {
               summary={state.summary}
               cardSubscriptionImpact={state.cardSubscriptionImpact}
               onIgnoreSubscriptionItem={state.ignoreSubscriptionItem}
+              expenses={state.competenceExpenses}
+              onOpenCharge={state.handleOpenCharge}
+              mixedCardSplit={state.mixedCardSplit}
+              onOpenReimbursement={state.handleOpenReimbursement}
             />
           </div>
 
@@ -193,6 +199,11 @@ export function CardsPage() {
         onConfirmDeletePayment={state.handleConfirmDeletePayment}
         paymentMode={state.paymentMode}
         onClosePayment={() => state.setPaymentMode(null)}
+        chargeOpen={state.chargeOpen}
+        onCloseCharge={state.setChargeOpen}
+        mixedCardSplit={state.mixedCardSplit}
+        reimbursementOpen={state.reimbursementOpen}
+        onCloseReimbursement={state.setReimbursementOpen}
         importOpen={state.importOpen}
         onImportOpenChange={state.setImportOpen}
         batchPaymentOpen={state.batchPaymentOpen}

@@ -3,24 +3,33 @@ import { AlertTriangle, ArrowRight, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MoneyText } from "@/components/ui/money-text";
+import type { CalculationBreakdown } from "@/domain/calculation-memory";
 import type { CashGapAnalysisResult } from "@/domain/projection";
 import { cn } from "@/lib/utils";
+import { CalculationMemoryModal } from "./calculation-memory";
 import { CarouselDismissPopover } from "./carousel-dismiss-popover";
 
 export interface CashGapAlertProps {
   result: CashGapAnalysisResult;
+  calculationBreakdown?: CalculationBreakdown;
   className?: string;
   onResolve?: () => void;
   onDismiss?: (days: 7 | 30) => void;
 }
 
 /**
- * Radar Preditivo de Descasamento de Fluxo (Cash-Gap Alert) — FASE 51.
+ * Radar Preditivo de Descasamento de Fluxo (Cash-Gap Alert) — FASE 51 / Fase 3.
  *
  * Alerta antecipadamente o usuário sobre risco de saldo bancário insuficiente
- * antes da data de entrada do salário/recebimentos.
+ * antes da data de entrada do salário/recebimentos, com Memória de Cálculo (?).
  */
-export function CashGapAlert({ result, className, onResolve, onDismiss }: CashGapAlertProps) {
+export function CashGapAlert({
+  result,
+  calculationBreakdown,
+  className,
+  onResolve,
+  onDismiss,
+}: CashGapAlertProps) {
   const navigate = useNavigate();
 
   if (!result.isCashGapDetected || result.severity === "none") {
@@ -42,7 +51,7 @@ export function CashGapAlert({ result, className, onResolve, onDismiss }: CashGa
       role={isCritical ? "alert" : "region"}
       aria-label="Alerta de descasamento de fluxo"
       className={cn(
-        "relative w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border p-3.5 sm:p-4 shadow-xs transition-all",
+        "relative group w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border p-3.5 sm:p-4 shadow-xs transition-all",
         isCritical
           ? "border-critical/40 bg-critical/5 text-foreground"
           : "border-warning/40 bg-warning/5 text-foreground",
@@ -71,8 +80,15 @@ export function CashGapAlert({ result, className, onResolve, onDismiss }: CashGa
                 variant={isCritical ? "critical" : "warning"}
                 size="xs"
               >
-                Déficit de <MoneyText cents={result.maxDeficitCents} tone="default" className="text-[10px] font-semibold" />
+                Déficit de <MoneyText cents={result.maxDeficitCents} tone="default" className="font-semibold" />
               </Badge>
+              {calculationBreakdown ? (
+                <CalculationMemoryModal
+                  breakdown={calculationBreakdown}
+                  priority="p0"
+                  label="Memória de cálculo do descasamento de caixa"
+                />
+              ) : null}
             </div>
 
             <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 sm:line-clamp-1 break-words">

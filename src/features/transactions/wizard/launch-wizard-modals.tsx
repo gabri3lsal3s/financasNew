@@ -3,7 +3,7 @@ import { ConfirmDialog } from "@/components/ui";
 import { AttachReceiptDialog } from "@/components/modules/attach-receipt-dialog";
 import { SplitExpenseDialog } from "@/components/modules/split-expense-dialog";
 import type { ParsedBankTransaction, ReceiptUserContext } from "@/domain/notifications";
-import type { CreditCard } from "@/types";
+import type { Category, CreditCard } from "@/types";
 import type { CreatedSplitExpense } from "./wizard-types";
 
 export interface LaunchWizardModalsProps {
@@ -19,6 +19,7 @@ export interface LaunchWizardModalsProps {
   isReadOnlyMode?: boolean;
   aiExtractionEnabled?: boolean;
   cards: CreditCard[] | undefined;
+  categories?: Category[];
   createdSplitExpense: CreatedSplitExpense | null;
   onClearCreatedSplit: () => void;
   onSplitFinished: () => void;
@@ -39,6 +40,7 @@ export function LaunchWizardModals({
   isReadOnlyMode,
   aiExtractionEnabled,
   cards,
+  categories,
   createdSplitExpense,
   onClearCreatedSplit,
   onSplitFinished,
@@ -69,6 +71,7 @@ export function LaunchWizardModals({
         isReadOnlyMode={isReadOnlyMode}
         aiExtractionEnabled={aiExtractionEnabled}
         cards={cards}
+        categories={categories}
       />
 
       {createdSplitExpense ? (

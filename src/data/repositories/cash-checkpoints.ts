@@ -8,7 +8,7 @@ import { getSupabase } from "@/data/client";
 import { currentUserId } from "@/data/session";
 import { resolveQuery } from "@/data/query";
 import { AppError, classifyError } from "@/services/errors";
-import type { CashCheckpoint, DbInsert } from "@/types";
+import type { CashCheckpoint, DbInsert, TransactionScope } from "@/types";
 
 function mapCheckpoint(row: Record<string, unknown>): CashCheckpoint {
   return {
@@ -17,19 +17,24 @@ function mapCheckpoint(row: Record<string, unknown>): CashCheckpoint {
     date: String(row.date),
     balance_cents: Number(row.balance_cents),
     notes: row.notes ? String(row.notes) : null,
+    scope: row.scope === "business" ? "business" : "personal",
     created_at: String(row.created_at),
   };
 }
 
-/** Lista os checkpoints de saldo do usuário (mais recentes primeiro). */
-export async function listCashCheckpoints(): Promise<CashCheckpoint[]> {
-  const { data, error } = await resolveQuery<Record<string, unknown>[]>(
-    getSupabase()
-      .from("cash_checkpoints")
-      .select("*")
-      .order("date", { ascending: false })
-      .order("created_at", { ascending: false }),
-  );
+/** Lista os checkpoints de saldo do usuário (mais recentes primeiro), opcionalmente filtrados por escopo. */
+export async function listCashCheckpoints(scope?: TransactionScope): Promise<CashCheckpoint[]> {
+  let query = getSupabase()
+    .from("cash_checkpoints")
+    .select("*")
+    .order("date", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (scope) {
+    query = query.eq("scope", scope);
+  }
+
+  const { data, error } = await resolveQuery<Record<string, unknown>[]>(query);
 
   if (error) {
     const classified = classifyError(error);
@@ -39,12 +44,15 @@ export async function listCashCheckpoints(): Promise<CashCheckpoint[]> {
   return (data ?? []).map(mapCheckpoint);
 }
 
-/** Obtém o último checkpoint de saldo cadastrado (ou null se não houver). */
-export async function getLatestCashCheckpoint(): Promise<CashCheckpoint | null> {
+/** Obtém o último checkpoint de saldo cadastrado no escopo informado (default: 'personal'). */
+export async function getLatestCashCheckpoint(
+  scope: TransactionScope = "personal",
+): Promise<CashCheckpoint | null> {
   const { data, error } = await resolveQuery<Record<string, unknown>[]>(
     getSupabase()
       .from("cash_checkpoints")
       .select("*")
+      .eq("scope", scope)
       .order("date", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(1),
@@ -63,9 +71,10 @@ export interface CreateCashCheckpointInput {
   date: string; // YYYY-MM-DD
   balance_cents: number;
   notes?: string | null;
+  scope?: TransactionScope;
 }
 
-/** Cria um novo checkpoint de saldo âncora ("Bater com o banco"). */
+/** Cria um novo checkpoint de saldo âncora ("Bater com o banco") com isolamento por escopo. */
 export async function createCashCheckpoint(input: CreateCashCheckpointInput): Promise<CashCheckpoint> {
   const user_id = await currentUserId();
 
@@ -74,6 +83,7 @@ export async function createCashCheckpoint(input: CreateCashCheckpointInput): Pr
     date: input.date,
     balance_cents: Math.round(input.balance_cents),
     notes: input.notes ?? null,
+    scope: input.scope ?? "personal",
   };
 
   const { data, error } = await resolveQuery<Record<string, unknown>>(

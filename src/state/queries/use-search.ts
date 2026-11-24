@@ -8,14 +8,18 @@ import { listPortfolioAssets } from "@/data/repositories/portfolio";
 import { listBudgets } from "@/data/repositories/budgets";
 import { listRecurrences } from "@/data/repositories/recurrences";
 import { DEBT_STATUS_LABELS, debtStatus } from "@/domain/debts";
+import { findLearnedMerchant } from "@/domain/notifications";
 import {
   filterSearchEntries,
   STATIC_APP_ACTION_ENTRIES,
   STATIC_APP_PAGE_ENTRIES,
   type SearchEntry,
+  type SearchIntentContext,
 } from "@/domain/search";
-import { formatDateBR } from "@/lib/date";
+import { formatDateBR, todayISO } from "@/lib/date";
 import { PAYMENT_METHOD_LABELS, RECEIVE_TYPE_LABELS } from "@/lib/labels";
+import { useMerchantLearning } from "@/services/merchant-learning";
+import { getActiveUserId } from "@/services/user-storage";
 import { STALE_TIMES } from "@/state/cache-policy";
 import { useUserAccess } from "./use-user-access";
 
@@ -31,6 +35,7 @@ export const allIncomesKey = ["incomes", "all"] as const;
  */
 export function useGlobalSearchEntries(enabled: boolean) {
   const { isAdmin, hasFeature } = useUserAccess();
+  const { memory: merchantMemory } = useMerchantLearning();
 
   const isTransactionsEnabled = hasFeature("transactions") || hasFeature("overview");
   const isDebtsEnabled = hasFeature("debts");
@@ -91,36 +96,91 @@ export function useGlobalSearchEntries(enabled: boolean) {
 
   const categories = categoriesQuery.data ?? [];
   const categoryById = new Map(categories.map((category) => [category.id, category]));
+  const categoryNameById = new Map(categories.map((category) => [category.id, category.name]));
+  const creditCards = cardsQuery.data ?? [];
+  const cardNameById = new Map(creditCards.map((card) => [card.id, card.name]));
 
   const expenses: SearchEntry[] = (expensesQuery.data ?? []).map((expense) => {
     const category = categoryById.get(expense.category_id);
+    const cardName = expense.card_id ? cardNameById.get(expense.card_id) : undefined;
     const methodLabel = PAYMENT_METHOD_LABELS[expense.payment_method] ?? expense.payment_method;
+    const learned = findLearnedMerchant(
+      { merchant: expense.description ?? undefined },
+      merchantMemory,
+    );
+    const learnedTags = learned?.semanticTags ?? [];
+    const extraTerms = [
+      ...(learned?.friendlyName ? [learned.friendlyName] : []),
+      ...(learned?.serviceSegment ? [learned.serviceSegment] : []),
+      ...learnedTags,
+      ...(cardName ? [cardName] : []),
+    ];
     return {
       id: expense.id,
       type: "expense",
-      text: [expense.description ?? "", category?.name ?? "", methodLabel, "despesa"],
+      text: [
+        expense.description ?? "",
+        category?.name ?? "",
+        methodLabel,
+        "despesa",
+        ...extraTerms,
+      ].filter(Boolean),
       amountCents: Math.round(expense.value * 100),
       date: expense.date,
       label: expense.description || `Despesa · ${category?.name ?? "sem categoria"}`,
       detail: `${category?.name ?? "Sem categoria"} · ${methodLabel} · ${formatDateBR(expense.date)}`,
       link: { path: "/transacoes", params: { month: expense.date.slice(0, 7), q: expense.id } },
       featureKey: "transactions",
+      structuredMeta: {
+        categoryName: category?.name,
+        cardName,
+        paymentMethod: expense.payment_method,
+        installmentsTotal: expense.installments_total,
+        recurrenceId: expense.recurrence_id,
+        isFamily: expense.is_family,
+        tripId: expense.trip_id,
+        chargeKind: expense.charge_kind,
+        billCompetence: expense.bill_competence,
+        extraTerms,
+      },
     };
   });
 
   const incomes: SearchEntry[] = (incomesQuery.data ?? []).map((income) => {
     const category = categoryById.get(income.category_id);
     const receiveLabel = RECEIVE_TYPE_LABELS[income.receive_type] ?? income.receive_type;
+    const learned = findLearnedMerchant(
+      { merchant: income.description ?? undefined },
+      merchantMemory,
+    );
+    const learnedTags = learned?.semanticTags ?? [];
+    const extraTerms = [
+      ...(learned?.friendlyName ? [learned.friendlyName] : []),
+      ...learnedTags,
+    ];
     return {
       id: income.id,
       type: "income",
-      text: [income.description ?? "", category?.name ?? "", receiveLabel, "renda"],
+      text: [
+        income.description ?? "",
+        category?.name ?? "",
+        receiveLabel,
+        "renda",
+        ...extraTerms,
+      ].filter(Boolean),
       amountCents: Math.round(income.value * 100),
       date: income.date,
       label: income.description || `Renda · ${category?.name ?? "sem categoria"}`,
       detail: `${category?.name ?? "Sem categoria"} · ${receiveLabel} · ${formatDateBR(income.date)}`,
       link: { path: "/transacoes", params: { month: income.date.slice(0, 7), q: income.id } },
       featureKey: "transactions",
+      structuredMeta: {
+        categoryName: category?.name,
+        paymentMethod: income.receive_type,
+        recurrenceId: income.recurrence_id,
+        isFamily: income.is_family,
+        extraTerms,
+      },
     };
   });
 
@@ -218,8 +278,8 @@ export function useGlobalSearchEntries(enabled: boolean) {
   const entries = filterSearchEntries(rawEntries, { isAdmin, hasFeature });
 
   // Agregações em memória para resposta instantânea (< 2ms) de intenções de busca
-  const now = new Date();
-  const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const localToday = todayISO();
+  const currentMonthStr = localToday.slice(0, 7);
   const categorySpendingCurrentMonth: Record<string, number> = {};
   for (const exp of expensesQuery.data ?? []) {
     if (exp.date.startsWith(currentMonthStr)) {
@@ -243,18 +303,48 @@ export function useGlobalSearchEntries(enabled: boolean) {
       title: d.name,
       amountCents: Math.round(d.amount * 100),
       dueDate: formatDateBR(d.due_date),
-      isOverdue: d.due_date < now.toISOString().slice(0, 10),
+      isOverdue: d.due_date < localToday,
     }));
 
-  const intentContext = {
-    todayISO: now.toISOString().slice(0, 10),
+  const intentContext: SearchIntentContext = {
+    todayISO: localToday,
     categorySpendingCurrentMonth,
     upcomingBills,
+    rawExpenses: expensesQuery.data ?? [],
+    rawIncomes: incomesQuery.data ?? [],
+    categoryNameById,
+    cardNameById,
+    merchantLearning: merchantMemory,
   };
+
+  // Descrições distintas ainda sem semanticTags para ensino passivo opcional quando a busca local zerar
+  const distinctUntaggedMerchants: string[] = [];
+  const seenMerchantKeys = new Set<string>();
+  for (const exp of expensesQuery.data ?? []) {
+    const desc = exp.description?.trim();
+    if (!desc || desc.length < 3) continue;
+    const key = desc.toLowerCase();
+    if (seenMerchantKeys.has(key)) continue;
+    const learned = findLearnedMerchant({ merchant: desc }, merchantMemory);
+    if (learned?.semanticTags && learned.semanticTags.length > 0) continue;
+    seenMerchantKeys.add(key);
+    distinctUntaggedMerchants.push(desc);
+    if (distinctUntaggedMerchants.length >= 25) break;
+  }
+
+  const isAiExtractionEnabled = hasFeature("ai_extraction");
 
   return {
     entries,
     intentContext,
+    searchAiContext: {
+      userId: getActiveUserId(),
+      featureEnabled: isAiExtractionEnabled,
+      distinctUntaggedMerchants,
+      categories: categories
+        .filter((c) => c.type === "expense")
+        .map((c) => ({ id: c.id, name: c.name })),
+    },
     isLoading:
       expensesQuery.isLoading ||
       incomesQuery.isLoading ||

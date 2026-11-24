@@ -7,7 +7,9 @@
  * - Regras de transbordo e crédito para competência seguinte.
  */
 
+import type { InvoiceChargesSummary } from "@/domain/cards/charges";
 import { formatMonthYear } from "@/lib/date";
+import { formatCentsAsCurrency } from "@/services/masks/money";
 import { enrichBreakdown } from "../formatters";
 import type { BreakdownStep, CalculationBreakdown } from "../types";
 
@@ -28,6 +30,7 @@ export interface InvoiceBreakdownParams {
   saldoPonderadoCents?: number;
   regularExpensesCents?: number;
   installmentExpensesCents?: number;
+  chargesSummary?: InvoiceChargesSummary;
 }
 
 export function buildInvoiceBreakdown(params: InvoiceBreakdownParams): CalculationBreakdown {
@@ -42,6 +45,7 @@ export function buildInvoiceBreakdown(params: InvoiceBreakdownParams): Calculati
     saldoBrutoCents,
     regularExpensesCents,
     installmentExpensesCents,
+    chargesSummary,
   } = params;
 
   const monthLabel = formatMonthYear(month);
@@ -68,6 +72,54 @@ export function buildInvoiceBreakdown(params: InvoiceBreakdownParams): Calculati
         rawValue: installmentExpensesCents,
         hint: "Parcelas vincendas originadas em meses anteriores que caíram nesta fatura",
         tone: "default",
+      });
+    }
+  } else if (chargesSummary && chargesSummary.hasCharges) {
+    steps.push({
+      label: "Consumo e Compras da Fatura",
+      operator: "+",
+      rawValue: chargesSummary.consumptionCents,
+      hint: "Soma das compras e despesas de consumo realizadas no cartão",
+      tone: "default",
+    });
+
+    if (chargesSummary.interestCents > 0) {
+      steps.push({
+        label: "Juros de Fatura",
+        operator: "+",
+        rawValue: chargesSummary.interestCents,
+        hint: "Juros de rotativo, atraso ou refinanciamento",
+        tone: "negative",
+      });
+    }
+
+    if (chargesSummary.fineCents > 0) {
+      steps.push({
+        label: "Multa por Atraso",
+        operator: "+",
+        rawValue: chargesSummary.fineCents,
+        hint: "Multa contratual decorrente de atraso",
+        tone: "negative",
+      });
+    }
+
+    if (chargesSummary.taxCents > 0) {
+      steps.push({
+        label: "IOF e Tributos",
+        operator: "+",
+        rawValue: chargesSummary.taxCents,
+        hint: "Imposto sobre Operações Financeiras da fatura",
+        tone: "negative",
+      });
+    }
+
+    if (chargesSummary.bankFeeCents > 0) {
+      steps.push({
+        label: "Tarifas e Encargos Bancários",
+        operator: "+",
+        rawValue: chargesSummary.bankFeeCents,
+        hint: "Anuidade ou tarifas de serviços bancários",
+        tone: "negative",
       });
     }
   } else {
@@ -123,6 +175,12 @@ export function buildInvoiceBreakdown(params: InvoiceBreakdownParams): Calculati
     "Regra Antiduplicidade (§3.3.3): O pagamento da fatura transfere liquidez bancária sem duplicar despesas individuais na DRE.",
   );
 
+  if (chargesSummary && chargesSummary.hasCharges) {
+    notes.push(
+      `Composição de Encargos: A fatura inclui ${chargesSummary.chargesPercentage.toFixed(1)}% em encargos financeiros (${formatCentsAsCurrency(chargesSummary.totalChargesCents)}).`,
+    );
+  }
+
   const breakdown: CalculationBreakdown = {
     id: `card-invoice-${cardName.toLowerCase().replace(/\s+/g, "-")}-${month}`,
     title: `Fatura de ${cardName}`,
@@ -146,6 +204,7 @@ export function buildInvoiceBreakdown(params: InvoiceBreakdownParams): Calculati
       "Compras à vista (1x) efetuadas dentro do período de faturamento",
       "Parcelas de compras anteriores (2x a 60x) com vencimento nesta competência",
       "Assinaturas e débitos automáticos cadastrados no cartão",
+      ...(chargesSummary?.hasCharges ? ["Encargos financeiros e tarifas lançadas na fatura"] : []),
     ],
     exclusions: [
       "Parcelas futuras que vencem em competências posteriores (não compõem o saldo deste mês)",

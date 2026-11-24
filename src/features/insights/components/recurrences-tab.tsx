@@ -6,13 +6,16 @@ import {
   filterRecurrencesByTab,
   type FeedbackDecision,
   type FeedbackMap,
+  type InsightThemeFamily,
+  type PaydayProfile,
   type RecurrenceFilterTab,
   type RecurrenceOccurrence,
+  type SmartDecayRecord,
 } from "@/domain/insights";
 import { pushToast } from "@/services/toast";
 import type { CreditCard } from "@/types";
 import { useRecurrencesTab } from "../hooks/use-recurrences-tab";
-import { AssistantMemorySection } from "./assistant-memory-section";
+import { AssistantMemorySection, type MerchantMemoryEntryLike } from "./assistant-memory-section";
 import { ConvertRecurrenceDialog } from "./convert-recurrence-dialog";
 import { RecurrenceAuditModal } from "./recurrence-audit-modal";
 import { CollapsibleOccurrencesSection } from "./recurrences/CollapsibleOccurrencesSection";
@@ -36,6 +39,11 @@ export interface RecurrencesTabProps {
   monthlyIncomeCents?: number;
   dismissals?: Record<string, number>;
   onRevokeDismissal?: (themeKey: string) => void;
+  paydayProfile?: PaydayProfile;
+  decayByFamily?: Readonly<Partial<Record<InsightThemeFamily, SmartDecayRecord>>>;
+  onUnmuteFamily?: (family: InsightThemeFamily) => void;
+  merchantLearning?: Readonly<Record<string, MerchantMemoryEntryLike>> | null;
+  onForgetMerchant?: (merchantKey: string) => void;
 }
 
 const TAB_EMPTY_LABELS: Record<RecurrenceFilterTab, string> = {
@@ -62,6 +70,11 @@ export function RecurrencesTab({
   monthlyIncomeCents,
   dismissals,
   onRevokeDismissal,
+  paydayProfile,
+  decayByFamily,
+  onUnmuteFamily,
+  merchantLearning,
+  onForgetMerchant,
 }: RecurrencesTabProps) {
   const s = useRecurrencesTab({
     totalRecurringCents,
@@ -195,6 +208,11 @@ export function RecurrencesTab({
         ignoredOccurrences={ignoredOccurrences}
         dismissals={dismissals}
         onRevokeDismissal={onRevokeDismissal}
+        paydayProfile={paydayProfile}
+        decayByFamily={decayByFamily}
+        onUnmuteFamily={onUnmuteFamily}
+        merchantLearning={merchantLearning}
+        onForgetMerchant={onForgetMerchant}
       />
 
       <RecurrenceAuditModal

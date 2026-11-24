@@ -1,14 +1,24 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  clearReceiptLearningMemory,
+  getLearnedReceiptPreferences,
+  learnFromReceiptCorrection,
+  RECEIPT_LEARNING_STORAGE_KEY,
+} from "@/domain/notifications";
+import { buildUnifiedLearningGraph, detectRecurrences } from "@/domain/insights";
+import {
   autoLearnExpenseCategory,
   forgetCardDigitFeedback,
   forgetMerchantLearningAction,
   getCardDigitsMapping,
   getMerchantLearningMemory,
+  migrateLegacyReceiptLearningIfNeeded,
+  recordBatchAiMerchantTeachings,
   recordCardDigitFeedback,
   recordMerchantLearningAction,
   recordTransactionLearning,
+  resetMerchantLearningCache,
   setCardDigitsMapping,
   setMerchantLearningMemory,
   subscribeInsightsReevaluation,
@@ -500,5 +510,130 @@ describe("services/merchant-learning — Helper Unificado recordTransactionLearn
 
     // Nenhum dígito novo registrado
     expect(getCardDigitsMapping()).toEqual({});
+  });
+});
+
+describe("services/merchant-learning — Unificação com receipt-learning e Aprendizado Cross-Module (FASE 2)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    clearReceiptLearningMemory();
+    setMerchantLearningMemory({}, false);
+    if (typeof window !== "undefined") {
+      window.localStorage.clear();
+    }
+  });
+
+  it("Cenário 4: correção salva em learnFromReceiptCorrection propaga para merchantLearning, UnifiedLearningGraph e detectRecurrences", () => {
+    learnFromReceiptCorrection({
+      cnpj: "11.222.333/0001-44",
+      rawMerchant: "PAG*FeiraSabado LTDA",
+      correctedMerchant: "Feira do Sábado",
+      categorySlug: "cat-mercado",
+      paymentMethod: "debit",
+      cardLastDigits: "4821",
+    });
+
+    // 1. Gravado diretamente em merchantLearning (sem precisar duplicar no dicionário legado)
+    const unified = getMerchantLearningMemory();
+    expect(unified["tax_11222333000144"]?.friendlyName).toBe("Feira do Sábado");
+    expect(unified["tax_11222333000144"]?.categorySlug).toBe("cat-mercado");
+    expect(unified["tax_11222333000144"]?.preferredCardLastDigits).toBe("4821");
+    expect(unified["tax_11222333000144"]?.rawAliases).toContain("pag*feirasabado ltda");
+
+    // 2. Recuperado via API de comprovantes (getLearnedReceiptPreferences)
+    const learnedPref = getLearnedReceiptPreferences({
+      merchantName: "PAG*FeiraSabado LTDA",
+    });
+    expect(learnedPref?.merchantName).toBe("Feira do Sábado");
+    expect(learnedPref?.cardLastDigits).toBe("4821");
+
+    // 3. Reconhecido imediatamente no UnifiedLearningGraph e agrupado em detectRecurrences
+    const graph = buildUnifiedLearningGraph({
+      referenceMonth: "2026-10",
+      merchantLearning: unified,
+    });
+    expect(graph.merchantAliasMap.get("pag*feirasabado ltda")).toBe("feira do sabado");
+
+    const occurrences = detectRecurrences(
+      [
+        { id: "e1", description: "PAG*FeiraSabado LTDA", month: "2026-09", date: "2026-09-12", valueCents: 12000, categoryId: "cat-mercado" },
+        { id: "e2", description: "Feira do Sábado", month: "2026-10", date: "2026-10-10", valueCents: 12500, categoryId: "cat-mercado" },
+      ],
+      {
+        todayISO: "2026-10-20",
+        merchantAliasMap: graph.merchantAliasMap,
+      },
+    );
+
+    expect(occurrences).toHaveLength(1);
+    expect(occurrences[0]?.name).toBe("Feira do Sábado");
+    expect(occurrences[0]?.months).toEqual(["2026-09", "2026-10"]);
+  });
+
+  it("migra silenciosamente registros legados de financas_receipt_learning_v1 no cold load e limpa a chave antiga", () => {
+    window.localStorage.setItem(
+      RECEIPT_LEARNING_STORAGE_KEY,
+      JSON.stringify({
+        "cnpj:04737552001886": {
+          merchantName: "Mart Minas Atacado",
+          categorySlug: "cat-mercado",
+          paymentMethod: "credit_card",
+          cardLastDigits: "9988",
+          cnpj: "04737552001886",
+          usageCount: 4,
+          lastUpdated: "2026-10-01T12:00:00.000Z",
+        },
+        "name:martminas": {
+          merchantName: "Mart Minas",
+          categorySlug: "cat-mercado",
+          cnpj: "04737552001886",
+          usageCount: 3,
+          lastUpdated: "2026-09-20T12:00:00.000Z",
+        },
+      }),
+    );
+
+    // Simula cold load
+    resetMerchantLearningCache();
+    const memory = getMerchantLearningMemory();
+
+    expect(memory["tax_04737552001886"]).toBeDefined();
+    expect(memory["tax_04737552001886"]?.friendlyName).toBe("Mart Minas Atacado");
+    expect(memory["tax_04737552001886"]?.preferredCardLastDigits).toBe("9988");
+    expect(memory["tax_04737552001886"]?.usageCount).toBe(4);
+    expect(memory["tax_04737552001886"]?.rawAliases).toContain("martminas");
+    // Chave legada removida após migração
+    expect(window.localStorage.getItem(RECEIPT_LEARNING_STORAGE_KEY)).toBeNull();
+
+    // Nova execução é idempotente
+    const secondRun = migrateLegacyReceiptLearningIfNeeded(memory, false);
+    expect(secondRun.migratedCount).toBe(0);
+  });
+
+  it("persiste metadados semânticos via recordBatchAiMerchantTeachings preservando categoria ensinada pelo usuário", () => {
+    recordMerchantLearningAction({
+      friendlyName: "Clube Petlove",
+      categorySlug: "cat-user-pet",
+      alias: "PETLOVE ASSINAT",
+    });
+
+    const updated = recordBatchAiMerchantTeachings([
+      {
+        rawDescription: "PETLOVE ASSINAT",
+        friendlyName: "Clube Petlove",
+        canonicalMerchant: "Clube Petlove",
+        categoryId: "cat-ai-sugerida",
+        serviceSegment: "other",
+        cutTier: "can_cut",
+        isSubscription: true,
+        semanticTags: ["pet", "racao"],
+      },
+    ]);
+
+    const rec = Object.values(updated).find((r) => r.friendlyName === "Clube Petlove");
+    expect(rec?.categorySlug).toBe("cat-user-pet");
+    expect(rec?.isLearnedSubscription).toBe(true);
+    expect(rec?.cutTier).toBe("can_cut");
+    expect(rec?.semanticTags).toEqual(["pet", "racao"]);
   });
 });

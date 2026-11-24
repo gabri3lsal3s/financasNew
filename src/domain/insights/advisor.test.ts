@@ -1040,5 +1040,465 @@ describe("filterAndRankAdvisorInsights", () => {
     expect(insights.some((i) => i.id.includes("old-gym"))).toBe(false);
     expect(insights.some((i) => i.id.includes("old-streaming"))).toBe(false);
   });
+
+  describe("Fase 5 — Portão de Qualidade (SmartAdvisor Proativo)", () => {
+    it("Cenário 1: silencia hábito quando categoria já tem orçamento com consumo < 85% e muda para revisão quando >= 85%", () => {
+      const habits = [
+        {
+          key: "habit:cat_alimentacao:food",
+          categoryId: "cat_alimentacao",
+          name: "Alimentação",
+          occurrencesCount: 6,
+          totalMonthCents: 24_000, // R$ 240 (< 85% de R$ 600)
+          averageTicketCents: 4_000,
+          annualProjectedCents: 288_000,
+          isMicroLeakage: false,
+          actionLabel: "Definir teto para alimentação",
+          intentKind: "food:daily_meals" as const,
+          isRecurringAcrossMonths: true,
+          expenses: [],
+          activeThisMonth: true,
+        },
+      ];
+
+      const suppressed = generateSmartAdvisorInsights({
+        occurrences: [],
+        spendingHabits: habits,
+        budgetedCategoryLimits: new Map([["cat_alimentacao", 60_000]]), // R$ 600
+        todayISO: "2026-11-15",
+      });
+      expect(suppressed.some((i) => i.themeKey === "habit:cat_alimentacao:food")).toBe(false);
+
+      const nearLimit = generateSmartAdvisorInsights({
+        occurrences: [],
+        spendingHabits: [{ ...habits[0]!, totalMonthCents: 54_000 }], // R$ 540 (90% de R$ 600)
+        budgetedCategoryLimits: new Map([["cat_alimentacao", 60_000]]),
+        todayISO: "2026-11-15",
+      });
+      const reviewInsight = nearLimit.find((i) => i.themeKey === "habit:cat_alimentacao:food");
+      expect(reviewInsight).toBeDefined();
+      expect(reviewInsight?.title).toContain("Orçamento próximo do limite");
+      expect(reviewInsight?.primaryAction?.label).toBe("Revisar teto");
+    });
+
+    it("Cenário 2 (Cross-Module): compra atípica de R$ 3.000 gera micro-calibração e marcar como 'Pontual' melhora a projeção", async () => {
+      const { buildUserFinancialContext } = await import("./financial-context");
+      const { buildUnifiedLearningGraph, buildTxOneOffKey } = await import("./learning-graph");
+      const { endOfMonthProjection } = await import("@/domain/projection");
+
+      const currentExpenses: ExpenseLike[] = [
+        {
+          id: "exp-outlier",
+          description: "Notebook Novo",
+          date: "2026-11-10",
+          month: "2026-11",
+          valueCents: 300_000, // R$ 3.000
+          categoryId: "cat_eletronicos",
+        },
+        {
+          id: "exp-var-1",
+          description: "Mercado",
+          date: "2026-11-05",
+          month: "2026-11",
+          valueCents: 40_000, // R$ 400
+          categoryId: "cat_mercado",
+        },
+      ];
+      const pastExpenses: ExpenseLike[] = [
+        {
+          id: "exp-hist-1",
+          description: "Cabo USB",
+          date: "2026-10-10",
+          month: "2026-10",
+          valueCents: 5_000,
+          categoryId: "cat_eletronicos",
+        },
+        {
+          id: "exp-hist-2",
+          description: "Mercado",
+          date: "2026-10-05",
+          month: "2026-10",
+          valueCents: 80_000,
+          categoryId: "cat_mercado",
+        },
+      ];
+
+      // 1. Antes da calibração: SmartAdvisor detecta outlier de R$ 3.000
+      const insightsBefore = generateSmartAdvisorInsights({
+        occurrences: [],
+        allExpenses: [...currentExpenses, ...pastExpenses],
+        incomes: [
+          {
+            key: "sal",
+            name: "Salário",
+            averageCents: 600_000,
+            lastValueCents: 600_000,
+            months: ["2026-10", "2026-11"],
+            confidence: 0.9,
+            typicalDayOfMonth: 5,
+            profile: "fixed",
+            suggestedAction: "one_touch_confirm",
+            valueVariationRatio: 0,
+          },
+        ],
+        todayISO: "2026-11-15",
+      });
+      const outlierInsight = insightsBefore.find((i) => i.themeKey === "calib_tx:exp-outlier");
+      expect(outlierInsight).toBeDefined();
+      expect(outlierInsight?.title).toBe("Este gasto foi pontual?");
+      expect(outlierInsight?.primaryAction?.kind).toBe("mark_tx_one_off");
+
+      // Projeção antes de marcar como pontual
+      const rawExpenses = [
+        { id: "exp-outlier", description: "Notebook Novo", date: "2026-11-10", value: 3000, category_id: "cat_eletronicos", report_weight: 1 },
+        { id: "exp-var-1", description: "Mercado", date: "2026-11-05", value: 400, category_id: "cat_mercado", report_weight: 1 },
+      ];
+      const rawHist = [
+        [{ id: "exp-hist-1", description: "Cabo USB", date: "2026-10-10", value: 50, category_id: "cat_eletronicos", report_weight: 1 },
+         { id: "exp-hist-2", description: "Mercado", date: "2026-10-05", value: 800, category_id: "cat_mercado", report_weight: 1 }],
+      ];
+      const ctxBefore = buildUserFinancialContext({
+        month: "2026-11",
+        todayISO: "2026-11-15",
+        isCurrentMonth: true,
+        monthIncomes: [{ id: "inc1", value: 6000, date: "2026-11-05", report_weight: 1 }],
+        monthExpenses: rawExpenses,
+        historicalExpensesByMonth: rawHist,
+        learning: buildUnifiedLearningGraph({ referenceMonth: "2026-11", feedbackMap: {} }),
+      });
+      const projBefore = endOfMonthProjection({
+        phase: "current",
+        incomesCents: 600_000,
+        referenceBudgetCents: ctxBefore.referenceBudgetCents,
+        investmentsCents: 0,
+        fixedPaidCents: ctxBefore.lens.consumption.fixedPaidCents,
+        pendingFixedCents: ctxBefore.lens.liquidity.pendingRecurringExpensesCents,
+        oneOffAndTripCents: ctxBefore.lens.consumption.oneOffAndTripCents,
+        variableExpensesCents: ctxBefore.lens.consumption.variableExpenseCents,
+        historicalVariableMedianCents: ctxBefore.lens.consumption.historicalVariableMedianCents,
+        dayOfMonth: 15,
+        daysInMonth: 30,
+      });
+
+      // 2. Usuário toca em "Sim, foi pontual" (tx_one_off:exp-outlier = "one_off")
+      const txKey = buildTxOneOffKey("exp-outlier");
+      const learningAfter = buildUnifiedLearningGraph({
+        referenceMonth: "2026-11",
+        feedbackMap: { [txKey]: "one_off" },
+      });
+      const ctxAfter = buildUserFinancialContext({
+        month: "2026-11",
+        todayISO: "2026-11-15",
+        isCurrentMonth: true,
+        monthIncomes: [{ id: "inc1", value: 6000, date: "2026-11-05", report_weight: 1 }],
+        monthExpenses: rawExpenses,
+        historicalExpensesByMonth: rawHist,
+        learning: learningAfter,
+      });
+      const projAfter = endOfMonthProjection({
+        phase: "current",
+        incomesCents: 600_000,
+        referenceBudgetCents: ctxAfter.referenceBudgetCents,
+        investmentsCents: 0,
+        fixedPaidCents: ctxAfter.lens.consumption.fixedPaidCents,
+        pendingFixedCents: ctxAfter.lens.liquidity.pendingRecurringExpensesCents,
+        oneOffAndTripCents: ctxAfter.lens.consumption.oneOffAndTripCents,
+        variableExpensesCents: ctxAfter.lens.consumption.variableExpenseCents,
+        historicalVariableMedianCents: ctxAfter.lens.consumption.historicalVariableMedianCents,
+        dayOfMonth: 15,
+        daysInMonth: 30,
+      });
+
+      // R$ 3.000 saiu da extrapolação variável e foi isolado em oneOffAndTripCents
+      expect(ctxAfter.lens.consumption.oneOffAndTripCents).toBe(300_000);
+      expect(ctxAfter.lens.consumption.variableExpenseCents).toBe(40_000);
+      expect(projAfter.projectedExpensesCents!).toBeLessThan(projBefore.projectedExpensesCents!);
+
+      // E o card de calibração desaparece do SmartAdvisor
+      const insightsAfter = generateSmartAdvisorInsights({
+        occurrences: [],
+        allExpenses: [...currentExpenses, ...pastExpenses],
+        feedbackMap: { [txKey]: "one_off" },
+        financialContext: ctxAfter,
+        todayISO: "2026-11-15",
+      });
+      expect(insightsAfter.some((i) => i.themeKey === "calib_tx:exp-outlier")).toBe(false);
+    });
+
+    it("Cenário 3: Smart Decay aplica cooldown progressivo 7d -> 30d -> 90d após dispensas consecutivas da família habit", async () => {
+      const { advanceSmartDecay } = await import("./attention-budget");
+      const t0 = Date.UTC(2026, 10, 1, 12, 0, 0);
+      const dayMs = 86_400_000;
+
+      const e1 = advanceSmartDecay(undefined, t0);
+      expect(e1.nextCooldownDays).toBe(7);
+      expect(e1.record.dismissCount).toBe(1);
+      expect(e1.record.dismissedUntil).toBe(t0 + 7 * dayMs);
+
+      const e2 = advanceSmartDecay(e1.record, t0 + 8 * dayMs);
+      expect(e2.nextCooldownDays).toBe(30);
+      expect(e2.record.dismissCount).toBe(2);
+      expect(e2.record.dismissedUntil).toBe(t0 + 8 * dayMs + 30 * dayMs);
+
+      const e3 = advanceSmartDecay(e2.record, t0 + 40 * dayMs);
+      expect(e3.nextCooldownDays).toBe(90);
+      expect(e3.shouldOfferMute).toBe(true);
+      expect(e3.record.dismissCount).toBe(3);
+      expect(e3.record.dismissedUntil).toBe(t0 + 40 * dayMs + 90 * dayMs);
+
+      const filtered = filterAndRankAllAdvisorInsights(
+        [
+          {
+            id: "habit:cafe",
+            themeKey: "habit:cafe",
+            priority: 3,
+            category: "savings",
+            title: "Hábito frequente",
+            description: "...",
+            iconName: "trending-down",
+          },
+        ],
+        {
+          decayByFamily: { habit: e3.record },
+          nowMs: t0 + 45 * dayMs,
+        },
+      );
+      expect(filtered).toHaveLength(0);
+    });
+
+    it("Cenário 4: celebra economia real (>= 15% abaixo da mediana no dia >= 15) e proventos cobrindo custos fixos (máx 1 celebração)", () => {
+      // 4a. Economia real no mês
+      const savingsCelebration = generateSmartAdvisorInsights({
+        occurrences: [],
+        historicalVariableMedianCents: 200_000, // R$ 2.000/mês
+        financialContext: {
+          month: "2026-11",
+          todayISO: "2026-11-20",
+          dayOfMonth: 20,
+          daysInMonth: 30,
+          elapsedPercent: 66.7,
+          isCurrentMonth: true,
+          maturity: "active_cycle",
+          referenceBudgetCents: 500_000,
+          referenceBudgetSource: "current_income",
+          isProvisionalReference: false,
+          learning: {
+            activeFeedbackMap: {},
+            essentialKeys: new Set(),
+            currentMonthOneOffKeys: new Set(),
+            oneOffExpenseIds: new Set(),
+            ignoredKeys: new Set(),
+            budgetedCategoryLimits: new Map(),
+            merchantAliasMap: new Map(),
+            paydayProfile: {
+              pattern: "start_of_month",
+              typicalIncomeDays: [5],
+              expectedMonthlyIncomeCents: 500_000,
+              confidence: 0.9,
+              monthsAnalyzed: 3,
+            },
+            learnedServices: new Map(),
+            semanticTagIndex: new Map(),
+            decayByFamily: {},
+          },
+          lens: {
+            consumption: {
+              operatingIncomeCents: 500_000,
+              refundsNeutralizedCents: 0,
+              priorCycleRefundCreditCents: 0,
+              grossWeightedExpenseCents: 80_000,
+              netExpenseCents: 80_000,
+              fixedPaidCents: 0,
+              oneOffAndTripCents: 0,
+              variableExpenseCents: 80_000, // esperado pro-rata ~133.333 -> economia ~53.333 (>= R$ 100 e >= 15%)
+              variableDaysCount: 5,
+              variableTxCount: 5,
+              historicalVariableMedianCents: 200_000,
+            },
+            liquidity: {
+              hasLiquidityContext: false,
+              realCashBalanceCents: 0,
+              committedObligationsCents: 0,
+              safeToSpendCents: 0,
+              pendingRecurringExpensesCents: 0,
+              expectedUpcomingInflowsCents: 0,
+            },
+            wealth: {
+              hasInvestmentsAccess: true,
+              monthlyContributionsCents: 0,
+              monthlySettledDividendsCents: 20_000, // R$ 200 de proventos
+              emergencyReserveCents: 3_000_000,
+              emergencyTargetCents: 1_200_000,
+              emergencyMonthsCovered: 15,
+              emergencyTargetMonths: 6,
+              hasExternalEmergencyFund: false,
+              isEmergencyFundComplete: true,
+              emergencyGapCents: 0,
+            },
+          },
+          fixedCommitmentsSummary: {
+            totalMonthlyFixedCents: 50_000,
+            pendingThisMonthCents: 0,
+            formalCount: 0,
+            detectedCount: 0,
+            fixedCommitmentRatePercent: 10,
+          },
+        },
+        todayISO: "2026-11-20",
+      });
+
+      const celebrations = savingsCelebration.filter((i) => i.category === "celebration");
+      expect(celebrations).toHaveLength(1);
+      expect(celebrations[0]?.themeKey).toBe("celebration:real_savings");
+      expect(celebrations[0]?.priority).toBe(3.5);
+
+      // 4b. Proventos cobrindo assinatura
+      const dividendsCelebration = generateSmartAdvisorInsights({
+        occurrences: [
+          {
+            key: "sub-internet",
+            name: "Internet Fibra",
+            level: "subscription",
+            lifecycle: "active",
+            tier: "essential",
+            months: ["2026-09", "2026-10", "2026-11"],
+            averageCents: 12_000, // R$ 120
+            confidence: 0.9,
+          },
+        ],
+        monthlySettledDividendsCents: 15_000, // R$ 150 >= R$ 120
+        todayISO: "2026-11-10",
+      });
+      const divCelebration = dividendsCelebration.find((i) => i.themeKey === "celebration:dividends_cover_fixed");
+      expect(divCelebration).toBeDefined();
+      expect(divCelebration?.description).toContain("Internet Fibra");
+    });
+
+    it("Trava de Reserva no aporte:rebalance sugere 'Reforçar Reserva de Emergência' quando reserva está incompleta", () => {
+      const insights = generateSmartAdvisorInsights({
+        occurrences: [],
+        savingsSurplusCents: 150_000,
+        isEmergencyFundComplete: false,
+        todayISO: "2026-11-18",
+      });
+
+      const aporte = insights.find((i) => i.themeKey === "aporte:rebalance");
+      expect(aporte).toBeDefined();
+      expect(aporte?.title).toBe("Reforçar Reserva de Emergência");
+      expect(aporte?.primaryAction?.label).toBe("Reforçar reserva");
+      expect(aporte?.primaryAction?.payload?.intent).toBe("emergency_fund");
+    });
+
+    it("Blindagem Semântica: recorrência de Aluguel (40% da renda) não vira 'gasto vampiro / avaliar corte' e farmácia não vira microvazamento", async () => {
+      const { detectRecurrences } = await import("./recurrences");
+      const rentExpenses: ExpenseLike[] = [
+        { id: "r1", description: "Aluguel Apartamento", date: "2026-09-05", month: "2026-09", valueCents: 200_000, categoryId: "c-outros" },
+        { id: "r2", description: "Aluguel Apartamento", date: "2026-10-05", month: "2026-10", valueCents: 200_000, categoryId: "c-outros" },
+        { id: "r3", description: "Aluguel Apartamento", date: "2026-11-05", month: "2026-11", valueCents: 200_000, categoryId: "c-outros" },
+      ];
+      const occs = detectRecurrences(rentExpenses, {
+        todayISO: "2026-11-15",
+        monthlyIncomeCents: 500_000,
+      });
+      expect(occs[0]?.tier).toBe("essential");
+      expect(occs[0]?.budgetImpact?.isVampire).toBe(false);
+
+      const advisorInsights = generateSmartAdvisorInsights({
+        occurrences: occs,
+        spendingHabits: [
+          {
+            key: "habit:cat_saude:health:pharmacy",
+            categoryId: "cat_saude",
+            intentKind: "health:pharmacy",
+            name: "Farmácia e cuidados com a saúde",
+            actionLabel: "Ajustar gastos de farmácia",
+            totalMonthCents: 18_000,
+            occurrencesCount: 4,
+            averageTicketCents: 4_500,
+            annualProjectedCents: 216_000,
+            isRecurringAcrossMonths: true,
+            isMicroLeakage: true,
+            expenses: [],
+            activeThisMonth: true,
+          },
+        ],
+        todayISO: "2026-11-15",
+      });
+
+      expect(advisorInsights.some((i) => i.themeKey.startsWith("savings:"))).toBe(false);
+      expect(advisorInsights.some((i) => i.themeKey.includes("pharmacy"))).toBe(false);
+    });
+
+    it("detecta assinatura cobrada em dois cartões/meios no 1º mês e celebra fôlego de parcelamentos no fim", () => {
+      const insights = generateSmartAdvisorInsights({
+        occurrences: [],
+        allExpenses: [
+          {
+            id: "dup-1",
+            description: "Netflix",
+            month: "2026-11",
+            date: "2026-11-03",
+            valueCents: 5590,
+            categoryId: "cat-sub",
+            paymentMethod: "credit_card",
+            cardId: "c1",
+            cardName: "Nubank",
+          },
+          {
+            id: "dup-2",
+            description: "Netflix",
+            month: "2026-11",
+            date: "2026-11-10",
+            valueCents: 5590,
+            categoryId: "cat-sub",
+            paymentMethod: "credit_card",
+            cardId: "c2",
+            cardName: "Itaú",
+          },
+          {
+            id: "inst-final",
+            description: "Geladeira 10/10",
+            month: "2026-11",
+            date: "2026-11-12",
+            valueCents: 35000,
+            categoryId: "cat-casa",
+            installmentGroupId: "grp-gel",
+            rawExpense: {
+              id: "inst-final",
+              user_id: "u1",
+              date: "2026-11-12",
+              description: "Geladeira 10/10",
+              value: 350,
+              base_amount: 350,
+              category_id: "cat-casa",
+              payment_method: "credit_card",
+              card_id: "c1",
+              bill_competence: "2026-11",
+              installments_total: 10,
+              installment_number: 10,
+              installment_group_id: "grp-gel",
+              report_weight: 1,
+              created_at: "2026-02-12T00:00:00Z",
+            },
+          },
+        ],
+        todayISO: "2026-11-15",
+      });
+
+      const dup = insights.find((i) => i.themeKey === "dup:netflix");
+      expect(dup).toBeDefined();
+      expect(dup?.priority).toBe(1);
+      expect(dup?.title).toBe("Assinatura cobrada em dois meios");
+      expect(dup?.description).toContain("Nubank e Itaú");
+
+      const endings = insights.find(
+        (i) => i.themeKey === "celebration:installments_ending:2026-11",
+      );
+      expect(endings).toBeDefined();
+      expect(endings?.priority).toBe(3.5);
+      expect(endings?.title).toBe("Parcelamentos chegando ao fim");
+      expect(endings?.description).toContain("R$ 350,00");
+    });
+  });
 });
 

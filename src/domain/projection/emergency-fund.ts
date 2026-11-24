@@ -17,9 +17,10 @@ import type { EmergencyFundConfig, EmergencySelectionMode } from "@/types";
 
 export type { EmergencyFundConfig, EmergencySelectionMode };
 
-export type EmergencyHealth = "critico" | "baixo" | "adequado" | "saudavel";
+export type EmergencyHealth = "indefinido" | "critico" | "baixo" | "adequado" | "saudavel";
 
 export const EMERGENCY_HEALTH_LABELS: Record<EmergencyHealth, string> = {
+  indefinido: "Aguardando base",
   critico: "Crítico",
   baixo: "Baixo",
   adequado: "Adequado",
@@ -330,7 +331,8 @@ export function calculateEmergencyFund(params: EmergencyProjectionParams): Emerg
     ? Number((validLiquid / validExpenses).toFixed(1))
     : 0;
 
-  const health = classifyEmergencyHealth(currentMonthsCovered);
+  const health: EmergencyHealth =
+    validExpenses <= 0 ? "indefinido" : classifyEmergencyHealth(currentMonthsCovered);
 
   function calculateMilestone(months: 3 | 6 | 12): EmergencyMilestone {
     const targetCents = Math.round(validExpenses * months);

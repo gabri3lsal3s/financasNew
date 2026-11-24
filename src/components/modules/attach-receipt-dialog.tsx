@@ -7,6 +7,7 @@ import {
   type ParsedBankTransaction,
   type ReceiptUserContext,
 } from "@/domain/notifications";
+import type { AiCategoryOptionInput } from "@/services/ai-assistant";
 import { readClipboardText } from "@/services/clipboard";
 import { formatCentsAsCurrency } from "@/services/masks";
 import {
@@ -33,6 +34,7 @@ export interface AttachReceiptDialogProps {
   userContext?: ReceiptUserContext;
   userId?: string | null;
   cards?: CreditCard[];
+  categories?: readonly AiCategoryOptionInput[];
   isReadOnlyMode?: boolean;
   aiExtractionEnabled?: boolean;
 }
@@ -46,6 +48,7 @@ export function AttachReceiptDialog({
   userContext,
   userId,
   cards,
+  categories,
   isReadOnlyMode,
   aiExtractionEnabled,
 }: AttachReceiptDialogProps) {
@@ -61,6 +64,7 @@ export function AttachReceiptDialog({
 
   const resolutionOptions = {
     cards,
+    categories,
     isManualAttachment: true,
     userContext,
     userId,
@@ -69,6 +73,7 @@ export function AttachReceiptDialog({
     bankCardMapping,
     isReadOnlyMode,
     aiFallbackEnabled: aiExtractionEnabled ?? true,
+    preferFastAiVisionForWebImages: true,
   };
 
   const handleClose = () => {

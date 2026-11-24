@@ -9,6 +9,8 @@ import {
   TrialEndingBanner,
 } from "@/components/modules";
 import type { PermissionAlertBannerType } from "@/components/modules/permissions-alert-banner";
+import { buildCashGapBreakdown, buildPaceProjectionBreakdown } from "@/domain/calculation-memory";
+import { applyHomeCarouselAttentionBudget } from "@/domain/insights";
 import type { SmartAdvisorInsight } from "@/domain/insights/advisor";
 import type { CalibrationDecision } from "@/domain/insights/feedback";
 import { ActiveTripBanner } from "@/features/trips/components";
@@ -105,6 +107,46 @@ export function buildOverviewAlertItems(
     subscription.status === "unpaid" ||
     subscription.billingPhase === "past_due";
 
+  const paceBreakdown =
+    showPaceAlert && isPaceEligible
+      ? buildPaceProjectionBreakdown({
+          month: params.month ?? data.month,
+          referenceBudgetCents: data.referenceBudgetCents,
+          referenceBudgetSource: data.referenceBudgetSource,
+          isProvisionalReference: data.isProvisionalReference,
+          fixedPaidCents: data.financialContext.lens.consumption.fixedPaidCents,
+          pendingFixedCents: data.financialContext.lens.liquidity.pendingRecurringExpensesCents,
+          oneOffAndTripCents: data.financialContext.lens.consumption.oneOffAndTripCents,
+          projectedVariableCents:
+            data.projection.projectedVariableCents ??
+            data.financialContext.lens.consumption.variableExpenseCents,
+          historicalVariableMedianCents:
+            data.financialContext.lens.consumption.historicalVariableMedianCents,
+          blendedWeight: data.projection.blendedWeight ?? null,
+          refundsNeutralizedCents: data.financialContext.lens.consumption.refundsNeutralizedCents,
+          priorCycleRefundCreditCents:
+            data.financialContext.lens.consumption.priorCycleRefundCreditCents,
+          investmentCents: data.investmentCents,
+          projectedSurplusCents: projection.surplusCents,
+          dailyCents: daily.dailyCents,
+          dayOfMonth: data.financialContext.dayOfMonth,
+          daysInMonth: data.financialContext.daysInMonth,
+        })
+      : undefined;
+
+  const predictedInflowsTotalCents = data.predictedUpcomingInflows.reduce(
+    (acc, item) => acc + item.amountCents,
+    0,
+  );
+  const cashGapBreakdown =
+    isCurrentMonth && cashGapResult.isCashGapDetected && data.isCashGapEligible
+      ? buildCashGapBreakdown({
+          result: cashGapResult,
+          currentBalanceCents: data.realCashData.cashBalance.currentBalanceCents,
+          predictedInflowsTotalCents,
+        })
+      : undefined;
+
   const rawOperationalItems: (DashboardAlertItem | null | undefined | false)[] = [
     isPastDueBannerActive && {
       id: "subscription-past-due",
@@ -140,12 +182,13 @@ export function buildOverviewAlertItems(
       },
     isCurrentMonth &&
       cashGapResult.isCashGapDetected &&
-      !data.isCardDismissed("cash-gap-alert") && {
+      data.isCashGapEligible && {
         id: "cash-gap-alert",
-        priority: cashGapResult.severity === "critical" ? 1 : 3,
+        priority: cashGapResult.severity === "critical" ? 1 : 2,
         content: (
           <CashGapAlert
             result={cashGapResult}
+            calculationBreakdown={cashGapBreakdown}
             onDismiss={(days) => params.onDismissCard?.("cash-gap-alert", days)}
           />
         ),
@@ -218,6 +261,9 @@ export function buildOverviewAlertItems(
           dailyCents={daily.dailyCents}
           daysRemaining={daily.daysRemaining}
           surplusCents={projection.surplusCents}
+          isProvisionalReference={data.isProvisionalReference}
+          referenceBudgetSource={data.referenceBudgetSource}
+          calculationBreakdown={paceBreakdown}
           onNavigateInsights={params.onNavigateInsights}
           onDismiss={params.onDismissPace}
         />
@@ -244,6 +290,9 @@ export function buildOverviewAlertItems(
       content: (
         <SurplusAporteBanner
           surplusCents={surplusCapacity.suggestedAporteCents}
+          allocationIntent={surplusCapacity.allocationIntent}
+          emergencyMonthsCovered={data.financialContext.lens.wealth.emergencyMonthsCovered}
+          emergencyTargetMonths={data.financialContext.lens.wealth.emergencyTargetMonths}
           onDismiss={params.onDismissSurplus}
         />
       ),
@@ -312,12 +361,12 @@ export function buildOverviewAlertItems(
   const operationalItems = rawOperationalItems.filter(
     (item): item is DashboardAlertItem => Boolean(item && item.content),
   );
-  const maxAdvisorSlides = operationalItems.length >= 3 ? 1 : 2;
+  const maxAdvisorSlides = Math.max(0, 2 - operationalItems.length);
   const advisorSlides: DashboardAlertItem[] = (params.advisorInsights ?? [])
     .slice(0, maxAdvisorSlides)
     .map((insight) => ({
       id: `smart-advisor-${insight.id}`,
-      priority: insight.priority === 1 ? 1.5 : insight.priority === 2 ? 2.5 : 3.5,
+      priority: insight.priority === 1 ? 3.2 : insight.priority === 2 ? 3.6 : 4.2,
       content: (
         <SmartAdvisorCard
           embeddedInCarousel
@@ -361,5 +410,5 @@ export function buildOverviewAlertItems(
       ),
     }));
 
-  return [...operationalItems, ...advisorSlides];
+  return applyHomeCarouselAttentionBudget([...operationalItems, ...advisorSlides]).visibleItems;
 }

@@ -1,5 +1,11 @@
 import { useMemo } from "react";
 import { todayISO } from "@/domain/debts";
+import {
+  filterCardsByViewScope,
+  filterDebtsByViewScope,
+  filterExpensesByViewScope,
+  filterIncomesByViewScope,
+} from "@/domain/business";
 import { shiftMonth } from "@/lib/date";
 import {
   calculateRealCashBalance,
@@ -10,6 +16,8 @@ import {
   type SafeToSpendResult,
   type CycleObligationsBreakdown,
 } from "@/domain/cash";
+import { useViewScope } from "@/state/hooks/use-view-scope";
+import type { TransactionScope, ViewScope } from "@/types";
 import { useLatestCashCheckpoint } from "./use-cash-checkpoints";
 import { useIncomesByRange } from "./use-incomes";
 import { useExpensesByRange } from "./use-expenses";
@@ -22,6 +30,7 @@ export interface UseRealCashBalanceResult {
   cashBalance: RealCashBalanceResult;
   safeToSpend: SafeToSpendResult;
   cycleBreakdown: CycleObligationsBreakdown;
+  activeScope?: ViewScope;
   isLoading: boolean;
   error: unknown;
   refetch: () => Promise<void>;
@@ -29,10 +38,16 @@ export interface UseRealCashBalanceResult {
 
 /**
  * Hook consolidado que computa o Saldo em Caixa Real e o Saldo Livre (Safe-to-Spend).
- * Utiliza o último checkpoint como âncora e processa os fluxos em regime de caixa estrito.
+ * Utiliza o último checkpoint do escopo correspondente como âncora e aplica regras PF x PJ.
  */
-export function useRealCashBalance(referenceDate: string = todayISO()): UseRealCashBalanceResult {
-  const checkpointQuery = useLatestCashCheckpoint();
+export function useRealCashBalance(
+  referenceDate: string = todayISO(),
+  options?: { scopeOverride?: ViewScope },
+): UseRealCashBalanceResult {
+  const { effectiveViewScope } = useViewScope();
+  const activeScope: ViewScope = options?.scopeOverride ?? effectiveViewScope;
+  const checkpointScope: TransactionScope = activeScope === "business" ? "business" : "personal";
+  const checkpointQuery = useLatestCashCheckpoint(checkpointScope);
 
   const checkpoint = checkpointQuery.data;
   const startDate = checkpoint?.date ?? "1970-01-01";
@@ -78,39 +93,69 @@ export function useRealCashBalance(referenceDate: string = todayISO()): UseRealC
     };
   }, [checkpoint]);
 
+  const scopedIncomes = useMemo(
+    () => filterIncomesByViewScope(incomesQuery.data ?? [], activeScope, { mode: "cashflow" }),
+    [incomesQuery.data, activeScope],
+  );
+  const scopedExpenses = useMemo(
+    () => filterExpensesByViewScope(expensesQuery.data ?? [], activeScope, { mode: "cashflow" }),
+    [expensesQuery.data, activeScope],
+  );
+  const scopedCards = useMemo(
+    () => filterCardsByViewScope(cardsQuery.data ?? [], activeScope),
+    [cardsQuery.data, activeScope],
+  );
+  const scopedCardExpenses = useMemo(
+    () => filterExpensesByViewScope(cardExpensesQuery.data ?? [], activeScope, { mode: "cashflow" }),
+    [cardExpensesQuery.data, activeScope],
+  );
+  const scopedDebts = useMemo(
+    () => filterDebtsByViewScope(debtsQuery.data ?? [], activeScope),
+    [debtsQuery.data, activeScope],
+  );
+  const scopedCardIds = useMemo(() => new Set(scopedCards.map((c) => c.id)), [scopedCards]);
+  const scopedCardPayments = useMemo(() => {
+    if (activeScope === "all") return cardPaymentsQuery.data ?? [];
+    return (cardPaymentsQuery.data ?? []).filter((p) => scopedCardIds.has(p.card_id));
+  }, [cardPaymentsQuery.data, activeScope, scopedCardIds]);
+  const scopedContributions = useMemo(
+    () => (activeScope === "business" ? [] : (contributionsQuery.data ?? [])),
+    [activeScope, contributionsQuery.data],
+  );
+
   const cashBalance = useMemo(() => {
     return calculateRealCashBalance({
       checkpoint: checkpointData,
-      incomes: incomesQuery.data ?? [],
-      expenses: expensesQuery.data ?? [],
-      cardPayments: cardPaymentsQuery.data ?? [],
-      debts: debtsQuery.data ?? [],
-      contributions: contributionsQuery.data ?? [],
+      incomes: scopedIncomes,
+      expenses: scopedExpenses,
+      cardPayments: scopedCardPayments,
+      debts: scopedDebts,
+      contributions: scopedContributions,
       referenceDate,
     });
   }, [
     checkpointData,
-    incomesQuery.data,
-    expensesQuery.data,
-    cardPaymentsQuery.data,
-    debtsQuery.data,
-    contributionsQuery.data,
+    scopedIncomes,
+    scopedExpenses,
+    scopedCardPayments,
+    scopedDebts,
+    scopedContributions,
     referenceDate,
   ]);
 
   const cycleBreakdown = useMemo(() => {
     return breakdownCycleObligations({
-      cards: cardsQuery.data ?? [],
-      cardExpenses: cardExpensesQuery.data ?? [],
-      cardPayments: cardPaymentsQuery.data ?? [],
-      debts: debtsQuery.data ?? [],
+      cards: scopedCards,
+      cardExpenses: scopedCardExpenses,
+      cardPayments: scopedCardPayments,
+      debts: scopedDebts,
       referenceDate,
     });
   }, [
-    cardsQuery.data,
-    cardExpensesQuery.data,
-    cardPaymentsQuery.data,
-    debtsQuery.data,
+    scopedCards,
+    scopedCardExpenses,
+    scopedCardPayments,
+    scopedDebts,
     referenceDate,
   ]);
 
@@ -145,6 +190,7 @@ export function useRealCashBalance(referenceDate: string = todayISO()): UseRealC
     cashBalance,
     safeToSpend,
     cycleBreakdown,
+    activeScope,
     isLoading,
     error,
     refetch,

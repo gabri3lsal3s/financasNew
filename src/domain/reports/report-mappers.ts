@@ -1,10 +1,10 @@
 import { numberToCents } from "@/domain/money";
 import { isCashAssetClass } from "@/domain/portfolio";
 import { formatDateBR } from "@/lib/date";
-import type { PortfolioAsset } from "@/types";
+import type { ChargeKind, PortfolioAsset } from "@/types";
 import { calculateFreedomIndex } from "./freedom-index";
 import type { WealthPositionRow } from "./tear-sheet-types";
-import type { CategoryTotal, PaymentMethodTotal } from "./index";
+import type { CategoryTotal, ChargeKindTotal, PaymentMethodTotal } from "./index";
 
 export type ReportPeriodMode = "month" | "year" | "custom";
 
@@ -176,6 +176,24 @@ export function mapPaymentMethodsForCloseReport(params: {
     ponderadoCents: m.ponderadoCents,
     totalCents: m.brutoCents,
     pct: grossExpenseBrutoCents > 0 ? (m.brutoCents / grossExpenseBrutoCents) * 100 : 0,
+  }));
+}
+
+/** Mapeia tipos de encargo agregados (Consumo vs Juros, Multa, IOF, Tarifas). */
+export function mapChargeKindsForCloseReport(params: {
+  byChargeKind: readonly ChargeKindTotal[];
+  grossExpenseBrutoCents: number;
+  resolveChargeKindLabel: (kind: ChargeKind) => string;
+}) {
+  const { byChargeKind, grossExpenseBrutoCents, resolveChargeKindLabel } = params;
+  return byChargeKind.map((c) => ({
+    kind: c.kind,
+    label: resolveChargeKindLabel(c.kind),
+    brutoCents: c.brutoCents,
+    ponderadoCents: c.ponderadoCents,
+    totalCents: c.brutoCents,
+    count: c.count,
+    pct: grossExpenseBrutoCents > 0 ? (c.brutoCents / grossExpenseBrutoCents) * 100 : 0,
   }));
 }
 

@@ -1,7 +1,7 @@
 import { Stepper } from "@/components/ui";
 import type { RecurrenceFrequency } from "@/domain/recurrences";
 import type { DescriptionSuggestion, HabitualEntry } from "@/domain/predictions";
-import type { Category, CreditCard, PaymentMethod, ReceiveType, Trip } from "@/types";
+import type { Category, CreditCard, PaymentMethod, ReceiveType, TransactionScope, Trip } from "@/types";
 import { StepCategory } from "./step-category";
 import { StepDetails } from "./step-details";
 import { StepReview } from "./step-review";
@@ -27,9 +27,13 @@ export interface LaunchWizardGuidedStepsProps {
   selectedCategoryName?: string;
   selectedCardClosingDay?: number;
   isFamilyActive: boolean;
+  isBusinessActive?: boolean;
+  showAllCategories?: boolean;
+  onToggleShowAllCategories?: () => void;
   onTypeChange: (type: EntryType) => void;
   onValueChange: (cents: number) => void;
   onCategorySelect: (categoryId: string) => void;
+  onScopeChange?: (scope: TransactionScope) => void;
   onApplyHabitual: (habit: HabitualEntry) => void;
   onSplitToggle: (enabled: boolean) => void;
   onSplitPeopleCountChange: (count: number) => void;
@@ -55,9 +59,13 @@ export function LaunchWizardGuidedSteps({
   selectedCategoryName,
   selectedCardClosingDay,
   isFamilyActive,
+  isBusinessActive = false,
+  showAllCategories = false,
+  onToggleShowAllCategories,
   onTypeChange,
   onValueChange,
   onCategorySelect,
+  onScopeChange,
   onApplyHabitual,
   onSplitToggle,
   onSplitPeopleCountChange,
@@ -90,6 +98,9 @@ export function LaunchWizardGuidedSteps({
           error={categoriesError}
           selectedId={state.categoryId}
           isFamilyModeEnabled={isFamilyActive}
+          isBusinessModeEnabled={isBusinessActive}
+          showAllCategories={showAllCategories}
+          onToggleShowAllCategories={onToggleShowAllCategories}
           onSelect={onCategorySelect}
         />
       ) : null}
@@ -102,11 +113,15 @@ export function LaunchWizardGuidedSteps({
             if (m !== "credit_card") set("cardId", null);
           }}
           onCardChange={(id) => set("cardId", id)}
+          onChargeKindChange={(k) => set("chargeKind", k)}
           onInstallmentsChange={(c) => set("installments", c)}
           onReceiveTypeChange={(r: ReceiveType) => set("receiveType", r)}
           onDescriptionChange={(d) => set("description", d)}
           onFamilyChange={(f) => set("isFamily", f)}
           isFamilyModeEnabled={isFamilyActive}
+          isBusinessModeEnabled={isBusinessActive}
+          onScopeChange={onScopeChange}
+          onTaxDeductibleChange={(d) => set("isTaxDeductible", d)}
           descriptionSuggestions={descriptionSuggestions}
           onReportWeightChange={(w) => {
             set("reportWeight", w);
@@ -150,6 +165,7 @@ export function LaunchWizardGuidedSteps({
           categoryName={selectedCategoryName}
           closingDay={selectedCardClosingDay}
           isFamilyModeEnabled={isFamilyActive}
+          isBusinessModeEnabled={isBusinessActive}
           tripName={activeTrips.find((t) => t.id === state.tripId)?.title}
           tripMemberName={activeTripMemberName}
         />

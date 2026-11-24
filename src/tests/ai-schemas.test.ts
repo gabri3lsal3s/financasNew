@@ -12,7 +12,10 @@ import {
   MAX_AI_IMAGE_BYTES,
   MAX_AI_SINGLE_RECEIPT_TEXT_CHARS,
   MAX_AI_STATEMENT_PDF_TEXT_CHARS,
+  normalizeCategorizeBatchAiPayload,
   normalizeSingleReceiptAiPayload,
+  normalizeStatementPdfRowsAiPayload,
+  PASSIVE_AI_DAILY_RESERVE,
   sanitizeBatchDescriptionForAi,
   stripJsonMarkdownFences,
   validateCategorizeBatchOutput,
@@ -379,5 +382,193 @@ describe("ai-schemas (Trava 3 Hard Caps, Trava 5 Whitelist & Ajuste #3 BRT)", ()
         }),
       ).success,
     ).toBe(false);
+  });
+
+  it("valida categories no single_receipt, extrai merchantCnpj (14 dígitos), descarta CPF e aplica whitelist em categoryId", () => {
+    const reqParsed = AiAssistantRequestSchema.safeParse({
+      mode: "single_receipt",
+      sha256: VALID_SHA,
+      text: "REDE MOLEZA\nFILTRO LINHA\nVALOR 270,00",
+      categories: [
+        { id: "cat-casa", name: "Casa", type: "expense" },
+        { id: "cat-mercado", name: "Supermercado", type: "expense" },
+      ],
+    });
+    expect(reqParsed.success).toBe(true);
+
+    const allowed = new Set(["cat-casa", "cat-mercado"]);
+
+    const normalizedValid = normalizeSingleReceiptAiPayload(
+      {
+        amountCents: 27000,
+        nature: "expense",
+        paymentMethod: "cash",
+        receiptKind: "invoice_danfe",
+        description: "REDE MOLEZA",
+        merchantCnpj: "88.709.563/0001-02",
+        categoryId: "cat-casa",
+        confidence: "high",
+      },
+      allowed,
+    );
+    const parsedValid = AiSingleReceiptOutputSchema.safeParse(normalizedValid);
+    expect(parsedValid.success).toBe(true);
+    if (parsedValid.success) {
+      expect(parsedValid.data.merchantCnpj).toBe("88709563000102");
+      expect(parsedValid.data.categoryId).toBe("cat-casa");
+    }
+
+    const normalizedCpfAndHallucinated = normalizeSingleReceiptAiPayload(
+      {
+        amountCents: 5000,
+        nature: "expense",
+        paymentMethod: "pix",
+        receiptKind: "pix",
+        description: "JOAO SILVA",
+        merchantCnpj: "123.456.789-01",
+        categoryId: "cat-inventada-pela-ia",
+        confidence: "high",
+      },
+      allowed,
+    );
+    const parsedBlocked = AiSingleReceiptOutputSchema.safeParse(normalizedCpfAndHallucinated);
+    expect(parsedBlocked.success).toBe(true);
+    if (parsedBlocked.success) {
+      expect(parsedBlocked.data.merchantCnpj).toBeNull();
+      expect(parsedBlocked.data.categoryId).toBeNull();
+    }
+  });
+
+  it("aceita imageBase64/competenceMonth em statement_pdf_rows e normaliza isenções R$ 0,00, parcelas 1/1 e entryType", () => {
+    const visionStatementReq = AiAssistantRequestSchema.safeParse({
+      mode: "statement_pdf_rows",
+      sha256: VALID_SHA,
+      imageBase64: "data:image/jpeg;base64,AAAA",
+      imageMimeType: "image/jpeg",
+      competenceMonth: "2027-01",
+    });
+    expect(visionStatementReq.success).toBe(true);
+
+    const normalized = normalizeStatementPdfRowsAiPayload({
+      rows: [
+        {
+          date: "2026-12-22T00:00:00",
+          description: "  Mercado Central  ",
+          amountCents: 18500,
+          installmentCurrent: 1,
+          installmentTotal: 1,
+          entryType: "purchase",
+        },
+        {
+          date: "2026-12-23",
+          description: "Isencao Anuidade",
+          amountCents: 0,
+          entryType: "charge",
+        },
+        {
+          date: "2026-12-24",
+          description: "Pagamento Fatura Anterior",
+          amountCents: 95000,
+          entryType: "payment",
+        },
+      ],
+    });
+
+    const parsed = AiStatementPdfRowsOutputSchema.safeParse(normalized);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.rows).toHaveLength(2);
+      expect(parsed.data.rows[0]?.date).toBe("2026-12-22");
+      expect(parsed.data.rows[0]?.installmentCurrent).toBeNull();
+      expect(parsed.data.rows[0]?.installmentTotal).toBeNull();
+      expect(parsed.data.rows[1]?.amountCents).toBe(-95000);
+      expect(parsed.data.rows[1]?.entryType).toBe("payment");
+    }
+  });
+
+  it("reserva PASSIVE_AI_DAILY_RESERVE créditos para chamadas ativas e higieniza metadados semânticos em categorize_batch e single_receipt", () => {
+    const periods = getBrtQuotaPeriods(new Date("2026-11-23T18:00:00Z"));
+    const proRowWith3BatchCallsToday = {
+      period_day: "2026-11-23",
+      receipt_calls_month: 0,
+      receipt_calls_day: 0,
+      batch_calls_month: 3,
+      batch_calls_day: 5 - PASSIVE_AI_DAILY_RESERVE, // 3 de 5 usados no Pro
+    };
+
+    const passiveEval = evaluateAiQuotaAllowance({
+      planGroup: "pro",
+      bucket: "batch_calls",
+      row: proRowWith3BatchCallsToday,
+      todayBrt: periods.periodDay,
+      nextDayResetAtIso: periods.nextDayResetAtIso,
+      nextMonthResetAtIso: periods.nextMonthResetAtIso,
+      priority: "passive",
+    });
+    expect(passiveEval.allowed).toBe(false);
+
+    const activeEval = evaluateAiQuotaAllowance({
+      planGroup: "pro",
+      bucket: "batch_calls",
+      row: proRowWith3BatchCallsToday,
+      todayBrt: periods.periodDay,
+      nextDayResetAtIso: periods.nextDayResetAtIso,
+      nextMonthResetAtIso: periods.nextMonthResetAtIso,
+      priority: "active",
+    });
+    expect(activeEval.allowed).toBe(true);
+
+    const normalizedBatch = normalizeCategorizeBatchAiPayload({
+      items: [
+        {
+          index: 0,
+          friendlyName: "YouTube Premium",
+          categoryId: "cat-1",
+          canonicalMerchant: "YouTube",
+          serviceSegment: "streaming",
+          cutTier: "can_cut",
+          isSubscription: true,
+          semanticTags: ["Streaming", "Musica", "streaming"],
+        },
+        {
+          index: 1,
+          friendlyName: "Loja Aleatoria",
+          categoryId: null,
+          serviceSegment: "inventado",
+          cutTier: "invalid_tier",
+        },
+      ],
+    });
+    const batchValidation = validateCategorizeBatchOutput(
+      normalizedBatch,
+      new Set(["cat-1"]),
+      1,
+    );
+    expect(batchValidation.success).toBe(true);
+    if (batchValidation.success) {
+      expect(batchValidation.data.items[0]?.semanticTags).toEqual(["streaming", "musica"]);
+      expect(batchValidation.data.items[0]?.isSubscription).toBe(true);
+      expect(batchValidation.data.items[1]?.serviceSegment).toBeNull();
+      expect(batchValidation.data.items[1]?.cutTier).toBeNull();
+    }
+
+    const intlReceipt = normalizeSingleReceiptAiPayload({
+      amountCents: 2500,
+      nature: "expense",
+      paymentMethod: "credit_card",
+      receiptKind: "card_slip",
+      description: "Boulangerie Paris",
+      originalCurrency: "eur",
+      originalAmountCents: 2500,
+      semanticTags: ["Viagem", "Padaria"],
+      confidence: "high",
+    });
+    const parsedIntl = AiSingleReceiptOutputSchema.safeParse(intlReceipt);
+    expect(parsedIntl.success).toBe(true);
+    if (parsedIntl.success) {
+      expect(parsedIntl.data.originalCurrency).toBe("EUR");
+      expect(parsedIntl.data.originalAmountCents).toBe(2500);
+      expect(parsedIntl.data.semanticTags).toEqual(["viagem", "padaria"]);
+    }
   });
 });

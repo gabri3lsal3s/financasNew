@@ -498,14 +498,20 @@ export function inferCategoryKeyword(description: string): CanonicalCategorySlug
 }
 
 /**
- * Mapeia um slug canônico para a categoria real correspondente do usuário.
- * Prioriza match exato por ícone (`cat.icon === slug`), seguido de correspondência por nome.
+ * Mapeia um identificador aprendido (UUID real da categoria) ou slug canônico
+ * para a categoria real correspondente do usuário.
+ * Prioriza correspondência exata por ID, seguida de ícone canônico (`cat.icon === slug`)
+ * e correspondência por nome.
  */
 export function matchCategoryBySlug<T extends { id: string; name: string; icon?: string | null }>(
   categories: T[],
-  slug: CanonicalCategorySlug,
+  slug: CanonicalCategorySlug | string,
 ): T | undefined {
-  if (!categories || categories.length === 0) return undefined;
+  if (!categories || categories.length === 0 || !slug) return undefined;
+
+  // 0. Correspondência exata por ID da categoria (UUID gravado pela memória aprendida do usuário)
+  const byId = categories.find((c) => c.id === slug);
+  if (byId) return byId;
 
   // 1. Busca prioritária por ícone canônico configurado no schema
   const byIcon = categories.find((c) => c.icon === slug);
@@ -559,7 +565,7 @@ export function matchCategoryBySlug<T extends { id: string; name: string; icon?:
     ],
   };
 
-  const targetNames = slugNameMap[slug] || [];
+  const targetNames = slugNameMap[slug as CanonicalCategorySlug] || [];
   for (const target of targetNames) {
     const targetNorm = normalizeInferenceText(target);
     const matched = categories.find((c) => normalizeInferenceText(c.name).includes(targetNorm));

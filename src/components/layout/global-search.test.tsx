@@ -163,4 +163,15 @@ describe("GlobalSearch (busca global ⌘K §3.9 & Fase 64)", () => {
     await user.click(screen.getByText("PETR4 · Petróleo"));
     expect(navigateMock).toHaveBeenCalledWith("/investments?q=ast-1&ticker=PETR4");
   });
+
+  it("filtra despesas com busca estruturada por valor ('acima de 200')", async () => {
+    const user = userEvent.setup();
+    render(<GlobalSearch />);
+
+    await user.click(screen.getByRole("button", { name: "Buscar ou executar comando (Ctrl+K)" }));
+    await user.type(screen.getByPlaceholderText(/Buscar páginas, ações/), "acima de 200");
+
+    expect(screen.getByText("Despesas")).toBeInTheDocument();
+    expect(screen.getByText("Mercado Extra")).toBeInTheDocument();
+  });
 });

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui";
 import type { RecurrenceFrequency } from "@/domain/recurrences";
 import type { DescriptionSuggestion } from "@/domain/predictions";
-import type { DebtType, PaymentMethod, ReceiveType } from "@/types";
+import type { ChargeKind, DebtType, PaymentMethod, ReceiveType, TransactionScope } from "@/types";
 import { ReportWeightField } from "../components/report-weight-field";
 import { DetailsPrimaryFields } from "./details-primary-fields";
 import { LaunchContextSelector } from "./launch-context-selector";
@@ -16,11 +16,15 @@ export interface StepDetailsProps {
   onDateChange: (date: string) => void;
   onPaymentMethodChange: (method: PaymentMethod) => void;
   onCardChange: (cardId: string) => void;
+  onChargeKindChange?: (kind: ChargeKind) => void;
   onInstallmentsChange?: (count: number) => void;
   onReceiveTypeChange: (type: ReceiveType) => void;
   onDescriptionChange: (description: string) => void;
   onFamilyChange: (isFamily: boolean) => void;
   isFamilyModeEnabled?: boolean;
+  isBusinessModeEnabled?: boolean;
+  onScopeChange?: (scope: TransactionScope) => void;
+  onTaxDeductibleChange?: (deductible: boolean) => void;
   onReportWeightChange: (weight: number) => void;
   onReportCustomAmountChange: (cents: number) => void;
   onSplitToggle?: (enabled: boolean) => void;
@@ -47,8 +51,9 @@ export interface StepDetailsProps {
 
 export function StepDetails(props: StepDetailsProps) {
   const {
-    state, onDateChange, onPaymentMethodChange, onCardChange, onInstallmentsChange,
+    state, onDateChange, onPaymentMethodChange, onCardChange, onChargeKindChange, onInstallmentsChange,
     onReceiveTypeChange, onDescriptionChange, onFamilyChange, isFamilyModeEnabled = false,
+    isBusinessModeEnabled = false, onScopeChange, onTaxDeductibleChange,
     onReportWeightChange, onReportCustomAmountChange, onSplitToggle, onSplitPeopleCountChange,
     onDebtToggle, onDebtTypeChange, onDebtAmountChange, onDebtDueDateChange,
     onRecurringToggle, onRecurrenceFrequencyChange, onRecurrenceEndModeChange,
@@ -78,6 +83,7 @@ export function StepDetails(props: StepDetailsProps) {
         date={state.date}
         paymentMethod={state.paymentMethod}
         cardId={state.cardId}
+        chargeKind={state.chargeKind}
         receiveType={state.receiveType}
         description={state.description}
         descriptionSuggestions={descriptionSuggestions}
@@ -87,6 +93,7 @@ export function StepDetails(props: StepDetailsProps) {
         onDateChange={onDateChange}
         onPaymentMethodChange={onPaymentMethodChange}
         onCardChange={onCardChange}
+        onChargeKindChange={onChargeKindChange}
         onReceiveTypeChange={onReceiveTypeChange}
         onDescriptionChange={onDescriptionChange}
         onNext={onNext}
@@ -106,8 +113,11 @@ export function StepDetails(props: StepDetailsProps) {
         state={state}
         title="Contexto do Lançamento"
         isFamilyModeEnabled={isFamilyModeEnabled}
+        isBusinessModeEnabled={isBusinessModeEnabled}
         activeTrips={activeTrips}
         activeTripMemberName={activeTripMemberName}
+        onScopeChange={onScopeChange}
+        onTaxDeductibleChange={onTaxDeductibleChange}
         onFamilyChange={onFamilyChange}
         onTripChange={onTripChange}
         onSplitToggle={onSplitToggle}

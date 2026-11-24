@@ -134,6 +134,14 @@ describe("category-inference (Motor Puro de Auto-Categorização)", () => {
       { id: "c8", name: "Salário Fixo", icon: "salario" },
     ];
 
+    it("faz match prioritário por UUID exato antes mesmo de ícone e nome", () => {
+      const uuidCategories = [
+        { id: "uuid-cat-99", name: "Projeto Solar", icon: "custom-icon" },
+        { id: "c1", name: "Alimentação", icon: "alimentacao" },
+      ];
+      expect(matchCategoryBySlug(uuidCategories, "uuid-cat-99")?.id).toBe("uuid-cat-99");
+    });
+
     it("faz match prioritário pelo ícone canônico configurado", () => {
       expect(matchCategoryBySlug(mockCategories, "alimentacao")?.id).toBe("c1");
       expect(matchCategoryBySlug(mockCategories, "mercado")?.id).toBe("c2");

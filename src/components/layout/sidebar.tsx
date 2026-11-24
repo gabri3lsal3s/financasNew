@@ -6,7 +6,7 @@ import { LogoProfileButton } from "@/components/layout/logo-profile-button";
 import { navGroups, filterNavItems } from "@/components/layout/nav-items";
 import { Button } from "@/components/ui/button";
 import { useNotificationCenter } from "@/hooks/use-notification-center";
-import { useFamilyMode, useTripMode, useUserAccess, useUserSubscription } from "@/state";
+import { useBusinessMode, useFamilyMode, useTripMode, useUserAccess, useUserSubscription } from "@/state";
 import { UpgradeDialog } from "@/components/modules/subscription/upgrade-dialog";
 import { buildCheckoutUrl } from "@/domain/subscription/plans";
 import { SidebarNavGroup } from "./sidebar-nav-group";
@@ -64,8 +64,10 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const { isAdmin, hasFeature } = useUserAccess();
   const { isFamilyModeEnabled } = useFamilyMode();
   const { isTripModeEnabled } = useTripMode();
+  const { isBusinessModeEnabled } = useBusinessMode();
   const isFamilyActive = Boolean(isFamilyModeEnabled);
   const isTripActive = Boolean(isTripModeEnabled);
+  const isBusinessActive = Boolean(isBusinessModeEnabled);
   const expanded = !isCollapsed || hoverExpanded;
   const isPaymentPending =
     subscription.status === "past_due" ||
@@ -76,10 +78,10 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
     return navGroups
       .map((g) => ({
         title: g.title,
-        items: filterNavItems(g.items, isAdmin, hasFeature, isFamilyActive, isTripActive),
+        items: filterNavItems(g.items, isAdmin, hasFeature, isFamilyActive, isTripActive, isBusinessActive),
       }))
       .filter((g) => g.items.length > 0);
-  }, [isAdmin, hasFeature, isFamilyActive, isTripActive]);
+  }, [isAdmin, hasFeature, isFamilyActive, isTripActive, isBusinessActive]);
 
   return (
     <aside

@@ -4,10 +4,11 @@ import {
   IconPicker,
   Input,
   RadioGroup,
+  Select,
   Switch,
 } from "@/components/ui";
 import { suggestCategory } from "@/domain/budgets";
-import type { CategoryType } from "@/types";
+import type { CategoryScope, CategoryType } from "@/types";
 import { CATEGORY_ICON_OPTIONS } from "./category-icon-labels";
 
 export interface CategoryFormFieldsProps {
@@ -23,6 +24,9 @@ export interface CategoryFormFieldsProps {
   isFamilyActive: boolean;
   isFamily: boolean;
   onIsFamilyChange: (checked: boolean) => void;
+  isBusinessActive?: boolean;
+  scope?: CategoryScope;
+  onScopeChange?: (scope: CategoryScope) => void;
 }
 
 export function CategoryFormFields({
@@ -38,6 +42,9 @@ export function CategoryFormFields({
   isFamilyActive,
   isFamily,
   onIsFamilyChange,
+  isBusinessActive = false,
+  scope = "personal",
+  onScopeChange,
 }: CategoryFormFieldsProps) {
   const suggestionHelper =
     !isEditing && name.trim()
@@ -89,7 +96,25 @@ export function CategoryFormFields({
         </FormField>
       </div>
 
-      {isFamilyActive ? (
+      {isBusinessActive && onScopeChange ? (
+        <FormField
+          label="Esfera de uso"
+          helperText="Controla em quais caixas (Pessoal, Negócio ou ambos) esta categoria aparece sugerida."
+        >
+          <Select
+            value={scope}
+            onValueChange={(value) => onScopeChange(value as CategoryScope)}
+            options={[
+              { value: "personal", label: "Pessoal (PF)" },
+              { value: "business", label: "Meu Negócio (PJ)" },
+              { value: "both", label: "Ambos (PF e PJ)" },
+            ]}
+            ariaLabel="Esfera de uso da categoria"
+          />
+        </FormField>
+      ) : null}
+
+      {isFamilyActive && (!isBusinessActive || scope !== "business") ? (
         <div className="rounded-xl border border-border/80 bg-surface-raised p-3">
           <Switch
             id="category-is-family"

@@ -28,6 +28,8 @@ export function useCardsActions({
   const [printOpen, setPrintOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [batchPaymentOpen, setBatchPaymentOpen] = useState(false);
+  const [chargeOpen, setChargeOpen] = useState(false);
+  const [reimbursementOpen, setReimbursementOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [upgradeContext, setUpgradeContext] = useState<string | undefined>();
 
@@ -54,6 +56,14 @@ export function useCardsActions({
     setPaymentMode(mode);
   };
 
+  const handleOpenCharge = () => {
+    if (isReadOnlyMode) {
+      requireUpgrade("Lançar Encargo no Cartão");
+      return;
+    }
+    setChargeOpen(true);
+  };
+
   const handleOpenImport = () => {
     if (isReadOnlyMode) {
       requireUpgrade("Importar Fatura de Cartão");
@@ -68,6 +78,14 @@ export function useCardsActions({
       return;
     }
     setBatchPaymentOpen(true);
+  };
+
+  const handleOpenReimbursement = () => {
+    if (isReadOnlyMode) {
+      requireUpgrade("Registrar Reembolso de Cartão");
+      return;
+    }
+    setReimbursementOpen(true);
   };
 
   const handleDeletePaymentClick = (payment: CardPayment) => {
@@ -142,6 +160,12 @@ export function useCardsActions({
     setUpgradeOpen,
     upgradeContext,
     requireUpgrade,
+    chargeOpen,
+    setChargeOpen,
+    handleOpenCharge,
+    reimbursementOpen,
+    setReimbursementOpen,
+    handleOpenReimbursement,
     handleOpenForm,
     handleOpenPayment,
     handleOpenImport,

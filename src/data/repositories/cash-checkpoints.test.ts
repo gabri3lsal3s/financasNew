@@ -58,7 +58,8 @@ describe("data/repositories/cash-checkpoints", () => {
     const mockLimit = vi.fn().mockResolvedValue({ data: mockData, error: null });
     const mockOrder2 = vi.fn().mockReturnValue({ limit: mockLimit });
     const mockOrder1 = vi.fn().mockReturnValue({ order: mockOrder2 });
-    const mockSelect = vi.fn().mockReturnValue({ order: mockOrder1 });
+    const mockEq = vi.fn().mockReturnValue({ order: mockOrder1 });
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
     const mockFrom = vi.fn().mockReturnValue({ select: mockSelect });
 
     vi.mocked(getSupabase).mockReturnValue({
@@ -66,6 +67,7 @@ describe("data/repositories/cash-checkpoints", () => {
     } as unknown as ReturnType<typeof getSupabase>);
 
     const result = await getLatestCashCheckpoint();
+    expect(mockEq).toHaveBeenCalledWith("scope", "personal");
     expect(result).not.toBeNull();
     expect(result?.id).toBe("chk-latest");
     expect(result?.balance_cents).toBe(300000);
@@ -78,6 +80,7 @@ describe("data/repositories/cash-checkpoints", () => {
       date: "2026-08-24",
       balance_cents: 450000,
       notes: "Ajuste manual",
+      scope: "personal",
       created_at: "2026-08-24T19:00:00Z",
     };
 
@@ -103,6 +106,7 @@ describe("data/repositories/cash-checkpoints", () => {
       date: "2026-08-24",
       balance_cents: 450000,
       notes: "Ajuste manual",
+      scope: "personal",
     });
   });
 

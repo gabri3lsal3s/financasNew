@@ -1,10 +1,14 @@
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
+import { filterExpensesByViewScope, filterIncomesByViewScope } from "@/domain/business";
 import type { FeedFilter } from "@/domain/expenses";
+import { parseStructuredSearchQuery } from "@/domain/search";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
-import { currentMonth, isValidMonth, shiftMonth } from "@/lib/date";
+import { useSafeViewScope } from "@/hooks/use-safe-business-scope";
+import { currentMonth, isValidMonth, shiftMonth, todayLocalIso } from "@/lib/date";
 import { RECURRENCE_FREQUENCY_LABELS } from "@/lib/labels";
+import { useMerchantLearning } from "@/services/merchant-learning";
 import {
   useCategories,
   useCreditCards,
@@ -79,17 +83,46 @@ export function useTransactionList() {
     [cardsQuery.data],
   );
 
-  const expenses = useMemo(() => expensesQuery.data ?? [], [expensesQuery.data]);
-  const allHistoryExpenses = useMemo(
-    () => [
+  const { effectiveViewScope } = useSafeViewScope();
+  const { memory: merchantLearning } = useMerchantLearning();
+  const expenses = useMemo(
+    () => filterExpensesByViewScope(expensesQuery.data ?? [], effectiveViewScope, { mode: "cashflow" }),
+    [expensesQuery.data, effectiveViewScope],
+  );
+  const deduplicatedCashflowHistory = useMemo(() => {
+    const merged = [
       ...(expensesQuery.data ?? []),
       ...(prevMonth1Query.data ?? []),
       ...(prevMonth2Query.data ?? []),
       ...(prevMonth3Query.data ?? []),
-    ],
-    [expensesQuery.data, prevMonth1Query.data, prevMonth2Query.data, prevMonth3Query.data],
+    ];
+    const unique = Array.from(new Map(merged.map((e) => [e.id, e])).values());
+    return filterExpensesByViewScope(unique, effectiveViewScope, { mode: "cashflow" });
+  }, [
+    expensesQuery.data,
+    prevMonth1Query.data,
+    prevMonth2Query.data,
+    prevMonth3Query.data,
+    effectiveViewScope,
+  ]);
+  const allHistoryExpenses = useMemo(
+    () =>
+      filterExpensesByViewScope(
+        [
+          ...(expensesQuery.data ?? []),
+          ...(prevMonth1Query.data ?? []),
+          ...(prevMonth2Query.data ?? []),
+          ...(prevMonth3Query.data ?? []),
+        ],
+        effectiveViewScope,
+        { mode: "dre" },
+      ),
+    [expensesQuery.data, prevMonth1Query.data, prevMonth2Query.data, prevMonth3Query.data, effectiveViewScope],
   );
-  const incomes = useMemo(() => incomesQuery.data ?? [], [incomesQuery.data]);
+  const incomes = useMemo(
+    () => filterIncomesByViewScope(incomesQuery.data ?? [], effectiveViewScope, { mode: "cashflow" }),
+    [incomesQuery.data, effectiveViewScope],
+  );
 
   const totals = useMemo(() => computeTransactionTotals(expenses, incomes), [expenses, incomes]);
 
@@ -102,7 +135,33 @@ export function useTransactionList() {
     setFilter(initialFilter);
   }
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const paramBusca = searchParams.get("busca") ?? "";
+  const [searchQuery, setSearchQueryState] = useState(paramBusca);
+  const [prevParamBusca, setPrevParamBusca] = useState(paramBusca);
+  if (prevParamBusca !== paramBusca) {
+    setPrevParamBusca(paramBusca);
+    if (paramBusca) {
+      setSearchQueryState(paramBusca);
+    }
+  }
+
+  const setSearchQuery = useCallback(
+    (nextQuery: string) => {
+      setSearchQueryState(nextQuery);
+      if (!nextQuery && searchParams.has("busca")) {
+        setSearchParams(
+          (prev) => {
+            const updated = new URLSearchParams(prev);
+            updated.delete("busca");
+            return updated;
+          },
+          { replace: true },
+        );
+      }
+    },
+    [searchParams, setSearchParams],
+  );
+
   const [visibleCount, setVisibleCount] = useState(TRANSACTIONS_PAGE_SIZE);
   const [prevFilterKey, setPrevFilterKey] = useState(() => `${month}-${filter}-${searchQuery}`);
   const currentFilterKey = `${month}-${filter}-${searchQuery}`;
@@ -116,18 +175,55 @@ export function useTransactionList() {
     [expenses, allHistoryExpenses],
   );
 
+  const todayISOStr = todayLocalIso();
+  const usesMultiMonthScope = useMemo(() => {
+    const trimmed = searchQuery.trim();
+    if (!trimmed) return false;
+    const parsed = parseStructuredSearchQuery(trimmed, {
+      todayISO: todayISOStr,
+      referenceMonth: month,
+      merchantLearning,
+    });
+    if (!parsed.monthScope) return false;
+    if (parsed.monthScope.kind === "last_3_months" || parsed.monthScope.kind === "previous_month") {
+      return true;
+    }
+    if (parsed.monthScope.kind === "specific_month" && parsed.monthScope.month !== month) {
+      return true;
+    }
+    return false;
+  }, [searchQuery, todayISOStr, month, merchantLearning]);
+
   const feed = useMemo(
     () =>
       computePagedFeed({
-        expenses,
+        expenses: usesMultiMonthScope ? deduplicatedCashflowHistory : expenses,
         incomes,
         filter,
         searchQuery,
         categoryById,
+        cardById,
+        merchantLearning,
+        referenceMonth: month,
+        todayISO: todayISOStr,
         highlightId,
         visibleCount,
       }),
-    [expenses, incomes, filter, searchQuery, categoryById, highlightId, visibleCount],
+    [
+      usesMultiMonthScope,
+      deduplicatedCashflowHistory,
+      expenses,
+      incomes,
+      filter,
+      searchQuery,
+      categoryById,
+      cardById,
+      merchantLearning,
+      month,
+      todayISOStr,
+      highlightId,
+      visibleCount,
+    ],
   );
 
   const frequencyById = useMemo(
@@ -269,6 +365,7 @@ export function useTransactionList() {
     effectiveVisibleCount: feed.effectiveVisibleCount,
     hasMore: feed.hasMore,
     isSearching: searchQuery.trim().length > 0,
+    structuredFilterBadges: feed.structuredFilterBadges,
     feedGroups: feed.feedGroups,
     recurrenceLabel,
     highlightId,

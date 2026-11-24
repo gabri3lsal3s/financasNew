@@ -390,8 +390,40 @@ export interface Database {
           p_debt_type?: string | null;
           p_is_family?: boolean;
           p_debt_installment_mode?: string | null;
+          p_charge_kind?: string | null;
+          p_scope?: string | null;
+          p_is_tax_deductible?: boolean;
         };
         Returns: string;
+      };
+      create_internal_transfer_pair: {
+        Args: {
+          p_transfer_kind: "pro_labore" | "capital_injection" | "card_reimbursement";
+          p_amount: number;
+          p_date: string;
+          p_description?: string | null;
+          p_expense_category_id?: string | null;
+          p_income_category_id?: string | null;
+          p_payment_method?: string;
+          p_receive_type?: string;
+          p_source_ref?: string | null;
+        };
+        Returns: {
+          transfer_pair_id: string;
+          expense_id: string;
+          income_id: string;
+          transfer_kind: "pro_labore" | "capital_injection" | "card_reimbursement";
+          amount: number;
+        };
+      };
+      delete_internal_transfer_pair: {
+        Args: {
+          p_transfer_pair_id: string;
+        };
+        Returns: {
+          deleted: boolean;
+          transfer_pair_id: string;
+        };
       };
       create_refund: {
         Args: {
@@ -426,6 +458,9 @@ export interface Database {
           p_description: string | null;
           p_report_weight: number;
           p_is_family?: boolean;
+          p_scope?: string | null;
+          p_charge_kind?: string | null;
+          p_is_tax_deductible?: boolean;
         };
         Returns: string;
       };
@@ -474,6 +509,7 @@ export interface Database {
           p_report_weight: number;
           p_installments: unknown;
           p_is_family?: boolean;
+          p_scope?: string | null;
         };
         Returns: string;
       };
@@ -566,6 +602,25 @@ export interface Database {
         };
         Returns: string;
       };
+      pay_card_bill_with_charges: {
+        Args: {
+          p_card_id: string;
+          p_competence_month: string;
+          p_nominal_amount: number;
+          p_charges?: unknown;
+          p_charge_competence_mode?: string;
+          p_payment_date?: string;
+          p_note?: string | null;
+        };
+        Returns: {
+          payment_id: string;
+          total_paid: number;
+          nominal_amount: number;
+          charges_amount: number;
+          charges_competence: string;
+          created_expense_ids: string[];
+        };
+      };
       update_credit_card: {
         Args: {
           p_card_id: string;
@@ -577,6 +632,7 @@ export interface Database {
           p_color: string | null;
           p_is_active: boolean;
           p_last_four_digits?: string | null;
+          p_scope?: string | null;
         };
         Returns: void;
       };

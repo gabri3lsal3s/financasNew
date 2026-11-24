@@ -1,11 +1,13 @@
-import { callRpc, unwrapRpc } from "./client";
+import { callRpc, unwrapRpc, type FnArgs } from "./client";
 import type {
+  ChargeKind,
   DebtType,
   InstallmentDeleteMode,
   PaymentMethod,
   ReceiveType,
   RecurrenceFrequency,
   RecurrenceKind,
+  TransactionScope,
 } from "@/types";
 
 // ---------------------------------------------------------------------------
@@ -33,32 +35,44 @@ export interface CreateExpenseWithDebtParams {
   debtType?: DebtType | null;
   isFamily?: boolean;
   debtInstallmentMode?: "single_total" | "per_installment" | null;
+  chargeKind?: ChargeKind | null;
+  scope?: TransactionScope | null;
+  isTaxDeductible?: boolean;
 }
 
 /** Despesa + cobrança vinculada em uma única transação (D1/§3.2.4). */
 export async function createExpenseWithDebt(params: CreateExpenseWithDebtParams): Promise<string> {
-  return unwrapRpc(
-    callRpc("create_expense_with_debt", {
-      p_value: params.value,
-      p_date: params.date,
-      p_category_id: params.categoryId,
-      p_payment_method: params.paymentMethod,
-      p_card_id: params.cardId ?? null,
-      p_description: params.description ?? null,
-      p_report_weight: params.reportWeight ?? 1,
-      p_installments: params.installments.map((item) => ({
-        date: item.date,
-        value: item.value,
-        bill_competence: item.billCompetence ?? null,
-      })),
-      p_debt_name: params.debtName ?? null,
-      p_debt_amount: params.debtAmount ?? null,
-      p_debt_due_date: params.debtDueDate ?? null,
-      p_debt_type: params.debtType ?? null,
-      p_is_family: params.isFamily ?? false,
-      p_debt_installment_mode: params.debtInstallmentMode ?? "per_installment",
-    }),
-  );
+  const args: FnArgs<"create_expense_with_debt"> = {
+    p_value: params.value,
+    p_date: params.date,
+    p_category_id: params.categoryId,
+    p_payment_method: params.paymentMethod,
+    p_card_id: params.cardId ?? null,
+    p_description: params.description ?? null,
+    p_report_weight: params.reportWeight ?? 1,
+    p_installments: params.installments.map((item) => ({
+      date: item.date,
+      value: item.value,
+      bill_competence: item.billCompetence ?? null,
+    })),
+    p_debt_name: params.debtName ?? null,
+    p_debt_amount: params.debtAmount ?? null,
+    p_debt_due_date: params.debtDueDate ?? null,
+    p_debt_type: params.debtType ?? null,
+    p_is_family: params.isFamily ?? false,
+    p_debt_installment_mode: params.debtInstallmentMode ?? "per_installment",
+  };
+  // Só envia p_charge_kind / p_scope / p_is_tax_deductible quando diferente do default (retrocompatibilidade de testes e RPCs)
+  if (params.chargeKind && params.chargeKind !== "regular") {
+    args.p_charge_kind = params.chargeKind;
+  }
+  if (params.scope && params.scope !== "personal") {
+    args.p_scope = params.scope;
+  }
+  if (params.isTaxDeductible) {
+    args.p_is_tax_deductible = true;
+  }
+  return unwrapRpc(callRpc("create_expense_with_debt", args));
 }
 
 export interface CreateRefundParams {
@@ -125,6 +139,9 @@ export interface CreateRecurrenceParams {
   description?: string | null;
   reportWeight?: number;
   isFamily?: boolean;
+  scope?: TransactionScope | null;
+  chargeKind?: ChargeKind | null;
+  isTaxDeductible?: boolean;
 }
 
 /** Ocorrência a materializar (D12 — datas calculadas no cliente). */
@@ -140,23 +157,31 @@ export interface RecurrenceMaterializeItem {
 
 /** Cria o template de recorrência (não materializa — sob demanda, §3.2.5). */
 export async function createRecurrence(params: CreateRecurrenceParams): Promise<string> {
-  return unwrapRpc(
-    callRpc("create_recurrence", {
-      p_kind: params.kind,
-      p_frequency: params.frequency,
-      p_value: params.value,
-      p_category_id: params.categoryId,
-      p_start_date: params.startDate,
-      p_end_date: params.endDate ?? null,
-      p_occurrences_total: params.occurrencesTotal ?? null,
-      p_payment_method: params.paymentMethod ?? null,
-      p_card_id: params.cardId ?? null,
-      p_receive_type: params.receiveType ?? null,
-      p_description: params.description ?? null,
-      p_report_weight: params.reportWeight ?? 1,
-      p_is_family: params.isFamily ?? false,
-    }),
-  );
+  const args: FnArgs<"create_recurrence"> = {
+    p_kind: params.kind,
+    p_frequency: params.frequency,
+    p_value: params.value,
+    p_category_id: params.categoryId,
+    p_start_date: params.startDate,
+    p_end_date: params.endDate ?? null,
+    p_occurrences_total: params.occurrencesTotal ?? null,
+    p_payment_method: params.paymentMethod ?? null,
+    p_card_id: params.cardId ?? null,
+    p_receive_type: params.receiveType ?? null,
+    p_description: params.description ?? null,
+    p_report_weight: params.reportWeight ?? 1,
+    p_is_family: params.isFamily ?? false,
+  };
+  if (params.scope && params.scope !== "personal") {
+    args.p_scope = params.scope;
+  }
+  if (params.chargeKind && params.chargeKind !== "regular") {
+    args.p_charge_kind = params.chargeKind;
+  }
+  if (params.isTaxDeductible) {
+    args.p_is_tax_deductible = true;
+  }
+  return unwrapRpc(callRpc("create_recurrence", args));
 }
 
 /**
@@ -219,25 +244,28 @@ export interface CreateIncomeInstallmentsParams {
   reportWeight?: number;
   installments: InstallmentInput[];
   isFamily?: boolean;
+  scope?: TransactionScope | null;
 }
 
 /** Renda parcelada (1–60) numa única transação — invariantes D12. */
 export async function createIncomeInstallments(params: CreateIncomeInstallmentsParams): Promise<string> {
-  return unwrapRpc(
-    callRpc("create_income_installments", {
-      p_value: params.value,
-      p_date: params.date,
-      p_category_id: params.categoryId,
-      p_receive_type: params.receiveType,
-      p_description: params.description ?? null,
-      p_report_weight: params.reportWeight ?? 1,
-      p_installments: params.installments.map((item) => ({
-        date: item.date,
-        value: item.value,
-      })),
-      p_is_family: params.isFamily ?? false,
-    }),
-  );
+  const args: FnArgs<"create_income_installments"> = {
+    p_value: params.value,
+    p_date: params.date,
+    p_category_id: params.categoryId,
+    p_receive_type: params.receiveType,
+    p_description: params.description ?? null,
+    p_report_weight: params.reportWeight ?? 1,
+    p_installments: params.installments.map((item) => ({
+      date: item.date,
+      value: item.value,
+    })),
+    p_is_family: params.isFamily ?? false,
+  };
+  if (params.scope && params.scope !== "personal") {
+    args.p_scope = params.scope;
+  }
+  return unwrapRpc(callRpc("create_income_installments", args));
 }
 
 /** Exclusão de parcela(s) de renda em 3 modos (source_ref é somente-leitura). */
@@ -367,6 +395,7 @@ export interface StatementExpenseItemInput {
   installment_number?: number;
   report_weight?: number;
   statement_hash?: string;
+  charge_kind?: string;
 }
 
 export interface ImportStatementResult {

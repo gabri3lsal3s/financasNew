@@ -10,12 +10,17 @@ import type { FeedbackDecision } from "@/domain/insights/feedback";
  * Tabela `insight_feedback` (unique por usuário + occurrence_key).
  */
 
-export type FeedbackRow = Pick<InsightFeedback, "occurrence_key" | "decision">;
+export type FeedbackRow = Pick<InsightFeedback, "occurrence_key" | "decision"> & {
+  created_at?: string | null;
+};
 
 export async function listFeedback(): Promise<FeedbackRow[]> {
   const user_id = await currentUserId();
   const { data, error } = await resolveQuery<FeedbackRow[]>(
-    getSupabase().from("insight_feedback").select("occurrence_key, decision").eq("user_id", user_id),
+    getSupabase()
+      .from("insight_feedback")
+      .select("occurrence_key, decision, created_at")
+      .eq("user_id", user_id),
   );
 
   if (error) {

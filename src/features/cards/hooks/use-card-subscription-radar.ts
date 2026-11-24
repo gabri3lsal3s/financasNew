@@ -50,6 +50,7 @@ export function useCardSubscriptionRadar({
         categoryIcon: categoryById.get(e.category_id)?.icon ?? null,
         installmentGroupId: e.installment_group_id,
         recurrenceId: e.recurrence_id,
+        tripId: e.trip_id,
         paymentMethod: "credit_card",
         cardId: e.card_id,
         cardName: selectedCard.name,
@@ -57,7 +58,10 @@ export function useCardSubscriptionRadar({
       }));
 
     const todayISOStr = todayISO();
-    const detected = detectRecurrences(cardExpenseLikes, { todayISO: todayISOStr });
+    const detected = detectRecurrences(cardExpenseLikes, {
+      todayISO: todayISOStr,
+      includeFormalRecurrences: true,
+    });
     const { active } = partitionFeedback(detected, feedbackQuery.data ?? {});
     const openInvoiceCompetence = resolveBillCompetence(todayISOStr, selectedCard.closing_day);
     const openInvoiceExpenses = allExpenses.filter(

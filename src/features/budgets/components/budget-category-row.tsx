@@ -17,6 +17,7 @@ export interface BudgetCategoryRowData {
   spentGrossCents: number;
   hasSplitDifference: boolean;
   inherited: boolean;
+  chargesCents?: number;
 }
 
 export interface BudgetCategoryRowProps {
@@ -92,6 +93,16 @@ export function BudgetCategoryRow({
                         Sua parte: <MoneyText cents={row.spentWeightedCents} tone="default" variant="caption" className="text-[10px]" />
                       </span>
                     )}
+                  </Badge>
+                ) : null}
+                {row.chargesCents && row.chargesCents > 0 ? (
+                  <Badge
+                    variant="warning"
+                    size="xs"
+                    className="max-w-full truncate text-warning-strong font-normal"
+                    title={`Inclui ${formatCentsAsBRL(row.chargesCents)} em encargos de cartão`}
+                  >
+                    Encargos: <MoneyText cents={row.chargesCents} tone="default" variant="caption" className="text-[10px]" />
                   </Badge>
                 ) : null}
               </div>

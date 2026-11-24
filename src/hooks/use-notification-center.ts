@@ -283,12 +283,8 @@ export function useNotificationCenter(
   const onboardingQuery = useOnboardingCountsSafe();
   const { isDismissed: isOnboardingDismissed, dismiss: dismissOnboarding } =
     useOnboardingDismissed();
-  const advisorHook = useSmartAdvisorInsightsSafe();
-  const supportQuery = useMySupportTicketsSafe();
-  const broadcastsQuery = useMyBroadcastNotificationsSafe();
-  const splitSharesQuery = useMyPublicSharesSafe("split");
-  const subscriptionQuery = useUserSubscriptionSafe();
 
+  const preferences = reminders?.preferences ?? DEFAULT_REMINDER_PREFERENCES;
   const categoryPreferences = useMemo(
     () =>
       resolveNotificationCategoryPreferences(
@@ -296,6 +292,15 @@ export function useNotificationCenter(
       ),
     [userPrefsQuery?.data?.custom_settings?.notificationCategories],
   );
+  const canRunAdvisorInsights = Boolean(
+    preferences.enabled && categoryPreferences.advisorInsights,
+  );
+
+  const advisorHook = useSmartAdvisorInsightsSafe({ enabled: canRunAdvisorInsights });
+  const supportQuery = useMySupportTicketsSafe();
+  const broadcastsQuery = useMyBroadcastNotificationsSafe();
+  const splitSharesQuery = useMyPublicSharesSafe("split");
+  const subscriptionQuery = useUserSubscriptionSafe();
 
   const canDetectBillClosing =
     categoryPreferences.billClosing && hasFeature("cards");
@@ -341,7 +346,6 @@ export function useNotificationCenter(
     () => reminders?.readHistoryItems ?? [],
     [reminders?.readHistoryItems],
   );
-  const preferences = reminders?.preferences ?? DEFAULT_REMINDER_PREFERENCES;
 
   const onboardingData = onboardingQuery?.data;
   const showOnboarding =
@@ -492,8 +496,8 @@ export function useNotificationCenter(
   ]);
 
   const effectiveAdvisorInsights = useMemo(
-    () => (preferences.enabled ? advisorInsights : []),
-    [preferences.enabled, advisorInsights],
+    () => (canRunAdvisorInsights ? advisorInsights : []),
+    [canRunAdvisorInsights, advisorInsights],
   );
 
   const summary = useMemo(

@@ -79,4 +79,17 @@ describe("budgets-breakdown builders (Fase 4.5 e Fase 5)", () => {
     // Teto sugerido: 600 / 15 = 40/dia
     expect(breakdown.steps[4]!.formattedValue).toBe(formatCentsAsBRL(4000));
   });
+
+  it("exibe estado de calibração sem divisão por 1 centavo quando monthlyExpensesCents = 0 (Fase 4)", () => {
+    const breakdown = buildEmergencyFundBreakdown({
+      liquidReserveCents: 50000, // R$ 500,00
+      monthlyExpensesCents: 0,
+      targetMonths: 6,
+    });
+
+    expect(breakdown.result.rawValue).toBe(0);
+    expect(breakdown.result.formattedValue).toBe("Aguardando base");
+    expect(breakdown.result.tone).toBe("muted");
+    expect(breakdown.periodLabel).toContain("Aguardando base");
+  });
 });

@@ -10,12 +10,14 @@
  * não é recorrência.
  */
 
+import { resolveCategorySemantics } from "./category-semantics";
 import { confidenceScore, varianceOf, type RecurrenceKind } from "./confidence";
 import {
   classifySubscription,
   findMatchingServiceKey,
   segmentOf,
   type CutTier,
+  type LearnedServiceDef,
   type ServiceSegment,
 } from "./subscriptions";
 import { normalizeText, stripTemporalSuffixes } from "./shared";
@@ -43,12 +45,16 @@ export interface ExpenseLike {
   installmentGroupId?: string | null;
   /** Recorrência formal (Fase 32) — nunca é "detecção" (já é conhecida). */
   recurrenceId?: string | null;
+  /** Vínculo com viagem/evento pontual (para isolamento de hábitos e recorrências). */
+  tripId?: string | null;
   /** Método de pagamento / conta de origem (ex.: credit_card, pix, debit, etc.). */
   paymentMethod?: string | null;
   /** ID do cartão de crédito quando aplicável. */
   cardId?: string | null;
   /** Nome legível do cartão de crédito associado quando resolvido. */
   cardName?: string | null;
+  /** Referência de origem de despesas/transferências especiais. */
+  sourceRef?: string | null;
   /** Objeto bruto original para integração direta com diálogos de detalhe e edição. */
   rawExpense?: Expense;
 }
@@ -67,6 +73,8 @@ export interface IncomeLike {
   installmentGroupId?: string | null;
   /** Recorrência formal (Fase 32) — nunca é "detecção" (já é conhecida). */
   recurrenceId?: string | null;
+  /** Origem técnica automática (ex.: [REFUND], [DEBT], [DIVIDEND]) para blindagem contra falsas rendas. */
+  sourceRef?: string | null;
 }
 
 export type IncomeProfile = "fixed" | "frequent_client";
@@ -106,6 +114,10 @@ export interface RecurringIncomeOccurrence {
 export interface DetectIncomeRecurrencesOptions {
   todayISO?: string;
   historyMonthsLimit?: number;
+  /** Inclui receitas vinculadas a recorrências formais (default: false). */
+  includeFormalRecurrences?: boolean;
+  /** Mapa de aliases normalizados (rawAliasNorm -> friendlyNameNorm) aprendido no merchantLearning. */
+  merchantAliasMap?: ReadonlyMap<string, string>;
 }
 
 export type PriceAdjustmentKind = "inflationary" | "plan_change" | "consumption_variation";
@@ -309,6 +321,8 @@ export interface RecurrenceOccurrence {
   cardName?: string | null;
   /** Forma de pagamento predominante (credit_card, pix, boleto, debit, etc.). */
   paymentMethod?: string | null;
+  /** Indica se a ocorrência provém de uma recorrência formal já cadastrada pelo usuário (Fase 2). */
+  isFormalRecurrence?: boolean;
 }
 
 export interface RecurringTotalsResult {
@@ -680,35 +694,252 @@ export interface DetectRecurrencesOptions {
   categoryBudgets?: Record<string, number> | Map<string, number>;
   /** Mapa de feedback/aprendizado do usuário para calibração e anti-insistência (§F23). */
   feedbackMap?: FeedbackMap;
+  /**
+   * Inclui despesas com `recurrenceId != null` na saída marcando `isFormalRecurrence: true`
+   * para preservação nos Custos Fixos Mensais e no Radar de Fatura (default: false).
+   */
+  includeFormalRecurrences?: boolean;
+  /** Mapa de aliases normalizados aprendidos via `merchantLearning` (`rawAliasNorm -> friendlyNameNorm`). */
+  merchantAliasMap?: ReadonlyMap<string, string>;
+  /** Serviços e assinaturas aprendidos fora do catálogo estático (merchantLearning). */
+  learnedServices?: ReadonlyMap<string, LearnedServiceDef>;
+}
+
+const SPORADIC_DIVIDEND_DESC_REGEX =
+  /\b(?:dividendo|dividendos|jcp|juros\s+sobre\s+capital|provento|proventos|rendimento\s+(?:de\s+)?fii|fii\s+rendimento|bonifica[cç][aã]o)\b/i;
+
+const EXCLUDED_INCOME_SOURCE_REF_PREFIXES = [
+  "[REFUND]",
+  "[DEBT]",
+  "[DIVIDEND]",
+  "[PROVENTO]",
+  "[PORTFOLIO]",
+] as const;
+
+function resolveExplicitMerchantAlias(
+  rawDesc: string,
+  merchantAliasMap?: ReadonlyMap<string, string>,
+): string | undefined {
+  if (!merchantAliasMap || merchantAliasMap.size === 0) return undefined;
+  const cleaned = normalizeText(stripTemporalSuffixes(rawDesc));
+  if (cleaned) {
+    const fromCleaned = merchantAliasMap.get(cleaned);
+    if (fromCleaned) return fromCleaned;
+  }
+  const rawNorm = normalizeText(rawDesc);
+  if (rawNorm) {
+    const fromRaw = merchantAliasMap.get(rawNorm);
+    if (fromRaw) return fromRaw;
+  }
+  return undefined;
+}
+
+function resolveCanonicalAliasKey(
+  rawDesc: string,
+  merchantAliasMap?: ReadonlyMap<string, string>,
+  checkKnownServices = false,
+  learnedServices?: ReadonlyMap<string, LearnedServiceDef>,
+): string {
+  const fromAlias = resolveExplicitMerchantAlias(rawDesc, merchantAliasMap);
+  if (fromAlias) return fromAlias;
+  if (checkKnownServices) {
+    const matchedService = findMatchingServiceKey(rawDesc, learnedServices);
+    if (matchedService) return matchedService;
+  }
+  const cleaned = normalizeText(stripTemporalSuffixes(rawDesc));
+  const rawNorm = normalizeText(rawDesc);
+  return cleaned || rawNorm;
+}
+
+function resolvePreferredDisplayName<T extends { description: string | null }>(
+  group: readonly T[],
+  key: string,
+): string {
+  const canonicalMatch = group.find(
+    (item) => normalizeText(stripTemporalSuffixes((item.description ?? "").trim())) === key,
+  );
+  const candidate = (canonicalMatch?.description ?? group[0]?.description ?? "").trim();
+  return stripTemporalSuffixes(candidate) || candidate || key;
+}
+
+function isExcludedFromRecurringIncome(
+  income: Pick<
+    IncomeLike,
+    "valueCents" | "installmentGroupId" | "sourceRef" | "description" | "categoryName" | "categoryIcon"
+  >,
+): boolean {
+  if (income.valueCents <= 0 || income.installmentGroupId != null) return true;
+
+  const refUpper = (income.sourceRef ?? "").trim().toUpperCase();
+  if (refUpper && EXCLUDED_INCOME_SOURCE_REF_PREFIXES.some((prefix) => refUpper.startsWith(prefix))) {
+    return true;
+  }
+
+  const desc = (income.description ?? "").trim();
+  if (desc && SPORADIC_DIVIDEND_DESC_REGEX.test(desc)) {
+    return true;
+  }
+
+  const catNorm = normalizeText(income.categoryName ?? "");
+  if (catNorm.includes("dividendo") || catNorm.includes("provento")) {
+    return true;
+  }
+
+  const iconNorm = normalizeText(income.categoryIcon ?? "");
+  if (iconNorm === "proventos" || iconNorm === "dividendos") {
+    return true;
+  }
+
+  return false;
+}
+
+interface SemanticFulfillmentItem {
+  id: string;
+  description: string | null;
+  month: string;
+  valueCents: number;
+  categoryId: string;
+  installmentGroupId?: string | null;
+  sourceRef?: string | null;
+  categoryName?: string | null;
+  categoryIcon?: string | null;
+}
+
+function buildConsolidatedGroupLookup<T extends { id: string; month: string }>(
+  groups: ReadonlyMap<string, readonly T[]>,
+): Map<string, string> {
+  const lookup = new Map<string, string>();
+  for (const [groupKey, group] of groups.entries()) {
+    const distinctMonths = new Set(group.map((item) => item.month));
+    if (distinctMonths.size < 2) continue;
+    for (const item of group) {
+      lookup.set(item.id, groupKey);
+    }
+  }
+  return lookup;
+}
+
+/**
+ * Fulfillment Semântico: verifica se uma obrigação ou renda recorrente foi cumprida
+ * no mês corrente por outro lançamento (ex.: alteração de descrição ou apelido aprendido)
+ * antes de emitir falso alerta `missingThisMonth`.
+ */
+function hasSemanticFulfillmentInMonth(params: {
+  currentMonth: string;
+  allItems: readonly SemanticFulfillmentItem[];
+  groupIds: ReadonlySet<string>;
+  groupKey: string;
+  groupName: string;
+  groupCategoryId?: string;
+  referenceCents: number;
+  recurringGroupKeyByItemId: ReadonlyMap<string, string>;
+  merchantAliasMap?: ReadonlyMap<string, string>;
+  learnedServices?: ReadonlyMap<string, LearnedServiceDef>;
+  checkKnownServices: boolean;
+  excludeIncomeNonOperating?: boolean;
+}): boolean {
+  const {
+    currentMonth,
+    allItems,
+    groupIds,
+    groupKey,
+    groupName,
+    groupCategoryId,
+    referenceCents,
+    recurringGroupKeyByItemId,
+    merchantAliasMap,
+    learnedServices,
+    checkKnownServices,
+    excludeIncomeNonOperating = false,
+  } = params;
+
+  const groupService = checkKnownServices
+    ? findMatchingServiceKey(groupName, learnedServices)
+    : null;
+
+  for (const candidate of allItems) {
+    if (candidate.month !== currentMonth) continue;
+    if (groupIds.has(candidate.id)) continue;
+    if (candidate.valueCents <= 0 || candidate.installmentGroupId != null) continue;
+
+    if (excludeIncomeNonOperating) {
+      if (isExcludedFromRecurringIncome(candidate)) continue;
+    } else if ((candidate.sourceRef ?? "").trim().toUpperCase().startsWith("[REFUND]")) {
+      continue;
+    }
+
+    const candRecurringGroup = recurringGroupKeyByItemId.get(candidate.id);
+    if (candRecurringGroup && candRecurringGroup !== groupKey) continue;
+
+    const candRaw = (candidate.description ?? "").trim();
+    const candService =
+      checkKnownServices && candRaw
+        ? findMatchingServiceKey(candRaw, learnedServices)
+        : null;
+    const candKey = resolveCanonicalAliasKey(
+      candRaw,
+      merchantAliasMap,
+      checkKnownServices,
+      learnedServices,
+    );
+
+    // 1. Correspondência direta via alias aprendido / serviço canônico
+    if (candKey && candKey === groupKey) {
+      return true;
+    }
+
+    // 2. Mesma categoria + valor dentro de ±20% (evitando cruzar serviços conhecidos distintos)
+    if (groupCategoryId && candidate.categoryId === groupCategoryId && referenceCents > 0) {
+      const withinTolerance =
+        Math.abs(candidate.valueCents - referenceCents) / referenceCents <= 0.2;
+      if (!withinTolerance) continue;
+
+      if (checkKnownServices && groupService && candService && groupService !== candService) {
+        continue;
+      }
+
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /**
  * Detecta recorrências entre despesas (parcelas já filtradas).
- * Agrupa por descrição normalizada (subscription/recurring) e por
- * categoria (similar), aplicando as tolerâncias da especificação.
+ * Agrupa por descrição normalizada / serviço conhecido / alias aprendido
+ * e aplica fulfillment semântico para variações de descrição no mês atual.
  */
 export function detectRecurrences(
   expenses: readonly ExpenseLike[],
   options: DetectRecurrencesOptions = {},
 ): RecurrenceOccurrence[] {
-  const { todayISO } = options;
-  // Parcelamento e recorrência formal são filtrados — não são repetições
-  // "aprendidas": parcelas não são recorrência (§3.7.3) e recorrências
-  // formais já são conhecidas do usuário (Fase 32).
-  const active = expenses.filter((e) => e.installmentGroupId == null && e.recurrenceId == null);
+  const {
+    todayISO,
+    includeFormalRecurrences = false,
+    merchantAliasMap,
+    learnedServices,
+  } = options;
+  // Parcelamento é SEMPRE filtrado. Recorrências formais só entram quando `includeFormalRecurrences: true`
+  // (para preservar totais e radar de fatura sem gerar insights de calibração).
+  const active = expenses.filter(
+    (e) =>
+      e.installmentGroupId == null &&
+      (includeFormalRecurrences || e.recurrenceId == null),
+  );
 
   // Agrupa por descrição normalizada (níveis subscription/recurring).
-  // Higieniza sufixos temporais e unifica despesas que compartilham o mesmo serviço conhecido.
+  // Higieniza sufixos temporais, unifica serviços conhecidos e resolve aliases do merchantLearning.
   const byName = new Map<string, ExpenseLike[]>();
   for (const expense of active) {
     const rawDesc = (expense.description ?? expense.id).trim();
-    const matchedService = findMatchingServiceKey(rawDesc);
-    const key = matchedService ?? normalizeText(stripTemporalSuffixes(rawDesc));
+    const key = resolveCanonicalAliasKey(rawDesc, merchantAliasMap, true, learnedServices);
     const list = byName.get(key) ?? [];
     list.push(expense);
     byName.set(key, list);
   }
 
+  const recurringGroupKeyByItemId = buildConsolidatedGroupLookup(byName);
   const occurrences: RecurrenceOccurrence[] = [];
   const seen = new Set<string>();
 
@@ -717,8 +948,8 @@ export function detectRecurrences(
     const first = group[0] ?? group[1];
     if (!first) continue;
 
-    const rawFirstDesc = (first.description ?? "").trim();
-    const cleanDisplayName = stripTemporalSuffixes(rawFirstDesc) || rawFirstDesc || key;
+    const cleanDisplayName = resolvePreferredDisplayName(group, key);
+    const isFormalRecurrence = group.some((e) => e.recurrenceId != null);
 
     // Agregação mensal real: agrupa despesas por mês.
     const monthMap = new Map<string, ExpenseLike[]>();
@@ -737,6 +968,7 @@ export function detectRecurrences(
     });
 
     const averageMonthlyCents = Math.round(monthlyTotals.reduce((acc, v) => acc + v, 0) / monthlyTotals.length);
+    const medianMonthlyCents = medianOf(monthlyTotals);
     const categoryIcons = [...new Set(group.map((e) => e.categoryIcon))];
 
     // Cálculo dos intervalos entre meses e inferência determinística da cadência
@@ -750,26 +982,59 @@ export function detectRecurrences(
     const latestMonth = months[months.length - 1];
     const latestExpenses = latestMonth ? (monthMap.get(latestMonth) ?? []) : [];
 
-    // Previsão temporal de próximo vencimento e dia típico com respeito à cadência
+    // Previsão temporal de próximo vencimento e dia típico com respeito à cadência + fulfillment semântico
     const dates = group.map((e) => e.date).filter(Boolean);
     const typicalDayOfMonth = calculateTypicalDay(dates);
+    const currentMonthISO = todayISO && todayISO.length >= 10 ? todayISO.slice(0, 7) : undefined;
+    let effectiveLatestMonth = latestMonth ?? "";
+
+    if (
+      currentMonthISO &&
+      latestMonth &&
+      latestMonth < currentMonthISO &&
+      diffMonths(latestMonth, currentMonthISO) <= intervalMonths + 1
+    ) {
+      const groupIds = new Set(group.map((e) => e.id));
+      const fulfilled = hasSemanticFulfillmentInMonth({
+        currentMonth: currentMonthISO,
+        allItems: expenses,
+        groupIds,
+        groupKey: key,
+        groupName: cleanDisplayName,
+        groupCategoryId: first.categoryId,
+        referenceCents: medianMonthlyCents > 0 ? medianMonthlyCents : averageMonthlyCents,
+        recurringGroupKeyByItemId,
+        merchantAliasMap,
+        learnedServices,
+        checkKnownServices: true,
+      });
+      if (fulfilled) {
+        effectiveLatestMonth = currentMonthISO;
+      }
+    }
+
     const { nextDueDate, daysUntilNextDue, missingThisMonth, lifecycle } = estimateNextDueDate(
       typicalDayOfMonth,
-      latestMonth ?? "",
+      effectiveLatestMonth,
       todayISO,
       intervalMonths,
     );
 
     // subscription: usa a árvore de decisão de assinaturas (nome conhecido
-    // no catálogo OU categoria de assinatura são sinais fortes).
-    const subscription = classifySubscription({
-      name: cleanDisplayName,
-      categoryName: first.categoryName,
-      categoryIcon: categoryIcons[0],
-      monthlyValuesCents: monthlyTotals,
-    });
+    // no catálogo/memória OU categoria de assinatura são sinais fortes).
+    const subscription = classifySubscription(
+      {
+        name: cleanDisplayName,
+        categoryName: first.categoryName,
+        categoryIcon: categoryIcons[0],
+        monthlyValuesCents: monthlyTotals,
+      },
+      { learnedServices },
+    );
 
-    const segment = subscription?.segment ?? segmentOf(cleanDisplayName, categoryIcons[0], first.categoryName);
+    const segment =
+      subscription?.segment ??
+      segmentOf(cleanDisplayName, categoryIcons[0], first.categoryName, learnedServices);
 
     // Diagnóstico de reajuste de preço com diferenciação inflacionária vs mudança de plano vs variação de consumo (Fase 7, Tarefa 7.3).
     let priceAdjustment: PriceAdjustment | null = null;
@@ -893,6 +1158,7 @@ export function detectRecurrences(
         cardId: habitualCardId,
         cardName: habitualCardName,
         paymentMethod: predominantPaymentMethod,
+        ...(isFormalRecurrence ? { isFormalRecurrence: true } : {}),
       });
       seen.add(key);
       continue;
@@ -906,16 +1172,34 @@ export function detectRecurrences(
       const isRecPenalized =
         options.feedbackMap?.[recurringKey] === "not_subscription" ||
         options.feedbackMap?.[key] === "not_subscription";
+      const recCatSem = resolveCategorySemantics({
+        name: first.categoryName,
+        icon: categoryIcons[0] ?? null,
+      });
+      const recDescSem = resolveCategorySemantics({ name: cleanDisplayName });
+      const isSemanticallyEssentialRec =
+        recCatSem.isEssential ||
+        recCatSem.isNonCuttableObligation ||
+        recCatSem.nature === "investment" ||
+        recDescSem.isEssential ||
+        recDescSem.isNonCuttableObligation;
+
       const isRecEssential =
         options.feedbackMap?.[recurringKey] === "essential" ||
-        options.feedbackMap?.[key] === "essential";
+        options.feedbackMap?.[key] === "essential" ||
+        isSemanticallyEssentialRec;
 
       const rawConfidence = confidenceScore({ base: 0.7, monthsHistory: months.length, kind: "recurring", variance });
       const confidence = isRecPenalized
         ? Number(Math.max(0.05, rawConfidence * 0.2).toFixed(2))
         : rawConfidence;
 
-      const segment = segmentOf(cleanDisplayName, categoryIcons[0], first.categoryName);
+      const segment = segmentOf(
+        cleanDisplayName,
+        categoryIcons[0],
+        first.categoryName,
+        learnedServices,
+      );
       occurrences.push({
         key: recurringKey,
         name: cleanDisplayName,
@@ -943,18 +1227,20 @@ export function detectRecurrences(
         cardId: habitualCardId,
         cardName: habitualCardName,
         paymentMethod: predominantPaymentMethod,
+        ...(isFormalRecurrence ? { isFormalRecurrence: true } : {}),
       });
       seen.add(key);
     }
   }
 
   // 3. Detecção e integração de compromissos com cadência semanal (F21)
-  const weeklyCommitments = detectWeeklyCommitments(expenses, {
+  const weeklyCommitments = detectWeeklyCommitments(active, {
     todayISO,
     feedbackMap: options.feedbackMap,
   });
 
   for (const weekly of weeklyCommitments) {
+    const isWeeklyFormal = weekly.expenses.some((e) => e.recurrenceId != null);
     const existing = occurrences.find(
       (o) => normalizeText(o.name) === normalizeText(weekly.name),
     );
@@ -962,6 +1248,9 @@ export function detectRecurrences(
     if (existing) {
       existing.cadence = "weekly";
       existing.monthlyConsolidatedCents = weekly.monthlyConsolidatedCents;
+      if (isWeeklyFormal) {
+        existing.isFormalRecurrence = true;
+      }
     } else {
       const months = Array.from(
         new Set(
@@ -971,7 +1260,17 @@ export function detectRecurrences(
         ),
       ).sort();
 
-      const isWeeklyEssential = options.feedbackMap?.[weekly.key] === "essential";
+      const weeklyCatSem = resolveCategorySemantics({
+        name: weekly.categoryName,
+        icon: weekly.expenses[0]?.categoryIcon ?? null,
+      });
+      const weeklyDescSem = resolveCategorySemantics({ name: weekly.name });
+      const isWeeklyEssential =
+        options.feedbackMap?.[weekly.key] === "essential" ||
+        weeklyCatSem.isEssential ||
+        weeklyCatSem.isNonCuttableObligation ||
+        weeklyDescSem.isEssential ||
+        weeklyDescSem.isNonCuttableObligation;
 
       occurrences.push({
         key: weekly.key,
@@ -987,6 +1286,7 @@ export function detectRecurrences(
         expenses: weekly.expenses,
         lifecycle: weekly.active ? "active" : "lapsed",
         tier: isWeeklyEssential ? "essential" : undefined,
+        ...(isWeeklyFormal ? { isFormalRecurrence: true } : {}),
       });
     }
   }
@@ -1023,24 +1323,33 @@ export function detectIncomeRecurrences(
   incomes: readonly IncomeLike[],
   options: DetectIncomeRecurrencesOptions = {},
 ): RecurringIncomeOccurrence[] {
-  const { todayISO, historyMonthsLimit = 6 } = options;
+  const {
+    todayISO,
+    historyMonthsLimit = 6,
+    includeFormalRecurrences = false,
+    merchantAliasMap,
+  } = options;
 
-  // Filtra parcelas e recorrências formais (já conhecidas pelo usuário)
+  // Blindagem: filtra parcelas, recorrências formais (quando não solicitadas), estornos [REFUND],
+  // quitações [DEBT] e proventos esporádicos (dividendos / JCP / FIIs).
   const active = incomes.filter(
-    (i) => i.installmentGroupId == null && i.recurrenceId == null && i.valueCents > 0,
+    (i) =>
+      (includeFormalRecurrences || i.recurrenceId == null) &&
+      !isExcludedFromRecurringIncome(i),
   );
 
-  // Agrupa por descrição normalizada (fonte / pagador / cliente habitual)
+  // Agrupa por descrição normalizada / alias aprendido (fonte / pagador / cliente habitual)
   const byName = new Map<string, IncomeLike[]>();
   for (const income of active) {
     const rawName = (income.description || "").trim();
-    const key = normalizeText(stripTemporalSuffixes(rawName) || rawName || income.id);
+    const key = resolveCanonicalAliasKey(rawName, merchantAliasMap) || normalizeText(rawName || income.id);
     if (!key) continue;
     const list = byName.get(key) ?? [];
     list.push(income);
     byName.set(key, list);
   }
 
+  const recurringGroupKeyByItemId = buildConsolidatedGroupLookup(byName);
   const occurrences: RecurringIncomeOccurrence[] = [];
 
   for (const [key, group] of byName) {
@@ -1062,6 +1371,15 @@ export function detectIncomeRecurrences(
     // Limita à janela histórica recente (3 a 6 meses)
     const months = allMonths.slice(-historyMonthsLimit);
     if (months.length < 2) continue;
+
+    // Continuidade e regularidade temporal: evita classificar 2 eventos esporádicos
+    // espaçados em 3–5 meses como renda mensal regular
+    const intervals = calculateMonthIntervals(months);
+    if (intervals.length === 0) continue;
+    if (months.length === 2 && intervals[0]! > 2) continue;
+    if (months.length >= 3 && (medianOf(intervals) > 2 || intervals[intervals.length - 1]! > 3)) {
+      continue;
+    }
 
     // Total de receitas por mês desse pagador
     const monthlyTotals = months.map((m) => {
@@ -1118,7 +1436,9 @@ export function detectIncomeRecurrences(
       monthlyTotals[monthlyTotals.length - 1] ??
       averageCents;
 
-    // Previsão temporal e status missingThisMonth
+    const cleanDisplayName = resolvePreferredDisplayName(group, key);
+
+    // Previsão temporal e status missingThisMonth (com Fulfillment Semântico)
     let expectedDate: string | undefined;
     let daysUntilExpected: number | undefined;
     let missingThisMonth = false;
@@ -1127,7 +1447,24 @@ export function detectIncomeRecurrences(
       const currentMonth = todayISO.slice(0, 7);
       const currentDay = parseInt(todayISO.slice(8, 10), 10);
       const prevMonth = shiftMonth(currentMonth, -1);
-      const alreadyReceivedThisMonth = latestMonth === currentMonth;
+      let alreadyReceivedThisMonth = latestMonth === currentMonth;
+
+      if (!alreadyReceivedThisMonth && latestMonth && latestMonth >= prevMonth) {
+        const groupIds = new Set(group.map((i) => i.id));
+        alreadyReceivedThisMonth = hasSemanticFulfillmentInMonth({
+          currentMonth,
+          allItems: incomes,
+          groupIds,
+          groupKey: key,
+          groupName: cleanDisplayName,
+          groupCategoryId: first.categoryId,
+          referenceCents: median > 0 ? median : averageCents,
+          recurringGroupKeyByItemId,
+          merchantAliasMap,
+          checkKnownServices: false,
+          excludeIncomeNonOperating: true,
+        });
+      }
 
       if (!latestMonth || latestMonth < prevMonth) {
         // Receita cessou há 2+ meses (lapsed) -> não projeta no mês corrente
@@ -1135,7 +1472,7 @@ export function detectIncomeRecurrences(
         daysUntilExpected = undefined;
         missingThisMonth = false;
       } else if (alreadyReceivedThisMonth) {
-        // Já recebido neste mês -> previsão para o mês seguinte
+        // Já recebido (ou cumprido semanticamente) neste mês -> previsão para o mês seguinte
         const { nextDueDate, daysUntilNextDue } = estimateNextDueDate(
           typicalDayOfMonth,
           currentMonth,
@@ -1157,9 +1494,6 @@ export function detectIncomeRecurrences(
         missingThisMonth = currentDay > typicalDayOfMonth;
       }
     }
-
-    const rawFirstDesc = (first.description || "").trim();
-    const cleanDisplayName = stripTemporalSuffixes(rawFirstDesc) || rawFirstDesc || key;
 
     occurrences.push({
       key: `income:${profile}:${key}`,
@@ -1218,6 +1552,7 @@ export function toExpenseLike(item: ExpenseLike | Expense): ExpenseLike {
     categoryId: exp.category_id,
     installmentGroupId: exp.installment_group_id,
     recurrenceId: exp.recurrence_id,
+    tripId: exp.trip_id,
     paymentMethod: exp.payment_method,
     cardId: exp.card_id,
     rawExpense: exp,

@@ -1,4 +1,9 @@
 import { useCallback, useEffect, useMemo } from "react";
+import {
+  filterCardsByViewScope,
+  filterExpensesByViewScope,
+  filterIncomesByViewScope,
+} from "@/domain/business";
 import type { CardForAdvisorContext } from "@/domain/insights/advisor";
 import type { FeedbackMap } from "@/domain/insights/feedback";
 import type { ExpenseLike, IncomeLike } from "@/domain/insights/recurrences";
@@ -8,6 +13,7 @@ import {
   mapRawExpensesToAdvisorLikes,
   mapRawIncomesToAdvisorLikes,
 } from "@/domain/insights/smart-advisor-rules";
+import { useSafeViewScope } from "@/hooks/use-safe-business-scope";
 import { currentMonth, shiftMonth } from "@/lib/date";
 import { subscribeInsightsReevaluation } from "@/services/merchant-learning";
 import {
@@ -84,22 +90,41 @@ export function useSmartAdvisorQueries({
   const userPreferencesQuery = useUserPreferences();
   const updateCustomSettingsMutation = useUpdateCustomSettings();
 
+  const { effectiveViewScope } = useSafeViewScope();
   const categories = useMemo(
     () => preloadedCategories ?? categoriesQuery.data ?? [],
     [preloadedCategories, categoriesQuery.data],
   );
   const categoryById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
   const cards = useMemo<readonly CardForAdvisorContext[]>(
-    () => preloadedCards ?? creditCardsQuery.data ?? [],
-    [preloadedCards, creditCardsQuery.data],
+    () => preloadedCards ?? filterCardsByViewScope(creditCardsQuery.data ?? [], effectiveViewScope),
+    [preloadedCards, creditCardsQuery.data, effectiveViewScope],
   );
 
-  const m0Exp = month0Expenses.data;
-  const m1Exp = month1Expenses.data;
-  const m2Exp = month2Expenses.data;
-  const m3Exp = month3Expenses.data;
-  const m11Exp = month11Expenses.data;
-  const m12Exp = month12Expenses.data;
+  const m0Exp = useMemo(
+    () => (month0Expenses.data ? filterExpensesByViewScope(month0Expenses.data, effectiveViewScope, { mode: "dre" }) : undefined),
+    [month0Expenses.data, effectiveViewScope],
+  );
+  const m1Exp = useMemo(
+    () => (month1Expenses.data ? filterExpensesByViewScope(month1Expenses.data, effectiveViewScope, { mode: "dre" }) : undefined),
+    [month1Expenses.data, effectiveViewScope],
+  );
+  const m2Exp = useMemo(
+    () => (month2Expenses.data ? filterExpensesByViewScope(month2Expenses.data, effectiveViewScope, { mode: "dre" }) : undefined),
+    [month2Expenses.data, effectiveViewScope],
+  );
+  const m3Exp = useMemo(
+    () => (month3Expenses.data ? filterExpensesByViewScope(month3Expenses.data, effectiveViewScope, { mode: "dre" }) : undefined),
+    [month3Expenses.data, effectiveViewScope],
+  );
+  const m11Exp = useMemo(
+    () => (month11Expenses.data ? filterExpensesByViewScope(month11Expenses.data, effectiveViewScope, { mode: "dre" }) : undefined),
+    [month11Expenses.data, effectiveViewScope],
+  );
+  const m12Exp = useMemo(
+    () => (month12Expenses.data ? filterExpensesByViewScope(month12Expenses.data, effectiveViewScope, { mode: "dre" }) : undefined),
+    [month12Expenses.data, effectiveViewScope],
+  );
   const allExpenses = useMemo<readonly ExpenseLike[]>(
     () =>
       preloadedExpenses ??
@@ -117,10 +142,22 @@ export function useSmartAdvisorQueries({
     [preloadedExpenses, m0Exp, m1Exp, m2Exp, m3Exp, m11Exp, m12Exp, refMonth, categoryById],
   );
 
-  const m0Inc = month0Incomes.data;
-  const m1Inc = month1Incomes.data;
-  const m2Inc = month2Incomes.data;
-  const m3Inc = month3Incomes.data;
+  const m0Inc = useMemo(
+    () => (month0Incomes.data ? filterIncomesByViewScope(month0Incomes.data, effectiveViewScope, { mode: "dre" }) : undefined),
+    [month0Incomes.data, effectiveViewScope],
+  );
+  const m1Inc = useMemo(
+    () => (month1Incomes.data ? filterIncomesByViewScope(month1Incomes.data, effectiveViewScope, { mode: "dre" }) : undefined),
+    [month1Incomes.data, effectiveViewScope],
+  );
+  const m2Inc = useMemo(
+    () => (month2Incomes.data ? filterIncomesByViewScope(month2Incomes.data, effectiveViewScope, { mode: "dre" }) : undefined),
+    [month2Incomes.data, effectiveViewScope],
+  );
+  const m3Inc = useMemo(
+    () => (month3Incomes.data ? filterIncomesByViewScope(month3Incomes.data, effectiveViewScope, { mode: "dre" }) : undefined),
+    [month3Incomes.data, effectiveViewScope],
+  );
   const allIncomes = useMemo<readonly IncomeLike[]>(
     () =>
       preloadedIncomes ??
@@ -201,6 +238,7 @@ export function useSmartAdvisorQueries({
       (queryEnabled ? realCashData.safeToSpend.committedObligationsCents : undefined),
     cloudDismissals: userPreferencesQuery.data?.custom_settings?.advisorDismissals,
     cloudLastDismissedDay: userPreferencesQuery.data?.custom_settings?.advisorLastDismissedDay,
+    cloudDecayMeta: userPreferencesQuery.data?.custom_settings?.advisorDecayMeta,
     updateCustomSettingsMutation,
     allExpenses,
     allIncomes,

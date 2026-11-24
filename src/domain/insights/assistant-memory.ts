@@ -6,11 +6,50 @@
  */
 
 import type { QualifiedDismissReason } from "./feedback";
+import type { InsightThemeFamily, PaydayPattern } from "./learning-graph";
 
 export interface FormattedThemeKey {
   name: string;
   detail?: string;
 }
+
+export const INSIGHT_FAMILY_LABELS: Record<InsightThemeFamily, string> = {
+  pace: "Ritmo de Gastos",
+  cash_gap: "Fluxo de Caixa",
+  surplus: "Aportes & Sobra",
+  habit: "Hábitos & Microgastos",
+  savings_cut: "Cortes & Oportunidades",
+  price_adjustment: "Reajustes de Assinatura",
+  calibration: "Calibração de Lançamentos",
+  income_confirm: "Confirmação de Renda",
+  missing_expense: "Contas Pendentes",
+  annual_commitment: "Compromissos Anuais",
+  celebration: "Celebrações & Conquistas",
+  monthly_closing: "Fechamento Mensal",
+};
+
+export const PAYDAY_PATTERN_LABELS: Record<PaydayPattern, { title: string; description: string }> = {
+  unknown: {
+    title: "Em aprendizado",
+    description: "Ainda coletando histórico de entradas para identificar seu ciclo habitual.",
+  },
+  start_of_month: {
+    title: "Início do mês (dias 1–10)",
+    description: "Suas entradas costumam concentrar-se nos primeiros 10 dias do mês.",
+  },
+  biweekly: {
+    title: "Quinzenal (2 ciclos)",
+    description: "Recebimento dividido em duas janelas principais ao longo do mês.",
+  },
+  late_month: {
+    title: "Fim do mês (dias 20–31)",
+    description: "Recebimento concentrado na última dezena do mês.",
+  },
+  variable_flow: {
+    title: "Fluxo variável",
+    description: "Entradas distribuídas em datas variadas ao longo do mês.",
+  },
+};
 
 /**
  * Converte uma chave estável de tema (themeKey) em informações amigáveis para o usuário.
@@ -48,6 +87,15 @@ export function formatAdvisorThemeKey(themeKey: string): FormattedThemeKey {
       return { name: "Aporte mensal", detail: "Sugestão de aporte" };
     case "calib":
       return { name: capitalizedName, detail: "Calibração de recorrência" };
+    case "calib_tx":
+    case "tx_one_off":
+      return { name: "Compra pontual isolada", detail: "Calibração de transação" };
+    case "one_off":
+      return { name: capitalizedName, detail: "Pontual no mês" };
+    case "celebration":
+      return { name: "Celebrações", detail: "Conquista financeira" };
+    case "category":
+      return { name: capitalizedName, detail: "Categoria essencial" };
     case "habit": {
       if (themeKey.includes("commute") || themeKey.includes("mobility")) {
         return { name: "Deslocamentos e transporte", detail: "Hábito frequente" };

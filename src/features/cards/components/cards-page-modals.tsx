@@ -8,15 +8,18 @@ import {
   type CardInvoiceExpenseRow,
   type CardInvoicePaymentRow,
 } from "@/components/modules";
+import type { MixedCardSplitResult } from "@/domain/business";
 import type { CompetenceSummary } from "@/domain/cards";
 import { evaluateFaturaReadiness } from "@/domain/reports";
 import { buildCheckoutUrl } from "@/domain/subscription/plans";
 import { monthLabel } from "@/lib/date";
 import { useAuth } from "@/hooks";
+import { InternalTransferDialog } from "@/features/business/components/internal-transfer-dialog";
 import { ExpenseDetailDialog } from "@/features/transactions/components/expense-detail-dialog";
 import type { CardPayment, CreditCard, Expense } from "@/types";
 import type { CardPaymentDialogMode } from "../hooks/use-cards-page-state";
 import { BatchInvoicePaymentDialog } from "./batch-invoice-payment-dialog";
+import { CardChargeDialog } from "./card-charge-dialog";
 import { CardFormDialog } from "./card-form-dialog";
 import { PaymentDialog } from "./payment-dialog";
 
@@ -43,6 +46,11 @@ export interface CardsPageModalsProps {
   onConfirmDeletePayment: () => void;
   paymentMode: CardPaymentDialogMode;
   onClosePayment: () => void;
+  chargeOpen?: boolean;
+  onCloseCharge?: (open: boolean) => void;
+  mixedCardSplit?: MixedCardSplitResult | null;
+  reimbursementOpen?: boolean;
+  onCloseReimbursement?: (open: boolean) => void;
   importOpen: boolean;
   onImportOpenChange: (open: boolean) => void;
   batchPaymentOpen: boolean;
@@ -78,6 +86,11 @@ export function CardsPageModals({
   onConfirmDeletePayment,
   paymentMode,
   onClosePayment,
+  chargeOpen,
+  onCloseCharge,
+  mixedCardSplit,
+  reimbursementOpen,
+  onCloseReimbursement,
   importOpen,
   onImportOpenChange,
   batchPaymentOpen,
@@ -157,6 +170,30 @@ export function CardsPageModals({
             if (!next) onClosePayment();
           }}
           openBalanceCents={summary?.saldoBrutoCents ?? 0}
+        />
+      ) : null}
+
+      {cardId ? (
+        <CardChargeDialog
+          cardId={cardId}
+          competenceMonth={effectiveMonth}
+          open={Boolean(chargeOpen)}
+          onOpenChange={(next) => {
+            if (onCloseCharge) onCloseCharge(next);
+          }}
+        />
+      ) : null}
+
+      {reimbursementOpen && mixedCardSplit && selectedCard ? (
+        <InternalTransferDialog
+          open={reimbursementOpen}
+          onOpenChange={(next) => {
+            onCloseReimbursement?.(next);
+          }}
+          defaultKind="card_reimbursement"
+          defaultAmountCents={mixedCardSplit.pendingReimbursementCents}
+          sourceRef={mixedCardSplit.sourceRefKey}
+          defaultDescription={`Reembolso fatura ${selectedCard.name} (${effectiveMonth})`}
         />
       ) : null}
 

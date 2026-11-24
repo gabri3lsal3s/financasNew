@@ -3,13 +3,14 @@ import { Alert, Badge, DatePicker, FormField, Input, Select, Skeleton } from "@/
 import type { DescriptionSuggestion } from "@/domain/predictions";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
-import type { PaymentMethod, ReceiveType } from "@/types";
+import type { ChargeKind, PaymentMethod, ReceiveType } from "@/types";
 
 export interface DetailsPrimaryFieldsProps {
   isExpense: boolean;
   date: string;
   paymentMethod: PaymentMethod;
   cardId: string | null;
+  chargeKind?: ChargeKind;
   receiveType: ReceiveType;
   description: string;
   descriptionSuggestions: DescriptionSuggestion[];
@@ -19,6 +20,7 @@ export interface DetailsPrimaryFieldsProps {
   onDateChange: (date: string) => void;
   onPaymentMethodChange: (method: PaymentMethod) => void;
   onCardChange: (cardId: string) => void;
+  onChargeKindChange?: (kind: ChargeKind) => void;
   onReceiveTypeChange: (type: ReceiveType) => void;
   onDescriptionChange: (description: string) => void;
   onNext?: () => void;
@@ -40,11 +42,20 @@ const RECEIVE_TYPE_OPTIONS: { value: ReceiveType; label: string }[] = [
   { value: "other", label: "Outro" },
 ];
 
+const CHARGE_KIND_OPTIONS: Array<{ value: ChargeKind; label: string }> = [
+  { value: "regular", label: "Consumo normal" },
+  { value: "interest", label: "Juros" },
+  { value: "fine", label: "Multa" },
+  { value: "tax", label: "IOF / Tributos" },
+  { value: "bank_fee", label: "Tarifa / Encargos" },
+];
+
 export function DetailsPrimaryFields({
   isExpense,
   date,
   paymentMethod,
   cardId,
+  chargeKind,
   receiveType,
   description,
   descriptionSuggestions,
@@ -54,6 +65,7 @@ export function DetailsPrimaryFields({
   onDateChange,
   onPaymentMethodChange,
   onCardChange,
+  onChargeKindChange,
   onReceiveTypeChange,
   onDescriptionChange,
   onNext,
@@ -87,21 +99,32 @@ export function DetailsPrimaryFields({
       </div>
 
       {isExpense && paymentMethod === "credit_card" ? (
-        <FormField label="Cartão">
-          {cardsLoading ? (
-            <Skeleton className="h-10 w-full" />
-          ) : cardsError ? (
-            <Alert variant="error">{getErrorMessage(cardsError)}</Alert>
-          ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <FormField label="Cartão">
+            {cardsLoading ? (
+              <Skeleton className="h-10 w-full" />
+            ) : cardsError ? (
+              <Alert variant="error">{getErrorMessage(cardsError)}</Alert>
+            ) : (
+              <Select
+                value={cardId ?? ""}
+                onValueChange={onCardChange}
+                options={(cards ?? []).map((card) => ({ value: card.id, label: card.name }))}
+                placeholder="Selecione o cartão"
+                ariaLabel="Cartão de crédito"
+              />
+            )}
+          </FormField>
+
+          <FormField label="Tipo de gasto / encargo">
             <Select
-              value={cardId ?? ""}
-              onValueChange={onCardChange}
-              options={(cards ?? []).map((card) => ({ value: card.id, label: card.name }))}
-              placeholder="Selecione o cartão"
-              ariaLabel="Cartão de crédito"
+              value={chargeKind ?? "regular"}
+              onValueChange={(val) => onChargeKindChange?.(val as ChargeKind)}
+              options={CHARGE_KIND_OPTIONS}
+              ariaLabel="Tipo de encargo ou gasto"
             />
-          )}
-        </FormField>
+          </FormField>
+        </div>
       ) : null}
 
       <FormField label="Descrição" optional>

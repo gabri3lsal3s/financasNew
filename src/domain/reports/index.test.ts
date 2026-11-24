@@ -4,6 +4,7 @@ import {
   weightedSum,
   aggregateByCategory,
   aggregateByPaymentMethod,
+  aggregateExpensesByChargeKind,
   aggregateByWeekday,
   mondayFirstWeekday,
   mergePaidDebts,
@@ -122,6 +123,95 @@ describe("aggregateByPaymentMethod (§3.6)", () => {
       { ...entries[0]!, paymentMethod: null },
     ]);
     expect(totals).toEqual([{ method: "other", brutoCents: 10_000, ponderadoCents: 10_000, totalCents: 10_000 }]);
+  });
+});
+
+describe("aggregateExpensesByChargeKind (Fase 1)", () => {
+  it("agrupa despesas por charge_kind calculando bruto, ponderado e quantidade", () => {
+    const list: ReportEntry[] = [
+      {
+        id: "e1",
+        date: "2026-08-01",
+        kind: "expense",
+        categoryId: "c1",
+        categoryName: "Alimentação",
+        baseCents: 30_000,
+        weight: 1,
+        chargeKind: "regular",
+      },
+      {
+        id: "e2",
+        date: "2026-08-02",
+        kind: "expense",
+        categoryId: "c2",
+        categoryName: "Financeiro",
+        baseCents: 5_000,
+        weight: 1,
+        chargeKind: "interest",
+      },
+      {
+        id: "e3",
+        date: "2026-08-03",
+        kind: "expense",
+        categoryId: "c2",
+        categoryName: "Financeiro",
+        baseCents: 2_000,
+        weight: 1,
+        chargeKind: "fine",
+      },
+      {
+        id: "e4",
+        date: "2026-08-04",
+        kind: "expense",
+        categoryId: "c2",
+        categoryName: "Financeiro",
+        baseCents: 1_000,
+        weight: 0.5,
+        chargeKind: "tax",
+      },
+      {
+        id: "i1",
+        date: "2026-08-05",
+        kind: "income",
+        categoryId: "c3",
+        categoryName: "Salário",
+        baseCents: 50_000,
+        weight: 1,
+      },
+    ];
+
+    const totals = aggregateExpensesByChargeKind(list);
+    expect(totals).toHaveLength(4); // regular, interest, fine, tax (income ignorada)
+    expect(totals[0]?.kind).toBe("regular");
+    expect(totals[0]?.brutoCents).toBe(30_000);
+    expect(totals[0]?.count).toBe(1);
+
+    const interest = totals.find((t) => t.kind === "interest");
+    expect(interest?.brutoCents).toBe(5_000);
+    expect(interest?.totalCents).toBe(5_000);
+
+    const tax = totals.find((t) => t.kind === "tax");
+    expect(tax?.brutoCents).toBe(1_000);
+    expect(tax?.ponderadoCents).toBe(500); // com peso 0.5
+  });
+
+  it("assume 'regular' para despesas sem charge_kind especificado", () => {
+    const list: ReportEntry[] = [
+      {
+        id: "e1",
+        date: "2026-08-01",
+        kind: "expense",
+        categoryId: "c1",
+        categoryName: "Alimentação",
+        baseCents: 10_000,
+        weight: 1,
+      },
+    ];
+
+    const totals = aggregateExpensesByChargeKind(list);
+    expect(totals).toHaveLength(1);
+    expect(totals[0]?.kind).toBe("regular");
+    expect(totals[0]?.brutoCents).toBe(10_000);
   });
 });
 

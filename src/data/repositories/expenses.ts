@@ -17,6 +17,9 @@ function mapExpense(row: Expense): Expense {
     report_weight: Number(row.report_weight),
     base_amount: Number(row.base_amount),
     is_family: Boolean(row.is_family),
+    is_internal_transfer: Boolean(row.is_internal_transfer),
+    is_tax_deductible: Boolean(row.is_tax_deductible),
+    scope: row.scope ?? "personal",
   };
 }
 

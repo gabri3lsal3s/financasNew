@@ -3,7 +3,7 @@ import { currentUserId } from "@/data/session";
 import { resolveQuery } from "@/data/query";
 import { deleteCreditCardRpc, updateCreditCardRpc } from "@/data/rpc";
 import { AppError, classifyError } from "@/services/errors";
-import type { CreditCard, DbInsert } from "@/types";
+import type { CreditCard, CreditCardScope, DbInsert } from "@/types";
 
 /**
  * Cartões de crédito — integração remota.
@@ -12,7 +12,11 @@ import type { CreditCard, DbInsert } from "@/types";
  */
 
 function mapCreditCard(row: CreditCard): CreditCard {
-  return { ...row, credit_limit: row.credit_limit === null ? null : Number(row.credit_limit) };
+  return {
+    ...row,
+    credit_limit: row.credit_limit === null ? null : Number(row.credit_limit),
+    scope: row.scope ?? "personal",
+  };
 }
 
 /** Todos os cartões (ativos e inativos) — ordenados por nome. */
@@ -64,6 +68,7 @@ export interface CreditCardForm {
   color: string | null;
   is_active: boolean;
   last_four_digits?: string | null;
+  scope?: CreditCardScope;
 }
 
 /** Alteração de regras do cartão — RPC auditado (D2). */
@@ -78,6 +83,7 @@ export async function updateCreditCard(id: string, input: CreditCardForm): Promi
     color: input.color,
     isActive: input.is_active,
     lastFourDigits: input.last_four_digits,
+    scope: input.scope,
   });
 }
 

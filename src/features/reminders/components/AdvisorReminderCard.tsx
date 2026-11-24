@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   ArrowDownLeft,
   HelpCircle,
+  Sparkles,
   TrendingDown,
   TrendingUp,
   Users,
@@ -22,6 +23,7 @@ const ADVISOR_ICON_MAP: Record<AdvisorIconKind, typeof AlertTriangle> = {
   income: ArrowDownLeft,
   savings: TrendingDown,
   calibration: HelpCircle,
+  celebration: Sparkles,
 };
 
 const CONTAINER_TONES: Record<

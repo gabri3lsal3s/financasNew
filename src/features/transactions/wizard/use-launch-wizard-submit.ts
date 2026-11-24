@@ -13,7 +13,7 @@ import {
   useUpdateCustomSettings,
 } from "@/state";
 import { useLinkPersonalExpenseToTripMutation } from "@/state/queries/use-trips";
-import type { Category, CreditCard, DbInsert, Income, Trip, TripMember } from "@/types";
+import type { Category, CreditCard, DbInsert, Income, TransactionScope, Trip, TripMember } from "@/types";
 import {
   buildExpenseInstallments,
   buildIncomeInstallments,
@@ -31,6 +31,8 @@ export interface UseLaunchWizardSubmitParams {
   isReadOnlyMode: boolean;
   guardAction: (fn: () => void, label: string) => void;
   isFamilyActive: boolean;
+  isBusinessActive?: boolean;
+  defaultScope?: TransactionScope;
   categories: Category[] | undefined;
   selectedCard: CreditCard | undefined;
   currentUserId: string | undefined;
@@ -68,12 +70,16 @@ function buildExpensePayload(state: LaunchState, closingDay: number | null) {
     debtInstallmentMode: state.debtEnabled
       ? state.installments > 1 && state.splitEnabled ? state.splitDebtMode : ("single_total" as const)
       : null,
+    chargeKind: state.paymentMethod === "credit_card" ? (state.chargeKind ?? "regular") : "regular",
+    ...((state.scope ?? "personal") !== "personal" ? { scope: state.scope } : {}),
+    ...((state.scope ?? "personal") === "business" && state.isTaxDeductible ? { isTaxDeductible: true } : {}),
   };
 }
 
 export function useLaunchWizardSubmit(params: UseLaunchWizardSubmitParams) {
   const {
     state, setState, initialType, initialValues, isReadOnlyMode, guardAction, isFamilyActive,
+    isBusinessActive = false, defaultScope = "personal",
     categories, selectedCard, currentUserId, currentTrip, tripMembers, receiptMeta,
     setReceiptMeta, setCreatedSplitExpense, onSuccess, onOpenChange, onFallbackBack,
   } = params;
@@ -96,6 +102,8 @@ export function useLaunchWizardSubmit(params: UseLaunchWizardSubmitParams) {
 
     try {
       const selectedCategory = categories?.find((c) => c.id === state.categoryId);
+      const launchScope = state.scope ?? "personal";
+      const submittedAsBusiness = isBusinessActive && launchScope === "business";
       if (state.recurring) {
         const rule = recurrenceRuleFromLaunchState(state);
         if (!rule) throw new Error("Defina o fim da recorrência (data ou número de ocorrências).");
@@ -106,6 +114,13 @@ export function useLaunchWizardSubmit(params: UseLaunchWizardSubmitParams) {
           cardId: state.type === "expense" && state.paymentMethod === "credit_card" ? state.cardId : null,
           receiveType: state.type === "income" ? state.receiveType : null,
           description: state.description || null, reportWeight: effectiveReportWeight(state), isFamily: state.isFamily,
+          ...(launchScope !== "personal" ? { scope: launchScope } : {}),
+          ...(state.type === "expense" && state.paymentMethod === "credit_card" && (state.chargeKind ?? "regular") !== "regular"
+            ? { chargeKind: state.chargeKind }
+            : {}),
+          ...(state.type === "expense" && launchScope === "business" && state.isTaxDeductible
+            ? { isTaxDeductible: true }
+            : {}),
         });
       } else if (state.type === "expense") {
         createdExpenseId = await createExpense.mutateAsync(buildExpensePayload(state, selectedCard?.closing_day ?? null));
@@ -131,11 +146,13 @@ export function useLaunchWizardSubmit(params: UseLaunchWizardSubmitParams) {
           description: state.description || null, reportWeight: effectiveReportWeight(state),
           installments: buildIncomeInstallments({ totalCents: state.valueCents, count: state.installments, startDate: state.date }),
           isFamily: state.isFamily,
+          ...(launchScope !== "personal" ? { scope: launchScope } : {}),
         });
       } else {
         const input = {
           value: state.valueCents / 100, date: state.date, category_id: state.categoryId, receive_type: state.receiveType,
           description: state.description || null, report_weight: effectiveReportWeight(state), source_ref: null, is_family: state.isFamily,
+          ...(launchScope !== "personal" ? { scope: launchScope } : {}),
         } satisfies Omit<DbInsert<Income>, "user_id">;
         await createIncome.mutateAsync(input);
       }
@@ -148,6 +165,9 @@ export function useLaunchWizardSubmit(params: UseLaunchWizardSubmitParams) {
           cardId: state.type === "expense" && state.paymentMethod === "credit_card" && state.cardId ? state.cardId : undefined,
           cardLastDigits: receiptMeta?.cardLastDigits || extractLastFourDigits(initialValues?.cardId) || extractLastFourDigits(state.cardId),
           taxId: receiptMeta?.taxId, packageName: receiptMeta?.packageName, pixKey: receiptMeta?.pixKey, nature: state.type,
+          reportWeight: state.type === "expense" ? effectiveReportWeight(state) : undefined,
+          isFamily: state.isFamily,
+          semanticTags: receiptMeta?.semanticTags,
         });
       }
 
@@ -163,14 +183,18 @@ export function useLaunchWizardSubmit(params: UseLaunchWizardSubmitParams) {
           }
         : null;
 
-      setState(defaultLaunchState(initialType));
+      setState(defaultLaunchState(initialType, defaultScope === "business" ? { scope: "business" } : undefined));
       setReceiptMeta(null);
       setPending(false);
 
       if (splitData) { setCreatedSplitExpense(splitData); return; }
       pushToast({
         title: state.type === "expense" ? "Despesa registrada" : "Receita registrada",
-        description: isFamilyActive && state.isFamily ? "Lançamento adicionado à visão Familiar." : undefined,
+        description: submittedAsBusiness
+          ? "Lançamento adicionado ao Meu Negócio (PJ)."
+          : isFamilyActive && state.isFamily
+            ? "Lançamento adicionado à visão Familiar."
+            : undefined,
         variant: "success",
       });
       onSuccess?.();

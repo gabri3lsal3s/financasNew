@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { Check, RotateCcw } from "lucide-react";
-import { Button, ModalFooter, MoneyText, Progress } from "@/components/ui";
+import { Check, Columns3, RotateCcw, Sparkles } from "lucide-react";
+import { Badge, Button, ModalFooter, MoneyText, Progress } from "@/components/ui";
 import type { ExistingExpenseForReconciliation, ReconciliationItem } from "@/domain/reconciliation";
 import type { Category } from "@/types";
 import type { StatementItemPatch } from "./statement-import-helpers";
@@ -23,6 +23,9 @@ export interface StatementReconcileStepProps {
   items: ReconciliationItem[];
   unmatchedAppExpenses?: ExistingExpenseForReconciliation[];
   categories: Category[];
+  usedAiStructurer?: boolean;
+  printedTotalCents?: number | null;
+  onOpenMapping?: () => void;
   onToggleItem: (id: string) => void;
   onToggleAll: (selected: boolean) => void;
   onChangeCategory: (id: string, categoryId: string) => void;
@@ -45,6 +48,9 @@ export function StatementReconcileStep({
   items,
   unmatchedAppExpenses = [],
   categories,
+  usedAiStructurer = false,
+  printedTotalCents = null,
+  onOpenMapping,
   onToggleItem,
   onToggleAll,
   onChangeCategory,
@@ -77,6 +83,20 @@ export function StatementReconcileStep({
     [items],
   );
 
+  const extractedNetCents = useMemo(
+    () =>
+      items.reduce((acc, it) => {
+        if (it.transaction.isPayment || it.isInternalDuplicate) return acc;
+        return it.transaction.isRefund
+          ? acc - it.transaction.amountCents
+          : acc + it.transaction.amountCents;
+      }, 0),
+    [items],
+  );
+
+  const totalMatchesPrinted =
+    printedTotalCents !== null && Math.abs(extractedNetCents - printedTotalCents) <= 100;
+
   const filteredItems = useMemo(() => {
     switch (filter) {
       case "new":
@@ -97,8 +117,49 @@ export function StatementReconcileStep({
   const selectedTotalCents = selectedItems.reduce((acc, it) => acc + it.transaction.amountCents, 0);
   const allFilteredSelected = filteredItems.length > 0 && filteredItems.every((it) => it.selected);
 
+  const showMetadataBar = usedAiStructurer || printedTotalCents !== null || Boolean(onOpenMapping);
+
   return (
     <div className="space-y-3">
+      {showMetadataBar ? (
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between rounded-xl border border-border/80 bg-surface px-3 py-2 text-xs shadow-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            {usedAiStructurer ? (
+              <Badge variant="default" size="xs">
+                <Sparkles className="size-3" aria-hidden="true" />
+                Organizado automaticamente
+              </Badge>
+            ) : null}
+
+            {printedTotalCents !== null ? (
+              <span className="inline-flex flex-wrap items-center gap-1.5 text-muted-foreground">
+                <Badge variant={totalMatchesPrinted ? "positive" : "warning"} size="xs">
+                  {totalMatchesPrinted ? "Soma conferida" : "Conferir total"}
+                </Badge>
+                <span>Lido:</span>
+                <MoneyText cents={extractedNetCents} tone="default" className="font-semibold text-xs" />
+                <span>· Fatura:</span>
+                <MoneyText cents={printedTotalCents} tone="default" className="font-semibold text-xs" />
+              </span>
+            ) : null}
+          </div>
+
+          {onOpenMapping ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={isPending}
+              onClick={onOpenMapping}
+              className="h-7 self-start sm:self-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <Columns3 className="size-3.5" aria-hidden="true" />
+              Ajustar colunas
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+
       <StatementReconcileToolbar
         filter={filter}
         onFilterChange={setFilter}

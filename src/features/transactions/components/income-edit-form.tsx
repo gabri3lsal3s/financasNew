@@ -4,8 +4,9 @@ import {
   Alert, DatePicker, FormField, Input, MoneyInput, Select, Switch,
 } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
+import { useSafeBusinessMode } from "@/hooks/use-safe-business-scope";
 import { useFamilyMode } from "@/state";
-import type { Category, Income, InstallmentDeleteMode, ReceiveType } from "@/types";
+import type { Category, Income, InstallmentDeleteMode, ReceiveType, TransactionScope } from "@/types";
 import { REPORT_WEIGHT_PRESETS } from "./report-weight-constants";
 import { ReportWeightField } from "./report-weight-field";
 import { EDIT_SCOPE_OPTIONS, RECEIVE_OPTIONS } from "./transaction-group-constants";
@@ -18,6 +19,7 @@ export interface IncomeEditSavePayload {
   receive_type: ReceiveType;
   report_weight: number;
   is_family?: boolean;
+  scope?: TransactionScope;
 }
 
 export interface IncomeEditFormProps {
@@ -42,6 +44,7 @@ export function IncomeEditForm({
   const [categoryId, setCategoryId] = useState(income.category_id);
   const [receiveType, setReceiveType] = useState<ReceiveType>(income.receive_type);
   const [isFamily, setIsFamily] = useState(Boolean(income.is_family));
+  const [scopeState, setScopeState] = useState<TransactionScope>(income.scope ?? "personal");
 
   const isPreset = REPORT_WEIGHT_PRESETS.includes(income.report_weight);
   const [weightMode, setWeightMode] = useState<string>(isPreset ? String(income.report_weight) : "custom");
@@ -51,6 +54,7 @@ export function IncomeEditForm({
   const [formError, setFormError] = useState<string | null>(null);
   const { isFamilyModeEnabled } = useFamilyMode();
   const isFamilyActive = Boolean(isFamilyModeEnabled);
+  const { isBusinessModeEnabled } = useSafeBusinessMode();
 
   const handleSubmit = async () => {
     if (valueCents <= 0) { setFormError("O valor da receita deve ser maior que zero."); return; }
@@ -74,6 +78,7 @@ export function IncomeEditForm({
         receive_type: receiveType,
         report_weight: calculatedWeight,
         is_family: isFamilyActive ? isFamily : Boolean(income.is_family),
+        ...(isBusinessModeEnabled && !grouped ? { scope: scopeState } : {}),
       });
     } catch (err) {
       setFormError(getErrorMessage(err));
@@ -91,7 +96,11 @@ export function IncomeEditForm({
 
   const categoryOptions = categories.map((c) => ({ value: c.id, label: c.name }));
   const valueDisabled = grouped && scope !== "single" && !isRecurring;
-  const hasAdvancedInitial = !isPreset || income.report_weight !== 1 || (isFamilyActive && Boolean(income.is_family));
+  const hasAdvancedInitial =
+    !isPreset ||
+    income.report_weight !== 1 ||
+    (isFamilyActive && Boolean(income.is_family)) ||
+    (isBusinessModeEnabled && !grouped && income.scope === "business");
 
   return (
     <form
@@ -143,7 +152,26 @@ export function IncomeEditForm({
               customLabel="Sua cota considerada no relatório"
               ariaLabelCustom="Sua cota considerada no relatório"
             />
-            {isFamilyActive ? (
+            {isBusinessModeEnabled && !grouped ? (
+              <div className="rounded-xl border border-border/80 bg-surface p-3">
+                <FormField label="Esfera do lançamento">
+                  <Select
+                    value={scopeState}
+                    onValueChange={(value) => {
+                      const next = value as TransactionScope;
+                      setScopeState(next);
+                      if (next === "business") setIsFamily(false);
+                    }}
+                    options={[
+                      { value: "personal", label: "Pessoal (PF)" },
+                      { value: "business", label: "Meu Negócio (PJ)" },
+                    ]}
+                    ariaLabel="Esfera do lançamento"
+                  />
+                </FormField>
+              </div>
+            ) : null}
+            {isFamilyActive && (!isBusinessModeEnabled || scopeState !== "business") ? (
               <div className="rounded-xl border border-border/80 bg-surface p-3">
                 <Switch
                   id="edit-income-family"
