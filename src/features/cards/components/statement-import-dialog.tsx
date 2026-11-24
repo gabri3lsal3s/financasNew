@@ -16,6 +16,7 @@ export interface StatementImportDialogProps {
   userId?: string | null;
   isReadOnlyMode?: boolean;
   aiExtractionEnabled?: boolean;
+  onCompetenceChange?: (newMonth: string) => void;
 }
 
 interface StatementImportContentProps {
@@ -26,6 +27,7 @@ interface StatementImportContentProps {
   userId?: string | null;
   isReadOnlyMode?: boolean;
   aiExtractionEnabled?: boolean;
+  onCompetenceChange?: (newMonth: string) => void;
 }
 
 function StatementImportContent({
@@ -36,6 +38,7 @@ function StatementImportContent({
   userId,
   isReadOnlyMode,
   aiExtractionEnabled,
+  onCompetenceChange,
 }: StatementImportContentProps) {
   const mappingFormId = useId();
   const state = useStatementImport({
@@ -45,6 +48,7 @@ function StatementImportContent({
     isReadOnlyMode,
     aiExtractionEnabled,
     onClose: () => onOpenChange(false),
+    onCompetenceChange,
   });
 
   const handleBackFromReconcile = () => {
@@ -107,7 +111,7 @@ function StatementImportContent({
       open={open}
       onOpenChange={onOpenChange}
       title={`Importar Fatura — ${card.name}`}
-      description={`Competência de ${monthLabel(competenceMonth)} · Concilie faturas via PDF, CSV, OFX, Excel, prints ou texto colado.`}
+      description={`Competência de ${monthLabel(state.activeCompetenceMonth)} · Concilie faturas via PDF, CSV, OFX, Excel, prints ou texto colado.`}
       size="3xl"
       footer={footer}
     >
@@ -117,6 +121,68 @@ function StatementImportContent({
             <div className="flex items-center gap-2">
               <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
               <span>{state.error}</span>
+            </div>
+          </Alert>
+        ) : null}
+
+        {state.detectedMeta?.hasCompetenceMismatch &&
+        state.detectedMeta.detectedCompetenceMonth ? (
+          <Alert variant="warning">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="flex items-start gap-2">
+                <AlertCircle
+                  className="size-4 shrink-0 mt-0.5 text-warning-strong"
+                  aria-hidden="true"
+                />
+                <div className="text-xs space-y-0.5">
+                  <p className="font-semibold text-foreground">
+                    Divergência de Competência Detectada
+                  </p>
+                  <p className="text-muted-foreground">
+                    {state.detectedMeta.competenceMismatchWarning}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  onClick={state.handleDismissCompetenceMismatch}
+                >
+                  Manter {monthLabel(state.activeCompetenceMonth)}
+                </Button>
+                <Button
+                  type="button"
+                  size="xs"
+                  onClick={() =>
+                    void state.handleSwitchCompetence(
+                      state.detectedMeta!.detectedCompetenceMonth!,
+                    )
+                  }
+                >
+                  Ajustar para {monthLabel(state.detectedMeta.detectedCompetenceMonth)}
+                </Button>
+              </div>
+            </div>
+          </Alert>
+        ) : null}
+
+        {state.detectedMeta?.hasCardMismatch ? (
+          <Alert variant="warning">
+            <div className="flex items-start gap-2 text-xs">
+              <AlertCircle
+                className="size-4 shrink-0 mt-0.5 text-warning-strong"
+                aria-hidden="true"
+              />
+              <div className="space-y-0.5">
+                <p className="font-semibold text-foreground">
+                  Aviso de Compatibilidade de Cartão
+                </p>
+                <p className="text-muted-foreground">
+                  {state.detectedMeta.cardMismatchWarning}
+                </p>
+              </div>
             </div>
           </Alert>
         ) : null}
@@ -144,6 +210,7 @@ function StatementImportContent({
             categories={state.categories}
             usedAiStructurer={state.usedAiStructurer}
             printedTotalCents={state.printedTotalCents}
+            detectedMeta={state.detectedMeta}
             onOpenMapping={state.canOpenMapping ? () => state.setStep("mapping") : undefined}
             onToggleItem={state.handleToggleItem}
             onToggleAll={state.handleToggleAll}
@@ -166,7 +233,7 @@ function StatementImportContent({
 
 /**
  * Modal orquestrador de Importação e Reconciliação Inteligente de Faturas (Fase 30).
- * Segue o padrão "Modal Content with Key Pattern" para isolar o estado do wizard.
+ * Segue o padrão "Modal Content with Key Pattern" para isolar o estado do wizard por cartão.
  */
 export function StatementImportDialog({
   open,
@@ -176,12 +243,13 @@ export function StatementImportDialog({
   userId,
   isReadOnlyMode,
   aiExtractionEnabled,
+  onCompetenceChange,
 }: StatementImportDialogProps) {
   if (!open || !card) return null;
 
   return (
     <StatementImportContent
-      key={`${card.id}-${competenceMonth}`}
+      key={card.id}
       open={open}
       onOpenChange={onOpenChange}
       card={card}
@@ -189,6 +257,7 @@ export function StatementImportDialog({
       userId={userId}
       isReadOnlyMode={isReadOnlyMode}
       aiExtractionEnabled={aiExtractionEnabled}
+      onCompetenceChange={onCompetenceChange}
     />
   );
 }

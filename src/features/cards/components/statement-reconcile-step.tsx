@@ -1,7 +1,11 @@
 import { useMemo, useState } from "react";
 import { Check, Columns3, RotateCcw, Sparkles } from "lucide-react";
 import { Badge, Button, ModalFooter, MoneyText, Progress } from "@/components/ui";
-import type { ExistingExpenseForReconciliation, ReconciliationItem } from "@/domain/reconciliation";
+import type {
+  ExistingExpenseForReconciliation,
+  ReconciliationItem,
+  DetectedStatementMetadata,
+} from "@/domain/reconciliation";
 import type { Category } from "@/types";
 import type { StatementItemPatch } from "./statement-import-helpers";
 import { StatementItemFormDialog } from "./statement-item-form-dialog";
@@ -25,6 +29,7 @@ export interface StatementReconcileStepProps {
   categories: Category[];
   usedAiStructurer?: boolean;
   printedTotalCents?: number | null;
+  detectedMeta?: DetectedStatementMetadata | null;
   onOpenMapping?: () => void;
   onToggleItem: (id: string) => void;
   onToggleAll: (selected: boolean) => void;
@@ -50,6 +55,7 @@ export function StatementReconcileStep({
   categories,
   usedAiStructurer = false,
   printedTotalCents = null,
+  detectedMeta = null,
   onOpenMapping,
   onToggleItem,
   onToggleAll,
@@ -83,6 +89,8 @@ export function StatementReconcileStep({
     [items],
   );
 
+  const effectivePrintedTotalCents = detectedMeta?.detectedTotalCents ?? printedTotalCents;
+
   const extractedNetCents = useMemo(
     () =>
       items.reduce((acc, it) => {
@@ -95,7 +103,8 @@ export function StatementReconcileStep({
   );
 
   const totalMatchesPrinted =
-    printedTotalCents !== null && Math.abs(extractedNetCents - printedTotalCents) <= 100;
+    effectivePrintedTotalCents !== null &&
+    Math.abs(extractedNetCents - effectivePrintedTotalCents) <= 100;
 
   const filteredItems = useMemo(() => {
     switch (filter) {
@@ -117,7 +126,11 @@ export function StatementReconcileStep({
   const selectedTotalCents = selectedItems.reduce((acc, it) => acc + it.transaction.amountCents, 0);
   const allFilteredSelected = filteredItems.length > 0 && filteredItems.every((it) => it.selected);
 
-  const showMetadataBar = usedAiStructurer || printedTotalCents !== null || Boolean(onOpenMapping);
+  const showMetadataBar =
+    usedAiStructurer ||
+    effectivePrintedTotalCents !== null ||
+    Boolean(onOpenMapping) ||
+    Boolean(detectedMeta?.detectedCardLast4);
 
   return (
     <div className="space-y-3">
@@ -131,7 +144,7 @@ export function StatementReconcileStep({
               </Badge>
             ) : null}
 
-            {printedTotalCents !== null ? (
+            {effectivePrintedTotalCents !== null ? (
               <span className="inline-flex flex-wrap items-center gap-1.5 text-muted-foreground">
                 <Badge variant={totalMatchesPrinted ? "positive" : "warning"} size="xs">
                   {totalMatchesPrinted ? "Soma conferida" : "Conferir total"}
@@ -139,7 +152,13 @@ export function StatementReconcileStep({
                 <span>Lido:</span>
                 <MoneyText cents={extractedNetCents} tone="default" className="font-semibold text-xs" />
                 <span>· Fatura:</span>
-                <MoneyText cents={printedTotalCents} tone="default" className="font-semibold text-xs" />
+                <MoneyText cents={effectivePrintedTotalCents} tone="default" className="font-semibold text-xs" />
+              </span>
+            ) : null}
+
+            {detectedMeta?.detectedCardLast4 ? (
+              <span className="text-muted-foreground text-[11px]">
+                Cartão: •••• {detectedMeta.detectedCardLast4}
               </span>
             ) : null}
           </div>

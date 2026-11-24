@@ -1,39 +1,58 @@
 import type { RawParsedRow } from "../types";
 
 /**
- * Detecta o delimitador do CSV por contagem de ocorrências consistentes nas primeiras linhas.
+ * Detecta o delimitador do CSV por consistência e frequência tabular nas linhas da amostra,
+ * imune a linhas institucionais de preâmbulo (cabeçalhos de banco sem delimitador).
  */
 function detectDelimiter(text: string): string {
   const cleanText = text.replace(/^[\uFEFF\uFFFE]/, "");
-  const lines = cleanText
+  const allLines = cleanText
     .split(/\r?\n/)
     .map((l) => l.trim())
-    .filter((l) => l.length > 0)
-    .slice(0, 10);
+    .filter((l) => l.length > 0);
 
-  if (lines.length === 0) return ",";
+  if (allLines.length === 0) return ",";
 
-  const delimiters = [",", ";", "\t", "|"];
+  const delimiters = [";", ",", "\t", "|"];
+  const sample = allLines.slice(0, 30);
+
   let bestDelimiter = ",";
-  let maxConsistentCount = -1;
+  let bestScore = -1;
 
   for (const delim of delimiters) {
-    const counts = lines.map((line) => line.split(delim).length - 1);
-    const firstCount = counts[0] ?? 0;
-    if (firstCount > 0 && counts.every((c) => c === firstCount)) {
-      if (firstCount > maxConsistentCount) {
-        maxConsistentCount = firstCount;
-        bestDelimiter = delim;
+    // Filtra apenas linhas que contêm o delimitador pelo menos uma vez
+    const matchingLines = sample.filter((line) => line.includes(delim));
+    if (matchingLines.length === 0) continue;
+
+    const counts = matchingLines.map((line) => line.split(delim).length - 1);
+    const freq = new Map<number, number>();
+    for (const c of counts) {
+      freq.set(c, (freq.get(c) ?? 0) + 1);
+    }
+
+    let dominantCount = 0;
+    let dominantFreq = 0;
+    for (const [colCount, times] of freq.entries()) {
+      if (colCount >= 2 && times > dominantFreq) {
+        dominantFreq = times;
+        dominantCount = colCount;
       }
+    }
+
+    // Pondera a quantidade de linhas que compartilham a mesma contagem de colunas >= 2
+    const score = dominantFreq * (dominantCount + 1);
+    if (score > bestScore) {
+      bestScore = score;
+      bestDelimiter = delim;
     }
   }
 
-  // Fallback para contagem total simples se nenhuma consistência perfeita for encontrada
-  if (maxConsistentCount <= 0) {
+  // Fallback caso nenhuma linha tenha >= 2 colunas consistentes
+  if (bestScore <= 0) {
     let maxTotal = -1;
     for (const delim of delimiters) {
       let total = 0;
-      for (const line of lines) {
+      for (const line of sample) {
         total += line.split(delim).length - 1;
       }
       if (total > maxTotal) {

@@ -220,6 +220,7 @@ export function CardsPage() {
         onProceedToCheckout={(url) => state.navigate(url)}
         isReadOnlyMode={state.permission.isReadOnlyMode}
         aiExtractionEnabled={!state.aiPermission.isHidden && state.aiPermission.canWrite}
+        onCompetenceChange={state.setMonth}
       />
     </div>
   );

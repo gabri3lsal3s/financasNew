@@ -175,6 +175,11 @@ const GEMINI_STATEMENT_PDF_ROWS_RESPONSE_SCHEMA = {
         required: ["date", "description", "amountCents"],
       },
     },
+    detectedCompetenceMonth: { type: "STRING", nullable: true },
+    detectedDueDate: { type: "STRING", nullable: true },
+    detectedCardLast4: { type: "STRING", nullable: true },
+    detectedCardBrandOrBank: { type: "STRING", nullable: true },
+    detectedTotalInvoiceCents: { type: "INTEGER", nullable: true },
   },
   required: ["rows"],
 };
@@ -255,6 +260,7 @@ function buildStatementPdfRowsPrompt(params: {
     "4) Compras internacionais: use SEMPRE o valor final convertido em BRL (R$), nunca USD/EUR puro.",
     "5) entryType e amountCents (centavos inteiros, nunca 0): 'purchase' ou 'charge' (IOF/juros/multa/anuidade) -> POSITIVO; 'refund' (estorno/credito) ou 'payment' (pagamento da fatura anterior) -> NEGATIVO.",
     "6) Parcelas (ex.: 02/10): preencha installmentCurrent e installmentTotal (total >= 2); senao null. NUNCA some valores.",
+    "7) Metadados da fatura (no cabecalho/resumo): detectedCompetenceMonth (YYYY-MM do fechamento da fatura), detectedDueDate (YYYY-MM-DD), detectedCardLast4 (4 digitos finais do cartao impresso), detectedCardBrandOrBank (ex.: 'Nubank', 'Itau', 'Bradesco', 'Santander', 'Inter', 'C6', 'Mastercard', 'Visa'), detectedTotalInvoiceCents (total da fatura a pagar em centavos inteiros). Se nao encontrar algum, preencha null.",
   ].join("\n");
 }
 

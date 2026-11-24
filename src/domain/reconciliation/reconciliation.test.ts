@@ -148,6 +148,29 @@ describe("domain/reconciliation", () => {
       expect(mapping.amountColIndex).toBe(2);
       expect(mapping.hasHeader).toBe(false);
     });
+
+    it("detecta cabeçalho e delimitação mesmo com preâmbulo institucional de banco no topo", () => {
+      const bankCsv = `
+Extrato de Cartão de Crédito
+Banco Itaú S.A.
+Cliente: GABRIEL SALES
+Cartão: **** **** **** 4321
+Período: 01/08/2026 a 31/08/2026
+
+Data;Estabelecimento;Valor;Parcela
+15/08/2026;MERCADO EXTRA;189,40;1/1
+16/08/2026;DROGASIL;45,90;1/1
+17/08/2026;AMAZON PRIME;19,90;1/1
+`;
+      const rows = parseCsvToRows(bankCsv);
+      const mapping = sniffColumnMapping(rows);
+
+      expect(mapping.hasHeader).toBe(true);
+      expect(mapping.startRowIndex).toBe(6);
+      expect(mapping.dateColIndex).toBe(0);
+      expect(mapping.descriptionColIndex).toBe(1);
+      expect(mapping.amountColIndex).toBe(2);
+    });
   });
 
   describe("OFX Parser", () => {

@@ -12,6 +12,7 @@ import {
   type ExistingExpenseForReconciliation,
   type RawParsedRow,
   type ReconciliationItem,
+  type DetectedStatementMetadata,
 } from "@/domain/reconciliation";
 import { categorizeDescriptionsBatchWithAi } from "@/services/ai-assistant";
 import { getErrorMessage } from "@/services/errors";
@@ -57,6 +58,7 @@ export interface UseStatementImportParams {
   isReadOnlyMode?: boolean;
   aiExtractionEnabled?: boolean;
   onClose: () => void;
+  onCompetenceChange?: (newCompetenceMonth: string) => void;
 }
 
 const NO_HISTORY_SENTINEL = "__NO_HISTORY_MATCH__";
@@ -69,8 +71,10 @@ export function useStatementImport({
   isReadOnlyMode = false,
   aiExtractionEnabled = true,
   onClose,
+  onCompetenceChange,
 }: UseStatementImportParams) {
   const [step, setStep] = useState<StatementWizardStep>("upload");
+  const [activeCompetenceMonth, setActiveCompetenceMonth] = useState(competenceMonth);
   const [error, setError] = useState<string | null>(null);
   const [parsedRows, setParsedRows] = useState<RawParsedRow[]>([]);
   const [columnMapping, setColumnMapping] = useState<ColumnMapping | null>(null);
@@ -82,9 +86,22 @@ export function useStatementImport({
   const [isReadingFile, setIsReadingFile] = useState(false);
   const [usedAiStructurer, setUsedAiStructurer] = useState(false);
   const [printedTotalCents, setPrintedTotalCents] = useState<number | null>(null);
+  const [detectedMeta, setDetectedMeta] = useState<DetectedStatementMetadata | null>(null);
 
   const reconcileRunIdRef = useRef(0);
   const manuallyEditedIdsRef = useRef<Set<string>>(new Set());
+  const loadedInputRef = useRef<{
+    content: string | ArrayBuffer;
+    fileNameOrType: string;
+    fileSha256?: string | null;
+    visionBlobs?: readonly { blob: Blob; sha256?: string | null }[];
+  } | null>(null);
+
+  const [prevCompetenceMonth, setPrevCompetenceMonth] = useState(competenceMonth);
+  if (prevCompetenceMonth !== competenceMonth) {
+    setPrevCompetenceMonth(competenceMonth);
+    setActiveCompetenceMonth(competenceMonth);
+  }
 
   useEffect(() => {
     return () => {
@@ -102,13 +119,18 @@ export function useStatementImport({
   const resolvedUserId = userId ?? getActiveUserId();
 
   const existingExpensesForReconciliation = useMemo(
-    () => mapExpensesForReconciliation(expensesQuery.data ?? [], competenceMonth),
-    [expensesQuery.data, competenceMonth],
+    () => mapExpensesForReconciliation(expensesQuery.data ?? [], activeCompetenceMonth),
+    [expensesQuery.data, activeCompetenceMonth],
   );
 
   const applyReconciliation = (
     transactions: Parameters<typeof runStatementReconciliation>[0]["transactions"],
-    meta?: { usedAiStructurer?: boolean; printedTotalCents?: number | null },
+    meta?: {
+      usedAiStructurer?: boolean;
+      printedTotalCents?: number | null;
+      detectedMeta?: DetectedStatementMetadata | null;
+      competenceForReconciliation?: string;
+    },
   ) => {
     const runId = ++reconcileRunIdRef.current;
     manuallyEditedIdsRef.current.clear();
@@ -119,11 +141,18 @@ export function useStatementImport({
     if (meta?.printedTotalCents !== undefined) {
       setPrintedTotalCents(meta.printedTotalCents);
     }
+    if (meta?.detectedMeta !== undefined) {
+      setDetectedMeta(meta.detectedMeta);
+    }
+
+    const existingExpenses = meta?.competenceForReconciliation
+      ? mapExpensesForReconciliation(expensesQuery.data ?? [], meta.competenceForReconciliation)
+      : existingExpensesForReconciliation;
 
     const history = historyQuery.entries ?? [];
     const reconciliation = runStatementReconciliation({
       transactions,
-      existingExpenses: existingExpensesForReconciliation,
+      existingExpenses,
       history,
       defaultCategoryId,
     });
@@ -334,12 +363,21 @@ export function useStatementImport({
     fileSha256?: string | null,
   ) => {
     setError(null);
+    loadedInputRef.current = { content, fileNameOrType, fileSha256 };
     try {
       const result = await parseStatementWithPdfAiFallback({
         content,
         fileNameOrType,
         cardId: card.id,
-        competenceMonth,
+        competenceMonth: activeCompetenceMonth,
+        card: {
+          id: card.id,
+          name: card.name,
+          brand: card.brand,
+          closing_day: card.closing_day,
+          due_day: card.due_day,
+          last_four_digits: card.last_four_digits,
+        },
         fileSha256,
         userId: resolvedUserId,
         isReadOnlyMode,
@@ -355,11 +393,13 @@ export function useStatementImport({
       setColumnMapping(result.mapping);
       setUsedAiStructurer(result.usedAiFallback);
       setPrintedTotalCents(result.printedTotalCents);
+      setDetectedMeta(result.detectedMeta ?? null);
 
       if (result.isOfx || result.usedAiFallback || result.rows.length === 0) {
         applyReconciliation(result.transactions, {
           usedAiStructurer: result.usedAiFallback,
           printedTotalCents: result.printedTotalCents,
+          detectedMeta: result.detectedMeta,
         });
       } else {
         setStep("mapping");
@@ -385,10 +425,24 @@ export function useStatementImport({
           })),
         );
 
+        loadedInputRef.current = {
+          visionBlobs: blobsWithSha,
+          content: "",
+          fileNameOrType: "images",
+        };
+
         const visionResult = await parseStatementVisionBlobsWithAi({
           blobs: blobsWithSha,
           cardId: card.id,
-          competenceMonth,
+          competenceMonth: activeCompetenceMonth,
+          card: {
+            id: card.id,
+            name: card.name,
+            brand: card.brand,
+            closing_day: card.closing_day,
+            due_day: card.due_day,
+            last_four_digits: card.last_four_digits,
+          },
           userId: resolvedUserId,
           isReadOnlyMode,
           aiFallbackEnabled: aiExtractionEnabled,
@@ -403,9 +457,11 @@ export function useStatementImport({
 
         setParsedRows(visionResult.rows);
         setColumnMapping(visionResult.mapping);
+        setDetectedMeta(visionResult.detectedMeta ?? null);
         applyReconciliation(visionResult.transactions, {
           usedAiStructurer: true,
           printedTotalCents: null,
+          detectedMeta: visionResult.detectedMeta,
         });
         return;
       }
@@ -430,10 +486,24 @@ export function useStatementImport({
           });
         }
 
+        loadedInputRef.current = {
+          visionBlobs: pageBlobs,
+          content: "",
+          fileNameOrType: "scanned_pdf",
+        };
+
         const scannedVision = await parseStatementVisionBlobsWithAi({
           blobs: pageBlobs,
           cardId: card.id,
-          competenceMonth,
+          competenceMonth: activeCompetenceMonth,
+          card: {
+            id: card.id,
+            name: card.name,
+            brand: card.brand,
+            closing_day: card.closing_day,
+            due_day: card.due_day,
+            last_four_digits: card.last_four_digits,
+          },
           userId: resolvedUserId,
           isReadOnlyMode,
           aiFallbackEnabled: aiExtractionEnabled,
@@ -448,9 +518,11 @@ export function useStatementImport({
 
         setParsedRows(scannedVision.rows);
         setColumnMapping(scannedVision.mapping);
+        setDetectedMeta(scannedVision.detectedMeta ?? null);
         applyReconciliation(scannedVision.transactions, {
           usedAiStructurer: true,
           printedTotalCents: null,
+          detectedMeta: scannedVision.detectedMeta,
         });
         return;
       }
@@ -489,12 +561,98 @@ export function useStatementImport({
     }
   };
 
+  const handleSwitchCompetence = async (newMonth: string) => {
+    if (!newMonth || newMonth === activeCompetenceMonth) return;
+    setActiveCompetenceMonth(newMonth);
+    onCompetenceChange?.(newMonth);
+
+    if (loadedInputRef.current) {
+      setIsReadingFile(true);
+      setError(null);
+      try {
+        if (loadedInputRef.current.visionBlobs?.length) {
+          const visionResult = await parseStatementVisionBlobsWithAi({
+            blobs: loadedInputRef.current.visionBlobs,
+            cardId: card.id,
+            competenceMonth: newMonth,
+            card: {
+              id: card.id,
+              name: card.name,
+              brand: card.brand,
+              closing_day: card.closing_day,
+              due_day: card.due_day,
+              last_four_digits: card.last_four_digits,
+            },
+            userId: resolvedUserId,
+            isReadOnlyMode,
+            aiFallbackEnabled: aiExtractionEnabled,
+          });
+
+          setParsedRows(visionResult.rows);
+          setColumnMapping(visionResult.mapping);
+          setDetectedMeta(visionResult.detectedMeta ?? null);
+          applyReconciliation(visionResult.transactions, {
+            usedAiStructurer: true,
+            printedTotalCents: visionResult.printedTotalCents,
+            detectedMeta: visionResult.detectedMeta,
+            competenceForReconciliation: newMonth,
+          });
+          return;
+        }
+
+        const result = await parseStatementWithPdfAiFallback({
+          content: loadedInputRef.current.content,
+          fileNameOrType: loadedInputRef.current.fileNameOrType,
+          cardId: card.id,
+          competenceMonth: newMonth,
+          card: {
+            id: card.id,
+            name: card.name,
+            brand: card.brand,
+            closing_day: card.closing_day,
+            due_day: card.due_day,
+            last_four_digits: card.last_four_digits,
+          },
+          fileSha256: loadedInputRef.current.fileSha256,
+          userId: resolvedUserId,
+          isReadOnlyMode,
+          aiFallbackEnabled: aiExtractionEnabled,
+        });
+
+        setParsedRows(result.rows);
+        setColumnMapping(result.mapping);
+        setUsedAiStructurer(result.usedAiFallback);
+        setPrintedTotalCents(result.printedTotalCents);
+        setDetectedMeta(result.detectedMeta ?? null);
+
+        if (result.isOfx || result.usedAiFallback || result.rows.length === 0) {
+          applyReconciliation(result.transactions, {
+            usedAiStructurer: result.usedAiFallback,
+            printedTotalCents: result.printedTotalCents,
+            detectedMeta: result.detectedMeta,
+            competenceForReconciliation: newMonth,
+          });
+        } else {
+          setStep("mapping");
+        }
+      } catch (err) {
+        setError(getErrorMessage(err));
+      } finally {
+        setIsReadingFile(false);
+      }
+    }
+  };
+
+  const handleDismissCompetenceMismatch = () => {
+    setDetectedMeta((prev) => (prev ? { ...prev, hasCompetenceMismatch: false } : null));
+  };
+
   const handleConfirmMapping = (mapping: ColumnMapping) => {
     setColumnMapping(mapping);
     setError(null);
     try {
       applyReconciliation(
-        buildTransactionsFromRows(parsedRows, mapping, { cardId: card.id, competenceMonth }),
+        buildTransactionsFromRows(parsedRows, mapping, { cardId: card.id, competenceMonth: activeCompetenceMonth }),
       );
     } catch (err) {
       setError(getErrorMessage(err));
@@ -543,7 +701,12 @@ export function useStatementImport({
     setReconciledItems((prev) =>
       prev.map((it) =>
         it.transaction.id === id
-          ? applyEditedReconciliationItem({ cardId: card.id, competenceMonth, current: it, updated })
+          ? applyEditedReconciliationItem({
+              cardId: card.id,
+              competenceMonth: activeCompetenceMonth,
+              current: it,
+              updated,
+            })
           : it,
       ),
     );
@@ -556,7 +719,12 @@ export function useStatementImport({
 
   const handleAddManualItem = (item: StatementItemPatch) => {
     setReconciledItems((prev) => [
-      createManualReconciliationItem({ cardId: card.id, competenceMonth, item, index: prev.length }),
+      createManualReconciliationItem({
+        cardId: card.id,
+        competenceMonth: activeCompetenceMonth,
+        item,
+        index: prev.length,
+      }),
       ...prev,
     ]);
   };
@@ -578,7 +746,7 @@ export function useStatementImport({
       const { totalInserted, totalSkipped } = await executeChunkedStatementImport({
         cardId: card.id,
         cardScope: card.scope,
-        competenceMonth,
+        competenceMonth: activeCompetenceMonth,
         items: toImport,
         fallbackCategoryId: defaultCategoryId || categories[0]?.id || "",
         onProgress: setImportProgress,
@@ -610,6 +778,8 @@ export function useStatementImport({
     step,
     setStep,
     error,
+    activeCompetenceMonth,
+    detectedMeta,
     parsedRows,
     columnMapping,
     reconciledItems,
@@ -626,6 +796,8 @@ export function useStatementImport({
     handleFilesSelect,
     handleTextSubmit,
     handleConfirmMapping,
+    handleSwitchCompetence,
+    handleDismissCompetenceMismatch,
     handleToggleItem,
     handleToggleAll,
     handleChangeCategory,

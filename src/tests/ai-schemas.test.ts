@@ -472,6 +472,11 @@ describe("ai-schemas (Trava 3 Hard Caps, Trava 5 Whitelist & Ajuste #3 BRT)", ()
           entryType: "payment",
         },
       ],
+      detectedCompetenceMonth: "11/2026",
+      detectedDueDate: "10/11/2026",
+      detectedCardLast4: "•••• 4821",
+      detectedCardBrandOrBank: "  Nubank  ",
+      detectedTotalInvoiceCents: 154020,
     });
 
     const parsed = AiStatementPdfRowsOutputSchema.safeParse(normalized);
@@ -483,6 +488,11 @@ describe("ai-schemas (Trava 3 Hard Caps, Trava 5 Whitelist & Ajuste #3 BRT)", ()
       expect(parsed.data.rows[0]?.installmentTotal).toBeNull();
       expect(parsed.data.rows[1]?.amountCents).toBe(-95000);
       expect(parsed.data.rows[1]?.entryType).toBe("payment");
+      expect(parsed.data.detectedCompetenceMonth).toBe("2026-11");
+      expect(parsed.data.detectedDueDate).toBe("2026-11-10");
+      expect(parsed.data.detectedCardLast4).toBe("4821");
+      expect(parsed.data.detectedCardBrandOrBank).toBe("Nubank");
+      expect(parsed.data.detectedTotalInvoiceCents).toBe(154020);
     }
   });
 

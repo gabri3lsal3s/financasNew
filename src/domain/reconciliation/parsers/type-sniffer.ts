@@ -223,155 +223,185 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
   const textScores = new Array(maxCols).fill(0);
   const typeScores = new Array(maxCols).fill(0);
 
-  // Determina se a primeira linha é cabeçalho e aplica boost pelos nomes das colunas
+  // Identifica a linha candidata a cabeçalho examinando as primeiras linhas (suporte a preâmbulos de bancos)
   let hasHeader = false;
-  const firstRow = rows[0];
-  if (firstRow && firstRow.cells.length > 0) {
-    const firstRowText = firstRow.cells.join(" ").toLowerCase();
-    const hasHeaderKeywords =
-      firstRowText.includes("data") ||
-      firstRowText.includes("date") ||
-      firstRowText.includes("valor") ||
-      firstRowText.includes("amount") ||
-      firstRowText.includes("desc") ||
-      firstRowText.includes("lançamento") ||
-      firstRowText.includes("lancamento") ||
-      firstRowText.includes("estabelecimento") ||
-      firstRowText.includes("tipo") ||
-      firstRowText.includes("d/c") ||
-      firstRowText.includes("débito") ||
-      firstRowText.includes("debito") ||
-      firstRowText.includes("crédito") ||
-      firstRowText.includes("credito") ||
-      firstRowText.includes("titular");
+  let headerRowIndex = 0;
+  let maxHeaderSignal = 0;
 
-    if (hasHeaderKeywords) {
-      hasHeader = true;
+  const candidateHeaderRows = rows.slice(0, 12);
+  for (let r = 0; r < candidateHeaderRows.length; r++) {
+    const row = candidateHeaderRows[r];
+    if (!row || row.cells.length === 0) continue;
 
-      for (let c = 0; c < firstRow.cells.length; c++) {
-        const headerCell = (firstRow.cells[c] ?? "").trim().toLowerCase();
-        if (!headerCell) continue;
+    let rowSignal = 0;
+    for (const cell of row.cells) {
+      const lower = (cell ?? "").trim().toLowerCase();
+      if (!lower) continue;
+      if (lower.includes("data") || lower.includes("date") || lower === "dt") rowSignal += 2;
+      if (
+        lower.includes("valor") ||
+        lower.includes("amount") ||
+        lower.includes("total") ||
+        lower.includes("preço") ||
+        lower.includes("preco") ||
+        lower.includes("débito") ||
+        lower.includes("debito") ||
+        lower.includes("crédito") ||
+        lower.includes("credito")
+      ) {
+        rowSignal += 2;
+      }
+      if (
+        lower.includes("desc") ||
+        lower.includes("estabelecimento") ||
+        lower.includes("histórico") ||
+        lower.includes("historico") ||
+        lower.includes("lançamento") ||
+        lower.includes("lancamento") ||
+        lower.includes("transação") ||
+        lower.includes("transacao") ||
+        lower.includes("detalhe") ||
+        lower.includes("memo")
+      ) {
+        rowSignal += 2;
+      }
+      if (lower === "d/c" || lower === "tipo" || lower === "sinal") rowSignal += 1;
+    }
 
-        // Cabeçalho de data
-        if (headerCell.includes("data") || headerCell.includes("date") || headerCell === "dt") {
-          dateScores[c] = (dateScores[c] ?? 0) + 100;
-        }
+    if (rowSignal > maxHeaderSignal) {
+      maxHeaderSignal = rowSignal;
+      headerRowIndex = r;
+    }
+  }
 
-        // Cabeçalho de valor genérico
-        if (
-          headerCell.includes("valor") ||
-          headerCell.includes("amount") ||
-          headerCell.includes("total") ||
-          headerCell.includes("preço") ||
-          headerCell.includes("preco")
-        ) {
-          amountScores[c] = (amountScores[c] ?? 0) + 100;
-        }
+  const detectedHeaderRow = rows[headerRowIndex];
+  if (detectedHeaderRow && detectedHeaderRow.cells.length > 0 && maxHeaderSignal >= 3) {
+    hasHeader = true;
 
-        // Cabeçalho de débito dedicado
-        if (
-          headerCell === "débito" ||
-          headerCell === "debito" ||
-          headerCell.includes("débito (r$)") ||
-          headerCell.includes("debito (r$)") ||
-          headerCell.includes("valor débito") ||
-          headerCell.includes("valor debito") ||
-          headerCell === "saída" ||
-          headerCell === "saida" ||
-          headerCell.includes("saída (r$)") ||
-          headerCell.includes("saida (r$)")
-        ) {
-          debitScores[c] = (debitScores[c] ?? 0) + 120;
-          amountScores[c] = (amountScores[c] ?? 0) + 100;
-        }
+    for (let c = 0; c < detectedHeaderRow.cells.length; c++) {
+      const headerCell = (detectedHeaderRow.cells[c] ?? "").trim().toLowerCase();
+      if (!headerCell) continue;
 
-        // Cabeçalho de crédito dedicado
-        if (
-          headerCell === "crédito" ||
-          headerCell === "credito" ||
-          headerCell.includes("crédito (r$)") ||
-          headerCell.includes("credito (r$)") ||
-          headerCell.includes("valor crédito") ||
-          headerCell.includes("valor credito") ||
-          headerCell === "entrada" ||
-          headerCell === "entradas" ||
-          headerCell.includes("entrada (r$)")
-        ) {
-          creditScores[c] = (creditScores[c] ?? 0) + 120;
-          amountScores[c] = (amountScores[c] ?? 0) + 100;
-        }
+      // Cabeçalho de data
+      if (headerCell.includes("data") || headerCell.includes("date") || headerCell === "dt") {
+        dateScores[c] = (dateScores[c] ?? 0) + 100;
+      }
 
-        // Cabeçalho de Saldo (NÃO deve ser considerado valor de transação)
-        if (headerCell.includes("saldo")) {
-          amountScores[c] = (amountScores[c] ?? 0) - 200;
-          debitScores[c] = (debitScores[c] ?? 0) - 200;
-          creditScores[c] = (creditScores[c] ?? 0) - 200;
-          textScores[c] = (textScores[c] ?? 0) - 200;
-        }
+      // Cabeçalho de valor genérico
+      if (
+        headerCell.includes("valor") ||
+        headerCell.includes("amount") ||
+        headerCell.includes("total") ||
+        headerCell.includes("preço") ||
+        headerCell.includes("preco")
+      ) {
+        amountScores[c] = (amountScores[c] ?? 0) + 100;
+      }
 
-        // Cabeçalho de Documento / Num Doc / Docto
-        if (
-          headerCell.includes("docto") ||
-          headerCell.includes("documento") ||
-          headerCell.includes("num doc") ||
-          headerCell.includes("nº doc") ||
-          headerCell === "doc" ||
-          headerCell === "doc."
-        ) {
-          amountScores[c] = (amountScores[c] ?? 0) - 150;
-          textScores[c] = (textScores[c] ?? 0) - 50;
-        }
+      // Cabeçalho de débito dedicado
+      if (
+        headerCell === "débito" ||
+        headerCell === "debito" ||
+        headerCell.includes("débito (r$)") ||
+        headerCell.includes("debito (r$)") ||
+        headerCell.includes("valor débito") ||
+        headerCell.includes("valor debito") ||
+        headerCell === "saída" ||
+        headerCell === "saida" ||
+        headerCell.includes("saída (r$)") ||
+        headerCell.includes("saida (r$)")
+      ) {
+        debitScores[c] = (debitScores[c] ?? 0) + 120;
+        amountScores[c] = (amountScores[c] ?? 0) + 100;
+      }
 
-        // Cabeçalho de tipo (D/C)
-        if (
-          headerCell === "d/c" ||
-          headerCell === "tipo" ||
-          headerCell === "tipo transação" ||
-          headerCell === "tipo transacao" ||
-          headerCell === "debito/credito" ||
-          headerCell === "débito/crédito" ||
-          headerCell === "sinal"
-        ) {
-          typeScores[c] = (typeScores[c] ?? 0) + 100;
-        }
+      // Cabeçalho de crédito dedicado
+      if (
+        headerCell === "crédito" ||
+        headerCell === "credito" ||
+        headerCell.includes("crédito (r$)") ||
+        headerCell.includes("credito (r$)") ||
+        headerCell.includes("valor crédito") ||
+        headerCell.includes("valor credito") ||
+        headerCell === "entrada" ||
+        headerCell === "entradas" ||
+        headerCell.includes("entrada (r$)")
+      ) {
+        creditScores[c] = (creditScores[c] ?? 0) + 120;
+        amountScores[c] = (amountScores[c] ?? 0) + 100;
+      }
 
-        // Cabeçalho de descrição/estabelecimento
-        if (
-          headerCell.includes("desc") ||
-          headerCell.includes("estabelecimento") ||
-          headerCell.includes("histórico") ||
-          headerCell.includes("historico") ||
-          headerCell.includes("detalhe") ||
-          headerCell.includes("lançamento") ||
-          headerCell.includes("lancamento") ||
-          headerCell.includes("transação") ||
-          headerCell.includes("transacao") ||
-          headerCell.includes("title") ||
-          headerCell.includes("memo") ||
-          headerCell.includes("origem")
-        ) {
-          textScores[c] = (textScores[c] ?? 0) + 100;
-        }
+      // Cabeçalho de Saldo (NÃO deve ser considerado valor de transação)
+      if (headerCell.includes("saldo")) {
+        amountScores[c] = (amountScores[c] ?? 0) - 200;
+        debitScores[c] = (debitScores[c] ?? 0) - 200;
+        creditScores[c] = (creditScores[c] ?? 0) - 200;
+        textScores[c] = (textScores[c] ?? 0) - 200;
+      }
 
-        // Cabeçalho de titular/portador/cartão/conta (não é descrição da compra)
-        if (
-          headerCell.includes("titular") ||
-          headerCell.includes("portador") ||
-          headerCell.includes("cartão") ||
-          headerCell.includes("cartao") ||
-          headerCell.includes("card") ||
-          headerCell.includes("conta") ||
-          headerCell.includes("cpf") ||
-          headerCell.includes("usuário") ||
-          headerCell.includes("usuario")
-        ) {
-          textScores[c] = (textScores[c] ?? 0) - 100;
-        }
+      // Cabeçalho de Documento / Num Doc / Docto
+      if (
+        headerCell.includes("docto") ||
+        headerCell.includes("documento") ||
+        headerCell.includes("num doc") ||
+        headerCell.includes("nº doc") ||
+        headerCell === "doc" ||
+        headerCell === "doc."
+      ) {
+        amountScores[c] = (amountScores[c] ?? 0) - 150;
+        textScores[c] = (textScores[c] ?? 0) - 50;
+      }
+
+      // Cabeçalho de tipo (D/C)
+      if (
+        headerCell === "d/c" ||
+        headerCell === "tipo" ||
+        headerCell === "tipo transação" ||
+        headerCell === "tipo transacao" ||
+        headerCell === "debito/credito" ||
+        headerCell === "débito/crédito" ||
+        headerCell === "sinal"
+      ) {
+        typeScores[c] = (typeScores[c] ?? 0) + 100;
+      }
+
+      // Cabeçalho de descrição/estabelecimento
+      if (
+        headerCell.includes("desc") ||
+        headerCell.includes("estabelecimento") ||
+        headerCell.includes("histórico") ||
+        headerCell.includes("historico") ||
+        headerCell.includes("detalhe") ||
+        headerCell.includes("lançamento") ||
+        headerCell.includes("lancamento") ||
+        headerCell.includes("transação") ||
+        headerCell.includes("transacao") ||
+        headerCell.includes("title") ||
+        headerCell.includes("memo") ||
+        headerCell.includes("origem")
+      ) {
+        textScores[c] = (textScores[c] ?? 0) + 100;
+      }
+
+      // Cabeçalho de titular/portador/cartão/conta (não é descrição da compra)
+      if (
+        headerCell.includes("titular") ||
+        headerCell.includes("portador") ||
+        headerCell.includes("cartão") ||
+        headerCell.includes("cartao") ||
+        headerCell.includes("card") ||
+        headerCell.includes("conta") ||
+        headerCell.includes("cpf") ||
+        headerCell.includes("usuário") ||
+        headerCell.includes("usuario")
+      ) {
+        textScores[c] = (textScores[c] ?? 0) - 100;
       }
     }
   }
 
-  const sampleRows = rows.slice(hasHeader ? 1 : 0, 30);
+  const startRowIndex = hasHeader ? headerRowIndex + 1 : 0;
+  const sampleRows = rows.slice(startRowIndex, startRowIndex + 30);
   const columnValues: Array<Set<string>> = Array.from({ length: maxCols }, () => new Set<string>());
 
   for (const row of sampleRows) {
@@ -517,6 +547,6 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
     debitColIndex: hasDualAmountCols ? bestDebitCol : undefined,
     creditColIndex: hasDualAmountCols ? bestCreditCol : undefined,
     hasHeader,
-    startRowIndex: hasHeader ? 1 : 0,
+    startRowIndex,
   };
 }

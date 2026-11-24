@@ -862,5 +862,79 @@ describe("StatementImportDialog", () => {
       expect(await screen.findByRole("button", { name: /Importar 1 Lançamento/i })).toBeInTheDocument();
       expect(mockCategorizeDescriptionsBatchWithAi).not.toHaveBeenCalled();
     });
+
+    it("exibe alerta de divergência de competência quando a fatura é de outro mês e permite ajustar em 1 clique", async () => {
+      const user = userEvent.setup();
+      const onCompetenceChange = vi.fn();
+
+      render(
+        <StatementImportDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          card={mockCard}
+          competenceMonth="2026-08" // Aberto em Agosto
+          userId="user-1"
+          aiExtractionEnabled={true}
+          onCompetenceChange={onCompetenceChange}
+        />,
+      );
+
+      // Usuário sobe fatura de Novembro
+      const content = `
+Nubank Pagamentos S.A.
+Fatura de Novembro de 2026
+Vencimento: 10/11/2026
+Cartão final: 4821
+
+Data;Estabelecimento;Valor
+15/11/2026;Restaurante Fogão;120,00
+`;
+      await uploadMockStatementFile(user, content, "fatura-nubank.csv");
+      await advanceFromMapping(user);
+
+      // Deve alertar sobre a competência
+      expect(await screen.findByText("Divergência de Competência Detectada")).toBeInTheDocument();
+      expect(screen.getByText(/Esta fatura aparenta ser da competência 2026-11/i)).toBeInTheDocument();
+
+      // Clica em ajustar competência
+      const adjustBtn = screen.getByRole("button", { name: /Ajustar para/i });
+      await user.click(adjustBtn);
+
+      expect(onCompetenceChange).toHaveBeenCalledWith("2026-11");
+    });
+
+    it("exibe aviso de compatibilidade de cartão quando os 4 dígitos ou o banco emissor divergem", async () => {
+      const user = userEvent.setup();
+
+      render(
+        <StatementImportDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          card={{
+            ...mockCard,
+            name: "Nubank PJ",
+            last_four_digits: "1111",
+          }}
+          competenceMonth="2026-08"
+          userId="user-1"
+          aiExtractionEnabled={true}
+        />,
+      );
+
+      // Fatura do Santander com final 9999
+      const content = `
+Santander Brasil S.A.
+Cartão final: 9999
+Fatura de Agosto de 2026
+
+Data;Estabelecimento;Valor
+15/08/2026;Posto Ipiranga;200,00
+`;
+      await uploadMockStatementFile(user, content, "fatura-santander.csv");
+      await advanceFromMapping(user);
+
+      expect(await screen.findByText("Aviso de Compatibilidade de Cartão")).toBeInTheDocument();
+      expect(screen.getByText(/A fatura menciona o cartão com final 9999/i)).toBeInTheDocument();
+    });
   });
 });

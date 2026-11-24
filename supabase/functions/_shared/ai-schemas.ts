@@ -681,6 +681,11 @@ export const AiStatementPdfRowSchema = z.object({
 
 export const AiStatementPdfRowsOutputSchema = z.object({
   rows: z.array(AiStatementPdfRowSchema).max(400),
+  detectedCompetenceMonth: z.string().regex(/^\d{4}-\d{2}$/).nullable().optional(),
+  detectedDueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  detectedCardLast4: z.string().regex(/^\d{4}$/).nullable().optional(),
+  detectedCardBrandOrBank: z.string().trim().max(80).nullable().optional(),
+  detectedTotalInvoiceCents: z.number().int().min(1).nullable().optional(),
 });
 
 export type AiStatementPdfRow = z.infer<typeof AiStatementPdfRowSchema>;
@@ -760,7 +765,64 @@ export function normalizeStatementPdfRowsAiPayload(raw: unknown): unknown {
     normalizedRows.push(row);
   }
 
-  return { ...record, rows: normalizedRows };
+  let detectedCompetenceMonth: string | null = null;
+  if (typeof record.detectedCompetenceMonth === "string") {
+    const trimmedComp = record.detectedCompetenceMonth.trim();
+    if (/^\d{4}-\d{2}$/.test(trimmedComp)) {
+      detectedCompetenceMonth = trimmedComp;
+    } else if (/^(0[1-9]|1[0-2])[/-](\d{4})$/.test(trimmedComp)) {
+      const match = /^(0[1-9]|1[0-2])[/-](\d{4})$/.exec(trimmedComp);
+      if (match && match[1] && match[2]) {
+        detectedCompetenceMonth = `${match[2]}-${match[1]}`;
+      }
+    }
+  }
+
+  let detectedDueDate: string | null = null;
+  if (typeof record.detectedDueDate === "string") {
+    const trimmedDue = record.detectedDueDate.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmedDue)) {
+      detectedDueDate = trimmedDue;
+    } else if (/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.test(trimmedDue)) {
+      const dMatch = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(trimmedDue);
+      if (dMatch && dMatch[1] && dMatch[2] && dMatch[3]) {
+        detectedDueDate = `${dMatch[3]}-${dMatch[2].padStart(2, "0")}-${dMatch[1].padStart(2, "0")}`;
+      }
+    }
+  }
+
+  let detectedCardLast4: string | null = null;
+  if (typeof record.detectedCardLast4 === "string") {
+    const digits = record.detectedCardLast4.replace(/\D/g, "");
+    if (digits.length === 4) {
+      detectedCardLast4 = digits;
+    }
+  }
+
+  let detectedCardBrandOrBank: string | null = null;
+  if (typeof record.detectedCardBrandOrBank === "string") {
+    const brand = record.detectedCardBrandOrBank.trim().slice(0, 80);
+    detectedCardBrandOrBank = brand.length > 0 ? brand : null;
+  }
+
+  let detectedTotalInvoiceCents: number | null = null;
+  if (
+    typeof record.detectedTotalInvoiceCents === "number" &&
+    Number.isInteger(record.detectedTotalInvoiceCents) &&
+    record.detectedTotalInvoiceCents > 0
+  ) {
+    detectedTotalInvoiceCents = record.detectedTotalInvoiceCents;
+  }
+
+  return {
+    ...record,
+    rows: normalizedRows,
+    detectedCompetenceMonth,
+    detectedDueDate,
+    detectedCardLast4,
+    detectedCardBrandOrBank,
+    detectedTotalInvoiceCents,
+  };
 }
 
 export const AiCategorizeBatchItemOutputSchema = z.object({

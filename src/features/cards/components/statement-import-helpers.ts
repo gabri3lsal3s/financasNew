@@ -20,6 +20,9 @@ import {
   type RawParsedRow,
   type ReconciliationItem,
   type StatementTransaction,
+  detectStatementMetadata,
+  type CardContextForMetadata,
+  type DetectedStatementMetadata,
 } from "@/domain/reconciliation";
 import {
   computeTextSha256,
@@ -423,6 +426,7 @@ export interface ParseStatementWithFallbackParams {
   fileNameOrType: string;
   cardId: string;
   competenceMonth: string;
+  card?: CardContextForMetadata | null;
   fileSha256?: string | null;
   userId?: string | null;
   isReadOnlyMode?: boolean;
@@ -436,6 +440,7 @@ export interface ParsedStatementWithFallbackResult {
   isOfx: boolean;
   usedAiFallback: boolean;
   printedTotalCents: number | null;
+  detectedMeta?: DetectedStatementMetadata;
 }
 
 /**
@@ -458,6 +463,12 @@ export async function parseStatementWithPdfAiFallback(
       cardId: params.cardId,
       competenceMonth: params.competenceMonth,
     });
+    const detectedMeta = detectStatementMetadata({
+      rawText: sheetRows.slice(0, 15).map((r) => r.rawText).join("\n"),
+      transactions,
+      activeCompetenceMonth: params.competenceMonth,
+      card: params.card,
+    });
     return {
       transactions,
       rows: sheetRows,
@@ -465,6 +476,7 @@ export async function parseStatementWithPdfAiFallback(
       isOfx: false,
       usedAiFallback: false,
       printedTotalCents: null,
+      detectedMeta,
     };
   }
 
@@ -474,27 +486,41 @@ export async function parseStatementWithPdfAiFallback(
     competenceMonth: params.competenceMonth,
   });
 
+  const textContent =
+    typeof params.content === "string"
+      ? params.content
+      : new TextDecoder("utf-8", { fatal: false }).decode(params.content);
+
   if (deterministic.isOfx) {
+    const detectedMeta = detectStatementMetadata({
+      rawText: textContent,
+      transactions: deterministic.transactions,
+      activeCompetenceMonth: params.competenceMonth,
+      card: params.card,
+    });
     return {
       ...deterministic,
       usedAiFallback: false,
       printedTotalCents: null,
+      detectedMeta,
     };
   }
 
   const structuredTabular = isStructuredTabularFileName(params.fileNameOrType, params.content);
   if (structuredTabular) {
+    const detectedMeta = detectStatementMetadata({
+      rawText: textContent,
+      transactions: deterministic.transactions,
+      activeCompetenceMonth: params.competenceMonth,
+      card: params.card,
+    });
     return {
       ...deterministic,
       usedAiFallback: false,
       printedTotalCents: null,
+      detectedMeta,
     };
   }
-
-  const textContent =
-    typeof params.content === "string"
-      ? params.content
-      : new TextDecoder("utf-8", { fatal: false }).decode(params.content);
 
   const preprocessed = preprocessStatementTextForAi(textContent);
   const quality = evaluateDeterministicStatementQuality({
@@ -506,19 +532,35 @@ export async function parseStatementWithPdfAiFallback(
   });
 
   if (quality.isSufficient) {
+    const detectedMeta = detectStatementMetadata({
+      rawText: textContent,
+      transactions: deterministic.transactions,
+      activeCompetenceMonth: params.competenceMonth,
+      card: params.card,
+      printedTotalCents: preprocessed.printedTotalCents,
+    });
     return {
       ...deterministic,
       usedAiFallback: false,
       printedTotalCents: preprocessed.printedTotalCents,
+      detectedMeta,
     };
   }
 
   // 3. Fallback IA enxuto (apenas texto podado localmente)
   if (!textContent.trim() || params.aiFallbackEnabled === false || params.isReadOnlyMode) {
+    const detectedMeta = detectStatementMetadata({
+      rawText: textContent,
+      transactions: deterministic.transactions,
+      activeCompetenceMonth: params.competenceMonth,
+      card: params.card,
+      printedTotalCents: preprocessed.printedTotalCents,
+    });
     return {
       ...deterministic,
       usedAiFallback: false,
       printedTotalCents: preprocessed.printedTotalCents,
+      detectedMeta,
     };
   }
 
@@ -527,6 +569,13 @@ export async function parseStatementWithPdfAiFallback(
     preprocessed.chunks.length > 0 ? preprocessed.chunks : [preprocessed.compactedText]
   ).slice(0, MAX_STATEMENT_AI_CHUNKS);
   const collectedAiRows: AiStatementPdfRow[] = [];
+  let latestAiMeta: {
+    detectedCompetenceMonth?: string | null;
+    detectedDueDate?: string | null;
+    detectedCardLast4?: string | null;
+    detectedCardBrandOrBank?: string | null;
+    detectedTotalInvoiceCents?: number | null;
+  } | null = null;
 
   for (let idx = 0; idx < chunksToSend.length; idx++) {
     const chunkText = chunksToSend[idx]?.trim() ?? "";
@@ -550,14 +599,38 @@ export async function parseStatementWithPdfAiFallback(
     if (!aiRes.ok) {
       break;
     }
+    if (
+      !latestAiMeta &&
+      (aiRes.data.detectedCompetenceMonth ||
+        aiRes.data.detectedDueDate ||
+        aiRes.data.detectedCardLast4 ||
+        aiRes.data.detectedCardBrandOrBank)
+    ) {
+      latestAiMeta = {
+        detectedCompetenceMonth: aiRes.data.detectedCompetenceMonth,
+        detectedDueDate: aiRes.data.detectedDueDate,
+        detectedCardLast4: aiRes.data.detectedCardLast4,
+        detectedCardBrandOrBank: aiRes.data.detectedCardBrandOrBank,
+        detectedTotalInvoiceCents: aiRes.data.detectedTotalInvoiceCents,
+      };
+    }
     collectedAiRows.push(...aiRes.data.rows);
   }
 
   if (collectedAiRows.length === 0) {
+    const detectedMeta = detectStatementMetadata({
+      rawText: textContent,
+      transactions: deterministic.transactions,
+      activeCompetenceMonth: params.competenceMonth,
+      card: params.card,
+      printedTotalCents: preprocessed.printedTotalCents,
+      aiDetectedMeta: latestAiMeta,
+    });
     return {
       ...deterministic,
       usedAiFallback: false,
       printedTotalCents: preprocessed.printedTotalCents,
+      detectedMeta,
     };
   }
 
@@ -573,12 +646,32 @@ export async function parseStatementWithPdfAiFallback(
 
   // Never-degrade: só substitui resultado parcial local se a IA extraiu pelo menos tantos lançamentos íntegros quanto o local
   if (built.transactions.length === 0 || built.transactions.length < meaningfulLocalCount) {
+    const detectedMeta = detectStatementMetadata({
+      rawText: textContent,
+      transactions: deterministic.transactions,
+      activeCompetenceMonth: params.competenceMonth,
+      card: params.card,
+      printedTotalCents: preprocessed.printedTotalCents,
+      aiDetectedMeta: latestAiMeta,
+    });
     return {
       ...deterministic,
       usedAiFallback: false,
       printedTotalCents: preprocessed.printedTotalCents,
+      detectedMeta,
     };
   }
+
+  const finalPrintedTotal =
+    latestAiMeta?.detectedTotalInvoiceCents ?? preprocessed.printedTotalCents;
+  const detectedMeta = detectStatementMetadata({
+    rawText: textContent,
+    transactions: built.transactions,
+    activeCompetenceMonth: params.competenceMonth,
+    card: params.card,
+    printedTotalCents: finalPrintedTotal,
+    aiDetectedMeta: latestAiMeta,
+  });
 
   return {
     transactions: built.transactions,
@@ -586,7 +679,8 @@ export async function parseStatementWithPdfAiFallback(
     mapping: built.mapping,
     isOfx: false,
     usedAiFallback: true,
-    printedTotalCents: preprocessed.printedTotalCents,
+    printedTotalCents: finalPrintedTotal,
+    detectedMeta,
   };
 }
 
@@ -598,6 +692,7 @@ export async function parseStatementVisionBlobsWithAi(params: {
   blobs: readonly { blob: Blob; sha256?: string | null }[];
   cardId: string;
   competenceMonth: string;
+  card?: CardContextForMetadata | null;
   userId?: string | null;
   isReadOnlyMode?: boolean;
   aiFallbackEnabled?: boolean;
@@ -622,6 +717,13 @@ export async function parseStatementVisionBlobsWithAi(params: {
   const parsedYear = Number.parseInt(params.competenceMonth.slice(0, 4), 10);
   const limited = params.blobs.slice(0, MAX_STATEMENT_VISION_PAGES_OR_IMAGES);
   const collectedRows: AiStatementPdfRow[] = [];
+  let latestAiMeta: {
+    detectedCompetenceMonth?: string | null;
+    detectedDueDate?: string | null;
+    detectedCardLast4?: string | null;
+    detectedCardBrandOrBank?: string | null;
+    detectedTotalInvoiceCents?: number | null;
+  } | null = null;
 
   for (const entry of limited) {
     const aiRes = await extractStatementPdfRowsWithAi({
@@ -635,6 +737,21 @@ export async function parseStatementVisionBlobsWithAi(params: {
     });
 
     if (aiRes.ok && aiRes.data.rows.length > 0) {
+      if (
+        !latestAiMeta &&
+        (aiRes.data.detectedCompetenceMonth ||
+          aiRes.data.detectedDueDate ||
+          aiRes.data.detectedCardLast4 ||
+          aiRes.data.detectedCardBrandOrBank)
+      ) {
+        latestAiMeta = {
+          detectedCompetenceMonth: aiRes.data.detectedCompetenceMonth,
+          detectedDueDate: aiRes.data.detectedDueDate,
+          detectedCardLast4: aiRes.data.detectedCardLast4,
+          detectedCardBrandOrBank: aiRes.data.detectedCardBrandOrBank,
+          detectedTotalInvoiceCents: aiRes.data.detectedTotalInvoiceCents,
+        };
+      }
       collectedRows.push(...aiRes.data.rows);
     }
   }
@@ -652,12 +769,22 @@ export async function parseStatementVisionBlobsWithAi(params: {
     return emptyResult;
   }
 
+  const detectedMeta = detectStatementMetadata({
+    rawText: "",
+    transactions: built.transactions,
+    activeCompetenceMonth: params.competenceMonth,
+    card: params.card,
+    printedTotalCents: latestAiMeta?.detectedTotalInvoiceCents ?? null,
+    aiDetectedMeta: latestAiMeta,
+  });
+
   return {
     transactions: built.transactions,
     rows: built.rows,
     mapping: built.mapping,
     isOfx: false,
     usedAiFallback: true,
-    printedTotalCents: null,
+    printedTotalCents: latestAiMeta?.detectedTotalInvoiceCents ?? null,
+    detectedMeta,
   };
 }

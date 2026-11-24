@@ -6,4 +6,5 @@ export * from "./parsers";
 export * from "./scorer";
 export * from "./chunking";
 export * from "./statement-preprocessor";
+export * from "./statement-metadata";
 
