@@ -128,6 +128,23 @@ export function CycleObligationsDialog({ open, onOpenChange, breakdown }: CycleO
     onAction: () => goTo(`/cartoes?card=${encodeURIComponent(inv.cardId)}&month=${encodeURIComponent(inv.competenceMonth)}`),
   }));
 
+  const nextCycleInvoices = breakdown.nextCycleInvoices ?? [];
+  const nextCycleInvoicesCents = breakdown.nextCycleInvoicesCents ?? 0;
+  const futureInvoices = breakdown.futureInvoices ?? [];
+  const futureInvoicesCents = breakdown.futureInvoicesCents ?? 0;
+
+  const nextCycleInvoiceItems: ObligationItem[] = nextCycleInvoices.map((inv) => ({
+    id: `next:${inv.cardId}:${inv.competenceMonth}`,
+    title: inv.cardName,
+    subtitle: `Próxima fatura (${formatMonthYear(inv.competenceMonth)}) · Vence em ${formatDateBR(inv.dueDate)}`,
+    amountCents: inv.saldoCents,
+    tone: "negative",
+    dotColor: inv.cardColor ?? "hsl(var(--primary))",
+    actionLabel: "Ver fatura",
+    actionAriaLabel: `Ver próxima fatura de ${inv.cardName}`,
+    onAction: () => goTo(`/cartoes?card=${encodeURIComponent(inv.cardId)}&month=${encodeURIComponent(inv.competenceMonth)}`),
+  }));
+
   const payableItems: ObligationItem[] = breakdown.payableDebts.map((debt) => ({
     id: debt.id,
     title: debt.name,
@@ -201,6 +218,22 @@ export function CycleObligationsDialog({ open, onOpenChange, breakdown }: CycleO
           emptyMessage="Nenhuma conta a pagar pendente com vencimento neste mês."
         />
 
+        {nextCycleInvoiceItems.length > 0 ? (
+          <div className="flex flex-col gap-1.5">
+            <ObligationSection
+              icon={<CreditCard className="size-3.5 text-muted-foreground" aria-hidden="true" />}
+              title="Próximas Faturas em Acumulação"
+              count={nextCycleInvoiceItems.length}
+              totalCents={nextCycleInvoicesCents}
+              tone="negative"
+              items={nextCycleInvoiceItems}
+            />
+            <p className="text-[11px] text-muted-foreground px-0.5">
+              Compras já realizadas que vencem no próximo ciclo. Não abatem o Saldo Livre do ciclo atual, mas reduzem o valor Livre para gastar.
+            </p>
+          </div>
+        ) : null}
+
         {receivableItems.length > 0 ? (
           <ObligationSection
             icon={<ArrowUpRight className="size-3.5 text-positive-strong" aria-hidden="true" />}
@@ -212,22 +245,40 @@ export function CycleObligationsDialog({ open, onOpenChange, breakdown }: CycleO
           />
         ) : null}
 
-        {breakdown.futureDebts.count > 0 ? (
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-xl border border-border/80 bg-surface-hover/30 p-3 text-xs">
+        {breakdown.futureDebts.count > 0 || futureInvoices.length > 0 ? (
+          <div className="flex flex-col gap-2.5 rounded-xl border border-border/80 bg-surface-hover/30 p-3 text-xs">
             <div className="flex items-start gap-2.5 min-w-0">
               <CalendarClock className="size-4 shrink-0 text-muted-foreground mt-0.5" aria-hidden="true" />
-              <div className="flex flex-col min-w-0">
+              <div className="flex flex-col gap-1 min-w-0 flex-1">
                 <span className="font-semibold text-foreground">Visão de Médio e Longo Prazo</span>
-                <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Você possui <strong className="text-foreground">{breakdown.futureDebts.count} parcela(s)/dívida(s) futura(s)</strong> totalizando{" "}
-                  <MoneyText cents={breakdown.futureDebts.totalCents} tone="default" variant="caption" className="font-semibold" /> que vencerão nos próximos meses.
-                </p>
+                {futureInvoices.length > 0 ? (
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Faturas futuras de cartão: <strong className="text-foreground">{futureInvoices.length} competência(s) posterior(es)</strong> somando{" "}
+                    <MoneyText cents={futureInvoicesCents} tone="default" variant="caption" className="font-semibold" />.
+                  </p>
+                ) : null}
+                {breakdown.futureDebts.count > 0 ? (
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Você possui <strong className="text-foreground">{breakdown.futureDebts.count} parcela(s)/dívida(s) futura(s)</strong> totalizando{" "}
+                    <MoneyText cents={breakdown.futureDebts.totalCents} tone="default" variant="caption" className="font-semibold" /> que vencerão nos próximos meses.
+                  </p>
+                ) : null}
               </div>
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={() => goTo("/dividas")} className="font-medium shrink-0 self-end sm:self-center gap-1">
-              <span>Ver todas</span>
-              <ArrowRight className="size-3" aria-hidden="true" />
-            </Button>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {futureInvoices.length > 0 ? (
+                <Button type="button" variant="outline" size="sm" onClick={() => goTo("/cartoes")} className="font-medium shrink-0 gap-1">
+                  <span>Ver cartões</span>
+                  <ArrowRight className="size-3" aria-hidden="true" />
+                </Button>
+              ) : null}
+              {breakdown.futureDebts.count > 0 ? (
+                <Button type="button" variant="outline" size="sm" onClick={() => goTo("/dividas")} className="font-medium shrink-0 gap-1">
+                  <span>Ver todas</span>
+                  <ArrowRight className="size-3" aria-hidden="true" />
+                </Button>
+              ) : null}
+            </div>
           </div>
         ) : null}
       </div>

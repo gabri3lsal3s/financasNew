@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { AlertTriangle, CreditCard as CreditCardIcon, EyeOff, Receipt, Repeat, Sparkles } from "lucide-react";
 import { Tabs, type TabItem } from "@/components/ui";
 import { CardSubscriptionRadar, InsightList } from "@/components/modules";
+import type { CalculationBreakdown } from "@/domain/calculation-memory";
 import {
   filterRecurrencesByTab,
   type FeedbackDecision,
@@ -44,6 +45,7 @@ export interface RecurrencesTabProps {
   onUnmuteFamily?: (family: InsightThemeFamily) => void;
   merchantLearning?: Readonly<Record<string, MerchantMemoryEntryLike>> | null;
   onForgetMerchant?: (merchantKey: string) => void;
+  summaryBreakdown?: CalculationBreakdown;
 }
 
 const TAB_EMPTY_LABELS: Record<RecurrenceFilterTab, string> = {
@@ -75,6 +77,7 @@ export function RecurrencesTab({
   onUnmuteFamily,
   merchantLearning,
   onForgetMerchant,
+  summaryBreakdown,
 }: RecurrencesTabProps) {
   const s = useRecurrencesTab({
     totalRecurringCents,
@@ -130,6 +133,7 @@ export function RecurrencesTab({
         canCutAnnualCents={canCutAnnualCents}
         cancelledAnnualSavingsCents={s.cancelledAnnualSavingsCents}
         fixedCommitmentRate={s.fixedCommitmentRate}
+        summaryBreakdown={summaryBreakdown}
       />
 
       {s.cardImpacts.length > 0 ? (

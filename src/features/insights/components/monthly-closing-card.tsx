@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CalendarCheck2, Check, Sparkles, X } from "lucide-react";
 import { Badge, Button } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
+import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
+import { buildMonthlyClosingBreakdown } from "@/domain/calculation-memory";
 import type { MonthlyClosingSummary } from "@/domain/insights";
 import { monthLabel } from "@/lib/date";
 
@@ -18,6 +20,7 @@ export function MonthlyClosingCard({
 }: MonthlyClosingCardProps) {
   const [appliedCategoryIds, setAppliedCategoryIds] = useState<string[]>([]);
   const [applyingId, setApplyingId] = useState<string | null>(null);
+  const closingBreakdown = useMemo(() => buildMonthlyClosingBreakdown(summary), [summary]);
 
   const handleApply = async (categoryId: string, limitCents: number, name: string) => {
     try {
@@ -44,6 +47,7 @@ export function MonthlyClosingCard({
             <Badge variant="positive" size="xs" className="shrink-0">
               Mês encerrado
             </Badge>
+            <CalculationMemoryModal breakdown={closingBreakdown} priority="p1" />
           </div>
         </div>
 

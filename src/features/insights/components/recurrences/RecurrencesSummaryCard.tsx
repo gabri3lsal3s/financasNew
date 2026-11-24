@@ -1,4 +1,6 @@
+import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
 import { MoneyText } from "@/components/ui/money-text";
+import type { CalculationBreakdown } from "@/domain/calculation-memory";
 import { cn } from "@/lib/utils";
 
 export interface RecurrencesSummaryCardProps {
@@ -8,6 +10,7 @@ export interface RecurrencesSummaryCardProps {
   canCutAnnualCents: number;
   cancelledAnnualSavingsCents: number;
   fixedCommitmentRate: number | null;
+  summaryBreakdown?: CalculationBreakdown;
 }
 
 export function RecurrencesSummaryCard({
@@ -17,6 +20,7 @@ export function RecurrencesSummaryCard({
   canCutAnnualCents,
   cancelledAnnualSavingsCents,
   fixedCommitmentRate,
+  summaryBreakdown,
 }: RecurrencesSummaryCardProps) {
   const totalMetricsCount =
     3 +
@@ -34,7 +38,12 @@ export function RecurrencesSummaryCard({
     <div className="flex flex-col gap-3 rounded-xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs min-w-0">
       <div className={cn("grid gap-4 sm:gap-6 w-full", gridColsClass)}>
         <div className="min-w-0">
-          <span className="text-xs font-medium text-muted-foreground">Total mensal recorrente</span>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-xs font-medium text-muted-foreground">Total mensal recorrente</span>
+            {summaryBreakdown ? (
+              <CalculationMemoryModal breakdown={summaryBreakdown} priority="p1" />
+            ) : null}
+          </div>
           <div className="flex flex-wrap items-baseline gap-1.5 mt-0.5">
             <MoneyText
               cents={totalRecurringCents}

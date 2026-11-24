@@ -332,4 +332,23 @@ describe("Safe-to-Spend Forecast — calculateSafeToSpend", () => {
     // Saldo Livre Real da PF = 5.000 - 3.500 = R$ 1.500
     expect(res.safeToSpendCents).toBe(150000);
   });
+
+  it("deriva Livre para Gastar (freeToSpendCents) descontando próximas faturas em acumulação", () => {
+    const res = calculateSafeToSpend({
+      realCashBalanceCents: 29359, // R$ 293,59 em conta
+      openInvoicesCents: 0, // novembro já pago
+      payablePendingCents: 0,
+      nextCycleInvoicesCents: 165082, // R$ 1.650,82 em dezembro
+      futureInvoicesCents: 273282, // R$ 2.732,82 em 2027-01..05
+    });
+
+    // Saldo livre no ciclo atual permanece R$ 293,59 (apto para reforçar reserva)
+    expect(res.safeToSpendCents).toBe(29359);
+    expect(res.nextCycleInvoicesCents).toBe(165082);
+    expect(res.futureInvoicesCents).toBe(273282);
+    expect(res.totalUpcomingCardInvoicesCents).toBe(438364);
+    expect(res.safeToSpendAfterNextInvoicesCents).toBe(29359 - 165082);
+    // Para gasto livre discricionário, o valor é zerado
+    expect(res.freeToSpendCents).toBe(0);
+  });
 });

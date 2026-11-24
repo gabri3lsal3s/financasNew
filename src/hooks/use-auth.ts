@@ -149,6 +149,21 @@ export function resetGlobalMfaState(): void {
 }
 
 /**
+ * Limpa imediatamente a sessão global em memória (fallback garantido no logout
+ * caso `supabase.auth.signOut` sofra timeout ou erro em WebView/rede instável).
+ */
+export function clearGlobalAuthSession(): void {
+  updateGlobalAuthState({
+    session: null,
+    user: null,
+    loading: false,
+    mfaRequired: false,
+    mfaVerified: false,
+    aalLevel: null,
+  });
+}
+
+/**
  * Reavalia forçadamente o estado de MFA da sessão atual (ex.: após desativação ou ativação de 2FA).
  */
 export async function refreshMfaState(): Promise<void> {

@@ -4,7 +4,15 @@ import {
   resolveEffectiveLimit,
   spentByCategoryMap,
 } from "@/domain/budgets";
-import { buildPaceProjectionBreakdown, type CalculationBreakdown } from "@/domain/calculation-memory";
+import {
+  buildDiagnosticBreakdowns,
+  buildPaceProjectionBreakdown,
+  buildPendingSummaryBreakdown,
+  buildRecurrencesSummaryBreakdown,
+  buildSavingsChallengesBreakdown,
+  type CalculationBreakdown,
+  type DiagnosticBreakdowns,
+} from "@/domain/calculation-memory";
 import { numberToCents, sumGrossCents } from "@/domain/money";
 import { computeOverview } from "@/domain/overview";
 import {
@@ -25,6 +33,7 @@ import type {
   Recurrence,
   UserCustomSettings,
 } from "@/types";
+import { WEEKEND_RATIO_LIMIT } from "./diagnostics";
 import { criticalAlerts } from "./alerts";
 import { buildInsightsAnalytics, type InsightsAnalyticsResult } from "./build-insights-analytics";
 import {
@@ -62,6 +71,10 @@ export interface BuildInsightsDashboardInput {
   monthlyContributionCents: number;
   committedObligationsCents: number;
   openInvoicesCents: number;
+  nextCycleInvoicesCents?: number;
+  nextCycleInvoicesCount?: number;
+  futureInvoicesCents?: number;
+  futureInvoicesCount?: number;
   emergencyComposition: EmergencyFundComposition;
   householdData?: FamilyConsolidationResult | null;
   currentUserId?: string;
@@ -89,6 +102,14 @@ export interface InsightsDashboardModel extends InsightsAnalyticsResult {
   paceActive: boolean;
   paceBreakdown: CalculationBreakdown | null;
   pendingSummary: { receivablesCents: number; payablesCents: number; balanceCents: number };
+  nextCycleInvoicesCents: number;
+  nextCycleInvoicesCount: number;
+  futureInvoicesCents: number;
+  futureInvoicesCount: number;
+  diagnosticBreakdowns: DiagnosticBreakdowns;
+  recurrencesBreakdown: CalculationBreakdown;
+  pendingBreakdown: CalculationBreakdown;
+  challengesBreakdown: CalculationBreakdown;
   baselineMonthlyExpensesCents: number;
   detectedReserveCents: number;
   paydayProfile: PaydayProfile;
@@ -179,6 +200,9 @@ export function buildInsightsDashboard(input: BuildInsightsDashboardInput): Insi
 
   const limitsByCategory = budgetLimitsByCategory(budgets);
   const spentByCategory = spentByCategoryMap(month0);
+  const activeBudgetsCount = categories
+    .filter((c) => c.type === "expense")
+    .filter((c) => resolveEffectiveLimit(limitsByCategory.get(c.id) ?? [], month) > 0).length;
   const overspentBudgets = categories
     .filter((c) => c.type === "expense")
     .map((c) => ({
@@ -333,6 +357,72 @@ export function buildInsightsDashboard(input: BuildInsightsDashboardInput): Insi
         })
       : null;
 
+  const pendingSummary = pendingProjection(pending);
+  const nextCycleInvoicesCents = Math.max(0, input.nextCycleInvoicesCents ?? 0);
+  const nextCycleInvoicesCount = Math.max(0, input.nextCycleInvoicesCount ?? 0);
+  const futureInvoicesCents = Math.max(0, input.futureInvoicesCents ?? 0);
+  const futureInvoicesCount = Math.max(0, input.futureInvoicesCount ?? 0);
+
+  const diagnosticBreakdowns = buildDiagnosticBreakdowns({
+    month,
+    incomeCents,
+    expenseCents,
+    investmentCents: input.monthlyContributionCents,
+    committedObligationsCents,
+    savingsRate: effectiveSavingsRateForHealth,
+    hasIncome: incomeCents > 0,
+    overspentBudgets,
+    activeBudgetsCount,
+    topIncomeSourceCents: analytics.incomeTopSourceCents,
+    concentrationPercent: analytics.concentration.topSharePercent,
+    weekdayDailyCents: analytics.weekdayDailyCents,
+    weekendDailyCents: analytics.weekendDailyCents,
+    weekendRatio: analytics.weekendRatio,
+    weekendComparable: analytics.weekendComparable,
+    weekendLimitRatio: WEEKEND_RATIO_LIMIT,
+    essentialCents: analytics.essentialSpending.essentialCents,
+    essentialDenominatorCents: analytics.essentialSpending.totalCents,
+    essentialPercent: analytics.essentialSpending.ratioPercent,
+    trendHasPreviousBase: analytics.trendHasPreviousBase,
+    previousComparableCents: analytics.previousComparableCents,
+    trendPercent: analytics.trendPercent,
+    nextCycleInvoicesCents,
+    futureInvoicesCents,
+  });
+
+  const fixedCommitmentRate =
+    incomeCents > 0
+      ? Math.round((analytics.totalRecurringCents / incomeCents) * 1000) / 10
+      : null;
+
+  const recurrencesBreakdown = buildRecurrencesSummaryBreakdown({
+    totalRecurringCents: analytics.totalRecurringCents,
+    totalAnnualRecurringCents: analytics.totalAnnualRecurringCents,
+    canCutRecurringCents: analytics.canCutRecurringCents,
+    monthlyIncomeCents: incomeCents,
+    fixedCommitmentRate,
+  });
+
+  const pendingBreakdown = buildPendingSummaryBreakdown({
+    month,
+    receivablesCents: pendingSummary.receivablesCents,
+    payablesCents: pendingSummary.payablesCents,
+    balanceCents: pendingSummary.balanceCents,
+    openInvoicesCents: isCurrentMonth ? input.openInvoicesCents : 0,
+    nextCycleInvoicesCents,
+    nextCycleInvoicesCount,
+    futureInvoicesCents,
+    futureInvoicesCount,
+  });
+
+  const challengesBreakdown = buildSavingsChallengesBreakdown({
+    challenges: analytics.challenges,
+    discretionarySavingsCents:
+      analytics.showDiscretionary && analytics.discretionary
+        ? analytics.discretionary.savingsCents
+        : null,
+  });
+
   return {
     incomeCents,
     expenseCents,
@@ -354,7 +444,15 @@ export function buildInsightsDashboard(input: BuildInsightsDashboardInput): Insi
     elapsedPercent: pace.elapsedPercent,
     paceActive: pace.active,
     paceBreakdown,
-    pendingSummary: pendingProjection(pending),
+    pendingSummary,
+    nextCycleInvoicesCents,
+    nextCycleInvoicesCount,
+    futureInvoicesCents,
+    futureInvoicesCount,
+    diagnosticBreakdowns,
+    recurrencesBreakdown,
+    pendingBreakdown,
+    challengesBreakdown,
     baselineMonthlyExpensesCents,
     detectedReserveCents,
     paydayProfile: learning.paydayProfile,

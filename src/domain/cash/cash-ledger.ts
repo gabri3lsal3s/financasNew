@@ -321,6 +321,10 @@ export interface SafeToSpendParams {
    * que dinheiro da empresa apareça como disponível para lazer ou gastos da família.
    */
   derivedBusinessCashCents?: number;
+  /** Faturas de cartão do próximo ciclo em acumulação (além do mês atual, em centavos). */
+  nextCycleInvoicesCents?: number;
+  /** Faturas futuras / parcelamentos posteriores de cartão (além do próximo ciclo, em centavos). */
+  futureInvoicesCents?: number;
 }
 
 export interface SafeToSpendResult {
@@ -353,6 +357,19 @@ export interface SafeToSpendResult {
    *   safeToSpendCents + receivablePendingCents.
    */
   safeToSpendWithReceivablesCents: number;
+  /** Faturas de cartão do próximo ciclo em acumulação (centavos). */
+  nextCycleInvoicesCents?: number;
+  /** Faturas futuras / parcelamentos posteriores de cartão (centavos). */
+  futureInvoicesCents?: number;
+  /** Soma total de faturas fora do ciclo atual (`nextCycleInvoicesCents + futureInvoicesCents`). */
+  totalUpcomingCardInvoicesCents?: number;
+  /** Resultado com sinal após considerar as próximas faturas (`safeToSpendCents - nextCycleInvoicesCents`). */
+  safeToSpendAfterNextInvoicesCents?: number;
+  /**
+   * Valor efetivamente livre para consumo discricionário (`max(0, safeToSpendCents - nextCycleInvoicesCents)`).
+   * Evita falsa sensação de folga quando já há próxima fatura em acumulação.
+   */
+  freeToSpendCents?: number;
 }
 
 /**
@@ -367,6 +384,8 @@ export function calculateSafeToSpend(params: SafeToSpendParams): SafeToSpendResu
     receivablePendingCents = 0,
     essentialBudgetsRemainingCents = 0,
     derivedBusinessCashCents = 0,
+    nextCycleInvoicesCents = 0,
+    futureInvoicesCents = 0,
   } = params;
 
   const businessCashReservationCents = Math.max(0, derivedBusinessCashCents);
@@ -378,6 +397,11 @@ export function calculateSafeToSpend(params: SafeToSpendParams): SafeToSpendResu
   const safeToSpendCents = realCashBalanceCents - committedObligationsCents;
   const safeToSpendWithBudgetsCents = safeToSpendCents - Math.max(0, essentialBudgetsRemainingCents);
   const safeToSpendWithReceivablesCents = safeToSpendCents + Math.max(0, receivablePendingCents);
+  const safeNextCycleInvoicesCents = Math.max(0, nextCycleInvoicesCents);
+  const safeFutureInvoicesCents = Math.max(0, futureInvoicesCents);
+  const totalUpcomingCardInvoicesCents = safeNextCycleInvoicesCents + safeFutureInvoicesCents;
+  const safeToSpendAfterNextInvoicesCents = safeToSpendCents - safeNextCycleInvoicesCents;
+  const freeToSpendCents = Math.max(0, safeToSpendAfterNextInvoicesCents);
 
   return {
     realCashBalanceCents,
@@ -390,5 +414,10 @@ export function calculateSafeToSpend(params: SafeToSpendParams): SafeToSpendResu
     safeToSpendCents,
     safeToSpendWithBudgetsCents,
     safeToSpendWithReceivablesCents,
+    nextCycleInvoicesCents: safeNextCycleInvoicesCents,
+    futureInvoicesCents: safeFutureInvoicesCents,
+    totalUpcomingCardInvoicesCents,
+    safeToSpendAfterNextInvoicesCents,
+    freeToSpendCents,
   };
 }

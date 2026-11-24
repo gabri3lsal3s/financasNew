@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowDownRight, ArrowUpRight, Briefcase, ChevronRight, Landmark, Scale, ShieldCheck, User } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Briefcase, ChevronRight, CreditCard, Landmark, Scale, ShieldCheck, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/ui/money-text";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import type { UseRealCashBalanceResult } from "@/state";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import {
+  buildFreeToSpendBreakdown,
   buildRealCashBreakdown,
   buildSafeToSpendBreakdown,
 } from "@/domain/calculation-memory";
@@ -55,6 +56,21 @@ export function RealCashHeroCard({ realCashData, className, onCalibrate }: RealC
     });
   }, [cashBalance]);
 
+  const nextCycleInvoicesCents =
+    realCashData.cycleBreakdown?.nextCycleInvoicesCents ??
+    safeToSpend?.nextCycleInvoicesCents ??
+    0;
+  const nextCycleInvoicesCount = realCashData.cycleBreakdown?.nextCycleInvoices?.length ?? 0;
+  const futureInvoicesCents =
+    realCashData.cycleBreakdown?.futureInvoicesCents ??
+    safeToSpend?.futureInvoicesCents ??
+    0;
+  const futureInvoicesCount = realCashData.cycleBreakdown?.futureInvoices?.length ?? 0;
+  const totalUpcomingCardInvoicesCents = nextCycleInvoicesCents + futureInvoicesCents;
+  const freeToSpendCents =
+    safeToSpend.freeToSpendCents ??
+    Math.max(0, safeToSpend.safeToSpendCents - nextCycleInvoicesCents);
+
   const safeToSpendBreakdown = useMemo(() => {
     return buildSafeToSpendBreakdown({
       realCashBalanceCents: cashBalance.currentBalanceCents,
@@ -66,8 +82,37 @@ export function RealCashHeroCard({ realCashData, className, onCalibrate }: RealC
       safeToSpendCents: safeToSpend.safeToSpendCents,
       safeToSpendWithReceivablesCents: safeToSpend.safeToSpendWithReceivablesCents,
       includeReceivablesInTotal: false, // Modo conservador prudencial condizente com a métrica do card
+      nextCycleInvoicesCents,
+      nextCycleInvoicesCount,
+      futureInvoicesCents,
+      futureInvoicesCount,
     });
-  }, [cashBalance.currentBalanceCents, safeToSpend]);
+  }, [
+    cashBalance.currentBalanceCents,
+    safeToSpend,
+    nextCycleInvoicesCents,
+    nextCycleInvoicesCount,
+    futureInvoicesCents,
+    futureInvoicesCount,
+  ]);
+
+  const freeToSpendBreakdown = useMemo(() => {
+    return buildFreeToSpendBreakdown({
+      safeToSpendCents: safeToSpend.safeToSpendCents,
+      nextCycleInvoicesCents,
+      nextCycleInvoicesCount,
+      futureInvoicesCents,
+      futureInvoicesCount,
+      freeToSpendCents,
+    });
+  }, [
+    safeToSpend.safeToSpendCents,
+    nextCycleInvoicesCents,
+    nextCycleInvoicesCount,
+    futureInvoicesCents,
+    futureInvoicesCount,
+    freeToSpendCents,
+  ]);
 
   return (
     <>
@@ -216,6 +261,55 @@ export function RealCashHeroCard({ realCashData, className, onCalibrate }: RealC
               className="font-semibold text-xs sm:text-sm shrink-0"
             />
           </div>
+
+          {totalUpcomingCardInvoicesCents > 0 ? (
+            <div className="col-span-full flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-border/80 min-w-0">
+              <button
+                type="button"
+                onClick={() => setBreakdownOpen(true)}
+                className="flex items-center justify-between sm:justify-start gap-2 min-w-0 -m-1 p-1 rounded-lg hover:bg-surface/80 active:bg-surface transition-colors cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring group"
+                aria-label="Ver próximas faturas de cartão em acumulação e faturas futuras"
+              >
+                <div className="flex items-center gap-1.5 text-muted-foreground group-hover:text-foreground transition-colors min-w-0">
+                  <CreditCard className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <span className="truncate">Próximas faturas:</span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+                  <MoneyText
+                    cents={nextCycleInvoicesCents > 0 ? nextCycleInvoicesCents : totalUpcomingCardInvoicesCents}
+                    tone="default"
+                    className="font-medium text-foreground shrink-0 group-hover:underline decoration-border underline-offset-2"
+                  />
+                  {nextCycleInvoicesCents > 0 && futureInvoicesCents > 0 ? (
+                    <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                      (+{" "}
+                      <MoneyText
+                        cents={futureInvoicesCents}
+                        tone="default"
+                        className="text-[11px] font-medium text-muted-foreground"
+                      />{" "}
+                      futuras)
+                    </span>
+                  ) : null}
+                  <ChevronRight className="size-3 text-muted-foreground/60 group-hover:text-foreground transition-colors shrink-0" aria-hidden="true" />
+                </div>
+              </button>
+
+              <div className="flex items-center justify-between sm:justify-end gap-2 pt-1 sm:pt-0 border-t border-border/80 sm:border-t-0 min-w-0">
+                <div className="flex items-center gap-1.5 text-muted-foreground min-w-0">
+                  <span className="truncate text-muted-foreground">Livre para gastar:</span>
+                  <CalculationMemoryModal breakdown={freeToSpendBreakdown} priority="p1" />
+                </div>
+                <MoneyText
+                  cents={freeToSpendCents}
+                  tone={freeToSpendCents > 0 ? "positive" : "default"}
+                  deemphasizeCents
+                  animated
+                  className="font-semibold text-xs sm:text-sm shrink-0"
+                />
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
 

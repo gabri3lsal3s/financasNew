@@ -2,9 +2,11 @@ import { renderHook, act, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import type { CreditCard, Expense } from "@/types";
 import { useStatementImport } from "./use-statement-import";
+import * as statementImportHelpers from "./statement-import-helpers";
 import { sanitizeDescriptionForStatementMicroAi } from "./statement-import-helpers";
 import * as aiAssistantService from "@/services/ai-assistant";
 import * as merchantLearningService from "@/services/merchant-learning";
+import * as receiptExtractorService from "@/services/native/receipt-extractor";
 
 const mockCard: CreditCard = {
   id: "card-micro-ai",
@@ -432,6 +434,87 @@ describe("Etapa 4 — Micro-IA Semântica Deduplicada (useStatementImport)", () 
       unmount();
 
       expect(capturedSignal?.aborted).toBe(true);
+    });
+  });
+
+  describe("4.7 PDF Protegido por Senha + Escalada Vision IA (Camada 3B)", () => {
+    it("repassa a senha informada para renderScannedPdfPageToBlob quando o PDF exige Vision IA", async () => {
+      const pdfFile = new File(
+        [new TextEncoder().encode("%PDF-1.7\nencrypted")],
+        "fatura-protegida.pdf",
+        { type: "application/pdf" },
+      );
+
+      const readSpy = vi
+        .spyOn(statementImportHelpers, "readStatementFileContent")
+        .mockRejectedValueOnce(new receiptExtractorService.PdfPasswordProtectedError())
+        .mockResolvedValueOnce({
+          kind: "pdf_scanned",
+          buffer: new TextEncoder().encode("%PDF-1.7\nencrypted").buffer,
+          fileName: "fatura-protegida.pdf",
+          sha256: "a".repeat(64),
+          pdfPageTexts: [""],
+          pdfTotalPages: 1,
+        });
+
+      const renderBlobSpy = vi
+        .spyOn(receiptExtractorService, "renderScannedPdfPageToBlob")
+        .mockResolvedValueOnce(new Blob(["png-page-1"], { type: "image/png" }))
+        .mockResolvedValueOnce(null);
+
+      const visionSpy = vi
+        .spyOn(aiAssistantService, "extractStatementPdfRowsWithAi")
+        .mockResolvedValueOnce({
+          ok: true,
+          cached: false,
+          source: "ai_vision",
+          data: {
+            rows: [
+              {
+                date: "2026-08-15",
+                description: "Padaria Protegida",
+                amountCents: 4590,
+                installmentCurrent: null,
+                installmentTotal: null,
+                entryType: "purchase",
+              },
+            ],
+            detectedTotalInvoiceCents: 4590,
+          },
+        });
+
+      const { result } = renderHook(() =>
+        useStatementImport({
+          card: mockCard,
+          competenceMonth: "2026-08",
+          userId: "user-1",
+          onClose: vi.fn(),
+        }),
+      );
+
+      await act(async () => {
+        await result.current.handleFileSelect(pdfFile);
+      });
+
+      expect(result.current.pendingPasswordFile).toBe(pdfFile);
+
+      await act(async () => {
+        await result.current.handlePasswordSubmit("segredo-123");
+      });
+
+      await waitFor(() => {
+        expect(result.current.step).toBe("reconcile");
+      });
+
+      expect(readSpy).toHaveBeenCalledTimes(2);
+      expect(renderBlobSpy).toHaveBeenNthCalledWith(1, expect.anything(), 1, {
+        password: "segredo-123",
+      });
+      expect(visionSpy).toHaveBeenCalledTimes(1);
+      expect(result.current.error).toBeNull();
+      expect(result.current.reconciledItems).toHaveLength(1);
+      expect(result.current.reconciledItems[0]?.transaction.cleanDescription).toBe("Padaria Protegida");
+      expect(result.current.reconciledItems[0]?.transaction.amountCents).toBe(4590);
     });
   });
 });

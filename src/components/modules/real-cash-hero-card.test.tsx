@@ -183,4 +183,95 @@ describe("RealCashHeroCard", () => {
     expect(screen.getByText(/4\.420,00/)).toBeInTheDocument();
     expect(screen.getByText(/1\.000,00/)).toBeInTheDocument();
   });
+
+  it("exibe Próximas faturas e Livre para gastar zerado com memória de cálculo quando há faturas futuras em acumulação", () => {
+    const withUpcomingCardsData: UseRealCashBalanceResult = {
+      cashBalance: {
+        ...mockRealCashData.cashBalance,
+        currentBalanceCents: 29359, // R$ 293,59
+      },
+      safeToSpend: {
+        realCashBalanceCents: 29359,
+        openInvoicesCents: 0,
+        payablePendingCents: 0,
+        receivablePendingCents: 6532,
+        essentialBudgetsRemainingCents: 0,
+        committedObligationsCents: 0,
+        safeToSpendCents: 29359,
+        safeToSpendWithBudgetsCents: 29359,
+        safeToSpendWithReceivablesCents: 35891,
+        nextCycleInvoicesCents: 165082,
+        futureInvoicesCents: 273282,
+        totalUpcomingCardInvoicesCents: 438364,
+        safeToSpendAfterNextInvoicesCents: -135723,
+        freeToSpendCents: 0,
+      },
+      cycleBreakdown: {
+        invoices: [],
+        openInvoicesCents: 0,
+        nextCycleInvoices: [
+          {
+            cardId: "c1",
+            cardName: "Rico",
+            cardColor: "#000000",
+            competenceMonth: "2026-12",
+            dueDate: "2026-12-10",
+            saldoCents: 74938,
+          },
+          {
+            cardId: "c2",
+            cardName: "Nubank",
+            cardColor: "#8A05BE",
+            competenceMonth: "2026-12",
+            dueDate: "2026-12-15",
+            saldoCents: 90144,
+          },
+        ],
+        nextCycleInvoicesCents: 165082,
+        futureInvoices: [
+          {
+            cardId: "c1",
+            cardName: "Rico",
+            cardColor: "#000000",
+            competenceMonth: "2027-01",
+            dueDate: "2027-01-10",
+            saldoCents: 273282,
+          },
+        ],
+        futureInvoicesCents: 273282,
+        totalUpcomingCardInvoicesCents: 438364,
+        payableDebts: [],
+        payableDebtsCents: 0,
+        committedObligationsCents: 0,
+        receivableDebts: [],
+        receivablePendingCents: 6532,
+        futureDebts: { count: 0, totalCents: 0 },
+      },
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    };
+
+    render(<RealCashHeroCard realCashData={withUpcomingCardsData} />);
+
+    expect(screen.getByText("Próximas faturas:")).toBeInTheDocument();
+    expect(screen.getByText("Livre para gastar:")).toBeInTheDocument();
+    const content = document.body.textContent?.replace(/\u00a0/g, " ");
+    expect(content).toContain("1.650,82");
+    expect(content).toContain("2.732,82");
+    expect(content).toContain("0,00");
+    expect(
+      screen.getByRole("button", {
+        name: "Ver memória de cálculo de Livre para Gastar (Após Próximas Faturas)",
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Ver próximas faturas de cartão em acumulação e faturas futuras",
+      }),
+    );
+    expect(screen.getByText("Próximas Faturas em Acumulação")).toBeInTheDocument();
+    expect(screen.getByText(/Faturas futuras de cartão:/)).toBeInTheDocument();
+  });
 });

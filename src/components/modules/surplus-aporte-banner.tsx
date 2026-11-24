@@ -3,8 +3,10 @@ import { ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/ui/money-text";
+import type { CalculationBreakdown } from "@/domain/calculation-memory";
 import type { SurplusAllocationIntent } from "@/domain/overview";
 import { cn } from "@/lib/utils";
+import { CalculationMemoryModal } from "./calculation-memory";
 import { CarouselDismissPopover } from "./carousel-dismiss-popover";
 
 export interface SurplusAporteBannerProps {
@@ -12,6 +14,9 @@ export interface SurplusAporteBannerProps {
   allocationIntent?: SurplusAllocationIntent;
   emergencyMonthsCovered?: number | null;
   emergencyTargetMonths?: 3 | 6 | 12;
+  calculationBreakdown?: CalculationBreakdown;
+  nextCycleInvoicesCents?: number;
+  futureInvoicesCents?: number;
   className?: string;
   onSimulate?: () => void;
   onReinforceReserve?: () => void;
@@ -28,6 +33,9 @@ export function SurplusAporteBanner({
   allocationIntent = "portfolio_aporte",
   emergencyMonthsCovered = null,
   emergencyTargetMonths = 6,
+  calculationBreakdown,
+  nextCycleInvoicesCents = 0,
+  futureInvoicesCents = 0,
   className,
   onSimulate,
   onReinforceReserve,
@@ -84,13 +92,50 @@ export function SurplusAporteBanner({
             <Badge variant={isEmergencyPriority ? "positive" : "portfolio"} size="xs">
               {isEmergencyPriority ? reserveBadgeLabel : "Disponível"}
             </Badge>
+            {calculationBreakdown ? (
+              <CalculationMemoryModal breakdown={calculationBreakdown} priority="p1" />
+            ) : null}
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 break-words">
             {isEmergencyPriority ? (
+              nextCycleInvoicesCents > 0 ? (
+                <>
+                  Você tem{" "}
+                  <MoneyText cents={surplusCents} tone="positive" className="font-semibold text-foreground" />{" "}
+                  livres no ciclo para reserva (com{" "}
+                  <MoneyText cents={nextCycleInvoicesCents} tone="default" className="font-medium text-foreground" />{" "}
+                  na próxima fatura de cartão).
+                </>
+              ) : futureInvoicesCents > 0 ? (
+                <>
+                  Você tem{" "}
+                  <MoneyText cents={surplusCents} tone="positive" className="font-semibold text-foreground" />{" "}
+                  livres no ciclo para reserva (com{" "}
+                  <MoneyText cents={futureInvoicesCents} tone="default" className="font-medium text-foreground" />{" "}
+                  em faturas futuras).
+                </>
+              ) : (
+                <>
+                  Você tem{" "}
+                  <MoneyText cents={surplusCents} tone="positive" className="font-semibold text-foreground" />{" "}
+                  livres no ciclo para fortalecer sua liquidez de segurança.
+                </>
+              )
+            ) : nextCycleInvoicesCents > 0 ? (
               <>
-                Você tem{" "}
-                <MoneyText cents={surplusCents} tone="positive" className="font-semibold text-foreground" />{" "}
-                livres no ciclo para fortalecer sua liquidez de segurança.
+                Sobra de{" "}
+                <MoneyText cents={surplusCents} tone="portfolio" className="font-semibold text-foreground" />{" "}
+                no ciclo para aporte (considere{" "}
+                <MoneyText cents={nextCycleInvoicesCents} tone="default" className="font-medium text-foreground" />{" "}
+                na próxima fatura de cartão).
+              </>
+            ) : futureInvoicesCents > 0 ? (
+              <>
+                Sobra de{" "}
+                <MoneyText cents={surplusCents} tone="portfolio" className="font-semibold text-foreground" />{" "}
+                no ciclo para aporte (considere{" "}
+                <MoneyText cents={futureInvoicesCents} tone="default" className="font-medium text-foreground" />{" "}
+                em faturas futuras).
               </>
             ) : (
               <>

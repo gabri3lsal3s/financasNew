@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { buildPaceProjectionBreakdown, buildSmartAdvisorBreakdown } from "./insights-breakdown";
+import {
+  buildDiagnosticBreakdowns,
+  buildMonthlyClosingBreakdown,
+  buildPaceProjectionBreakdown,
+  buildPendingSummaryBreakdown,
+  buildRecurrencesSummaryBreakdown,
+  buildSavingsChallengesBreakdown,
+  buildSmartAdvisorBreakdown,
+} from "./insights-breakdown";
 import type { SmartAdvisorInsight } from "@/domain/insights/advisor";
 
 describe("buildSmartAdvisorBreakdown", () => {
@@ -164,5 +172,104 @@ describe("buildSmartAdvisorBreakdown", () => {
     expect(breakdown.result.rawValue).toBe(80000);
     expect(breakdown.notes?.some((n) => n.includes("Lente Consumo (competência)"))).toBe(true);
     expect(breakdown.notes?.some((n) => n.includes("neutralização"))).toBe(true);
+  });
+});
+
+describe("Builders completos da página /insights e aporte", () => {
+  it("buildSmartAdvisorBreakdown cobre aporte:rebalance com título dedicado", () => {
+    const insight: SmartAdvisorInsight = {
+      id: "aporte:rebalance",
+      themeKey: "aporte:rebalance",
+      priority: 3,
+      category: "savings",
+      title: "Reforçar Reserva de Emergência",
+      description: "Você possui R$ 253,59 livres após as obrigações.",
+      iconName: "trending-down",
+      metadata: {
+        valueCents: 25359,
+        annualSavingsCents: 25359,
+      },
+    };
+
+    const breakdown = buildSmartAdvisorBreakdown(insight);
+    expect(breakdown.title).toBe("Memória do Reforço da Reserva de Emergência");
+    expect(breakdown.result.rawValue).toBe(25359);
+  });
+
+  it("buildDiagnosticBreakdowns gera os 6 cards com métricas congruentes", () => {
+    const diags = buildDiagnosticBreakdowns({
+      month: "2026-11",
+      incomeCents: 350666,
+      expenseCents: 227382,
+      investmentCents: 0,
+      committedObligationsCents: 0,
+      savingsRate: 35.15,
+      hasIncome: true,
+      overspentBudgets: 1,
+      activeBudgetsCount: 5,
+      topIncomeSourceCents: 350666,
+      concentrationPercent: 100,
+      weekdayDailyCents: 5000,
+      weekendDailyCents: 8000,
+      weekendRatio: 1.6,
+      weekendComparable: true,
+      essentialCents: 100000,
+      essentialDenominatorCents: 350666,
+      essentialPercent: 28.5,
+      trendHasPreviousBase: true,
+      previousComparableCents: 200000,
+      trendPercent: 13.7,
+      nextCycleInvoicesCents: 165082,
+      futureInvoicesCents: 273282,
+    });
+
+    expect(diags.savingsHealth.result.rawValue).toBe(35.15);
+    expect(diags.savingsHealth.notes?.some((n) => n.includes("1.650,82"))).toBe(true);
+    expect(diags.overspentBudgets.result.rawValue).toBe(1);
+    expect(diags.incomeConcentration.result.rawValue).toBe(100);
+    expect(diags.weekendSpending.result.rawValue).toBe(1.6);
+    expect(diags.essentialSpending.result.rawValue).toBe(28.5);
+    expect(diags.spendingTrend.result.rawValue).toBe(13.7);
+  });
+
+  it("gera memórias de Recorrências, Pendências, Desafios e Fechamento Mensal", () => {
+    const rec = buildRecurrencesSummaryBreakdown({
+      totalRecurringCents: 45000,
+      totalAnnualRecurringCents: 540000,
+      canCutRecurringCents: 12000,
+      monthlyIncomeCents: 350000,
+      fixedCommitmentRate: 12.9,
+    });
+    expect(rec.result.rawValue).toBe(45000);
+
+    const pend = buildPendingSummaryBreakdown({
+      month: "2026-11",
+      receivablesCents: 6532,
+      payablesCents: 0,
+      balanceCents: 6532,
+      openInvoicesCents: 0,
+      nextCycleInvoicesCents: 165082,
+      nextCycleInvoicesCount: 2,
+      futureInvoicesCents: 273282,
+      futureInvoicesCount: 5,
+    });
+    expect(pend.notes?.[0]).toContain("1.650,82");
+
+    const ch = buildSavingsChallengesBreakdown({
+      challenges: [{ name: "Lazer", savingsCents: 15000, percent: 20 }],
+      discretionarySavingsCents: 25000,
+    });
+    expect(ch.result.rawValue).toBe(15000);
+
+    const closing = buildMonthlyClosingBreakdown({
+      closedMonth: "2026-10",
+      incomeCents: 400000,
+      expenseCents: 250000,
+      balanceCents: 150000,
+      savingsRatePercent: 37.5,
+      highlightAchievement: "Saldo positivo!",
+      limitSuggestions: [],
+    });
+    expect(closing.result.rawValue).toBe(150000);
   });
 });

@@ -3,12 +3,20 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   applyPWAUpdate,
+  applyPendingPWAUpdateIfSafe,
+  checkPWAUpdateManually,
+  checkPWAUpdateNow,
+  forceAppUpdate,
+  getPWAUpdateAvailable,
+  handleSWNeedReload,
+  isSafeForAutoReload,
   notifyPWAUpdate,
   purgeLegacyCaches,
   refreshPWAInstallState,
   registerPWA,
   waitForControllerChange,
   _resetPWAStateForTesting,
+  _setAppBootTimeForTesting,
   _setUpdateSWFnForTesting,
 } from "@/app/pwa";
 import { InstallAppButton } from "@/components/modules/install-app-button";
@@ -202,6 +210,208 @@ describe("PWA — atualização automática (autoUpdate → toast)", () => {
     expect(deletedKeys).toContain("static-images");
     expect(deletedKeys).toContain("pwa-brand-assets");
     expect(deletedKeys).not.toContain("app-user-offline-store");
+  });
+
+  it("isSafeForAutoReload bloqueia quando usuário digita, há modal aberto, rota sensível ou offline", () => {
+    window.history.pushState({}, "", "/");
+    expect(isSafeForAutoReload()).toBe(true);
+
+    // 1. Campo de texto focado (usuário editando)
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    input.focus();
+    expect(isSafeForAutoReload()).toBe(false);
+    input.blur();
+    document.body.removeChild(input);
+    expect(isSafeForAutoReload()).toBe(true);
+
+    // 2. Modal aberto no DOM
+    const dialog = document.createElement("div");
+    dialog.setAttribute("role", "dialog");
+    document.body.appendChild(dialog);
+    expect(isSafeForAutoReload()).toBe(false);
+    document.body.removeChild(dialog);
+    expect(isSafeForAutoReload()).toBe(true);
+
+    // 3. Rota sensível (/assinatura)
+    Object.defineProperty(window, "location", {
+      value: { ...window.location, pathname: "/assinatura", search: "" },
+      configurable: true,
+      writable: true,
+    });
+    expect(isSafeForAutoReload()).toBe(false);
+    Object.defineProperty(window, "location", {
+      value: { ...window.location, pathname: "/", search: "" },
+      configurable: true,
+      writable: true,
+    });
+    expect(isSafeForAutoReload()).toBe(true);
+
+    // 4. Offline
+    Object.defineProperty(navigator, "onLine", { value: false, configurable: true });
+    expect(isSafeForAutoReload()).toBe(false);
+    Object.defineProperty(navigator, "onLine", { value: true, configurable: true });
+    expect(isSafeForAutoReload()).toBe(true);
+  });
+
+  it("applyPendingPWAUpdateIfSafe aplica reload em ponto seguro e respeita cooldown anti-loop", async () => {
+    const reload = vi.fn();
+    Object.defineProperty(window, "location", {
+      value: { ...window.location, pathname: "/transacoes", search: "", reload },
+      configurable: true,
+      writable: true,
+    });
+    Object.defineProperty(navigator, "serviceWorker", {
+      value: { getRegistrations: vi.fn().mockResolvedValue([]) },
+      configurable: true,
+      writable: true,
+    });
+
+    notifyPWAUpdate();
+
+    // Com input focado, NÃO dispara reload automático
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    input.focus();
+    expect(applyPendingPWAUpdateIfSafe()).toBe(false);
+    input.blur();
+    document.body.removeChild(input);
+
+    // Sem edição ativa, dispara reload silencioso
+    expect(applyPendingPWAUpdateIfSafe()).toBe(true);
+    await vi.waitFor(() => {
+      expect(reload).toHaveBeenCalledTimes(1);
+    });
+
+    // Cooldown anti-loop impede reload imediato em sequência
+    expect(isSafeForAutoReload()).toBe(false);
+  });
+
+  it("handleSWNeedReload atualiza automaticamente na tela de credenciais quando sem digitação ativa", async () => {
+    const reload = vi.fn();
+    Object.defineProperty(window, "location", {
+      value: { ...window.location, pathname: "/entrar", search: "", reload },
+      configurable: true,
+      writable: true,
+    });
+    Object.defineProperty(navigator, "serviceWorker", {
+      value: { getRegistrations: vi.fn().mockResolvedValue([]) },
+      configurable: true,
+      writable: true,
+    });
+
+    // Fora da janela de boot (simula app aberto há 60s)
+    _setAppBootTimeForTesting(Date.now() - 60_000);
+
+    handleSWNeedReload();
+    await vi.waitFor(() => {
+      expect(reload).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("checkPWAUpdateNow chama reg.update() e aplica atualização silenciosa quando applyIfSafe=true", async () => {
+    const reload = vi.fn();
+    Object.defineProperty(window, "location", {
+      value: { ...window.location, pathname: "/entrar", search: "", reload },
+      configurable: true,
+      writable: true,
+    });
+
+    const postMessage = vi.fn();
+    const update = vi.fn().mockResolvedValue(undefined);
+    const mockReg = { waiting: { postMessage }, update };
+    const getRegistration = vi.fn().mockResolvedValue(mockReg);
+    const getRegistrations = vi.fn().mockResolvedValue([mockReg]);
+    const addEventListener = vi.fn((event: string, handler: () => void) => {
+      if (event === "controllerchange") {
+        setTimeout(handler, 5);
+      }
+    });
+    const removeEventListener = vi.fn();
+
+    Object.defineProperty(navigator, "serviceWorker", {
+      value: { getRegistration, getRegistrations, addEventListener, removeEventListener },
+      configurable: true,
+      writable: true,
+    });
+
+    await checkPWAUpdateNow({ force: true, applyIfSafe: true });
+
+    await vi.waitFor(() => {
+      expect(postMessage).toHaveBeenCalledWith({ type: "SKIP_WAITING" });
+      expect(reload).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("checkPWAUpdateManually aguarda worker em installing e marca atualização disponível", async () => {
+    const stateListeners: Array<() => void> = [];
+    const installingWorker = {
+      state: "installing",
+      addEventListener: vi.fn((event: string, handler: () => void) => {
+        if (event === "statechange") stateListeners.push(handler);
+      }),
+      removeEventListener: vi.fn(),
+    };
+
+    const mockReg = {
+      installing: installingWorker,
+      waiting: null,
+      update: vi.fn().mockImplementation(async () => {
+        setTimeout(() => {
+          installingWorker.state = "installed";
+          stateListeners.forEach((fn) => fn());
+        }, 5);
+      }),
+    };
+
+    Object.defineProperty(navigator, "serviceWorker", {
+      value: { getRegistrations: vi.fn().mockResolvedValue([mockReg]) },
+      configurable: true,
+      writable: true,
+    });
+
+    const found = await checkPWAUpdateManually();
+
+    expect(found).toBe(true);
+    expect(getPWAUpdateAvailable()).toBe(true);
+  });
+
+  it("forceAppUpdate executa hardReset (unregister + limpeza de cache + reload) quando SW está preso", async () => {
+    const reload = vi.fn();
+    Object.defineProperty(window, "location", {
+      value: { ...window.location, reload },
+      configurable: true,
+      writable: true,
+    });
+
+    const unregister = vi.fn().mockResolvedValue(true);
+    const update = vi.fn().mockResolvedValue(undefined);
+    const mockReg = { installing: null, waiting: null, update, unregister };
+
+    Object.defineProperty(navigator, "serviceWorker", {
+      value: { getRegistrations: vi.fn().mockResolvedValue([mockReg]) },
+      configurable: true,
+      writable: true,
+    });
+
+    const deletedKeys: string[] = [];
+    Object.defineProperty(window, "caches", {
+      value: {
+        keys: vi.fn().mockResolvedValue(["workbox-precache-v2-old", "static-images"]),
+        delete: vi.fn().mockImplementation((key: string) => {
+          deletedKeys.push(key);
+          return Promise.resolve(true);
+        }),
+      },
+      configurable: true,
+      writable: true,
+    });
+
+    await forceAppUpdate({ hardResetIfNoWorker: true });
+
+    expect(unregister).toHaveBeenCalledTimes(1);
+    expect(deletedKeys).toEqual(["workbox-precache-v2-old", "static-images"]);
+    expect(reload).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -218,12 +218,16 @@ export function useRealCashBalance(
       payablePendingCents: cycleBreakdown.payableDebtsCents,
       receivablePendingCents: cycleBreakdown.receivablePendingCents,
       derivedBusinessCashCents,
+      nextCycleInvoicesCents: cycleBreakdown.nextCycleInvoicesCents ?? 0,
+      futureInvoicesCents: cycleBreakdown.futureInvoicesCents ?? 0,
     });
   }, [
     cashBalance.currentBalanceCents,
     cycleBreakdown.openInvoicesCents,
     cycleBreakdown.payableDebtsCents,
     cycleBreakdown.receivablePendingCents,
+    cycleBreakdown.nextCycleInvoicesCents,
+    cycleBreakdown.futureInvoicesCents,
     activeScope,
     hasBusinessActivity,
     businessCashDerived.derivedCashBalanceCents,

@@ -7,7 +7,9 @@
 
 import { formatDateBR } from "@/lib/date";
 import type { CashCheckpointData } from "@/domain/cash";
+import type { SurplusAllocationIntent } from "@/domain/overview";
 import type { CashGapAnalysisResult } from "@/domain/projection";
+import { formatCentsAsBRL } from "@/services/masks/money";
 import { enrichBreakdown } from "../formatters";
 import type { BreakdownStep, CalculationBreakdown } from "../types";
 
@@ -130,6 +132,14 @@ export interface SafeToSpendBreakdownParams {
   safeToSpendWithReceivablesCents?: number;
   /** Se true, calcula a variante otimista que incorpora recebíveis no total final. */
   includeReceivablesInTotal?: boolean;
+  /** Faturas de cartão do próximo ciclo em acumulação (em centavos). */
+  nextCycleInvoicesCents?: number;
+  /** Quantidade de faturas em acumulação no próximo ciclo. */
+  nextCycleInvoicesCount?: number;
+  /** Faturas futuras / parcelamentos posteriores de cartão (em centavos). */
+  futureInvoicesCents?: number;
+  /** Quantidade de competências futuras de cartão além do próximo ciclo. */
+  futureInvoicesCount?: number;
 }
 
 /**
@@ -147,6 +157,10 @@ export function buildSafeToSpendBreakdown(params: SafeToSpendBreakdownParams): C
     safeToSpendCents,
     safeToSpendWithReceivablesCents,
     includeReceivablesInTotal = false,
+    nextCycleInvoicesCents = 0,
+    nextCycleInvoicesCount = 0,
+    futureInvoicesCents = 0,
+    futureInvoicesCount = 0,
   } = params;
 
   const hasReceivables = receivablePendingCents > 0;
@@ -212,6 +226,30 @@ export function buildSafeToSpendBreakdown(params: SafeToSpendBreakdownParams): C
     ? (safeToSpendWithReceivablesCents ?? safeToSpendCents + receivablePendingCents)
     : safeToSpendCents;
 
+  const upcomingCardsTotalCents = Math.max(0, nextCycleInvoicesCents) + Math.max(0, futureInvoicesCents);
+  const safeToSpendNotes: string[] = [];
+  if (!isOptimistic && hasReceivables) {
+    safeToSpendNotes.push(
+      "Visão Prudencial: valores a receber são omitidos do total disponível imediato para prevenir risco de inadimplência.",
+    );
+  }
+  if (upcomingCardsTotalCents > 0) {
+    const parts: string[] = [];
+    if (nextCycleInvoicesCents > 0) {
+      parts.push(
+        `${formatCentsAsBRL(nextCycleInvoicesCents)} na próxima fatura (${nextCycleInvoicesCount || 1} fatura(s))`,
+      );
+    }
+    if (futureInvoicesCents > 0) {
+      parts.push(
+        `${formatCentsAsBRL(futureInvoicesCents)} em faturas posteriores (${futureInvoicesCount || 1} competência(s))`,
+      );
+    }
+    safeToSpendNotes.push(
+      `Compromissos de cartão em ciclos futuros: ${parts.join(" e ")} - total de ${formatCentsAsBRL(upcomingCardsTotalCents)}. Este Saldo Livre refere-se apenas ao ciclo atual e não representa folga livre para consumo discricionário.`,
+    );
+  }
+
   const breakdown: CalculationBreakdown = {
     id: "dash-safe-to-spend",
     title: isOptimistic
@@ -247,15 +285,12 @@ export function buildSafeToSpendBreakdown(params: SafeToSpendBreakdownParams): C
     ],
     exclusions: [
       "Despesas já pagas no ciclo (estas já reduziram o saldo em conta)",
-      "Parcelamentos futuros de cartão que vencem em meses posteriores",
+      upcomingCardsTotalCents > 0
+        ? `Faturas de cartão fora do ciclo atual (${formatCentsAsBRL(upcomingCardsTotalCents)}, sendo ${formatCentsAsBRL(nextCycleInvoicesCents)} no próximo mês e ${formatCentsAsBRL(futureInvoicesCents)} em parcelas futuras)`
+        : "Parcelamentos futuros de cartão que vencem em meses posteriores",
       ...(!isOptimistic ? ["Valores a receber previstos (visão conservadora prudencial)"] : []),
     ],
-    notes:
-      !isOptimistic && hasReceivables
-        ? [
-            `Visão Prudencial: valores a receber são omitidos do total disponível imediato para prevenir risco de inadimplência.`,
-          ]
-        : undefined,
+    notes: safeToSpendNotes.length > 0 ? safeToSpendNotes : undefined,
   };
 
   return enrichBreakdown(breakdown);
@@ -370,6 +405,308 @@ export function buildCashGapBreakdown(params: CashGapBreakdownParams): Calculati
     notes: [
       "Lente Caixa estrita: avalia exatamente o dinheiro em conta na data de vencimento, distinta da Lente Consumo (competência).",
     ],
+  };
+
+  return enrichBreakdown(breakdown);
+}
+
+export interface FreeToSpendBreakdownParams {
+  safeToSpendCents: number;
+  nextCycleInvoicesCents: number;
+  nextCycleInvoicesCount?: number;
+  futureInvoicesCents?: number;
+  futureInvoicesCount?: number;
+  freeToSpendCents: number;
+}
+
+/**
+ * Constrói a memória de cálculo do valor efetivamente Livre para Gastar após
+ * considerar as próximas faturas de cartão em acumulação.
+ */
+export function buildFreeToSpendBreakdown(
+  params: FreeToSpendBreakdownParams,
+): CalculationBreakdown {
+  const {
+    safeToSpendCents,
+    nextCycleInvoicesCents,
+    nextCycleInvoicesCount = 0,
+    futureInvoicesCents = 0,
+    futureInvoicesCount = 0,
+    freeToSpendCents,
+  } = params;
+
+  const safeNextInvoices = Math.max(0, nextCycleInvoicesCents);
+  const safeFutureInvoices = Math.max(0, futureInvoicesCents);
+  const signedGapCents = safeToSpendCents - safeNextInvoices;
+
+  const steps: BreakdownStep[] = [
+    {
+      label: "Saldo Livre Real (Ciclo Atual)",
+      operator: "+",
+      rawValue: safeToSpendCents,
+      hint: "Liquidez em conta após descontar apenas faturas e boletos que vencem neste mês",
+      tone: safeToSpendCents >= 0 ? "positive" : "negative",
+    },
+    {
+      label:
+        nextCycleInvoicesCount > 0
+          ? `Próximas Faturas em Acumulação (${nextCycleInvoicesCount})`
+          : "Próximas Faturas em Acumulação",
+      operator: "-",
+      rawValue: safeNextInvoices,
+      hint: "Gastos já realizados no cartão que vencerão na próxima competência",
+      tone: "negative",
+      actionLink: {
+        to: "/cartoes",
+        label: "Ver faturas",
+      },
+    },
+  ];
+
+  const notes: string[] = [];
+  if (signedGapCents < 0) {
+    notes.push(
+      `Déficit de ${formatCentsAsBRL(Math.abs(signedGapCents))} frente às próximas faturas, que dependerá da próxima renda. A sobra atual em conta pode ser usada para reforçar sua reserva até o próximo recebimento.`,
+    );
+  }
+  if (safeFutureInvoices > 0) {
+    notes.push(
+      `Além das próximas faturas, há ${formatCentsAsBRL(safeFutureInvoices)} em faturas futuras (${futureInvoicesCount || 1} competência(s) posterior(es)).`,
+    );
+  }
+
+  const breakdown: CalculationBreakdown = {
+    id: "dash-free-to-spend",
+    title: "Livre para Gastar (Após Próximas Faturas)",
+    description:
+      "Mostra quanto do seu saldo livre atual sobra para consumo discricionário sem depender da renda do próximo mês para cobrir as próximas faturas.",
+    periodLabel: "Ciclo Atual + Próxima Fatura de Cartão",
+    formulaExpression: "max(0, Saldo Livre do Ciclo - Próximas Faturas em Acumulação)",
+    unit: "currency",
+    steps,
+    result: {
+      label: "Livre para Gastar",
+      rawValue: freeToSpendCents,
+      unit: "currency",
+      tone: freeToSpendCents > 0 ? "positive" : "default",
+      hint:
+        freeToSpendCents === 0 && safeToSpendCents > 0
+          ? "Zero livre para gasto extra; o saldo do ciclo atual segue apto para liquidez ou reserva."
+          : undefined,
+    },
+    inclusions: [
+      "Saldo Livre Real do ciclo atual",
+      "Faturas de cartão já lançadas para a competência seguinte",
+    ],
+    exclusions: [
+      safeFutureInvoices > 0
+        ? `Parcelamentos posteriores além da próxima fatura (${formatCentsAsBRL(safeFutureInvoices)})`
+        : "Parcelamentos posteriores além da próxima fatura",
+    ],
+    notes: notes.length > 0 ? notes : undefined,
+  };
+
+  return enrichBreakdown(breakdown);
+}
+
+export interface SurplusCapacityBreakdownParams {
+  incomeCents: number;
+  expenseCents: number;
+  committedObligationsCents: number;
+  pendingRecurringObligationsCents: number;
+  contributionsAlreadyMadeCents: number;
+  safeToSpendCents?: number;
+  suggestedAporteCents: number;
+  allocationIntent: SurplusAllocationIntent;
+  emergencyMonthsCovered?: number | null;
+  emergencyTargetMonths?: 3 | 6 | 12;
+  nextCycleInvoicesCents?: number;
+  futureInvoicesCents?: number;
+}
+
+/**
+ * Constrói a memória de cálculo da Sobra do Ciclo (Reforço da Reserva / Aporte).
+ * Explica passo a passo deduções de obrigações do ciclo, recorrências pendentes e teto em conta.
+ */
+export function buildSurplusCapacityBreakdown(
+  params: SurplusCapacityBreakdownParams,
+): CalculationBreakdown {
+  const {
+    incomeCents,
+    expenseCents,
+    committedObligationsCents,
+    pendingRecurringObligationsCents,
+    contributionsAlreadyMadeCents,
+    safeToSpendCents,
+    suggestedAporteCents,
+    allocationIntent,
+    emergencyMonthsCovered = null,
+    emergencyTargetMonths = 6,
+    nextCycleInvoicesCents = 0,
+    futureInvoicesCents = 0,
+  } = params;
+
+  const safeCommitted = Math.max(0, committedObligationsCents);
+  const safePendingRecurring = Math.max(0, pendingRecurringObligationsCents);
+  const safeContributions = Math.max(0, contributionsAlreadyMadeCents);
+  const accountingSurplusCents =
+    incomeCents - expenseCents - safeCommitted - safePendingRecurring - safeContributions;
+
+  const isEmergency = allocationIntent === "emergency_fund";
+
+  const steps: BreakdownStep[] = [
+    {
+      label: "Receitas Operacionais do Mês",
+      operator: "+",
+      rawValue: incomeCents,
+      hint: "Entradas operacionais consideradas na competência atual",
+      tone: "positive",
+    },
+    {
+      label: "Despesas Líquidas do Mês",
+      operator: "-",
+      rawValue: expenseCents,
+      hint: "Gastos ponderados registrados no ciclo",
+      tone: "negative",
+    },
+  ];
+
+  if (safeCommitted > 0) {
+    steps.push({
+      label: "Obrigações do Ciclo Atual",
+      operator: "-",
+      rawValue: safeCommitted,
+      hint: "Faturas abertas e contas a pagar com vencimento neste mês",
+      tone: "negative",
+    });
+  }
+
+  if (safePendingRecurring > 0) {
+    steps.push({
+      label: "Recorrências Fixas Pendentes no Mês",
+      operator: "-",
+      rawValue: safePendingRecurring,
+      hint: "Contas recorrentes habituais ainda previstas até o fechamento do mês",
+      tone: "negative",
+    });
+  }
+
+  if (safeContributions > 0) {
+    steps.push({
+      label: "Aportes Já Realizados no Mês",
+      operator: "-",
+      rawValue: safeContributions,
+      hint: "Investimentos já efetuados no ciclo corrente",
+      tone: "portfolio",
+    });
+  }
+
+  if (safeToSpendCents !== undefined) {
+    const adjustedSafeToSpendCents = Math.max(0, safeToSpendCents - safePendingRecurring);
+    const wasCappedByLiquidity = accountingSurplusCents > adjustedSafeToSpendCents;
+    steps.push({
+      label: "Teto de Liquidez em Conta (Saldo Livre Real - Fixos Pendentes)",
+      operator: "=",
+      rawValue: adjustedSafeToSpendCents,
+      hint: wasCappedByLiquidity
+        ? `A sobra contábil (${formatCentsAsBRL(Math.max(0, accountingSurplusCents))}) foi limitada ao caixa livre real disponível em conta hoje.`
+        : "Saldo livre real descontando contas recorrentes ainda previstas no mês",
+      tone: adjustedSafeToSpendCents > 0 ? "positive" : "negative",
+      emphasis: "subtotal",
+    });
+  }
+
+  const notes: string[] = [];
+  if (isEmergency) {
+    const monthsNote =
+      emergencyMonthsCovered !== null && Number.isFinite(emergencyMonthsCovered)
+        ? `Reserva atual cobre ${emergencyMonthsCovered.toFixed(1).replace(".", ",")} de ${emergencyTargetMonths} meses recomendados.`
+        : `Reserva abaixo da meta de ${emergencyTargetMonths} meses.`;
+    notes.push(`${monthsNote} Por isso a sobra do ciclo prioriza liquidez imediata.`);
+  }
+  const safeNextInvoices = Math.max(0, nextCycleInvoicesCents);
+  const safeFutureInvoices = Math.max(0, futureInvoicesCents);
+  if (safeNextInvoices > 0 || safeFutureInvoices > 0) {
+    const upcomingTotal = safeNextInvoices + safeFutureInvoices;
+    notes.push(
+      `Atenção: este saldo é livre apenas no ciclo atual. Você possui ${formatCentsAsBRL(safeNextInvoices)} na próxima fatura em acumulação e ${formatCentsAsBRL(safeFutureInvoices)} em faturas futuras (${formatCentsAsBRL(upcomingTotal)} no total) — fortaleça sua liquidez sem tratar o valor como consumo livre.`,
+    );
+  }
+
+  const breakdown: CalculationBreakdown = {
+    id: "dash-surplus-capacity",
+    title: isEmergency
+      ? "Memória do Reforço de Reserva de Emergência"
+      : "Memória da Capacidade de Aporte",
+    description: isEmergency
+      ? "Apura a sobra líquida do ciclo atual limitada ao dinheiro livre em conta (após obrigações e fixos pendentes) para fortalecer sua reserva."
+      : "Apura a capacidade real de aporte do ciclo respeitando obrigações contratadas e liquidez em conta.",
+    periodLabel: "Ciclo Mensal Corrente",
+    formulaExpression:
+      "min(Sobra Contábil do Mês, max(0, Saldo Livre Real - Recorrências Fixas Pendentes))",
+    unit: "currency",
+    steps,
+    result: {
+      label: isEmergency ? "Valor Sugerido para Reserva" : "Capacidade de Aporte Estimada",
+      rawValue: suggestedAporteCents,
+      unit: "currency",
+      tone: isEmergency ? "positive" : "portfolio",
+    },
+    notes: notes.length > 0 ? notes : undefined,
+  };
+
+  return enrichBreakdown(breakdown);
+}
+
+export interface WeeklyRadarBreakdownParams {
+  currentBalanceCents: number;
+  totalDueCents: number;
+  freeBalanceCents: number;
+  itemsCount: number;
+  overdueCount: number;
+}
+
+/**
+ * Constrói a memória de cálculo do Radar de Contas dos Próximos 7 Dias.
+ */
+export function buildWeeklyRadarBreakdown(
+  params: WeeklyRadarBreakdownParams,
+): CalculationBreakdown {
+  const { currentBalanceCents, totalDueCents, freeBalanceCents, itemsCount, overdueCount } = params;
+
+  const breakdown: CalculationBreakdown = {
+    id: "dash-weekly-radar",
+    title: "Memória do Saldo Livre da Semana",
+    description:
+      "Cruza o saldo atual em contas bancárias com todas as faturas de cartão e contas a pagar vencidas ou com vencimento nos próximos 7 dias.",
+    periodLabel: "Horizonte de 7 dias",
+    formulaExpression: "Saldo Livre da Semana = Saldo Atual em Conta - Contas dos Próximos 7 Dias",
+    unit: "currency",
+    steps: [
+      {
+        label: "Saldo Atual em Conta",
+        operator: "+",
+        rawValue: currentBalanceCents,
+        hint: "Liquidez disponível hoje no regime de caixa bancário",
+        tone: currentBalanceCents >= 0 ? "positive" : "negative",
+      },
+      {
+        label: `Compromissos na Janela (${itemsCount})`,
+        operator: "-",
+        rawValue: totalDueCents,
+        hint:
+          overdueCount > 0
+            ? `Inclui ${overdueCount} compromisso(s) vencido(s) exigível(is) imediatamente`
+            : "Soma de faturas e dívidas a vencer nos próximos 7 dias",
+        tone: "negative",
+      },
+    ],
+    result: {
+      label: "Saldo Livre da Semana",
+      rawValue: freeBalanceCents,
+      unit: "currency",
+      tone: freeBalanceCents < 0 ? "negative" : "positive",
+    },
   };
 
   return enrichBreakdown(breakdown);

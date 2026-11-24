@@ -143,6 +143,7 @@ export function isPdfPasswordProtectedError(err: unknown): boolean {
 export async function renderScannedPdfPageToBlob(
   buffer: ArrayBuffer,
   pageNumber = 1,
+  options?: { password?: string },
 ): Promise<Blob | null> {
   if (typeof document === "undefined" || pageNumber < 1) {
     return null;
@@ -152,7 +153,10 @@ export async function renderScannedPdfPageToBlob(
 
   // Estratégia 1: renderização fiel da página solicitada em <canvas> com canvasContext 2D
   try {
-    const pdf = await unpdf.getDocumentProxy(new Uint8Array(buffer.slice(0)));
+    const data = new Uint8Array(buffer.slice(0));
+    const pdf = options?.password
+      ? await unpdf.getDocumentProxy(data, { password: options.password })
+      : await unpdf.getDocumentProxy(data);
     try {
       if (pageNumber > pdf.numPages) {
         return null;
@@ -203,49 +207,69 @@ export async function renderScannedPdfPageToBlob(
 
   // Estratégia 2: extração da maior imagem embutida na página solicitada via unpdf.extractImages
   try {
-    const images = await unpdf.extractImages(new Uint8Array(buffer.slice(0)), pageNumber);
-    const largest = images
-      .filter((img) => img.width >= 200 && img.height >= 200)
-      .sort((a, b) => b.width * b.height - a.width * a.height)[0];
+    const source =
+      options?.password && typeof unpdf.getDocumentProxy === "function"
+        ? await unpdf.getDocumentProxy(new Uint8Array(buffer.slice(0)), {
+            password: options.password,
+          })
+        : new Uint8Array(buffer.slice(0));
+    try {
+      const images = await unpdf.extractImages(source, pageNumber);
+      const largest = images
+        .filter((img) => img.width >= 200 && img.height >= 200)
+        .sort((a, b) => b.width * b.height - a.width * a.height)[0];
 
-    if (!largest) {
-      return null;
-    }
-
-    const canvas = document.createElement("canvas");
-    canvas.width = largest.width;
-    canvas.height = largest.height;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      return null;
-    }
-
-    const pixelCount = largest.width * largest.height;
-    const rgba = new Uint8ClampedArray(pixelCount * 4);
-
-    if (largest.channels === 4) {
-      rgba.set(largest.data.subarray(0, pixelCount * 4));
-    } else if (largest.channels === 3) {
-      for (let i = 0; i < pixelCount; i++) {
-        rgba[i * 4] = largest.data[i * 3] ?? 0;
-        rgba[i * 4 + 1] = largest.data[i * 3 + 1] ?? 0;
-        rgba[i * 4 + 2] = largest.data[i * 3 + 2] ?? 0;
-        rgba[i * 4 + 3] = 255;
+      if (!largest) {
+        return null;
       }
-    } else {
-      for (let i = 0; i < pixelCount; i++) {
-        const gray = largest.data[i] ?? 0;
-        rgba[i * 4] = gray;
-        rgba[i * 4 + 1] = gray;
-        rgba[i * 4 + 2] = gray;
-        rgba[i * 4 + 3] = 255;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = largest.width;
+      canvas.height = largest.height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        return null;
+      }
+
+      const pixelCount = largest.width * largest.height;
+      const rgba = new Uint8ClampedArray(pixelCount * 4);
+
+      if (largest.channels === 4) {
+        rgba.set(largest.data.subarray(0, pixelCount * 4));
+      } else if (largest.channels === 3) {
+        for (let i = 0; i < pixelCount; i++) {
+          rgba[i * 4] = largest.data[i * 3] ?? 0;
+          rgba[i * 4 + 1] = largest.data[i * 3 + 1] ?? 0;
+          rgba[i * 4 + 2] = largest.data[i * 3 + 2] ?? 0;
+          rgba[i * 4 + 3] = 255;
+        }
+      } else {
+        for (let i = 0; i < pixelCount; i++) {
+          const gray = largest.data[i] ?? 0;
+          rgba[i * 4] = gray;
+          rgba[i * 4 + 1] = gray;
+          rgba[i * 4 + 2] = gray;
+          rgba[i * 4 + 3] = 255;
+        }
+      }
+
+      const imageData = new ImageData(rgba, largest.width, largest.height);
+      ctx.putImageData(imageData, 0, 0);
+      return await canvasToPngBlob(canvas);
+    } finally {
+      if (!(source instanceof Uint8Array)) {
+        try {
+          await source.cleanup();
+          await source.loadingTask?.destroy();
+        } catch {
+          // Ignora erro ao liberar recursos do documento PDF
+        }
       }
     }
-
-    const imageData = new ImageData(rgba, largest.width, largest.height);
-    ctx.putImageData(imageData, 0, 0);
-    return await canvasToPngBlob(canvas);
-  } catch {
+  } catch (err: unknown) {
+    if (isPdfPasswordProtectedError(err)) {
+      throw new PdfPasswordProtectedError();
+    }
     return null;
   }
 }

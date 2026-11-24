@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Inbox, Plus } from "lucide-react";
 import type { NavigateFunction } from "react-router";
 import {
@@ -13,6 +14,7 @@ import {
   WeeklyDueRadarCard,
 } from "@/components/modules";
 import { Button, EmptyState, ErrorState } from "@/components/ui";
+import { buildSurplusCapacityBreakdown } from "@/domain/calculation-memory";
 import type { DetectedPixTransaction } from "@/hooks";
 import { monthLabel } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
@@ -54,6 +56,35 @@ export function OverviewDashboardContent({
   onStartQuickTour,
   navigate,
 }: OverviewDashboardContentProps) {
+  const quickAporteBreakdown = useMemo(() => {
+    if (!data.surplusCapacity?.hasSurplus || !data.isCurrentMonth || !data.financialContext) {
+      return undefined;
+    }
+    return buildSurplusCapacityBreakdown({
+      incomeCents: data.financialContext.lens.consumption.operatingIncomeCents,
+      expenseCents: data.financialContext.lens.consumption.netExpenseCents,
+      committedObligationsCents: data.realCashData?.safeToSpend?.committedObligationsCents ?? 0,
+      pendingRecurringObligationsCents: data.surplusCapacity.pendingRecurringObligationsCents ?? 0,
+      contributionsAlreadyMadeCents: data.totals?.investmentCents ?? 0,
+      safeToSpendCents: data.realCashData?.safeToSpend?.safeToSpendCents,
+      suggestedAporteCents: data.surplusCapacity.suggestedAporteCents,
+      allocationIntent: data.surplusCapacity.allocationIntent,
+      emergencyMonthsCovered: data.financialContext.lens.wealth.emergencyMonthsCovered,
+      emergencyTargetMonths: data.financialContext.lens.wealth.emergencyTargetMonths,
+      nextCycleInvoicesCents: data.realCashData?.cycleBreakdown?.nextCycleInvoicesCents ?? 0,
+      futureInvoicesCents: data.realCashData?.cycleBreakdown?.futureInvoicesCents ?? 0,
+    });
+  }, [
+    data.surplusCapacity,
+    data.isCurrentMonth,
+    data.financialContext,
+    data.realCashData?.safeToSpend?.committedObligationsCents,
+    data.realCashData?.safeToSpend?.safeToSpendCents,
+    data.realCashData?.cycleBreakdown?.nextCycleInvoicesCents,
+    data.realCashData?.cycleBreakdown?.futureInvoicesCents,
+    data.totals?.investmentCents,
+  ]);
+
   if (data.error) {
     return (
       <ErrorState
@@ -168,6 +199,7 @@ export function OverviewDashboardContent({
             }
             allocationIntent={data.surplusCapacity.allocationIntent}
             suggestedEmergencyAllocationCents={data.surplusCapacity.suggestedEmergencyAllocationCents}
+            calculationBreakdown={quickAporteBreakdown}
           />
 
           {!hasMonthIncomesOrExpenses ? (

@@ -5,9 +5,11 @@ import { ArrowRight, ChevronRight, ShieldCheck, Sparkles, TrendingUp } from "luc
 import { Button } from "@/components/ui/button";
 import { MoneyInput } from "@/components/ui/money-input";
 import { MoneyText } from "@/components/ui/money-text";
+import type { CalculationBreakdown } from "@/domain/calculation-memory";
 import type { SurplusAllocationIntent } from "@/domain/overview";
 import { cn } from "@/lib/utils";
 import { triggerSensory } from "@/services/sensory";
+import { CalculationMemoryModal } from "./calculation-memory";
 
 export interface QuickAporteCardProps {
   className?: string;
@@ -19,6 +21,8 @@ export interface QuickAporteCardProps {
   allocationIntent?: SurplusAllocationIntent;
   /** Parcela da sobra direcionada prioritariamente à reserva de emergência (centavos). */
   suggestedEmergencyAllocationCents?: number;
+  /** Memória de cálculo opcional da sobra de caixa / reserva sugerida. */
+  calculationBreakdown?: CalculationBreakdown;
   /** Callback customizado ao simular o aporte direcionado (para testes ou modo controlado). */
   onSimulate?: (valorCents: number) => void;
   /** Callback customizado ao navegar para a carteira completa. */
@@ -34,6 +38,7 @@ export function QuickAporteCard({
   suggestedAporteCents = 0,
   allocationIntent = "portfolio_aporte",
   suggestedEmergencyAllocationCents,
+  calculationBreakdown,
   onSimulate,
   onViewPortfolio,
 }: QuickAporteCardProps) {
@@ -93,6 +98,9 @@ export function QuickAporteCard({
           <h2 className="text-sm font-semibold tracking-tight text-foreground truncate min-w-0">
             Investimentos do mês
           </h2>
+          {calculationBreakdown ? (
+            <CalculationMemoryModal breakdown={calculationBreakdown} priority="p1" />
+          ) : null}
         </div>
         <Button
           type="button"

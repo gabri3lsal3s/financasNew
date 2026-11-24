@@ -153,6 +153,7 @@ export function useStatementImport({
   const reconcileRunIdRef = useRef(0);
   const reanalyzeNonceRef = useRef(0);
   const autoVisionEscalatedRef = useRef(false);
+  const pdfPasswordRef = useRef<string | null>(null);
   const draftBlueprintRef = useRef<DraftStatementBlueprintSession | null>(null);
   const manuallyEditedIdsRef = useRef<Set<string>>(new Set());
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -212,6 +213,7 @@ export function useStatementImport({
     return () => {
       reconcileRunIdRef.current += 1;
       draftBlueprintRef.current = null;
+      pdfPasswordRef.current = null;
       abortControllerRef.current?.abort();
     };
   }, []);
@@ -687,6 +689,7 @@ export function useStatementImport({
             const blob = await renderScannedPdfPageToBlob(
               spatialExtras!.pdfBuffer!,
               candidatePages[0]!,
+              { password: pdfPasswordRef.current ?? undefined },
             );
             if (blob) {
               const visionRes = await parseStatementVisionBlobsWithAi({
@@ -935,7 +938,9 @@ export function useStatementImport({
       );
       const pageBlobs: Array<{ blob: Blob; sha256?: string | null }> = [];
       for (let page = 1; page <= MAX_STATEMENT_VISION_PAGES_OR_IMAGES; page++) {
-        const blob = await renderScannedPdfPageToBlob(loaded.buffer, page);
+        const blob = await renderScannedPdfPageToBlob(loaded.buffer, page, {
+          password: pdfPasswordRef.current ?? undefined,
+        });
         if (!blob) break;
         pageBlobs.push({
           blob,
@@ -1088,6 +1093,7 @@ export function useStatementImport({
     setVisionEscalationOffer(null);
     setAiStatusNotice(null);
     draftBlueprintRef.current = null;
+    pdfPasswordRef.current = null;
     autoVisionEscalatedRef.current = false;
     setIsReadingFile(true);
 
@@ -1215,11 +1221,13 @@ export function useStatementImport({
         password,
       });
 
+      pdfPasswordRef.current = password;
       setPendingPasswordFile(null);
       setPasswordError(null);
       await processLoadedStatementSource(loaded);
     } catch (err: unknown) {
       if (err instanceof PdfPasswordProtectedError || isPdfPasswordProtectedError(err)) {
+        pdfPasswordRef.current = null;
         setPasswordError("Senha incorreta. Verifique e tente novamente.");
       } else {
         setError(getErrorMessage(err));
@@ -1231,6 +1239,7 @@ export function useStatementImport({
   };
 
   const handlePasswordCancel = () => {
+    pdfPasswordRef.current = null;
     setPendingPasswordFile(null);
     setPasswordError(null);
   };
@@ -1567,7 +1576,9 @@ export function useStatementImport({
       );
       const pageBlobs: Array<{ blob: Blob; sha256?: string | null }> = [];
       for (const pageNum of offer.candidatePages) {
-        const blob = await renderScannedPdfPageToBlob(loaded.pdfBuffer, pageNum);
+        const blob = await renderScannedPdfPageToBlob(loaded.pdfBuffer, pageNum, {
+          password: pdfPasswordRef.current ?? undefined,
+        });
         if (!blob) continue;
         pageBlobs.push({
           blob,

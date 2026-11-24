@@ -8,6 +8,7 @@ import { setObservabilityUser } from "@/services/observability";
 import { setAppLocked, resetAppLockBackgroundTimer } from "@/services/native/app-lock";
 import { setCachedIconTier } from "@/services/native/app-icon";
 import { clearRecentReceipts } from "@/services/native/suggestions-store";
+import { resetUpdateDismissedForSession } from "@/domain/native";
 
 /**
  * Rotina centralizada de limpeza e reset do estado da aplicação.
@@ -66,6 +67,7 @@ export function resetAppState(queryClient?: QueryClient, nextUserId: string | nu
   resetPrivacyMask();
   resetEnsuredProfiles();
   resetGlobalMfaState();
+  resetUpdateDismissedForSession();
 
   // 5. Limpa usuário de observabilidade (Sentry)
   void setObservabilityUser(null);

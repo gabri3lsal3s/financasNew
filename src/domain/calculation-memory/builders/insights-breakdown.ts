@@ -9,6 +9,7 @@ import { enrichBreakdown } from "../formatters";
 import type { CalculationBreakdown, BreakdownStep } from "../types";
 import type { SmartAdvisorInsight } from "@/domain/insights/advisor";
 import type { ReferenceBudgetSource } from "@/domain/insights/financial-context";
+import type { MonthlyClosingSummary } from "@/domain/insights/monthly-closing";
 import { formatMonthYear } from "@/lib/date";
 import { formatCentsAsBRL } from "@/services/masks/money";
 
@@ -234,6 +235,55 @@ export function buildSmartAdvisorBreakdown(
       notes: [
         "Compara estritamente dias equivalentes (1 a D) para evitar falsos alarmes.",
         "O ritmo diário (burn rate) reflete a velocidade média de gasto por dia útil.",
+      ],
+    };
+
+    return enrichBreakdown(breakdown);
+  }
+
+  // 3B. REFORÇO DE RESERVA / APORTE SUGERIDO (APORTE)
+  if (insight.themeKey.startsWith("aporte:")) {
+    const isEmergencySuggestion = insight.title.toLowerCase().includes("reserva");
+    const steps: BreakdownStep[] = [
+      {
+        label: isEmergencySuggestion ? "Liquidez Sugerida para Reserva" : "Valor Sugerido para Aporte",
+        operator: "=",
+        rawValue: valueCents,
+        unit: "currency",
+        hint: "Respeita o teto do Saldo Livre Real após obrigações do ciclo e fixos pendentes",
+        tone: isEmergencySuggestion ? "positive" : "portfolio",
+      },
+    ];
+    if (annualSavingsCents > 0 && annualSavingsCents !== valueCents) {
+      steps.push({
+        label: "Sobra Líquida Disponível no Ciclo",
+        operator: "=",
+        rawValue: annualSavingsCents,
+        unit: "currency",
+        hint: "Excedente livre apurado no ciclo atual em conta bancária",
+        tone: "positive",
+      });
+    }
+
+    const breakdown: CalculationBreakdown = {
+      id: `advisor-${insight.id}`,
+      title: isEmergencySuggestion
+        ? "Memória do Reforço da Reserva de Emergência"
+        : "Memória da Sugestão de Aporte",
+      description:
+        "Limita o valor sugerido ao Saldo Livre Real do ciclo atual após contas vencendo no mês e recorrências pendentes.",
+      periodLabel: referenceMonthLabel ?? "Ciclo Atual",
+      formulaExpression: "Sugestão = min(Alvo de Aporte, Saldo Livre Real - Fixos Pendentes)",
+      unit: "currency",
+      steps,
+      result: {
+        label: isEmergencySuggestion ? "Reforço Sugerido" : "Aporte Sugerido",
+        rawValue: valueCents,
+        unit: "currency",
+        tone: isEmergencySuggestion ? "positive" : "portfolio",
+      },
+      notes: [
+        "Antes de destinar recursos a consumo discricionário, verifique faturas de cartão em acumulação nos próximos ciclos.",
       ],
     };
 
@@ -645,4 +695,621 @@ export function buildPaceProjectionBreakdown(
   };
 
   return enrichBreakdown(breakdown);
+}
+
+export interface DiagnosticBreakdowns {
+  savingsHealth: CalculationBreakdown;
+  overspentBudgets: CalculationBreakdown;
+  incomeConcentration: CalculationBreakdown;
+  weekendSpending: CalculationBreakdown;
+  essentialSpending: CalculationBreakdown;
+  spendingTrend: CalculationBreakdown;
+}
+
+export interface DiagnosticBreakdownsParams {
+  month: string;
+  incomeCents: number;
+  expenseCents: number;
+  investmentCents: number;
+  committedObligationsCents: number;
+  savingsRate: number;
+  hasIncome: boolean;
+  overspentBudgets: number;
+  activeBudgetsCount: number;
+  topIncomeSourceCents: number;
+  concentrationPercent: number;
+  weekdayDailyCents: number;
+  weekendDailyCents: number;
+  weekendRatio: number;
+  weekendComparable: boolean;
+  weekendLimitRatio?: number;
+  essentialCents: number;
+  essentialDenominatorCents: number;
+  essentialPercent: number;
+  trendHasPreviousBase: boolean;
+  previousComparableCents: number;
+  trendPercent: number;
+  nextCycleInvoicesCents?: number;
+  futureInvoicesCents?: number;
+}
+
+/**
+ * Monta os 6 breakdowns de Memória de Cálculo para os cards de Diagnóstico em /insights.
+ */
+export function buildDiagnosticBreakdowns(
+  params: DiagnosticBreakdownsParams,
+): DiagnosticBreakdowns {
+  const {
+    month,
+    incomeCents,
+    expenseCents,
+    investmentCents,
+    committedObligationsCents,
+    savingsRate,
+    hasIncome,
+    overspentBudgets,
+    activeBudgetsCount,
+    topIncomeSourceCents,
+    concentrationPercent,
+    weekdayDailyCents,
+    weekendDailyCents,
+    weekendRatio,
+    weekendComparable,
+    weekendLimitRatio = 1.5,
+    essentialCents,
+    essentialDenominatorCents,
+    essentialPercent,
+    trendHasPreviousBase,
+    previousComparableCents,
+    trendPercent,
+    nextCycleInvoicesCents = 0,
+    futureInvoicesCents = 0,
+  } = params;
+
+  const periodLabel = formatMonthYear(month);
+  const netCycleBalanceCents =
+    incomeCents - expenseCents - investmentCents - Math.max(0, committedObligationsCents);
+
+  const upcomingCardsCents = Math.max(0, nextCycleInvoicesCents) + Math.max(0, futureInvoicesCents);
+  const savingsNotes: string[] = [
+    "Faixas: Forte (>= 30%), Saudável (20%-29,9%), Moderado (10%-19,9%), Baixo (0%-9,9%), Crítico (< 0%).",
+  ];
+  if (upcomingCardsCents > 0) {
+    savingsNotes.push(
+      `Atenção: há ${formatCentsAsBRL(nextCycleInvoicesCents)} em próximas faturas em acumulação e ${formatCentsAsBRL(futureInvoicesCents)} em faturas futuras fora das obrigações deste ciclo.`,
+    );
+  }
+
+  const savingsHealth = enrichBreakdown({
+    id: `diag-savings-health-${month}`,
+    title: "Memória da Saúde da Poupança",
+    description:
+      "Mede quanto da receita do mês sobra livre após despesas, aportes e compromissos contratados do ciclo atual.",
+    periodLabel,
+    formulaExpression:
+      "Taxa (%) = ((Receitas - Despesas - Aportes - Obrigações do Ciclo) / Receitas) * 100",
+    unit: "percent",
+    steps: [
+      {
+        label: "Receitas do Mês",
+        operator: "+",
+        rawValue: incomeCents,
+        unit: "currency",
+        tone: "positive",
+      },
+      {
+        label: "Despesas do Mês",
+        operator: "-",
+        rawValue: expenseCents,
+        unit: "currency",
+        tone: "negative",
+      },
+      ...(investmentCents > 0
+        ? [
+            {
+              label: "Aportes Realizados",
+              operator: "-" as const,
+              rawValue: investmentCents,
+              unit: "currency" as const,
+              tone: "portfolio" as const,
+            },
+          ]
+        : []),
+      ...(committedObligationsCents > 0
+        ? [
+            {
+              label: "Obrigações Contratadas do Ciclo",
+              operator: "-",
+              rawValue: committedObligationsCents,
+              unit: "currency",
+              hint: "Faturas abertas e contas a pagar que vencem neste mês",
+              tone: "negative",
+            } satisfies BreakdownStep,
+          ]
+        : []),
+      {
+        label: "Capacidade Residual do Ciclo",
+        operator: "=",
+        rawValue: netCycleBalanceCents,
+        unit: "currency",
+        tone: netCycleBalanceCents >= 0 ? "positive" : "negative",
+        emphasis: "subtotal",
+      },
+    ],
+    result: {
+      label: "Taxa de Poupança Efetiva",
+      rawValue: hasIncome ? savingsRate : 0,
+      unit: "percent",
+      tone: !hasIncome ? "muted" : savingsRate >= 10 ? "positive" : "negative",
+    },
+    notes: savingsNotes,
+  });
+
+  const inCeilingCount = Math.max(0, activeBudgetsCount - overspentBudgets);
+  const overspentBreakdown = enrichBreakdown({
+    id: `diag-overspent-budgets-${month}`,
+    title: "Memória de Orçamentos Estourados",
+    description:
+      "Compara os gastos realizados em cada categoria de despesa contra o teto definido ou herdado para o mês.",
+    periodLabel,
+    formulaExpression: "Estourados = Quantidade de categorias com Gasto > Teto (> 100%)",
+    unit: "count",
+    steps: [
+      {
+        label: "Categorias com Teto Ativo",
+        operator: "=",
+        rawValue: activeBudgetsCount,
+        unit: "count",
+        tone: "default",
+      },
+      {
+        label: "Dentro do Teto Planejado",
+        operator: "-",
+        rawValue: inCeilingCount,
+        unit: "count",
+        tone: "positive",
+      },
+    ],
+    result: {
+      label: "Orçamentos Excedidos",
+      rawValue: overspentBudgets,
+      unit: "count",
+      tone: overspentBudgets === 0 ? "positive" : "negative",
+    },
+  });
+
+  const incomeConcentration = enrichBreakdown({
+    id: `diag-income-concentration-${month}`,
+    title: "Memória de Concentração de Renda",
+    description:
+      "Calcula a dependência da maior fonte de receita sobre o total de entradas do mês.",
+    periodLabel,
+    formulaExpression: "Concentração (%) = (Maior Fonte de Renda / Receita Total) * 100",
+    unit: "percent",
+    steps: [
+      {
+        label: "Maior Fonte de Renda",
+        operator: "=",
+        rawValue: topIncomeSourceCents,
+        unit: "currency",
+        tone: "default",
+      },
+      {
+        label: "Receita Total do Mês",
+        operator: "/",
+        rawValue: incomeCents,
+        unit: "currency",
+        tone: "positive",
+      },
+    ],
+    result: {
+      label: "Participação da Fonte Principal",
+      rawValue: hasIncome ? concentrationPercent : 0,
+      unit: "percent",
+      tone: concentrationPercent > 60 ? "negative" : "default",
+    },
+    notes: [
+      "Concentração superior a 60% gera alerta apenas quando há múltiplas fontes de receita.",
+    ],
+  });
+
+  const weekendSpending = enrichBreakdown({
+    id: `diag-weekend-spending-${month}`,
+    title: "Memória de Gastos em Fins de Semana",
+    description:
+      "Compara a média diária de consumo aos sábados e domingos contra a média diária em dias úteis decorridos no mês.",
+    periodLabel,
+    formulaExpression: "Razão = Média Diária Fim de Semana / Média Diária Dia Útil",
+    unit: "ratio",
+    steps: [
+      {
+        label: "Média Diária (Fins de Semana)",
+        operator: "=",
+        rawValue: Math.round(weekendDailyCents),
+        unit: "currency",
+        tone: "default",
+      },
+      {
+        label: "Média Diária (Dias Úteis)",
+        operator: "/",
+        rawValue: Math.round(weekdayDailyCents),
+        unit: "currency",
+        tone: "default",
+      },
+    ],
+    result: {
+      label: "Multiplicador Fim de Semana",
+      rawValue: weekendComparable && Number.isFinite(weekendRatio) ? weekendRatio : 0,
+      unit: "ratio",
+      tone:
+        !weekendComparable
+          ? "muted"
+          : weekendRatio > weekendLimitRatio
+            ? "negative"
+            : "positive",
+    },
+    notes: [
+      `Alerta ativado quando a razão ultrapassa ${weekendLimitRatio.toFixed(1).replace(".", ",")}x após massa crítica mínima (4+ lançamentos).`,
+    ],
+  });
+
+  const essentialSpending = enrichBreakdown({
+    id: `diag-essential-spending-${month}`,
+    title: "Memória de Gastos Essenciais",
+    description:
+      "Verifica qual fatia da renda de referência (ou do total gasto) é absorvida por categorias essenciais como moradia, contas básicas e saúde.",
+    periodLabel,
+    formulaExpression: "Comprometimento Essencial (%) = (Gastos Essenciais / Base de Referência) * 100",
+    unit: "percent",
+    steps: [
+      {
+        label: "Gastos Essenciais no Mês",
+        operator: "=",
+        rawValue: essentialCents,
+        unit: "currency",
+        tone: "default",
+      },
+      {
+        label: "Base de Referência (Renda ou Gasto Total)",
+        operator: "/",
+        rawValue: essentialDenominatorCents,
+        unit: "currency",
+        tone: "default",
+      },
+    ],
+    result: {
+      label: "Fatia Essencial",
+      rawValue: essentialPercent,
+      unit: "percent",
+      tone: essentialPercent <= 50 ? "positive" : essentialPercent <= 70 ? "default" : "negative",
+    },
+    notes: ["Regra 50/30/20: patamar ideal de até 50% para despesas essenciais."],
+  });
+
+  const diffCents = expenseCents - previousComparableCents;
+  const spendingTrend = enrichBreakdown({
+    id: `diag-spending-trend-${month}`,
+    title: "Memória da Tendência de Gastos",
+    description:
+      "Compara o gasto acumulado até hoje no mês atual contra a mesma janela de dias do mês anterior (comparação pro-rata).",
+    periodLabel,
+    formulaExpression: "Tendência (%) = ((Atual - Anterior Pro-Rata) / Anterior Pro-Rata) * 100",
+    unit: "percent",
+    steps: [
+      {
+        label: "Gastos Acumulados (Mês Atual)",
+        operator: "+",
+        rawValue: expenseCents,
+        unit: "currency",
+        tone: "negative",
+      },
+      {
+        label: "Base Comparável (Mês Anterior)",
+        operator: "-",
+        rawValue: previousComparableCents,
+        unit: "currency",
+        tone: "default",
+      },
+      {
+        label: "Diferença Nominal",
+        operator: "=",
+        rawValue: diffCents,
+        unit: "currency",
+        tone: diffCents > 0 ? "negative" : "positive",
+      },
+    ],
+    result: {
+      label: "Variação Percentual",
+      rawValue: trendHasPreviousBase ? trendPercent : 0,
+      unit: "percent",
+      tone: !trendHasPreviousBase ? "muted" : trendPercent > 0 ? "negative" : "positive",
+    },
+    notes: ["Oscilações acima de +-15% são destacadas como estatisticamente relevantes."],
+  });
+
+  return {
+    savingsHealth,
+    overspentBudgets: overspentBreakdown,
+    incomeConcentration,
+    weekendSpending,
+    essentialSpending,
+    spendingTrend,
+  };
+}
+
+export interface RecurrencesSummaryBreakdownParams {
+  totalRecurringCents: number;
+  totalAnnualRecurringCents: number;
+  canCutRecurringCents: number;
+  monthlyIncomeCents: number;
+  fixedCommitmentRate: number | null;
+}
+
+/**
+ * Monta a Memória de Cálculo do Resumo de Recorrências e Assinaturas.
+ */
+export function buildRecurrencesSummaryBreakdown(
+  params: RecurrencesSummaryBreakdownParams,
+): CalculationBreakdown {
+  const {
+    totalRecurringCents,
+    totalAnnualRecurringCents,
+    canCutRecurringCents,
+    monthlyIncomeCents,
+    fixedCommitmentRate,
+  } = params;
+
+  const steps: BreakdownStep[] = [
+    {
+      label: "Total Mensal de Assinaturas e Contas Fixas",
+      operator: "=",
+      rawValue: totalRecurringCents,
+      unit: "currency",
+      tone: "default",
+    },
+    {
+      label: "Projeção Anual (x12 meses)",
+      operator: "=",
+      rawValue: totalAnnualRecurringCents,
+      unit: "currency",
+      tone: "default",
+    },
+  ];
+
+  if (monthlyIncomeCents > 0) {
+    steps.push({
+      label: "Renda Mensal de Referência",
+      operator: "/",
+      rawValue: monthlyIncomeCents,
+      unit: "currency",
+      hint:
+        fixedCommitmentRate !== null
+          ? `Comprometimento fixo atual de ${fixedCommitmentRate.toFixed(1).replace(".", ",")}%`
+          : undefined,
+      tone: "positive",
+    });
+  }
+
+  if (canCutRecurringCents > 0) {
+    steps.push({
+      label: "Economia Potencial (Cortáveis / Assinaturas)",
+      operator: "-",
+      rawValue: canCutRecurringCents,
+      unit: "currency",
+      hint: "Assinaturas e serviços passíveis de cancelamento ou redução sem afetar essenciais",
+      tone: "positive",
+    });
+  }
+
+  return enrichBreakdown({
+    id: "insights-recurrences-summary",
+    title: "Memória das Recorrências e Assinaturas",
+    description:
+      "Consolida cobranças recorrentes ativas e calcula quanto comprometem da renda antes de novos gastos.",
+    periodLabel: "Ciclo Mensal & Projeção 12 Meses",
+    formulaExpression:
+      "Comprometimento (%) = (Total Recorrente Mensal / Renda Mensal) * 100 | Anual = Mensal * 12",
+    unit: "currency",
+    steps,
+    result: {
+      label: "Total Mensal Recorrente",
+      rawValue: totalRecurringCents,
+      unit: "currency",
+      tone: "default",
+    },
+  });
+}
+
+export interface PendingSummaryBreakdownParams {
+  month: string;
+  receivablesCents: number;
+  payablesCents: number;
+  balanceCents: number;
+  openInvoicesCents: number;
+  nextCycleInvoicesCents?: number;
+  nextCycleInvoicesCount?: number;
+  futureInvoicesCents?: number;
+  futureInvoicesCount?: number;
+}
+
+/**
+ * Monta a Memória de Cálculo das Pendências do Período na aba Projeção de /insights.
+ */
+export function buildPendingSummaryBreakdown(
+  params: PendingSummaryBreakdownParams,
+): CalculationBreakdown {
+  const {
+    month,
+    receivablesCents,
+    payablesCents,
+    balanceCents,
+    openInvoicesCents,
+    nextCycleInvoicesCents = 0,
+    nextCycleInvoicesCount = 0,
+    futureInvoicesCents = 0,
+    futureInvoicesCount = 0,
+  } = params;
+
+  const otherPayablesCents = Math.max(0, payablesCents - Math.max(0, openInvoicesCents));
+  const steps: BreakdownStep[] = [
+    {
+      label: "Valores a Receber no Período",
+      operator: "+",
+      rawValue: receivablesCents,
+      unit: "currency",
+      tone: "positive",
+    },
+    {
+      label: "Contas e Dívidas a Pagar no Período",
+      operator: "-",
+      rawValue: otherPayablesCents,
+      unit: "currency",
+      tone: "negative",
+    },
+  ];
+
+  if (openInvoicesCents > 0) {
+    steps.push({
+      label: "Faturas de Cartão do Ciclo Atual",
+      operator: "-",
+      rawValue: openInvoicesCents,
+      unit: "currency",
+      tone: "negative",
+    });
+  }
+
+  const notes: string[] = [];
+  if (nextCycleInvoicesCents > 0 || futureInvoicesCents > 0) {
+    notes.push(
+      `Faturas fora do ciclo atual (para planejamento): ${formatCentsAsBRL(nextCycleInvoicesCents)} em acumulação no próximo ciclo (${nextCycleInvoicesCount || 1} fatura(s)) e ${formatCentsAsBRL(futureInvoicesCents)} em faturas futuras (${futureInvoicesCount || 1} competência(s)).`,
+    );
+  }
+
+  return enrichBreakdown({
+    id: `insights-pending-summary-${month}`,
+    title: "Memória das Pendências do Período",
+    description:
+      "Consolida contas a receber, dívidas a pagar a partir do mês corrente e saldo em aberto das faturas do ciclo.",
+    periodLabel: formatMonthYear(month),
+    formulaExpression: "Saldo Projetado = A Receber - (Dívidas a Pagar + Faturas do Ciclo)",
+    unit: "currency",
+    steps,
+    result: {
+      label: "Saldo Projetado das Pendências",
+      rawValue: balanceCents,
+      unit: "currency",
+      tone: balanceCents >= 0 ? "positive" : "negative",
+    },
+    notes: notes.length > 0 ? notes : undefined,
+  });
+}
+
+export interface SavingsChallengesBreakdownParams {
+  challenges: readonly { name: string; savingsCents: number; percent: number }[];
+  discretionarySavingsCents?: number | null;
+}
+
+/**
+ * Monta a Memória de Cálculo dos Desafios de Economia Inteligentes.
+ */
+export function buildSavingsChallengesBreakdown(
+  params: SavingsChallengesBreakdownParams,
+): CalculationBreakdown {
+  const { challenges, discretionarySavingsCents = null } = params;
+
+  const steps: BreakdownStep[] = challenges.map((c, idx) => ({
+    label: `${c.name} (-${c.percent}%)`,
+    operator: idx === 0 ? undefined : "+",
+    rawValue: c.savingsCents,
+    unit: "currency",
+    hint: "Economia mensal estimada ao aplicar o teto sugerido",
+    tone: "positive",
+  }));
+
+  if (discretionarySavingsCents && discretionarySavingsCents > 0) {
+    steps.push({
+      label: "Corte Combinado (30% em Não Essenciais)",
+      operator: "=",
+      rawValue: discretionarySavingsCents,
+      unit: "currency",
+      hint: "Cenário alternativo global aplicado sobre categorias discricionárias",
+      tone: "positive",
+    });
+  }
+
+  const topTotalCents = challenges.reduce((acc, c) => acc + c.savingsCents, 0);
+
+  return enrichBreakdown({
+    id: "insights-savings-challenges",
+    title: "Memória dos Desafios de Economia",
+    description:
+      "Seleciona as maiores categorias discricionárias não marcadas como essenciais para sugerir cortes proporcionais de orçamento.",
+    periodLabel: "Média Típica Recente",
+    formulaExpression: "Economia Mensal = Soma dos Desafios Aplicáveis",
+    unit: "currency",
+    steps:
+      steps.length > 0
+        ? steps
+        : [
+            {
+              label: "Categorias Discricionárias Acima do Limite",
+              operator: "=",
+              rawValue: 0,
+              unit: "currency",
+              tone: "muted",
+            },
+          ],
+    result: {
+      label: "Economia Mensal dos Desafios",
+      rawValue: topTotalCents > 0 ? topTotalCents : (discretionarySavingsCents ?? 0),
+      unit: "currency",
+      tone: "positive",
+    },
+  });
+}
+
+/**
+ * Monta a Memória de Cálculo do Ritual de Fechamento Mensal em /insights.
+ */
+export function buildMonthlyClosingBreakdown(
+  summary: MonthlyClosingSummary,
+): CalculationBreakdown {
+  const { closedMonth, incomeCents, expenseCents, balanceCents, limitSuggestions } = summary;
+  return enrichBreakdown({
+    id: `insights-monthly-closing-${closedMonth}`,
+    title: `Fechamento Mensal (${formatMonthYear(closedMonth)})`,
+    description:
+      "Resume receitas, despesas e resultado líquido do mês recém-encerrado que baseiam os novos tetos sugeridos.",
+    periodLabel: formatMonthYear(closedMonth),
+    formulaExpression: "Resultado Líquido = Receitas do Mês - Despesas do Mês",
+    unit: "currency",
+    steps: [
+      {
+        label: "Receitas do Mês Encerrado",
+        operator: "+",
+        rawValue: incomeCents,
+        unit: "currency",
+        tone: "positive",
+      },
+      {
+        label: "Despesas do Mês Encerrado",
+        operator: "-",
+        rawValue: expenseCents,
+        unit: "currency",
+        tone: "negative",
+      },
+    ],
+    result: {
+      label: "Resultado Líquido do Mês",
+      rawValue: balanceCents,
+      unit: "currency",
+      tone: balanceCents >= 0 ? "positive" : "negative",
+    },
+    notes:
+      limitSuggestions.length > 0
+        ? [
+            `Foram identificadas ${limitSuggestions.length} categoria(s) com sugestão de recalibração de orçamento para o novo ciclo.`,
+          ]
+        : undefined,
+  });
 }

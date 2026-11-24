@@ -8,6 +8,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { Badge } from "@/components/ui";
+import type { DiagnosticBreakdowns } from "@/domain/calculation-memory";
 import {
   ESSENTIAL_STATUS_LABELS,
   SAVINGS_HEALTH_LABELS,
@@ -39,6 +40,7 @@ export interface DiagnosticsTabProps {
   trendPercent: number;
   overspentBudgets?: number;
   essentialSpending?: EssentialSpendingResult;
+  breakdowns?: DiagnosticBreakdowns;
   hasTransactions?: boolean;
   hasIncome?: boolean;
 }
@@ -57,6 +59,7 @@ export function DiagnosticsTab({
   trendPercent,
   overspentBudgets = 0,
   essentialSpending,
+  breakdowns,
   hasTransactions,
   hasIncome = true,
 }: DiagnosticsTabProps) {
@@ -80,6 +83,7 @@ export function DiagnosticsTab({
             label="Saúde da poupança"
             value={health === "indefinido" || !hasIncome ? "—" : `${formatPercent(savingsRate)}%`}
             subtitle={health === "indefinido" || !hasIncome ? "Aguardando renda" : "Capacidade de poupar"}
+            breakdown={breakdowns?.savingsHealth}
             tone={
               health === "indefinido" || !hasIncome
                 ? "neutral"
@@ -117,6 +121,7 @@ export function DiagnosticsTab({
                 : `${overspentBudgets} ${overspentBudgets === 1 ? "estouro" : "estouros"}`
             }
             subtitle={overspentBudgets === 0 ? "Todas categorias no teto" : "Excederam o limite"}
+            breakdown={breakdowns?.overspentBudgets}
             tone={overspentBudgets === 0 ? "positive" : "negative"}
           />
 
@@ -125,6 +130,7 @@ export function DiagnosticsTab({
             label="Concentração de renda"
             value={!hasIncome ? "—" : `${concentration.topSharePercent.toFixed(0)}%`}
             subtitle={!hasIncome ? "Aguardando renda" : concentration.alert ? "Alta dependência" : "Fonte principal"}
+            breakdown={breakdowns?.incomeConcentration}
             tone={!hasIncome ? "neutral" : concentration.alert ? "negative" : "neutral"}
           />
 
@@ -133,6 +139,7 @@ export function DiagnosticsTab({
             label="Gastos fim de semana"
             value={weekendComparable ? `${formatPercent(weekendRatio)}×` : "—"}
             subtitle="vs. dias úteis"
+            breakdown={breakdowns?.weekendSpending}
             tone={
               weekendComparable
                 ? weekendRatio > WEEKEND_RATIO_LIMIT
@@ -157,6 +164,7 @@ export function DiagnosticsTab({
                 ? "Mín. 3 lançamentos"
                 : "Teto ideal: até 50%"
             }
+            breakdown={breakdowns?.essentialSpending}
             tone={
               !essentialSpending || essentialSpending.status === "em_formacao" || !essentialSpending.hasCriticalMass
                 ? "neutral"
@@ -198,6 +206,7 @@ export function DiagnosticsTab({
             label="Tendência de gastos"
             value={trendHasPreviousBase ? formatSignedPct(trendPercent) : "Sem base anterior"}
             subtitle="vs. mês anterior"
+            breakdown={breakdowns?.spendingTrend}
             tone={trendHasPreviousBase && trendSignificant ? (trendPercent > 0 ? "negative" : "positive") : "neutral"}
           />
         </div>

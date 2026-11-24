@@ -206,4 +206,51 @@ describe("breakdownCycleObligations — Motor Puro de Discriminação de Obriga�
     });
     expect(result.receivablePendingCents).toBe(35000);
   });
+
+  it("separa faturas em 3 camadas (ciclo atual, próximo ciclo em acumulação e faturas futuras) preservando a congruência", () => {
+    const cards = [
+      { id: "c1", name: "Rico", due_day: 10, closing_day: 3, is_active: true },
+      { id: "c2", name: "Nubank", due_day: 15, closing_day: 8, is_active: true },
+    ];
+
+    const cardExpenses = [
+      // Ciclo atual (2026-11) — já pago integralmente
+      { card_id: "c1", bill_competence: "2026-11", value: 500.0, report_weight: 1 },
+      // Próximo ciclo em acumulação (2026-12): R$ 749,38 + R$ 901,44 = R$ 1.650,82
+      { card_id: "c1", bill_competence: "2026-12", value: 749.38, report_weight: 1 },
+      { card_id: "c2", bill_competence: "2026-12", value: 901.44, report_weight: 1 },
+      // Faturas futuras (2027-01..2027-05): 736 + 514,41 + 514,41 + 484 + 484 = R$ 2.732,82
+      { card_id: "c1", bill_competence: "2027-01", value: 736.0, report_weight: 1 },
+      { card_id: "c1", bill_competence: "2027-02", value: 514.41, report_weight: 1 },
+      { card_id: "c1", bill_competence: "2027-03", value: 514.41, report_weight: 1 },
+      { card_id: "c1", bill_competence: "2027-04", value: 484.0, report_weight: 1 },
+      { card_id: "c1", bill_competence: "2027-05", value: 484.0, report_weight: 1 },
+    ];
+
+    const cardPayments = [
+      { card_id: "c1", competence_month: "2026-11", amount: 500.0 },
+    ];
+
+    const result = breakdownCycleObligations({
+      cards,
+      cardExpenses,
+      cardPayments,
+      debts: [],
+      referenceDate: "2026-11-24",
+    });
+
+    // Ciclo atual zerado pois novembro foi integralmente pago
+    expect(result.invoices).toEqual([]);
+    expect(result.openInvoicesCents).toBe(0);
+    expect(result.committedObligationsCents).toBe(0);
+
+    // Próximo ciclo em acumulação (2026-12)
+    expect(result.nextCycleInvoices).toHaveLength(2);
+    expect(result.nextCycleInvoicesCents).toBe(165082);
+
+    // Faturas futuras (> 2026-12)
+    expect(result.futureInvoices).toHaveLength(5);
+    expect(result.futureInvoicesCents).toBe(273282);
+    expect(result.totalUpcomingCardInvoicesCents).toBe(165082 + 273282);
+  });
 });

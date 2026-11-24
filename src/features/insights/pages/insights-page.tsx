@@ -104,6 +104,7 @@ export function InsightsPage({
           trendPercent={dashboard.trendPercent}
           overspentBudgets={dashboard.overspentBudgets}
           essentialSpending={dashboard.essentialSpending}
+          breakdowns={dashboard.diagnosticBreakdowns}
           hasTransactions={dashboard.hasTransactions}
           hasIncome={dashboard.hasIncome}
         />
@@ -136,6 +137,7 @@ export function InsightsPage({
           onUnmuteFamily={unmuteFamily}
           merchantLearning={merchantLearning}
           onForgetMerchant={forgetMerchant}
+          summaryBreakdown={dashboard.recurrencesBreakdown}
         />
       ),
     },
@@ -156,7 +158,15 @@ export function InsightsPage({
           paceActive={dashboard.paceActive}
           paceBreakdown={dashboard.paceBreakdown}
           pendingSummary={dashboard.pendingSummary}
+          pendingBreakdown={dashboard.pendingBreakdown}
+          upcomingCardInvoices={{
+            nextCycleCents: dashboard.nextCycleInvoicesCents,
+            nextCycleCount: dashboard.nextCycleInvoicesCount,
+            futureCents: dashboard.futureInvoicesCents,
+            futureCount: dashboard.futureInvoicesCount,
+          }}
           challenges={dashboard.challenges}
+          challengesBreakdown={dashboard.challengesBreakdown}
           showDiscretionary={dashboard.showDiscretionary}
           discretionary={dashboard.discretionary}
           balanceCents={dashboard.balanceCents}

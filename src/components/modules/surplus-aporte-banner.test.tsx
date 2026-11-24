@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { buildSurplusCapacityBreakdown } from "@/domain/calculation-memory";
 import { SurplusAporteBanner } from "./surplus-aporte-banner";
 
 const navigateMock = vi.fn();
@@ -51,5 +52,41 @@ describe("SurplusAporteBanner (§F50 / Fase 3)", () => {
   it("não renderiza nada quando surplusCents <= 0", () => {
     const { container } = render(<SurplusAporteBanner surplusCents={0} />);
     expect(container.firstChild).toBeNull();
+  });
+
+  it("exibe Memória de Cálculo (?) e alerta de próxima fatura quando informados", () => {
+    const breakdown = buildSurplusCapacityBreakdown({
+      incomeCents: 350666,
+      expenseCents: 227382,
+      committedObligationsCents: 0,
+      pendingRecurringObligationsCents: 4000,
+      contributionsAlreadyMadeCents: 0,
+      safeToSpendCents: 29359,
+      suggestedAporteCents: 25359,
+      allocationIntent: "emergency_fund",
+      emergencyMonthsCovered: 0.3,
+      emergencyTargetMonths: 6,
+      nextCycleInvoicesCents: 165082,
+      futureInvoicesCents: 273282,
+    });
+
+    render(
+      <SurplusAporteBanner
+        surplusCents={25359}
+        allocationIntent="emergency_fund"
+        emergencyMonthsCovered={0.3}
+        emergencyTargetMonths={6}
+        calculationBreakdown={breakdown}
+        nextCycleInvoicesCents={165082}
+        futureInvoicesCents={273282}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", {
+        name: "Ver memória de cálculo de Memória do Reforço de Reserva de Emergência",
+      }),
+    ).toBeInTheDocument();
+    expect(document.body.textContent?.replace(/\u00a0/g, " ")).toContain("1.650,82");
   });
 });

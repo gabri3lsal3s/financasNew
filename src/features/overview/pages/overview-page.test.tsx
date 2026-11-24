@@ -1530,6 +1530,56 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
         screen.queryByRole("button", { name: /Simular cortes e projeção/i }),
       ).not.toBeInTheDocument();
     });
+
+    it("mantém Reforçar Reserva de Emergência no carrossel sem ser deslocado por jit-device-alerts-invite (paridade APK/PWA)", () => {
+      realCashBalanceMock.safeToSpend.safeToSpendCents = 100000;
+      realCashBalanceMock.cashBalance.currentBalanceCents = 600000;
+      incomesMock.data = () => [{ id: "i1", value: 5000, report_weight: 1, date: "2026-08-05" }];
+      expensesMock.data = () => [
+        { id: "e1", value: 3000, report_weight: 1, date: "2026-08-05", category_id: "c1" },
+      ];
+      publicSharesMock = [
+        {
+          id: "goal-share-1",
+          user_id: "user-1",
+          resource_type: "goal_tracker",
+          resource_id: "goal-1",
+          permission: "view",
+          token: "tok-1",
+          expires_at: null,
+          created_at: "2026-01-01T00:00:00Z",
+          is_revoked: false,
+          revoked_at: null,
+          access_count: 0,
+          last_accessed_at: null,
+          payload: {
+            title: "Meta 1",
+            target_cents: 100000,
+            current_cents: 82000,
+            status: "in_progress",
+          },
+        },
+      ];
+      const permSpy = vi.spyOn(nativeModule, "usePermissionsStatus").mockReturnValue({
+        postNotificationsGranted: false,
+        listenerGranted: false,
+        isChecking: false,
+        refresh: vi.fn().mockResolvedValue(undefined),
+        requestPostNotifications: vi.fn().mockResolvedValue(false),
+        requestNotificationListener: vi.fn().mockResolvedValue(false),
+      });
+      onboardingCountsMock = { ...onboardingCountsMock, notificationsEnabled: false };
+
+      try {
+        render(<OverviewPage />);
+
+        expect(screen.getAllByText("Reforçar Reserva de Emergência").length).toBeGreaterThan(0);
+        expect(screen.queryByText("Receba alertas de vencimentos e Pix")).not.toBeInTheDocument();
+      } finally {
+        permSpy.mockRestore();
+        onboardingCountsMock = { ...onboardingCountsMock, notificationsEnabled: true };
+      }
+    });
   });
 });
 

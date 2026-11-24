@@ -1,5 +1,12 @@
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import { Navigate, BrowserRouter, Route, Routes, useLocation, useNavigate } from "react-router";
+import {
+  ROUTE_CHECK_THROTTLE_MS,
+  applyPendingPWAUpdateIfSafe,
+  checkPWAUpdateNow,
+  getPWAUpdateAvailable,
+  isCredentialRoute,
+} from "@/app/pwa";
 import { appRoutes } from "@/app/routes";
 import { LoadingScreen } from "@/components/layout/loading-screen";
 import { ScrollRestoration } from "@/components/routing/scroll-restoration";
@@ -254,11 +261,61 @@ function HashRouteNormalizer() {
   return null;
 }
 
+/**
+ * Sincroniza atualizações do PWA de forma confortável nas transições de rota:
+ * - Em telas de credenciais (/entrar, /cadastro, /recuperar-senha, /admin/login):
+ *   verifica imediatamente e aplica atualização silenciosa antes da digitação.
+ * - Na navegação normal entre páginas: se houver atualização pronta e nenhum
+ *   modal/wizard/campo em edição estiver ativo, aplica a atualização na troca de rota;
+ *   caso contrário, faz verificação passiva em background (throttle 2 min).
+ */
+function PWAUpdateRouteSync() {
+  const location = useLocation();
+  const previousPathnameRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const currentPathname = location.pathname;
+
+    if (previousPathnameRef.current === null) {
+      previousPathnameRef.current = currentPathname;
+      if (isCredentialRoute(currentPathname)) {
+        void checkPWAUpdateNow({ force: true, applyIfSafe: true });
+      }
+      return;
+    }
+
+    if (previousPathnameRef.current === currentPathname) {
+      return;
+    }
+    previousPathnameRef.current = currentPathname;
+
+    if (isCredentialRoute(currentPathname)) {
+      if (!applyPendingPWAUpdateIfSafe()) {
+        void checkPWAUpdateNow({ force: true, applyIfSafe: true });
+      }
+      return;
+    }
+
+    if (getPWAUpdateAvailable()) {
+      applyPendingPWAUpdateIfSafe();
+      return;
+    }
+
+    void checkPWAUpdateNow({
+      throttleMs: ROUTE_CHECK_THROTTLE_MS,
+      applyIfSafe: false,
+    });
+  }, [location.pathname]);
+
+  return null;
+}
+
 export function AppRouter() {
   return (
     <BrowserRouter>
       <ScrollRestoration />
       <HashRouteNormalizer />
+      <PWAUpdateRouteSync />
       <Suspense fallback={<LoadingScreen statusText="Iniciando sessão segura…" />}>
         <Routes>
           {/* Páginas públicas de apresentação & planos */}

@@ -3,6 +3,7 @@ import { Check, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { EmergencyThermometer, ProjectionLine } from "@/components/modules";
+import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
 import type { CalculationBreakdown } from "@/domain/calculation-memory";
 import type { EmergencyFundComposition } from "@/domain/projection";
 import type { ChallengeOption, DiscretionaryChallenge } from "@/domain/savings";
@@ -21,7 +22,15 @@ export interface ProjectionTabProps {
     payablesCents: number;
     balanceCents: number;
   };
+  pendingBreakdown?: CalculationBreakdown | null;
+  upcomingCardInvoices?: {
+    nextCycleCents: number;
+    nextCycleCount: number;
+    futureCents: number;
+    futureCount: number;
+  };
   challenges: ChallengeOption[];
+  challengesBreakdown?: CalculationBreakdown | null;
   showDiscretionary: boolean;
   discretionary: DiscretionaryChallenge | null;
   balanceCents?: number;
@@ -47,7 +56,10 @@ export function ProjectionTab({
   paceActive,
   paceBreakdown,
   pendingSummary,
+  pendingBreakdown,
+  upcomingCardInvoices,
   challenges,
+  challengesBreakdown,
   showDiscretionary,
   discretionary,
   balanceCents,
@@ -96,7 +108,10 @@ export function ProjectionTab({
           />
 
           <div className="flex flex-col gap-2.5 rounded-xl border border-border/80 bg-surface p-4 min-w-0 shadow-xs">
-            <h3 className="text-sm font-semibold text-foreground">Pendências do período</h3>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <h3 className="text-sm font-semibold text-foreground">Pendências do período</h3>
+              {pendingBreakdown ? <CalculationMemoryModal breakdown={pendingBreakdown} priority="p1" /> : null}
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs min-w-0">
               <div className="flex flex-col gap-1 rounded-lg bg-surface-raised/80 p-3 min-w-0">
                 <span className="text-muted-foreground">A receber</span>
@@ -123,6 +138,31 @@ export function ProjectionTab({
                 />
               </div>
             </div>
+            {upcomingCardInvoices &&
+            upcomingCardInvoices.nextCycleCents + upcomingCardInvoices.futureCents > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 border-t border-border/80 text-xs min-w-0">
+                <div className="flex items-center justify-between gap-2 rounded-lg bg-surface-raised/50 px-3 py-2 min-w-0">
+                  <span className="text-muted-foreground">
+                    Próximas faturas (em acumulação{upcomingCardInvoices.nextCycleCount > 0 ? ` · ${upcomingCardInvoices.nextCycleCount}` : ""})
+                  </span>
+                  <MoneyText
+                    cents={upcomingCardInvoices.nextCycleCents}
+                    tone="default"
+                    className="font-semibold text-foreground shrink-0"
+                  />
+                </div>
+                <div className="flex items-center justify-between gap-2 rounded-lg bg-surface-raised/50 px-3 py-2 min-w-0">
+                  <span className="text-muted-foreground">
+                    Faturas futuras (parcelamentos{upcomingCardInvoices.futureCount > 0 ? ` · ${upcomingCardInvoices.futureCount}` : ""})
+                  </span>
+                  <MoneyText
+                    cents={upcomingCardInvoices.futureCents}
+                    tone="default"
+                    className="font-semibold text-foreground shrink-0"
+                  />
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       </section>
@@ -151,9 +191,14 @@ export function ProjectionTab({
 
         <div className="flex flex-col gap-3 rounded-xl border border-border/80 bg-surface p-4 min-w-0 shadow-xs">
           <div className="flex flex-col gap-0.5 min-w-0">
-            <h3 className="text-sm font-semibold text-foreground">
-              Desafios de economia inteligentes
-            </h3>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <h3 className="text-sm font-semibold text-foreground">
+                Desafios de economia inteligentes
+              </h3>
+              {challengesBreakdown ? (
+                <CalculationMemoryModal breakdown={challengesBreakdown} priority="p1" />
+              ) : null}
+            </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
               Metas de corte nas suas maiores categorias de consumo discricionário.
             </p>

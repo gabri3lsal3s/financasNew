@@ -9,7 +9,11 @@ import {
   TrialEndingBanner,
 } from "@/components/modules";
 import type { PermissionAlertBannerType } from "@/components/modules/permissions-alert-banner";
-import { buildCashGapBreakdown, buildPaceProjectionBreakdown } from "@/domain/calculation-memory";
+import {
+  buildCashGapBreakdown,
+  buildPaceProjectionBreakdown,
+  buildSurplusCapacityBreakdown,
+} from "@/domain/calculation-memory";
 import {
   applyHomeCarouselAttentionBudget,
   type InsightThemeFamily,
@@ -154,6 +158,27 @@ export function buildOverviewAlertItems(
           currentBalanceCents: data.realCashData.cashBalance.currentBalanceCents,
           predictedInflowsTotalCents,
           predictedInflows: data.predictedUpcomingInflows,
+        })
+      : undefined;
+
+  const nextCycleInvoicesCents = data.realCashData?.cycleBreakdown?.nextCycleInvoicesCents ?? 0;
+  const futureInvoicesCents = data.realCashData?.cycleBreakdown?.futureInvoicesCents ?? 0;
+
+  const surplusBreakdown =
+    surplusCapacity.hasSurplus && isCurrentMonth && isSurplusEligible
+      ? buildSurplusCapacityBreakdown({
+          incomeCents: data.financialContext.lens.consumption.operatingIncomeCents,
+          expenseCents: data.financialContext.lens.consumption.netExpenseCents,
+          committedObligationsCents: data.realCashData?.safeToSpend?.committedObligationsCents ?? 0,
+          pendingRecurringObligationsCents: surplusCapacity.pendingRecurringObligationsCents,
+          contributionsAlreadyMadeCents: data.totals.investmentCents,
+          safeToSpendCents: data.realCashData?.safeToSpend?.safeToSpendCents,
+          suggestedAporteCents: surplusCapacity.suggestedAporteCents,
+          allocationIntent: surplusCapacity.allocationIntent,
+          emergencyMonthsCovered: data.financialContext.lens.wealth.emergencyMonthsCovered,
+          emergencyTargetMonths: data.financialContext.lens.wealth.emergencyTargetMonths,
+          nextCycleInvoicesCents,
+          futureInvoicesCents,
         })
       : undefined;
 
@@ -303,6 +328,9 @@ export function buildOverviewAlertItems(
           allocationIntent={surplusCapacity.allocationIntent}
           emergencyMonthsCovered={data.financialContext.lens.wealth.emergencyMonthsCovered}
           emergencyTargetMonths={data.financialContext.lens.wealth.emergencyTargetMonths}
+          calculationBreakdown={surplusBreakdown}
+          nextCycleInvoicesCents={nextCycleInvoicesCents}
+          futureInvoicesCents={futureInvoicesCents}
           onDismiss={params.onDismissSurplus}
         />
       ),
@@ -341,7 +369,7 @@ export function buildOverviewAlertItems(
     params.showJitDeviceAlertsInvite &&
       !data.isCardDismissed("jit-device-alerts-invite") && {
         id: "jit-device-alerts-invite",
-        priority: 3.5,
+        priority: 5,
         content: (
           <DeviceAlertsInviteBanner
             onConfigure={() => params.onOpenInitialPreferences?.()}

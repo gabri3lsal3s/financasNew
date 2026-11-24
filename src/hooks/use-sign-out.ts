@@ -6,6 +6,7 @@ import {
   deactivatePushSubscriptionByEndpoint,
   deactivatePushSubscriptionByFcmToken,
 } from "@/data/repositories/push-subscriptions";
+import { clearGlobalAuthSession } from "@/hooks/use-auth";
 import { resetAppState } from "@/services/auth-cleanup";
 import { clearNativeBankMonitoring } from "@/services/native/bank-listener";
 import { clearDeviceSessionSync, getOrCreateDeviceId } from "@/services/native/device-info";
@@ -17,8 +18,38 @@ import {
 import { getActiveUserId } from "@/services/user-storage";
 import { userDevicesKey } from "@/state/queries/use-devices";
 
+const NATIVE_CLEANUP_TIMEOUT_MS = 2_000;
+const SUPABASE_SIGN_OUT_TIMEOUT_MS = 2_500;
+
 export interface SignOutOptions {
   scope?: "global" | "local" | "others";
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | undefined> {
+  return Promise.race([
+    promise,
+    new Promise<undefined>((resolve) => {
+      setTimeout(() => resolve(undefined), timeoutMs);
+    }),
+  ]);
+}
+
+function clearResidualSupabaseTokens(): void {
+  if (typeof window === "undefined" || !window.localStorage) return;
+  try {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i);
+      if (key && key.startsWith("sb-") && key.endsWith("-auth-token")) {
+        keysToRemove.push(key);
+      }
+    }
+    for (const key of keysToRemove) {
+      window.localStorage.removeItem(key);
+    }
+  } catch {
+    // no-op
+  }
 }
 
 /**
@@ -50,38 +81,36 @@ export function useSignOut() {
       clearDeviceSessionSync();
 
       try {
-        // Remove assinaturas Web Push e FCM nativo do dispositivo (best-effort; tolera 401/403 pós-revogação)
-        try {
-          const { endpoint } = await unsubscribeBrowserWebPush();
-          if (endpoint) {
-            await deactivatePushSubscriptionByEndpoint(endpoint);
-          }
-        } catch {
-          // Não bloqueia logout em caso de falha de rede ou token já revogado (401/403)
-        }
-
-        try {
-          const { token } = await unregisterNativeFcmPush(previousUserId);
-          if (token) {
-            await deactivatePushSubscriptionByFcmToken(token);
-          }
-        } catch {
-          // Não bloqueia logout em caso de falha de rede ou token já revogado (401/403)
-        }
-
-        // Aguarda limpeza dos agendamentos locais com previousUserId antes de resetar activeUserId
-        await Promise.allSettled([
+        // Executa limpezas de push e plugins nativos em paralelo com timeout estrito,
+        // impedindo que bridges Android (ex.: PushNotifications.unregister) travem o logout no APK.
+        const cleanupTasks = Promise.allSettled([
+          (async () => {
+            const { endpoint } = await unsubscribeBrowserWebPush();
+            if (endpoint) {
+              await deactivatePushSubscriptionByEndpoint(endpoint);
+            }
+          })(),
+          (async () => {
+            const { token } = await unregisterNativeFcmPush(previousUserId);
+            if (token) {
+              await deactivatePushSubscriptionByFcmToken(token);
+            }
+          })(),
           Promise.resolve(clearNativeBankMonitoring()),
           Promise.resolve(clearAllDueNotifications(previousUserId)),
           Promise.resolve(cancelDailyReminder()),
         ]);
 
+        await withTimeout(cleanupTasks, NATIVE_CLEANUP_TIMEOUT_MS);
+
         try {
-          await supabase.auth.signOut({ scope });
+          await withTimeout(supabase.auth.signOut({ scope }), SUPABASE_SIGN_OUT_TIMEOUT_MS);
         } catch {
-          // Tolera 401/403 caso a sessão já tenha sido excluída em `auth.sessions`
+          // Tolera 401/403 ou erro de rede caso a sessão já tenha sido removida no servidor
         }
       } finally {
+        clearResidualSupabaseTokens();
+        clearGlobalAuthSession();
         resetAppState(queryClient ?? undefined, null);
       }
     },

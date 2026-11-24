@@ -9,7 +9,12 @@ import {
   CardTitle,
 } from "@/components/ui";
 import { ApkInstallGuideDialog } from "@/components/modules";
-import { forceAppUpdate, getPWAUpdateAvailable, subscribePWAUpdate } from "@/app/pwa";
+import {
+  checkPWAUpdateManually,
+  forceAppUpdate,
+  getPWAUpdateAvailable,
+  subscribePWAUpdate,
+} from "@/app/pwa";
 import { useAppUpdate } from "@/hooks/use-app-update";
 import {
   AXIR_APK_DOWNLOAD_URL,
@@ -66,21 +71,22 @@ export function AppAboutCard({ isNative }: AppAboutCardProps) {
 
   const handleManualCheckUpdate = async () => {
     triggerSensory("action");
-    if (!isNative && typeof navigator !== "undefined" && "serviceWorker" in navigator) {
-      try {
-        const regs = await navigator.serviceWorker.getRegistrations();
-        for (const reg of regs) {
-          await reg.update();
-        }
-      } catch {
-        // Fallback gracioso
+    let swHasUpdate = false;
+    if (!isNative) {
+      swHasUpdate = await checkPWAUpdateManually();
+      if (swHasUpdate || getPWAUpdateAvailable()) {
+        setPwaUpdateReady(true);
       }
     }
 
     const res = await checkForUpdates(false);
     setLastCheckedAt(new Date());
 
-    if (res.hasUpdate || pwaUpdateReady) {
+    const foundUpdate = isNative
+      ? res.hasUpdate
+      : res.hasUpdate || swHasUpdate || getPWAUpdateAvailable();
+
+    if (foundUpdate) {
       pushToast({
         title: "Nova versão encontrada!",
         description: isNative
@@ -146,7 +152,9 @@ export function AppAboutCard({ isNative }: AppAboutCardProps) {
           description: "Sincronizando arquivos da versão mais recente e recarregando...",
           variant: "info",
         });
-        await forceAppUpdate();
+        await forceAppUpdate({
+          hardResetIfNoWorker: Boolean(hasUpdate && !getPWAUpdateAvailable()),
+        });
       }
     } catch (err) {
       setIsUpdatingPwa(false);

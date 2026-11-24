@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { ArrowRight, CalendarClock, ChevronDown, ChevronUp, CreditCard, HandCoins } from "lucide-react";
 import { Badge, Button } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
+import { buildWeeklyRadarBreakdown } from "@/domain/calculation-memory";
 import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
 import type { WeeklyRadarObligation, WeeklyRadarSummary } from "@/domain/projection";
+import { CalculationMemoryModal } from "./calculation-memory";
 
 export interface WeeklyDueRadarCardProps {
   summary: WeeklyRadarSummary;
@@ -36,6 +38,18 @@ function getDueLabel(daysUntilDue: number): string {
 export function WeeklyDueRadarCard({ summary, className, onOpenItem }: WeeklyDueRadarCardProps) {
   const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(false);
+
+  const weeklyBreakdown = useMemo(
+    () =>
+      buildWeeklyRadarBreakdown({
+        currentBalanceCents: summary.realCashCents,
+        totalDueCents: summary.totalDueCents,
+        freeBalanceCents: summary.freeBalanceCents,
+        itemsCount: summary.items.length,
+        overdueCount: summary.items.filter((i) => i.status === "overdue").length,
+      }),
+    [summary.realCashCents, summary.totalDueCents, summary.freeBalanceCents, summary.items],
+  );
 
   // REGRA DE OURO: Totalmente oculto em empty state
   if (!summary.hasObligations || summary.items.length === 0) {
@@ -83,8 +97,9 @@ export function WeeklyDueRadarCard({ summary, className, onOpenItem }: WeeklyDue
         </div>
 
         {/* Indicador de Liquidez Semanal */}
-        <div className="flex items-center gap-2 self-start sm:self-auto text-xs">
+        <div className="flex items-center gap-1.5 self-start sm:self-auto text-xs">
           <span className="text-muted-foreground">Saldo livre da semana:</span>
+          <CalculationMemoryModal breakdown={weeklyBreakdown} priority="p1" />
           <MoneyText
             cents={summary.freeBalanceCents}
             tone={summary.isDeficitRisk ? "negative" : "positive"}

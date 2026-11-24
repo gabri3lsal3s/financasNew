@@ -169,10 +169,10 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Ciclo Integrado de Faturas, Rolagens & SSOT de Insights",
-    "Fonte Unica de Verdade (SSOT) para faturas em aberto alimentando Cash-Gap, Safe-to-Spend, Lembretes, Radar Semanal e Limite Usado",
-    "Ciclo completo de fatura com 7 estados canonicos, rolagem de saldo vencido com encargos opcionais e parcelamento sem bitributacao",
-    "Estorno de cartao neutro no saldo bancario, fallback resiliente de consultas e importador anti-duplicacao para saldo rotativo/encargos"
+    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Conciliacao Inteligente, Cross-Competencia & PDF com Senha na IA Vision",
+    "Deteccao e exclusao segura de duplicatas ja cadastradas no app dentro da aba Duplicatas sem falso alerta em Conciliados",
+    "Conciliacao cross-competencia (M-1/M+1) com movimentacao individual ou em lote para mudancas de fechamento",
+    "Suporte a PDFs protegidos por senha na escalada visual (IA Vision) com senha mantida apenas em memoria volatil"
   ]
 }
 EOF

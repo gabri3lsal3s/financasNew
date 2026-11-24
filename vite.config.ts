@@ -23,9 +23,19 @@ export default defineConfig({
       workbox: {
         cleanupOutdatedCaches: true,
         importScripts: ["/sw-push.js"],
-        globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2}"],
-        // logo-full.png (lockup da marca, ~5 MB) é asset estático fora do runtime:
-        // fica fora do precache para não estourar o limite do Workbox (2 MiB).
+        // Precache estrito do App Shell essencial: reduz drasticamente o tempo de instalação
+        // do novo Service Worker em cada deploy (de ~200 arquivos para ~8 arquivos críticos).
+        // Chunks de rotas lazy (com hash imutável) e imagens são cacheados sob demanda via runtimeCaching.
+        globPatterns: [
+          "index.html",
+          "offline.html",
+          "pwa/offline.html",
+          "assets/index-*.{js,css}",
+          "assets/vendor-react-*.js",
+          "assets/vendor-ui-*.js",
+          "assets/vendor-backend-*.js",
+        ],
+        // logo-full.png (lockup da marca, ~5 MB) e chunks pesados sob demanda ficam fora do precache.
         globIgnores: [
           "**/brand/logo-full.png",
           "**/pdfjs-*",
@@ -72,6 +82,15 @@ export default defineConfig({
             options: {
               cacheName: "on-demand-chunks",
               expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 30 },
+            },
+          },
+          // Chunks de rotas lazy com hash imutável gerados pelo Vite: cacheados sob demanda (CacheFirst)
+          {
+            urlPattern: /\/assets\/.*\.(?:js|css)$/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "app-chunks",
+              expiration: { maxEntries: 120, maxAgeSeconds: 60 * 60 * 24 * 30 },
             },
           },
         ],

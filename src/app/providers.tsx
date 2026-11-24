@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/reac
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { ThemeProvider } from "@/app/theme-provider";
+import { checkPWAUpdateNow } from "@/app/pwa";
 import { Toaster } from "@/components/ui/toast";
 import { ToastHost } from "@/components/ui/toast-host";
 import { AppUpdateToast } from "@/components/modules/app-update-toast";
@@ -47,6 +48,8 @@ function AuthQuerySync({ children }: { children: ReactNode }) {
           Promise.resolve(unregisterNativeFcmPush(previousUserId)),
         ]);
         resetAppState(queryClient, null);
+        // Ao encerrar sessão, verifica e aplica atualizações pendentes do PWA em ponto seguro
+        void checkPWAUpdateNow({ force: true, applyIfSafe: true });
       } else if (previousUserId !== newUserId) {
         if (previousUserId && previousUserId !== newUserId) {
           void Promise.allSettled([
@@ -59,8 +62,10 @@ function AuthQuerySync({ children }: { children: ReactNode }) {
         }
         resetAppState(queryClient, newUserId);
         void queryClient.invalidateQueries();
+        void checkPWAUpdateNow({ force: true, applyIfSafe: true });
       } else if (event === "SIGNED_IN") {
         void queryClient.invalidateQueries();
+        void checkPWAUpdateNow({ force: true, applyIfSafe: true });
       }
 
       activeUserIdRef.current = newUserId;

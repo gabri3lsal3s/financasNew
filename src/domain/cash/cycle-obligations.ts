@@ -40,6 +40,14 @@ export interface CycleFutureDebtsSummary {
 export interface CycleObligationsBreakdown {
   invoices: CycleInvoiceItem[];
   openInvoicesCents: number;
+  /** Faturas do próximo ciclo em acumulação (mês seguinte ao atual, ainda dentro do limite em aberto). */
+  nextCycleInvoices?: CycleInvoiceItem[];
+  nextCycleInvoicesCents?: number;
+  /** Faturas futuras / parcelamentos posteriores (além do próximo ciclo). */
+  futureInvoices?: CycleInvoiceItem[];
+  futureInvoicesCents?: number;
+  /** Soma total de compromissos em faturas fora do ciclo atual (`nextCycleInvoicesCents + futureInvoicesCents`). */
+  totalUpcomingCardInvoicesCents?: number;
   payableDebts: CycleDebtItem[];
   payableDebtsCents: number;
   committedObligationsCents: number;
@@ -100,28 +108,53 @@ export function breakdownCycleObligations(
   } = params;
 
   const currentMonthStr = referenceDate.slice(0, 7);
-  const currentMonthRangeEnd = `${shiftMonth(currentMonthStr, 1)}-01`;
+  const nextMonthStr = shiftMonth(currentMonthStr, 1);
+  const currentMonthRangeEnd = `${nextMonthStr}-01`;
 
-  // 1. Apuração de faturas de cartão de crédito no ciclo (SSOT: inclui vencidas e ciclo atual; inclui cartões inativos com saldo aberto)
-  const openInvoices = resolveOpenCardInvoices({
+  // 1. Apuração em 3 camadas de faturas de cartão de crédito em aberto (SSOT):
+  //    (a) Ciclo atual (vencidas ou vencendo até o fim deste mês civil);
+  //    (b) Próximo ciclo em acumulação (mês seguinte — reduz "Livre para gastar", não o Saldo Livre do ciclo);
+  //    (c) Faturas futuras / parcelamentos posteriores (> próximo mês).
+  const allOpenInvoices = resolveOpenCardInvoices({
     cards,
     expenses: cardExpenses,
     payments: cardPayments,
     rollovers: cardRollovers,
     today: referenceDate,
-  }).filter(
-    (inv) => inv.competenceMonth <= currentMonthStr || inv.effectiveDueDate < currentMonthRangeEnd,
-  );
+  });
 
-  const invoiceItems: CycleInvoiceItem[] = openInvoices.map((inv) => ({
+  const toCycleInvoiceItem = (inv: (typeof allOpenInvoices)[number]): CycleInvoiceItem => ({
     cardId: inv.cardId,
     cardName: inv.cardName,
     cardColor: inv.cardColor,
     competenceMonth: inv.competenceMonth,
     dueDate: inv.effectiveDueDate,
     saldoCents: inv.saldoBrutoCents,
-  }));
+  });
+
+  const invoiceItems: CycleInvoiceItem[] = [];
+  const nextCycleInvoices: CycleInvoiceItem[] = [];
+  const futureInvoices: CycleInvoiceItem[] = [];
+
+  for (const inv of allOpenInvoices) {
+    const item = toCycleInvoiceItem(inv);
+    if (
+      inv.isOverdue ||
+      inv.competenceMonth <= currentMonthStr ||
+      inv.effectiveDueDate < currentMonthRangeEnd
+    ) {
+      invoiceItems.push(item);
+    } else if (inv.competenceMonth === nextMonthStr) {
+      nextCycleInvoices.push(item);
+    } else {
+      futureInvoices.push(item);
+    }
+  }
+
   const openInvoicesCents = invoiceItems.reduce((acc, item) => acc + item.saldoCents, 0);
+  const nextCycleInvoicesCents = nextCycleInvoices.reduce((acc, item) => acc + item.saldoCents, 0);
+  const futureInvoicesCents = futureInvoices.reduce((acc, item) => acc + item.saldoCents, 0);
+  const totalUpcomingCardInvoicesCents = nextCycleInvoicesCents + futureInvoicesCents;
 
   // 2. Apuração de dívidas a pagar e a receber do ciclo
   const payableDebts: CycleDebtItem[] = [];
@@ -177,6 +210,11 @@ export function breakdownCycleObligations(
   return {
     invoices: invoiceItems,
     openInvoicesCents,
+    nextCycleInvoices,
+    nextCycleInvoicesCents,
+    futureInvoices,
+    futureInvoicesCents,
+    totalUpcomingCardInvoicesCents,
     payableDebts,
     payableDebtsCents,
     committedObligationsCents,

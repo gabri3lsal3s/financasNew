@@ -16,6 +16,11 @@ vi.mock("@/services/auth-cleanup", () => ({
   resetAppState: vi.fn(),
 }));
 
+const mockClearGlobalAuthSession = vi.fn();
+vi.mock("@/hooks/use-auth", () => ({
+  clearGlobalAuthSession: () => mockClearGlobalAuthSession(),
+}));
+
 vi.mock("@/data/repositories/devices", () => ({
   revokeOtherDevices: vi.fn().mockResolvedValue(2),
 }));
@@ -125,7 +130,34 @@ describe("useSignOut", () => {
     expect(clearNativeBankMonitoring).toHaveBeenCalledTimes(1);
     expect(clearAllDueNotifications).toHaveBeenCalledWith("user-123");
     expect(cancelDailyReminder).toHaveBeenCalledTimes(1);
+    expect(mockClearGlobalAuthSession).toHaveBeenCalledTimes(1);
     expect(resetAppState).toHaveBeenCalledTimes(1);
     expect(resetAppState).toHaveBeenCalledWith(undefined, null);
+  });
+
+  it("não trava o logout no APK se unregisterNativeFcmPush ou supabase.auth.signOut ficarem pendentes (timeout)", async () => {
+    vi.useFakeTimers();
+    vi.mocked(unregisterNativeFcmPush).mockImplementationOnce(() => new Promise(() => {}));
+    mockSignOut.mockImplementationOnce(() => new Promise(() => {}));
+    localStorage.setItem("sb-demo-auth-token", "stale-token");
+
+    const { result } = renderHook(() => useSignOut());
+
+    let done = false;
+    const signOutPromise = act(async () => {
+      await result.current.signOut();
+      done = true;
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    await signOutPromise;
+
+    expect(done).toBe(true);
+    expect(localStorage.getItem("sb-demo-auth-token")).toBeNull();
+    expect(mockClearGlobalAuthSession).toHaveBeenCalledTimes(1);
+    expect(resetAppState).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
   });
 });

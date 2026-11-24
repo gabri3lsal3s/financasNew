@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import { normalizeSpaces } from "../formatters";
 import {
   buildCashGapBreakdown,
+  buildFreeToSpendBreakdown,
   buildRealCashBreakdown,
   buildSafeToSpendBreakdown,
+  buildSurplusCapacityBreakdown,
+  buildWeeklyRadarBreakdown,
 } from "./cash-breakdown";
 
 describe("Builders de Memória de Cálculo: Cash", () => {
@@ -196,6 +199,77 @@ describe("Builders de Memória de Cálculo: Cash", () => {
       expect(invStep?.hint).toBe("Vencida em 10/08/2026 — exigível hoje");
       const inflowStep = breakdown.steps.find((s) => s.label === "Entradas Previstas até o Déficit");
       expect(inflowStep?.rawValue).toBe(10000);
+    });
+  });
+
+  describe("buildFreeToSpendBreakdown & buildSurplusCapacityBreakdown & buildWeeklyRadarBreakdown", () => {
+    it("buildSafeToSpendBreakdown inclui alerta transparente quando há faturas em ciclos futuros", () => {
+      const breakdown = buildSafeToSpendBreakdown({
+        realCashBalanceCents: 29359,
+        committedObligationsCents: 0,
+        openInvoicesCents: 0,
+        payablePendingCents: 0,
+        safeToSpendCents: 29359,
+        nextCycleInvoicesCents: 165082,
+        nextCycleInvoicesCount: 2,
+        futureInvoicesCents: 273282,
+        futureInvoicesCount: 5,
+      });
+
+      expect(breakdown.result.rawValue).toBe(29359);
+      expect(breakdown.notes?.some((n) => n.includes("1.650,82") && n.includes("2.732,82"))).toBe(true);
+    });
+
+    it("buildFreeToSpendBreakdown explica déficit frente às próximas faturas mantendo Livre para Gastar zerado", () => {
+      const breakdown = buildFreeToSpendBreakdown({
+        safeToSpendCents: 29359,
+        nextCycleInvoicesCents: 165082,
+        nextCycleInvoicesCount: 2,
+        futureInvoicesCents: 273282,
+        futureInvoicesCount: 5,
+        freeToSpendCents: 0,
+      });
+
+      expect(breakdown.id).toBe("dash-free-to-spend");
+      expect(breakdown.result.rawValue).toBe(0);
+      expect(breakdown.notes?.[0]).toContain("1.357,23");
+      expect(breakdown.notes?.[1]).toContain("2.732,82");
+    });
+
+    it("buildSurplusCapacityBreakdown detalha fixos pendentes (-R$ 40,00) e alerta sobre faturas futuras", () => {
+      const breakdown = buildSurplusCapacityBreakdown({
+        incomeCents: 350666,
+        expenseCents: 227382,
+        committedObligationsCents: 0,
+        pendingRecurringObligationsCents: 4000,
+        contributionsAlreadyMadeCents: 0,
+        safeToSpendCents: 29359,
+        suggestedAporteCents: 25359,
+        allocationIntent: "emergency_fund",
+        emergencyMonthsCovered: 0.3,
+        emergencyTargetMonths: 6,
+        nextCycleInvoicesCents: 165082,
+        futureInvoicesCents: 273282,
+      });
+
+      expect(breakdown.id).toBe("dash-surplus-capacity");
+      expect(breakdown.steps.some((s) => s.label.includes("Recorrências Fixas") && s.rawValue === 4000)).toBe(true);
+      expect(breakdown.result.rawValue).toBe(25359);
+      expect(breakdown.notes?.some((n) => n.includes("1.650,82") && n.includes("2.732,82"))).toBe(true);
+    });
+
+    it("buildWeeklyRadarBreakdown detalha saldo atual menos contas da janela de 7 dias", () => {
+      const breakdown = buildWeeklyRadarBreakdown({
+        currentBalanceCents: 29359,
+        totalDueCents: 15000,
+        freeBalanceCents: 14359,
+        itemsCount: 2,
+        overdueCount: 1,
+      });
+
+      expect(breakdown.id).toBe("dash-weekly-radar");
+      expect(breakdown.result.rawValue).toBe(14359);
+      expect(breakdown.steps[1]?.hint).toContain("1 compromisso(s) vencido(s)");
     });
   });
 });

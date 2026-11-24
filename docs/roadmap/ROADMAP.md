@@ -8171,6 +8171,23 @@ flowchart TD
 >   - Cash-Gap (`cash-gap.ts`), Safe-to-Spend (`cycle-obligations.ts`), Lembretes (`reminders/index.ts`), Memória de Cálculo (`cash-breakdown.ts`, `invoice-breakdown.ts`), Radar Semanal e Limite Usado unificados sobre `resolveOpenCardInvoices` e validados por `ssot-congruence.test.ts`.
 >   - Anti-duplicação no importador de faturas (`clean.ts`, `scorer.ts`) e nova UI de Cartões (`BillRolloverDialog`, `InvoiceStatusBadge` com 7 estados, invalidação completa de caches em `use-card-mutations.ts`).
 
+---
+
+### Fase 130 — Conciliação Inteligente (Duplicatas no App, Cross-Competência e PDF com Senha na IA Vision) (v3.26.0)
+
+> **Status:** Concluída em Código e Testes (`v3.26.0`):
+> - **Separação de `Conciliados` vs `Duplicatas` & Detector no App (`src/domain/reconciliation/app-duplicates.ts`):**
+>   - `Conciliados` (`exact_match`) deixam de disparar falso alerta de duplicidade em `StatementReconcileStep`;
+>   - `findAppDuplicateCandidates` identifica duplicatas já cadastradas no app (ex.: lançamento manual repetido em até 3 dias) comparando sobras contra despesas conciliadas e entre si, respeitando parcelamentos;
+>   - Nova linha `StatementAppDuplicateRow` na aba `Duplicatas` com par lado a lado e exclusão segura confirmada em 2 cliques (`useDeleteExpense`).
+> - **Conciliação Cross-Competência (`M-1` / `M+1`) & Mudança de Fechamento (`scorer.ts`, `statement-reconcile-step.tsx`):**
+>   - `reconcileStatementTransactions` cruza itens sem par na competência atual com despesas de competências adjacentes (`adjacentExpenses`), sinalizando `crossCompetenceMatch` com `selected: false` para impedir importação duplicada;
+>   - Ação em 1 clique **"Mover para esta fatura"** na linha e faixa de lote **"Mover todas para esta fatura"** quando `>= 2` compras vêm de fatura vizinha;
+>   - `StatementAppOnlyRow` passa a sinalizar `Próxima ao fechamento` e oferece ações inline para mover para `M-1`/`M+1` ou excluir.
+>   - Em `probable_match` com valor idêntico, botão ajustado para **"Vincular à despesa"**.
+> - **PDF Protegido por Senha na IA Vision (`receipt-extractor.ts`, `use-statement-import.ts`):**
+>   - `renderScannedPdfPageToBlob` aceita `{ password }` e propaga para `unpdf.getDocumentProxy` (Estratégia 1 e fallback `extractImages`), usando `pdfPasswordRef` em memória volátil durante a sessão do modal nos fluxos de `pdf_scanned`, escalada automática 3B e `handleConfirmVisionEscalation`.
+
 
 
 

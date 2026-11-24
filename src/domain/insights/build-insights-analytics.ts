@@ -91,6 +91,11 @@ export interface InsightsAnalyticsResult {
   challenges: ChallengeOption[];
   showDiscretionary: boolean;
   discretionary: DiscretionaryChallenge | null;
+  weekdayDailyCents: number;
+  weekendDailyCents: number;
+  previousComparableCents: number;
+  incomeTopSourceCents: number;
+  incomeTotalCents: number;
 }
 
 export function buildInsightsAnalytics(input: BuildInsightsAnalyticsInput): InsightsAnalyticsResult {
@@ -179,7 +184,10 @@ export function buildInsightsAnalytics(input: BuildInsightsAnalyticsInput): Insi
   const showDiscretionary = discretionary !== null && discretionary.categoryCount >= 2;
 
   const incomeByCategory = realizedByCategoryMap(incomes);
-  const concentration = incomeConcentration([...incomeByCategory.values()], {
+  const incomeCategoryValues = [...incomeByCategory.values()];
+  const incomeTotalCents = incomeCategoryValues.reduce((acc, v) => acc + v, 0);
+  const incomeTopSourceCents = incomeCategoryValues.length > 0 ? Math.max(...incomeCategoryValues) : 0;
+  const concentration = incomeConcentration(incomeCategoryValues, {
     isSingleSalarySource: incomes.length === 1,
   });
   const health = savingsHealth(input.effectiveSavingsRateForHealth, hasIncome);
@@ -249,5 +257,10 @@ export function buildInsightsAnalytics(input: BuildInsightsAnalyticsInput): Insi
     challenges,
     showDiscretionary,
     discretionary,
+    weekdayDailyCents,
+    weekendDailyCents,
+    previousComparableCents: trend.previousComparableCents,
+    incomeTopSourceCents,
+    incomeTotalCents,
   };
 }
