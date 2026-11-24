@@ -380,23 +380,25 @@ flowchart LR
     Onda2 --> Onda3
 ```
 
-### Onda 1 — Fundação, Correção Geométrica, Governança Granular, Core & Negócio
-* **Escopo:**
-  1. Remover `max-sm:min-h-11` de `src/features/family/pages/family-page.tsx`.
-  2. Remover `w-full min-h-11 sm:min-h-8` de `src/features/trips/pages/trip-list-page.tsx`.
-  3. Adicionar `showEducationalPlaybooks` e `dismissedPlaybookKeys` no schema de `UserSettings`, `visual-defaults.ts`, `visual-storage.ts` (com parsing defensivo) e `useVisualCustomization`.
-  4. Adicionar o card/switch em `src/features/settings/components/tabs/interface-shortcuts-card.tsx` com o `PLAYBOOK_REGISTRY` e botão "Reativar todos os guias".
-  5. Desenvolver a shell reutilizável `<InteractivePlaybookModal />` em `src/components/modules/playbooks/` com a dispensa inline no rodapé.
-  6. Criar o domínio `transaction-playbook.ts` e o modal `TransactionEducationalGuideModal.tsx` com linguagem em 3 camadas e Passo Zero ("Comece de Hoje").
-  7. Adicionar o gatilho em `transaction-list-page.tsx` e `cards-page.tsx` (compartilhando `moduleKey: "transactions"`).
-  8. Conectar o `EducationalGuideModal` existente em `business-page.tsx` às flags de governança (`moduleKey: "business"`).
-* **Quality Gate 1:**
+### Onda 1 — Fundação, Correção Geométrica, Governança Granular, Core & Negócio (CONCLUÍDA)
+* **Status:** Concluída com 100% de aprovação (ESLint 0 erros, Vitest 87/87 testes aprovados).
+* **Entregas Realizadas:**
+  1. [x] Remoção de `max-sm:min-h-11` de `src/features/family/pages/family-page.tsx` (restaura padrão `h-9` no mobile).
+  2. [x] Remoção de `w-full min-h-11 sm:min-h-8` de `src/features/trips/pages/trip-list-page.tsx`.
+  3. [x] Adição de `showEducationalPlaybooks` e `dismissedPlaybookKeys` no schema de `UserSettings`, `visual-defaults.ts`, `visual-storage.ts` (com parsing defensivo e deduplicação) e `useVisualCustomization`.
+  4. [x] Implementação do card/switch em `src/features/settings/components/tabs/interface-shortcuts-card.tsx` com `PLAYBOOK_REGISTRY`, resumo dinâmico e ação "Reativar todos os guias".
+  5. [x] Desenvolvimento da shell unificada e reutilizável `<InteractivePlaybookModal />` em `src/components/modules/playbooks/` com dispensa inline no rodapé ("Só este guia" / "Todos os guias" / "Cancelar").
+  6. [x] Criação do domínio `transaction-playbook.ts` e do modal pedagógico `TransactionEducationalGuideModal.tsx` com 4 abas, linguagem em 3 camadas e diagnóstico interativo.
+  7. [x] Integração do gatilho `Guia` em `transaction-list-page.tsx` e `cards-page.tsx` (compartilhando `moduleKey: "transactions"`).
+  8. [x] Adequação do `EducationalGuideModal` e do gatilho em `business-page.tsx` à governança unificada (`moduleKey: "business"`).
+* **Quality Gate 1 Verificado:**
   - Altura máxima de botões de cabeçalho no mobile $\le 36\text{px}$ (`h-9`).
   - Nenhum botão esticado em 100% da tela.
   - Ao dispensar "Só este guia" em Lançamentos, o botão desaparece de Transações e Cartões, mas o Guia do Negócio permanece ativo.
   - Ao desligar o switch master em Ajustes, todos os guias desaparecem.
   - Conformidade estrita com todas as Regras de UI auditadas na Seção 8.
-  - Testes unitários com 100% de aprovação.
+  - ESLint com 0 erros (regra `local/no-decorative-unicode` e tipagem estrita).
+  - 87 testes unitários e de integração aprovados na suíte Vitest.
 
 ---
 
