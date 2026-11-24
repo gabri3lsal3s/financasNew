@@ -60,7 +60,6 @@ export function EducationalGuideModal({
   onOpenChange,
   onSelectProfile,
 }: EducationalGuideModalProps) {
-  const [activeTab, setActiveTab] = useState<string>("quiz");
   const [quizStep, setQuizStep] = useState<QuizStep>("structure");
   const [answers, setAnswers] = useState<QuizAnswers>(INITIAL_ANSWERS);
 
@@ -611,7 +610,7 @@ export function EducationalGuideModal({
       title="Guia do Empreendedor & Enquadramento"
       description="Descubra seu perfil ideal e entenda as regras fiscais sem complicação contábil."
       tabs={tabItems}
-      defaultTab={activeTab}
+      defaultTab="quiz"
     />
   );
 }
