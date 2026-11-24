@@ -4,8 +4,20 @@
  */
 
 export const ASAAS_PLAN_CATALOG = {
-  monthly: { planId: "pro_monthly" as const, value: 19.99, valueCents: 1999, cycle: "MONTHLY" as const },
-  annual: { planId: "pro_annual" as const, value: 143.88, valueCents: 14388, cycle: "YEARLY" as const },
+  monthly: {
+    planId: "pro_monthly" as const,
+    name: "Plano Pro Mensal",
+    value: 19.99,
+    valueCents: 1999,
+    cycle: "MONTHLY" as const,
+  },
+  annual: {
+    planId: "pro_annual" as const,
+    name: "Plano Pro Anual",
+    value: 143.88,
+    valueCents: 14388,
+    cycle: "YEARLY" as const,
+  },
 };
 
 export type AsaasPlanKey = keyof typeof ASAAS_PLAN_CATALOG;

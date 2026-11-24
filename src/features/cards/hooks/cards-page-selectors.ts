@@ -1,4 +1,4 @@
-import { buildCompetenceSummaries, invoiceDueDate } from "@/domain/cards";
+import { buildCompetenceSummaries, invoiceDueDate, type CardBillRolloverLike } from "@/domain/cards";
 import type { CardInvoiceExpenseRow, CardInvoicePaymentRow } from "@/components/modules";
 import type { CardLimitUsageEntry } from "@/components/modules/credit-card-wallet";
 import { numberToCents } from "@/domain/money";
@@ -19,6 +19,7 @@ export function selectPriorityCardAndMonth(
   allExpenses: readonly Expense[],
   allPayments: readonly CardPayment[],
   primaryCardId: string | null,
+  allRollovers: readonly (CardBillRolloverLike & { card_id: string })[] = [],
 ): PriorityCardSelection {
   if (cards.length === 0) return { cardId: null, month: null };
 
@@ -34,7 +35,8 @@ export function selectPriorityCardAndMonth(
   for (const card of cards.filter((c) => c.is_active)) {
     const cExpenses = allExpenses.filter((e) => e.card_id === card.id);
     const cPayments = allPayments.filter((p) => p.card_id === card.id);
-    const summaries = buildCompetenceSummaries(cExpenses, cPayments);
+    const cRollovers = allRollovers.filter((r) => r.card_id === card.id);
+    const summaries = buildCompetenceSummaries(cExpenses, cPayments, cRollovers);
 
     for (const s of summaries) {
       if (s.saldoCents > 0) {
@@ -60,22 +62,29 @@ export function selectPriorityCardAndMonth(
   return { cardId: fallbackCard?.id ?? null, month: null };
 }
 
-/** Calcula o saldo bruto e ponderado utilizado por cartão na competência ativa. */
+/**
+ * Calcula o limite comprometido real por cartão somando o saldo aberto de todas
+ * as competências não quitadas (incluindo parcelas futuras e juros de refinanciamento).
+ */
 export function buildUsedLimitMap(
   cards: readonly CreditCard[],
   allExpenses: readonly Expense[],
   allPayments: readonly CardPayment[],
-  effectiveMonth: string,
+  _effectiveMonth?: string,
+  allRollovers: readonly (CardBillRolloverLike & { card_id: string })[] = [],
 ): Record<string, CardLimitUsageEntry> {
   const map: Record<string, CardLimitUsageEntry> = {};
   for (const card of cards) {
     const cExpenses = allExpenses.filter((e) => e.card_id === card.id);
     const cPayments = allPayments.filter((p) => p.card_id === card.id);
-    const cSum = buildCompetenceSummaries(cExpenses, cPayments).find((s) => s.month === effectiveMonth);
-    if (cSum) {
+    const cRollovers = allRollovers.filter((r) => r.card_id === card.id);
+    const summaries = buildCompetenceSummaries(cExpenses, cPayments, cRollovers);
+    const brutoCents = summaries.reduce((acc, s) => acc + s.saldoBrutoCents, 0);
+    const ponderadoCents = summaries.reduce((acc, s) => acc + s.saldoPonderadoCents, 0);
+    if (brutoCents > 0 || ponderadoCents > 0) {
       map[card.id] = {
-        brutoCents: cSum.saldoBrutoCents,
-        ponderadoCents: cSum.saldoPonderadoCents,
+        brutoCents,
+        ponderadoCents,
       };
     }
   }

@@ -1,10 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
+import { listAllCardBillRollovers } from "@/data/repositories/card-bill-rollovers";
 import { listAllCardExpenses } from "@/data/repositories/expenses";
 import { listAllCardPayments } from "@/data/repositories/card-payments";
-import { cardExpensesKey, cardPaymentsKey } from "@/state/queries/use-card-payments";
+import { cardBillRolloversKey, cardExpensesKey, cardPaymentsKey } from "@/state/queries/use-card-payments";
 import { STALE_TIMES } from "@/state/cache-policy";
 import { useDemoSession } from "@/state/demo-mode";
-import { useSimulatedAllCardExpenses, useSimulatedAllCardPayments } from "./use-simulated-queries";
+import {
+  useSimulatedAllCardBillRollovers,
+  useSimulatedAllCardExpenses,
+  useSimulatedAllCardPayments,
+} from "./use-simulated-queries";
 
 export interface UseAllCardQueryOptions {
   /**
@@ -49,6 +54,26 @@ export function useAllCardPayments(options?: UseAllCardQueryOptions) {
       options?.sinceMonth !== undefined
         ? listAllCardPayments({ sinceMonth: options.sinceMonth })
         : listAllCardPayments(),
+    enabled: (options?.enabled ?? true) && !isDemoActive,
+    staleTime: STALE_TIMES.analytical,
+  });
+
+  return isDemoActive ? simulated : real;
+}
+
+/** Todas as rolagens/parcelamentos de fatura do usuário (visão consolidada com janela de 24 meses ou customizada). */
+export function useAllCardBillRollovers(options?: UseAllCardQueryOptions) {
+  const { isDemoActive } = useDemoSession();
+  const simulated = useSimulatedAllCardBillRollovers();
+  const real = useQuery({
+    queryKey:
+      options?.sinceMonth !== undefined
+        ? [...cardBillRolloversKey, options.sinceMonth]
+        : [...cardBillRolloversKey],
+    queryFn: () =>
+      options?.sinceMonth !== undefined
+        ? listAllCardBillRollovers({ sinceMonth: options.sinceMonth })
+        : listAllCardBillRollovers(),
     enabled: (options?.enabled ?? true) && !isDemoActive,
     staleTime: STALE_TIMES.analytical,
   });

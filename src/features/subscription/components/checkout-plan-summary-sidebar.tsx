@@ -121,7 +121,9 @@ export function CheckoutPlanSummarySidebar({
             </strong>{" "}
             em{" "}
             <strong className="text-foreground">
-              {billingSchedule.firstBillingDate.toLocaleDateString("pt-BR")}
+              {billingSchedule.firstBillingDate.toLocaleDateString("pt-BR", {
+                timeZone: "America/Sao_Paulo",
+              })}
             </strong>
             . Cancele antes dessa data com 1 clique para não ser cobrado.
           </p>

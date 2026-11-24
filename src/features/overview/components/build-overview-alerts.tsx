@@ -153,6 +153,7 @@ export function buildOverviewAlertItems(
           result: cashGapResult,
           currentBalanceCents: data.realCashData.cashBalance.currentBalanceCents,
           predictedInflowsTotalCents,
+          predictedInflows: data.predictedUpcomingInflows,
         })
       : undefined;
 

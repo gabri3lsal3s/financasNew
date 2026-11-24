@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { getErrorMessage } from "@/services/errors";
-import { useDeleteCardPayment, useUpdateCard } from "@/state";
-import type { CardPayment, CreditCard, Expense } from "@/types";
+import { useDeleteCardBillRollover, useDeleteCardPayment, useUpdateCard } from "@/state";
+import type { CardBillRollover, CardPayment, CreditCard, Expense } from "@/types";
 
 export type CardPaymentDialogMode = "payment" | "refund" | null;
 
@@ -18,16 +18,19 @@ export function useCardsActions({
 }: UseCardsActionsOptions) {
   const updateCardMutation = useUpdateCard();
   const deleteCardPaymentMutation = useDeleteCardPayment();
+  const deleteCardBillRolloverMutation = useDeleteCardBillRollover();
   const { open: formOpen, setOpen: setFormOpen, fromUrl } = useCreateDeepLink("cartao");
 
   const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
   const [deletingPayment, setDeletingPayment] = useState<CardPayment | null>(null);
+  const [deletingRollover, setDeletingRollover] = useState<CardBillRollover | null>(null);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [paymentMode, setPaymentMode] = useState<CardPaymentDialogMode>(null);
   const [printOpen, setPrintOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [batchPaymentOpen, setBatchPaymentOpen] = useState(false);
+  const [rolloverOpen, setRolloverOpen] = useState(false);
   const [chargeOpen, setChargeOpen] = useState(false);
   const [reimbursementOpen, setReimbursementOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
@@ -80,6 +83,14 @@ export function useCardsActions({
     setBatchPaymentOpen(true);
   };
 
+  const handleOpenRollover = () => {
+    if (isReadOnlyMode) {
+      requireUpgrade("Rolar Fatura para Próximo Mês");
+      return;
+    }
+    setRolloverOpen(true);
+  };
+
   const handleOpenReimbursement = () => {
     if (isReadOnlyMode) {
       requireUpgrade("Registrar Reembolso de Cartão");
@@ -94,6 +105,14 @@ export function useCardsActions({
       return;
     }
     setDeletingPayment(payment);
+  };
+
+  const handleDeleteRolloverClick = (rollover: CardBillRollover) => {
+    if (isReadOnlyMode) {
+      requireUpgrade("Desfazer Rolagem de Fatura");
+      return;
+    }
+    setDeletingRollover(rollover);
   };
 
   const handleDeactivateCard = async (card: CreditCard) => {
@@ -131,6 +150,18 @@ export function useCardsActions({
     void Promise.resolve(deleteCardPaymentMutation.mutateAsync(deletingPayment.id)).catch(() => undefined);
   };
 
+  const handleConfirmDeleteRollover = () => {
+    if (!deletingRollover) return;
+    if (isReadOnlyMode) {
+      requireUpgrade("Desfazer Rolagem de Fatura");
+      return;
+    }
+    setActionError(null);
+    const targetId = deletingRollover.id;
+    setDeletingRollover(null);
+    void Promise.resolve(deleteCardBillRolloverMutation.mutateAsync(targetId)).catch(() => undefined);
+  };
+
   const refetchAll = () => {
     setActionError(null);
     onRefetchAll();
@@ -144,6 +175,8 @@ export function useCardsActions({
     setEditingCard,
     deletingPayment,
     setDeletingPayment,
+    deletingRollover,
+    setDeletingRollover,
     selectedExpense,
     setSelectedExpense,
     actionError,
@@ -156,6 +189,8 @@ export function useCardsActions({
     setImportOpen,
     batchPaymentOpen,
     setBatchPaymentOpen,
+    rolloverOpen,
+    setRolloverOpen,
     upgradeOpen,
     setUpgradeOpen,
     upgradeContext,
@@ -170,9 +205,12 @@ export function useCardsActions({
     handleOpenPayment,
     handleOpenImport,
     handleOpenBatchPayment,
+    handleOpenRollover,
     handleDeletePaymentClick,
+    handleDeleteRolloverClick,
     handleDeactivateCard,
     handleConfirmDeletePayment,
+    handleConfirmDeleteRollover,
     refetchAll,
   };
 }

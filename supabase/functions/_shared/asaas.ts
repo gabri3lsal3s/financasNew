@@ -4,6 +4,7 @@
  */
 
 import { ASAAS_PLAN_CATALOG } from "./asaas-plans.ts";
+import { maskEmailForLog, sanitizeLogString } from "./http.ts";
 
 declare const Deno: {
   env?: {
@@ -86,7 +87,46 @@ export function isValidLuhn(cardNumber: string): boolean {
 }
 
 /**
- * Validação pura de data de expiração de cartão (mês 1-12 e não expirado).
+ * Formata uma data no padrão civil ISO (YYYY-MM-DD) no fuso oficial do Asaas (America/Sao_Paulo).
+ */
+export function formatBrtIsoDate(date: Date | string = new Date()): string {
+  if (typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date.trim())) {
+    return date.trim();
+  }
+  const parsed = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error("Data inválida fornecida a formatBrtIsoDate.");
+  }
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(parsed);
+}
+
+/**
+ * Formata uma data no padrão brasileiro dd/MM/yyyy em America/Sao_Paulo.
+ */
+export function formatBrtDisplayDate(date: Date | string): string {
+  if (typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date.trim())) {
+    const [y, m, d] = date.trim().split("-");
+    return `${d}/${m}/${y}`;
+  }
+  const parsed = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(parsed.getTime())) {
+    return "";
+  }
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(parsed);
+}
+
+/**
+ * Validação pura de data de expiração de cartão (mês 1-12 e não expirado em BRT).
  */
 export function isValidCardExpiry(monthStr: string, yearStr: string, referenceDate: Date = new Date()): boolean {
   const month = parseInt(monthStr, 10);
@@ -98,8 +138,9 @@ export function isValidCardExpiry(monthStr: string, yearStr: string, referenceDa
     year += 2000;
   }
 
-  const currentYear = referenceDate.getFullYear();
-  const currentMonth = referenceDate.getMonth() + 1;
+  const brtDate = formatBrtIsoDate(referenceDate);
+  const currentYear = parseInt(brtDate.slice(0, 4), 10);
+  const currentMonth = parseInt(brtDate.slice(5, 7), 10);
 
   if (year < currentYear) return false;
   if (year === currentYear && month < currentMonth) return false;
@@ -109,9 +150,15 @@ export function isValidCardExpiry(monthStr: string, yearStr: string, referenceDa
 }
 
 /**
- * Sanitizador de payload para prevenção de vazamento de PAN e CCV em logs (PCI-DSS).
+ * Sanitizador de payload e strings para prevenção de vazamento de PAN, CVV e PII em logs (PCI-DSS / LGPD).
  */
 export function sanitizePaymentLog<T>(data: T): T {
+  if (typeof data === "string") {
+    return sanitizeLogString(data) as unknown as T;
+  }
+  if (data instanceof Error) {
+    return sanitizeLogString(data.message) as unknown as T;
+  }
   if (!data || typeof data !== "object") return data;
   if (Array.isArray(data)) {
     return data.map((item) => sanitizePaymentLog(item)) as unknown as T;
@@ -123,23 +170,63 @@ export function sanitizePaymentLog<T>(data: T): T {
     const lower = key.toLowerCase();
     const val = copy[key];
 
-    if (lower === "ccv" || lower === "cvv") {
+    if (lower === "ccv" || lower === "cvv" || lower === "cvc" || lower === "securitycode") {
       copy[key] = "***";
-    } else if (lower === "number" && typeof val === "string") {
+    } else if (
+      (lower === "number" || lower === "cardnumber" || lower === "pan") &&
+      typeof val === "string"
+    ) {
       const clean = val.replace(/\D/g, "");
       if (clean.length >= 8) {
         copy[key] = `**** **** **** ${clean.slice(-4)}`;
       } else {
         copy[key] = "***";
       }
-    } else if (lower === "creditcard" && val && typeof val === "object") {
-      copy[key] = sanitizePaymentLog(val);
+    } else if (lower === "cpf" || lower === "cpfcnpj") {
+      copy[key] = "***.***.***-**";
+    } else if (lower === "email" && typeof val === "string") {
+      copy[key] = maskEmailForLog(val);
+    } else if (lower === "phone" || lower === "mobilephone") {
+      copy[key] = "(XX) *****-****";
+    } else if (
+      lower === "postalcode" ||
+      lower === "addressnumber" ||
+      lower === "address" ||
+      lower === "complement" ||
+      lower === "creditcardtoken" ||
+      lower === "remoteip"
+    ) {
+      copy[key] = "***";
+    } else if (typeof val === "string") {
+      copy[key] = sanitizeLogString(val);
     } else if (typeof val === "object" && val !== null) {
       copy[key] = sanitizePaymentLog(val);
     }
   }
 
   return copy as T;
+}
+
+/**
+ * Identifica se um erro do Asaas indica que o recurso já não existe ou já foi cancelado/removido.
+ */
+export function isAsaasAlreadyCanceledError(err: unknown): boolean {
+  if (!err) return false;
+  const status = (err as { status?: number }).status;
+  if (status === 404) return true;
+  const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+  return (
+    msg.includes("404") ||
+    msg.includes("not found") ||
+    msg.includes("não encontrad") ||
+    msg.includes("nao encontrad") ||
+    msg.includes("já removid") ||
+    msg.includes("ja removid") ||
+    msg.includes("already removed") ||
+    msg.includes("already deleted") ||
+    msg.includes("já cancelad") ||
+    msg.includes("ja cancelad")
+  );
 }
 
 function getEnv(key: string): string | undefined {
@@ -174,10 +261,12 @@ export function getAsaasBaseUrl(): string {
   if (directUrl && directUrl.trim().length > 0) {
     return directUrl.trim().replace(/\/+$/, "");
   }
-  const env = getEnv("ASAAS_ENVIRONMENT");
-  return env === "production"
-    ? "https://api.asaas.com/v3"
-    : "https://api-sandbox.asaas.com/v3";
+  const env = getEnv("ASAAS_ENVIRONMENT")?.trim().toLowerCase();
+  if (env === "production") return "https://api.asaas.com/v3";
+  if (env === "sandbox") return "https://api-sandbox.asaas.com/v3";
+  throw new Error(
+    "Ambiente Asaas não configurado: defina ASAAS_ENVIRONMENT ('production' ou 'sandbox') ou ASAAS_API_URL.",
+  );
 }
 
 export function getAsaasApiKey(): string {
@@ -210,7 +299,9 @@ async function asaasFetch<T>(endpoint: string, options: RequestInit = {}): Promi
       data?.errors?.[0]?.description ||
       data?.message ||
       `Erro Asaas (${response.status}): ${response.statusText}`;
-    throw new Error(errorMsg);
+    const err = new Error(errorMsg) as Error & { status?: number };
+    err.status = response.status;
+    throw err;
   }
 
   return data as T;
@@ -297,10 +388,11 @@ export async function createAsaasCreditCardSubscription(params: {
       ? "Axir — Plano Pro Anual"
       : "Axir — Plano Pro Mensal";
 
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = formatBrtIsoDate(new Date());
+  const normalizedNextDue = params.nextDueDate ? formatBrtIsoDate(params.nextDueDate) : null;
   const nextDueDate =
-    params.nextDueDate && params.nextDueDate >= todayIso
-      ? params.nextDueDate.slice(0, 10)
+    normalizedNextDue && normalizedNextDue >= todayIso
+      ? normalizedNextDue
       : todayIso;
 
   const cleanPostalCode = (params.holderInfo.postalCode || "").replace(/\D/g, "");
@@ -351,7 +443,7 @@ export async function createAsaasPixCharge(params: {
   description: string;
   externalReference?: string;
 }): Promise<{ id: string; status: string; value: number }> {
-  const dueDate = new Date().toISOString().slice(0, 10);
+  const dueDate = formatBrtIsoDate(new Date());
 
   const payload: Record<string, unknown> = {
     customer: params.customerId,
@@ -447,6 +539,20 @@ export async function deleteAsaasPayment(paymentId: string): Promise<{ id: strin
   });
 }
 
+export async function updateAsaasSubscriptionNextDueDate(
+  subscriptionId: string,
+  nextDueDate: string,
+): Promise<{ id: string; status: string }> {
+  const targetDueDate = formatBrtIsoDate(nextDueDate);
+  return asaasFetch<{ id: string; status: string }>(`/subscriptions/${subscriptionId}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      nextDueDate: targetDueDate,
+      updatePendingPayments: false,
+    }),
+  });
+}
+
 /**
  * Atrasa o vencimento da assinatura recorrente e remove as cobranças PENDING
  * que ficariam dentro do período já antecipado via Pix (evitando cobrança dupla).
@@ -454,20 +560,16 @@ export async function deleteAsaasPayment(paymentId: string): Promise<{ id: strin
 export async function postponeAsaasSubscriptionAfterPrepayment(
   subscriptionId: string,
   nextDueDate: string,
-): Promise<{ success: boolean; deletedPendingPaymentsCount: number }> {
-  const targetDueDate = nextDueDate.slice(0, 10);
+): Promise<{ success: boolean; deletedPendingPaymentsCount: number; failedPendingPaymentsCount: number }> {
+  const targetDueDate = formatBrtIsoDate(nextDueDate);
 
   // 1. Atualiza nextDueDate na assinatura do Asaas (updatePendingPayments: false)
-  await asaasFetch(`/subscriptions/${subscriptionId}`, {
-    method: "PUT",
-    body: JSON.stringify({
-      nextDueDate: targetDueDate,
-      updatePendingPayments: false,
-    }),
-  });
+  await updateAsaasSubscriptionNextDueDate(subscriptionId, targetDueDate);
 
   // 2. Localiza e exclui cobranças PENDING com vencimento anterior ao novo vencimento
   let deletedCount = 0;
+  let failedDeletes = 0;
+  let listFailed = false;
   try {
     const pendingPayments = await getAsaasSubscriptionPayments(subscriptionId, "PENDING");
     for (const payment of pendingPayments) {
@@ -475,16 +577,32 @@ export async function postponeAsaasSubscriptionAfterPrepayment(
         try {
           await deleteAsaasPayment(payment.id);
           deletedCount++;
-        } catch {
-          // Ignora se já estiver cancelada
+        } catch (delErr) {
+          if (isAsaasAlreadyCanceledError(delErr)) {
+            deletedCount++;
+          } else {
+            failedDeletes++;
+            console.warn(
+              `[asaas] Falha ao remover cobrança PENDING ${payment.id} da assinatura ${subscriptionId}:`,
+              sanitizePaymentLog(delErr),
+            );
+          }
         }
       }
     }
-  } catch {
-    // Continua
+  } catch (listErr) {
+    listFailed = true;
+    console.warn(
+      `[asaas] Falha ao listar cobranças PENDING da assinatura ${subscriptionId}:`,
+      sanitizePaymentLog(listErr),
+    );
   }
 
-  return { success: true, deletedPendingPaymentsCount: deletedCount };
+  return {
+    success: !listFailed && failedDeletes === 0,
+    deletedPendingPaymentsCount: deletedCount,
+    failedPendingPaymentsCount: failedDeletes,
+  };
 }
 
 /**

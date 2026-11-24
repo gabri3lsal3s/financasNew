@@ -13,6 +13,25 @@ export interface SignUpResult {
   needsEmailConfirmation: boolean;
 }
 
+/**
+ * Garante que o destino de retorno pós-confirmação seja estritamente uma rota interna
+ * da aplicação (prevenção contra Open Redirect).
+ */
+export function sanitizeInternalRedirectPath(
+  redirectPath?: string | null,
+  fallback = "/entrar",
+): string {
+  const trimmed = redirectPath?.trim();
+  if (!trimmed) return fallback;
+  if (!trimmed.startsWith("/") || trimmed.startsWith("//")) return fallback;
+  if (trimmed.includes("\\") || trimmed.includes("://")) return fallback;
+  for (let i = 0; i < trimmed.length; i++) {
+    const code = trimmed.charCodeAt(i);
+    if (code <= 0x1f || code === 0x7f) return fallback;
+  }
+  return trimmed;
+}
+
 export async function signInWithEmail(
   email: string,
   password: string,
@@ -36,11 +55,13 @@ export async function signUpWithEmail(
   name?: string,
   inviteCode?: string,
   captchaToken?: string,
+  redirectPath?: string,
 ): Promise<SignUpResult> {
   const normalized = normalizeEmail(email);
   const cleanName = name ? sanitizeString(name) : "";
   const cleanInvite = inviteCode ? sanitizeString(inviteCode).toUpperCase() : "";
   const selectedMode = "investor";
+  const safeRedirectPath = sanitizeInternalRedirectPath(redirectPath, "/entrar");
   const { data, error } = await getSupabase().auth.signUp({
     email: normalized,
     password,
@@ -50,7 +71,7 @@ export async function signUpWithEmail(
         invite_code: cleanInvite,
         app_mode: selectedMode,
       },
-      emailRedirectTo: getPublicAppUrl("/entrar"),
+      emailRedirectTo: getPublicAppUrl(safeRedirectPath),
       captchaToken: captchaToken || undefined,
     },
   });
@@ -95,13 +116,17 @@ export async function resetPasswordForEmail(
 /**
  * Reenvia o e-mail de confirmação de cadastro para contas pendentes de ativação (Fase 2.1).
  */
-export async function resendConfirmationEmail(email: string): Promise<void> {
+export async function resendConfirmationEmail(
+  email: string,
+  redirectPath?: string,
+): Promise<void> {
   const normalized = normalizeEmail(email);
+  const safeRedirectPath = sanitizeInternalRedirectPath(redirectPath, "/entrar");
   const { error } = await getSupabase().auth.resend({
     type: "signup",
     email: normalized,
     options: {
-      emailRedirectTo: getPublicAppUrl("/entrar"),
+      emailRedirectTo: getPublicAppUrl(safeRedirectPath),
     },
   });
   if (error) {

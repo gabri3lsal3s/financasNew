@@ -63,11 +63,13 @@ Para que links de confirmação de cadastro e recuperação de senha funcionem s
    ```text
    https://axisfinancas.com.br
    ```
-4. No campo **Redirect URLs**, clique em **Add URL** e adicione:
+4. No campo **Redirect URLs**, clique em **Add URL** e adicione (nunca use wildcards como `*.pages.dev` ou `*.workers.dev`):
    ```text
-   https://axisfinancas.com.br/**
-   https://axisfinancas.com.br/redefinir-senha
-   https://axisfinancas.com.br/confirmar-email
+   https://axir.com.br/**
+   https://axir.com.br/assinatura
+   https://axir.com.br/redefinir-senha
+   https://axir.com.br/confirmar-email
+   https://www.axir.com.br/**
    ```
 5. Clique em **Save**.
 
@@ -109,8 +111,11 @@ Guarde este valor, ele será o seu `ASAAS_WEBHOOK_TOKEN`.
    * [x] `PAYMENT_RECEIVED` (Pagamento recebido via Pix ou cartão)
    * [x] `PAYMENT_CONFIRMED` (Compensação bancária confirmada)
    * [x] `PAYMENT_OVERDUE` (Cobrança vencida sem pagamento)
-   * [x] `PAYMENT_DELETED` (Cobrança cancelada ou estornada)
-   * [x] `SUBSCRIPTION_DELETED` (Assinatura recorrente cancelada)
+   * [x] `PAYMENT_DELETED` (Cobrança avulsa/pendente cancelada)
+   * [x] `PAYMENT_REFUNDED` e `PAYMENT_PARTIALLY_REFUNDED` (Estornos totais ou parciais)
+   * [x] `PAYMENT_CHARGEBACK_REQUESTED`, `PAYMENT_CHARGEBACK_DISPUTE` e `PAYMENT_AWAITING_CHARGEBACK_REVERSAL` (Contestações e chargeback)
+   * [x] `PAYMENT_DUNNING_RECEIVED` (Recuperação de cobrança em atraso)
+   * [x] `SUBSCRIPTION_DELETED` e `SUBSCRIPTION_UPDATED` (Cancelamento e sincronização de assinatura recorrente)
 4. Clique em **Salvar Webhook**.
 
 ---
@@ -183,9 +188,15 @@ Execute o comando abaixo preenchendo os seus valores reais:
 
 ```bash
 npx supabase secrets set \
-  ASAAS_API_KEY="COLE_AQUI_SUA_CHAVE_ASAAS_$aact" \
+  ASAAS_ENVIRONMENT="production" \
+  ASAAS_API_KEY="COLE_AQUI_SUA_CHAVE_ASAAS_$aact_prod" \
   ASAAS_API_URL="https://api.asaas.com/v3" \
   ASAAS_WEBHOOK_TOKEN="COLE_AQUI_O_TOKEN_ALEATORIO_DO_WEBHOOK" \
+  PUBLIC_APP_URL="https://axir.com.br" \
+  ALLOWED_ORIGINS="https://axir.com.br,https://www.axir.com.br" \
+  RESEND_API_KEY="COLE_AQUI_SUA_API_KEY_RESEND_re_" \
+  RESEND_FROM_EMAIL="Axir <nao-responda@axir.com.br>" \
+  CRON_SECRET="COLE_AQUI_UM_SEGREDO_ALEATORIO_PARA_CRONS" \
   TELEGRAM_BOT_TOKEN="COLE_AQUI_O_TOKEN_DO_BOT_TELEGRAM" \
   TELEGRAM_CHAT_ID="COLE_AQUI_SEU_CHAT_ID_NUMERICO"
 ```

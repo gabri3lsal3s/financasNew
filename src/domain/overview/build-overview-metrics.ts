@@ -5,7 +5,7 @@ import {
   spentByCategoryMap,
   spentGrossByCategoryMap,
 } from "@/domain/budgets";
-import { buildCompetenceSummaries, invoiceDueDate } from "@/domain/cards";
+import { resolveOpenCardInvoices } from "@/domain/cards";
 import { isParticipantFullySettled, isSplitFullyCompleted } from "@/domain/finance/split-math";
 import {
   resolveGoalComposition,
@@ -32,6 +32,7 @@ import {
 } from "@/domain/projection";
 import type {
   Budget,
+  CardBillRollover,
   CardPayment,
   Category,
   CreditCard,
@@ -523,6 +524,7 @@ function recurrenceDayMatches(
 }
 
 export function buildOverviewCashGapResult(params: {
+  isLoading?: boolean;
   currentBalanceCents: number;
   today: string;
   month: string;
@@ -530,12 +532,14 @@ export function buildOverviewCashGapResult(params: {
   cards: readonly CreditCard[];
   cardExpenses: readonly Expense[];
   cardPayments: readonly CardPayment[];
+  cardRollovers?: readonly CardBillRollover[];
   debts: readonly Debt[];
   incomes: readonly Income[];
   hasLiquidityContext?: boolean;
   predictedInflows?: readonly CashGapInflow[];
 }): CashGapAnalysisResult {
   const {
+    isLoading = false,
     currentBalanceCents,
     today,
     month,
@@ -543,13 +547,14 @@ export function buildOverviewCashGapResult(params: {
     cards,
     cardExpenses,
     cardPayments,
+    cardRollovers = [],
     debts,
     incomes,
     hasLiquidityContext,
     predictedInflows = [],
   } = params;
 
-  if (hasLiquidityContext === false) {
+  if (isLoading || hasLiquidityContext === false) {
     return {
       isCashGapDetected: false,
       severity: "none",
@@ -598,6 +603,7 @@ export function buildOverviewCashGapResult(params: {
         cards: [...cards],
         expenses: [...cardExpenses],
         payments: [...cardPayments],
+        rollovers: [...cardRollovers],
         today,
         currentMonth: month,
       }),
@@ -623,9 +629,20 @@ export function buildOverviewWeeklyRadarSummary(params: {
   cards?: readonly CreditCard[];
   cardExpenses?: readonly Expense[];
   cardPayments?: readonly CardPayment[];
+  cardRollovers?: readonly CardBillRollover[];
   debts?: readonly Debt[];
 }): WeeklyRadarSummary {
-  const { isLoading, today, month, currentBalanceCents, cards, cardExpenses, cardPayments, debts } = params;
+  const {
+    isLoading,
+    today,
+    month,
+    currentBalanceCents,
+    cards,
+    cardExpenses,
+    cardPayments,
+    cardRollovers = [],
+    debts,
+  } = params;
 
   if (isLoading || !cards || !cardExpenses || !cardPayments || !debts) {
     return {
@@ -638,22 +655,23 @@ export function buildOverviewWeeklyRadarSummary(params: {
     };
   }
 
-  const invoices = cards
-    .filter((card) => card.is_active)
-    .flatMap((card) => {
-      const expenses = cardExpenses.filter((e) => e.card_id === card.id);
-      const payments = cardPayments.filter((p) => p.card_id === card.id);
-      return buildCompetenceSummaries(expenses, payments)
-        .filter((summary) => summary.saldoCents > 0)
-        .map((summary) => ({
-          id: `bill:${card.id}:${summary.month}`,
-          name: summary.month === month ? `Fatura ${card.name}` : `Fatura ${card.name} (${summary.month})`,
-          dueDate: invoiceDueDate(summary.month, card.due_day),
-          amountCents: summary.saldoCents,
-          cardId: card.id,
-          competenceMonth: summary.month,
-        }));
-    });
+  const invoices = resolveOpenCardInvoices({
+    cards,
+    expenses: cardExpenses,
+    payments: cardPayments,
+    rollovers: cardRollovers,
+    today,
+  }).map((inv) => ({
+    id: `bill:${inv.cardId}:${inv.competenceMonth}`,
+    name:
+      inv.competenceMonth === month
+        ? `Fatura ${inv.cardName}`
+        : `Fatura ${inv.cardName} (${inv.competenceMonth})`,
+    dueDate: inv.effectiveDueDate,
+    amountCents: inv.saldoBrutoCents,
+    cardId: inv.cardId,
+    competenceMonth: inv.competenceMonth,
+  }));
 
   return computeWeeklyDueRadar({
     today,

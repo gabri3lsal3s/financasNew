@@ -1,6 +1,15 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { cancelAsaasSubscription } from "../_shared/asaas.ts";
-import { buildCorsHeaders, jsonResponse, safeErrorResponse } from "../_shared/http.ts";
+import {
+  cancelAsaasSubscription,
+  isAsaasAlreadyCanceledError,
+  sanitizePaymentLog,
+} from "../_shared/asaas.ts";
+import {
+  buildCorsHeaders,
+  jsonResponse,
+  maskEmailForLog,
+  safeErrorResponse,
+} from "../_shared/http.ts";
 
 interface ProvisionUserPayload {
   name: string;
@@ -179,7 +188,6 @@ Deno.serve(async (req: Request) => {
           status: targetStatus,
           approved_at: targetStatus === "active" ? new Date().toISOString() : null,
           approved_by: targetStatus === "active" ? callerUser.id : null,
-          updated_at: new Date().toISOString(),
         },
         { onConflict: "id" },
       );
@@ -201,7 +209,7 @@ Deno.serve(async (req: Request) => {
         { onConflict: "user_id" },
       );
 
-      // 4. Trilha imutável de auditoria LGPD
+      // 4. Trilha imutável de auditoria LGPD (D-18: sem PII em claro no payload)
       await adminClient.from("audit_events").insert({
         user_id: callerUser.id,
         entity_type: "profiles",
@@ -210,8 +218,7 @@ Deno.serve(async (req: Request) => {
         payload: {
           provisioned_by: callerUser.id,
           target_user_id: targetUserId,
-          email: cleanEmail,
-          name: cleanName,
+          email_masked: maskEmailForLog(cleanEmail),
           role: targetRole,
           plan_id: planId,
           status: targetStatus,
@@ -248,14 +255,16 @@ Deno.serve(async (req: Request) => {
         return safeErrorResponse(req, 400, "Falha ao gerar link de recuperação de acesso.");
       }
 
+      const resolvedTargetId = targetUserId || recoveryData.user?.id || callerUser.id;
       await adminClient.from("audit_events").insert({
         user_id: callerUser.id,
         entity_type: "profiles",
-        entity_id: targetUserId || recoveryData.user?.id || callerUser.id,
+        entity_id: resolvedTargetId,
         action: "ADMIN_GENERATE_RECOVERY_LINK",
         payload: {
           generated_by: callerUser.id,
-          email: cleanEmail,
+          target_user_id: resolvedTargetId,
+          email_masked: maskEmailForLog(cleanEmail),
           timestamp: new Date().toISOString(),
         },
       });
@@ -350,13 +359,25 @@ Deno.serve(async (req: Request) => {
       const willBeLifetimeOrReadOnly = targetTier === "lifetime" || targetTier === "read_only" || targetStatus === "canceled";
 
       // 2. Se o usuário tinha assinatura ativa no Asaas e está sendo promovido para Lifetime,
-      // cancelado ou se solicitado explicitamente, cancela no Asaas prevenindo cobrança fantasma
+      // cancelado ou se solicitado explicitamente, cancela no Asaas de forma fail-closed (D-01)
       if (userSub?.asaas_subscription_id && (willBeLifetimeOrReadOnly || shouldCancelAsaas)) {
         try {
           await cancelAsaasSubscription(userSub.asaas_subscription_id);
           asaasCanceled = true;
         } catch (err: unknown) {
-          console.warn("[admin-super-action] Falha ao cancelar assinatura no Asaas ao atualizar para Lifetime/Cancelado:", err);
+          if (isAsaasAlreadyCanceledError(err)) {
+            asaasCanceled = true;
+          } else {
+            console.error(
+              "[admin-super-action] Falha ao cancelar assinatura no Asaas ao atualizar para Lifetime/Cancelado:",
+              sanitizePaymentLog(err),
+            );
+            return safeErrorResponse(
+              req,
+              502,
+              "Não foi possível cancelar a assinatura recorrente no Asaas. Nenhuma alteração local foi aplicada.",
+            );
+          }
         }
       }
 
@@ -367,7 +388,7 @@ Deno.serve(async (req: Request) => {
 
       if (targetTier) {
         updateData.tier = targetTier;
-        updateData.plan_id = targetTier;
+        updateData.plan_id = targetTier === "read_only" ? "trial" : targetTier;
       }
       if (targetStatus) {
         updateData.status = targetStatus;
@@ -388,22 +409,28 @@ Deno.serve(async (req: Request) => {
       }
 
       if (userSub) {
-        await adminClient
+        const { error: subUpdateErr } = await adminClient
           .from("user_subscriptions")
           .update(updateData)
           .eq("user_id", targetUserId);
+        if (subUpdateErr) {
+          return safeErrorResponse(req, 500, "Falha ao atualizar assinatura do usuário.", subUpdateErr);
+        }
       } else {
-        await adminClient
+        const { error: subInsertErr } = await adminClient
           .from("user_subscriptions")
           .insert({
             user_id: targetUserId,
-            plan_id: targetTier || "lifetime",
+            plan_id: targetTier === "read_only" ? "trial" : targetTier || "lifetime",
             tier: targetTier || "lifetime",
             status: targetStatus || "active",
             current_period_end: targetPeriodEnd || null,
             trial_ends_at: targetTrialEnds || null,
             ...updateData,
           });
+        if (subInsertErr) {
+          return safeErrorResponse(req, 500, "Falha ao criar registro de assinatura do usuário.", subInsertErr);
+        }
       }
 
       // 4. Trilha imutável de auditoria

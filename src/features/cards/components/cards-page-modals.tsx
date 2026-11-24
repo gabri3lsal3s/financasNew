@@ -16,9 +16,10 @@ import { monthLabel } from "@/lib/date";
 import { useAuth } from "@/hooks";
 import { InternalTransferDialog } from "@/features/business/components/internal-transfer-dialog";
 import { ExpenseDetailDialog } from "@/features/transactions/components/expense-detail-dialog";
-import type { CardPayment, CreditCard, Expense } from "@/types";
+import type { CardBillRollover, CardPayment, CreditCard, Expense } from "@/types";
 import type { CardPaymentDialogMode } from "../hooks/use-cards-page-state";
 import { BatchInvoicePaymentDialog } from "./batch-invoice-payment-dialog";
+import { BillRolloverDialog } from "./bill-rollover-dialog";
 import { CardChargeDialog } from "./card-charge-dialog";
 import { CardFormDialog } from "./card-form-dialog";
 import { PaymentDialog } from "./payment-dialog";
@@ -44,8 +45,13 @@ export interface CardsPageModalsProps {
   deletingPayment: CardPayment | null;
   onCloseDeletePayment: () => void;
   onConfirmDeletePayment: () => void;
+  deletingRollover?: CardBillRollover | null;
+  onCloseDeleteRollover?: () => void;
+  onConfirmDeleteRollover?: () => void;
   paymentMode: CardPaymentDialogMode;
   onClosePayment: () => void;
+  rolloverOpen?: boolean;
+  onRolloverOpenChange?: (open: boolean) => void;
   chargeOpen?: boolean;
   onCloseCharge?: (open: boolean) => void;
   mixedCardSplit?: MixedCardSplitResult | null;
@@ -86,8 +92,13 @@ export function CardsPageModals({
   deletingPayment,
   onCloseDeletePayment,
   onConfirmDeletePayment,
+  deletingRollover,
+  onCloseDeleteRollover,
+  onConfirmDeleteRollover,
   paymentMode,
   onClosePayment,
+  rolloverOpen,
+  onRolloverOpenChange,
   chargeOpen,
   onCloseCharge,
   mixedCardSplit,
@@ -163,6 +174,39 @@ export function CardsPageModals({
           onConfirm={onConfirmDeletePayment}
         />
       )}
+
+      {deletingRollover && onCloseDeleteRollover && onConfirmDeleteRollover ? (
+        <ConfirmDialog
+          open={deletingRollover !== null}
+          onOpenChange={(next) => {
+            if (!next) onCloseDeleteRollover();
+          }}
+          title={
+            deletingRollover.kind === "refinance"
+              ? "Desfazer parcelamento de fatura"
+              : "Desfazer rolagem de fatura"
+          }
+          description={
+            deletingRollover.kind === "refinance"
+              ? "Todas as parcelas do principal e os juros lançados nas faturas futuras serão removidos, restaurando o saldo original da fatura. Atenção: eventual entrada já paga permanece no extrato bancário e deve ser estornada separadamente se necessário."
+              : "O saldo transferido e os encargos vinculados desta rolagem serão removidos, restaurando o saldo da fatura de origem."
+          }
+          confirmLabel="Desfazer"
+          variant="destructive"
+          onConfirm={onConfirmDeleteRollover}
+        />
+      ) : null}
+
+      {selectedCard && cardId && rolloverOpen && onRolloverOpenChange ? (
+        <BillRolloverDialog
+          cardId={cardId}
+          cardName={selectedCard.name}
+          competenceMonth={effectiveMonth}
+          openBalanceCents={summary?.saldoBrutoCents ?? 0}
+          open={rolloverOpen}
+          onOpenChange={onRolloverOpenChange}
+        />
+      ) : null}
 
       {cardId && paymentMode ? (
         <PaymentDialog

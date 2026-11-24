@@ -647,6 +647,8 @@ export type Income = {
   family_id?: string | null;
   /** Escopo PF vs PJ (Fase 2A). */
   scope?: TransactionScope;
+  /** Vínculo com rolagem/parcelamento de fatura (encargos gerados atomicamente). */
+  rollover_id?: string | null;
   /** Marca se esta entrada faz parte de uma transferência pareada PF/PJ. */
   is_internal_transfer?: boolean;
   /** UUID compartilhado entre as duas pernas da transferência pareada. */
@@ -693,6 +695,8 @@ export type Expense = {
   trip_id?: string | null;
   /** Escopo PF vs PJ (Fase 2A). */
   scope?: TransactionScope;
+  /** Vínculo com rolagem/parcelamento de fatura (encargos gerados atomicamente). */
+  rollover_id?: string | null;
   /** Marca se esta saída faz parte de uma transferência pareada PF/PJ. */
   is_internal_transfer?: boolean;
   /** UUID compartilhado entre as duas pernas da transferência pareada. */
@@ -769,6 +773,23 @@ export type CardPayment = {
   note: string | null;
   /** Estorno (amount negativo ou nota iniciando em `[REFUND]`). */
   is_refund: boolean;
+};
+
+export type CardBillRolloverKind = "rollover" | "refinance";
+
+export type CardBillRollover = {
+  id: string;
+  user_id: string;
+  card_id: string;
+  /** Competência de origem (YYYY-MM). */
+  from_competence_month: string;
+  /** Competência de destino (YYYY-MM). */
+  to_competence_month: string;
+  principal_amount: number;
+  kind: CardBillRolloverKind;
+  group_id: string;
+  note: string | null;
+  created_at: string;
 };
 
 export type Debt = {

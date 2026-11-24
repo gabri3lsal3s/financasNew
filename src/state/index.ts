@@ -1,7 +1,20 @@
 export { useCategories, useAllCategories, useCategoryUsage } from "./queries/use-categories";
 export { useActiveCreditCards, useCreditCards } from "./queries/use-credit-cards";
-export { useCardPayments, useCardExpenses, type UseCardQueryOptions } from "./queries/use-card-payments";
-export { useAllCardExpenses, useAllCardPayments, type UseAllCardQueryOptions } from "./queries/use-overview";
+export {
+  cardBillRolloversKey,
+  cardExpensesKey,
+  cardPaymentsKey,
+  useCardBillRollovers,
+  useCardExpenses,
+  useCardPayments,
+  type UseCardQueryOptions,
+} from "./queries/use-card-payments";
+export {
+  useAllCardBillRollovers,
+  useAllCardExpenses,
+  useAllCardPayments,
+  type UseAllCardQueryOptions,
+} from "./queries/use-overview";
 export { useDebts } from "./queries/use-debts";
 export { useBudgets } from "./queries/use-budgets";
 export { useIncomeGoals } from "./queries/use-income-goals";
@@ -31,8 +44,11 @@ export {
   useBatchCreateCardPayments,
   useCreateRefund,
   useDeleteCardPayment,
+  useDeleteCardBillRollover,
   useRefinanceCreditCardBill,
+  useRolloverCardBill,
   type CardBillChargeItem,
+  type RolloverCardBillParams,
 } from "./mutations/use-card-mutations";
 export { useImportStatementExpenses } from "./mutations/use-statement-mutations";
 export { useLoans } from "./queries/use-loans";
@@ -303,6 +319,7 @@ export {
 } from "./queries/use-simulated-queries";
 
 export { useUserSubscription } from "./queries/use-user-subscription";
+export { useBillingContact, BILLING_CONTACT_KEY } from "./queries/use-billing-contact";
 export { useInvoices, INVOICES_KEY } from "./queries/use-invoices";
 export { SubscriptionProvider, useIsPro } from "./subscription-context";
 export { usePermission, type PermissionResult } from "./queries/use-permission";
@@ -386,7 +403,6 @@ export type { RemoveFamilyMemberInput } from "./queries/use-family";
 export {
   useCancelSubscriptionMutation,
   useUpdateSubscriptionCardMutation,
-  useUpgradeToAnnualMutation,
   useSchedulePlanChangeMutation,
   useCancelScheduledPlanChangeMutation,
   useCumulativeCheckoutMutation,

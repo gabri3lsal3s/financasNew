@@ -15,19 +15,34 @@ import { AppError, classifyError } from "@/services/errors";
 
 /** Busca todas as tabelas do usuário (paralelo; RLS filtra por owner). */
 export async function fetchAllUserData(): Promise<BackupPayload> {
-  const entries = await Promise.all(
-    BACKUP_TABLE_KEYS.map(async (table) => {
-      const { data, error } = await resolveQuery<BackupRow[]>(getSupabase().from(table).select("*"));
-      if (error) {
-        const classified = classifyError(error);
-        throw new AppError(classified.kind, classified.message, error);
-      }
-      return [table, data ?? []] as const;
-    }),
-  );
+  const [entries, rolloversResult] = await Promise.all([
+    Promise.all(
+      BACKUP_TABLE_KEYS.map(async (table) => {
+        const { data, error } = await resolveQuery<BackupRow[]>(getSupabase().from(table).select("*"));
+        if (error) {
+          const classified = classifyError(error);
+          throw new AppError(classified.kind, classified.message, error);
+        }
+        return [table, data ?? []] as const;
+      }),
+    ),
+    resolveQuery<BackupRow[]>(getSupabase().from("card_bill_rollovers").select("*")),
+  ]);
+
+  if (rolloversResult.error) {
+    const classified = classifyError(rolloversResult.error);
+    throw new AppError(classified.kind, classified.message, rolloversResult.error);
+  }
 
   const data = Object.fromEntries(entries) as unknown as BackupData;
-  return buildBackupPayload(data);
+  const payload = buildBackupPayload(data);
+  return {
+    ...payload,
+    data: {
+      ...payload.data,
+      card_bill_rollovers: rolloversResult.data ?? [],
+    } as BackupData,
+  };
 }
 
 /** Restaura o backup via RPC transacional (substitui todos os dados do usuário). */

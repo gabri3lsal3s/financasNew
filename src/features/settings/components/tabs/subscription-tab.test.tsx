@@ -22,15 +22,12 @@ let mockSubscription: SubscriptionStatus = {
 
 vi.mock("@/state", () => ({
   useUserSubscription: () => mockSubscription,
+  useBillingContact: () => ({ data: null, isLoading: false }),
   useCancelSubscriptionMutation: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
   useUpdateSubscriptionCardMutation: () => ({
-    mutateAsync: vi.fn(),
-    isPending: false,
-  }),
-  useUpgradeToAnnualMutation: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),

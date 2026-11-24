@@ -46,5 +46,23 @@ describe("calculateBillRefinancePlan", () => {
     // Soma das parcelas de juros bate com o total de juros
     const sumInterest = res.installments.reduce((acc, curr) => acc + curr.interestCents, 0);
     expect(sumInterest).toBe(res.totalInterestCents);
+
+    // Soma do principal bate exatamente com o saldo financiado (conservação em centavos)
+    const sumPrincipal = res.installments.reduce((acc, curr) => acc + curr.principalCents, 0);
+    expect(sumPrincipal).toBe(res.originalBalanceCents);
+  });
+
+  it("Blindagem #10: distribui resto dos centavos do principal na 1ª parcela", () => {
+    const res = calculateBillRefinancePlan({
+      remainingBalanceCents: 10001, // R$ 100,01 em 3x -> 3334 + 3334 + 3333? Não, 10001/3 = 3333 resto 2 -> 3334, 3334, 3333; e 10000/3 -> 3334, 3333, 3333
+      installmentsCount: 3,
+      monthlyInterestRatePercent: 2.5,
+      firstCompetenceMonth: "2026-05",
+    });
+
+    expect(res.installments[0]?.principalCents).toBe(3334);
+    expect(res.installments[1]?.principalCents).toBe(3334);
+    expect(res.installments[2]?.principalCents).toBe(3333);
+    expect(res.installments.reduce((acc, c) => acc + c.principalCents, 0)).toBe(10001);
   });
 });

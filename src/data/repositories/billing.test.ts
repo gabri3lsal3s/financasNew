@@ -8,10 +8,12 @@ import {
   schedulePlanChange,
   cancelScheduledPlanChange,
   getBillingAdapter,
+  getMyBillingContact,
   asaasBillingAdapter,
 } from "./billing";
 
 const mockInvoke = vi.fn();
+const mockGetMyBillingContactRpc = vi.fn();
 
 vi.mock("@/data/client", () => ({
   getSupabase: () => ({
@@ -19,6 +21,10 @@ vi.mock("@/data/client", () => ({
       invoke: mockInvoke,
     },
   }),
+}));
+
+vi.mock("@/data/rpc", () => ({
+  getMyBillingContact: (...args: unknown[]) => mockGetMyBillingContactRpc(...args),
 }));
 
 describe("Billing Repository (Asaas Adapter)", () => {
@@ -229,5 +235,93 @@ describe("Billing Repository (Asaas Adapter)", () => {
         cpf: "12345678909",
       }),
     ).rejects.toThrow("Cartão recusado pelo banco emissor");
+  });
+
+  it("envia phone, postalCode e addressNumber na raiz e no card em createCheckoutSession e updatePaymentMethod", async () => {
+    mockInvoke.mockResolvedValue({
+      data: { ok: true, method: "credit_card", subscriptionId: "sub-999", tier: "pro_annual", status: "active" },
+      error: null,
+    });
+
+    await createCheckoutSession({
+      plan: "annual",
+      method: "credit_card",
+      customer: {
+        name: "MARIA SILVA",
+        email: "maria@exemplo.com",
+        cpf: "12345678909",
+        phone: "(11) 98765-4321",
+        postalCode: "01310-100",
+        addressNumber: "1000",
+      },
+      card: {
+        holderName: "MARIA SILVA",
+        number: "4111111111111111",
+        expiryMonth: "12",
+        expiryYear: "28",
+        ccv: "123",
+      },
+    });
+
+    expect(mockInvoke).toHaveBeenCalledWith("asaas-checkout", {
+      body: expect.objectContaining({
+        phone: "11987654321",
+        postalCode: "01310100",
+        addressNumber: "1000",
+        card: expect.objectContaining({
+          phone: "11987654321",
+          postalCode: "01310100",
+          addressNumber: "1000",
+        }),
+      }),
+    });
+
+    await updatePaymentMethod({
+      subscriptionId: "sub_999",
+      card: {
+        holderName: "MARIA SILVA",
+        number: "4111111111111111",
+        expiryMonth: "12",
+        expiryYear: "28",
+        ccv: "123",
+        phone: "(11) 98765-4321",
+        postalCode: "01310-100",
+        addressNumber: " 500 ",
+      },
+    });
+
+    expect(mockInvoke).toHaveBeenLastCalledWith("asaas-manage", {
+      body: {
+        action: "update-card",
+        card: expect.objectContaining({
+          phone: "11987654321",
+          postalCode: "01310100",
+          addressNumber: "500",
+        }),
+      },
+    });
+  });
+
+  it("mapeia corretamente getMyBillingContact a partir da RPC segura (D-02)", async () => {
+    mockGetMyBillingContactRpc.mockResolvedValueOnce({
+      name: "Maria Silva",
+      email: "maria@exemplo.com",
+      cpf: "12345678909",
+      masked_cpf: "***.***.789-**",
+      phone: "11987654321",
+      postal_code: "01310100",
+      address_number: "1000",
+    });
+
+    const contact = await getMyBillingContact();
+    expect(contact).toEqual({
+      name: "Maria Silva",
+      email: "maria@exemplo.com",
+      cpf: "12345678909",
+      maskedCpf: "***.***.789-**",
+      phone: "11987654321",
+      postalCode: "01310100",
+      addressNumber: "1000",
+    });
   });
 });

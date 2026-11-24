@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { buildCompetenceSummaries, invoiceDueDate } from "@/domain/cards";
+import { buildCompetenceSummaries, invoiceDueDate, resolveOpenCardInvoices } from "@/domain/cards";
 import { todayISO } from "@/domain/debts";
 import { formatCompetenceMonthPtBr } from "@/domain/notifications/hub";
 import {
@@ -11,7 +11,7 @@ import {
 } from "@/domain/reminders";
 import { formatCentsAsBRL } from "@/services/masks";
 import { useCreditCards } from "@/state/queries/use-credit-cards";
-import { useAllCardExpenses, useAllCardPayments } from "@/state/queries/use-overview";
+import { useAllCardBillRollovers, useAllCardExpenses, useAllCardPayments } from "@/state/queries/use-overview";
 import { useDebts } from "@/state/queries/use-debts";
 import { useMyPublicShares } from "@/state/queries/use-public-shares";
 import { useReminderStates } from "@/state/queries/use-reminder-states";
@@ -49,6 +49,7 @@ export function useReminders(today: string = todayISO()): RemindersData {
   const cardsQuery = useCreditCards();
   const cardExpensesQuery = useAllCardExpenses();
   const cardPaymentsQuery = useAllCardPayments();
+  const cardRolloversQuery = useAllCardBillRollovers();
   const debtsQuery = useDebts();
   const splitSharesQuery = useMyPublicShares("split");
   const statesQuery = useReminderStates();
@@ -58,6 +59,7 @@ export function useReminders(today: string = todayISO()): RemindersData {
     cardsQuery.isLoading ||
     cardExpensesQuery.isLoading ||
     cardPaymentsQuery.isLoading ||
+    cardRolloversQuery.isLoading ||
     debtsQuery.isLoading ||
     splitSharesQuery.isLoading ||
     statesQuery.isLoading ||
@@ -66,6 +68,7 @@ export function useReminders(today: string = todayISO()): RemindersData {
   const error = (cardsQuery.error ??
     cardExpensesQuery.error ??
     cardPaymentsQuery.error ??
+    cardRolloversQuery.error ??
     debtsQuery.error ??
     splitSharesQuery.error ??
     statesQuery.error ??
@@ -98,6 +101,7 @@ export function useReminders(today: string = todayISO()): RemindersData {
       cardsQuery.isLoading ||
       cardExpensesQuery.isLoading ||
       cardPaymentsQuery.isLoading ||
+      cardRolloversQuery.isLoading ||
       debtsQuery.isLoading ||
       splitSharesQuery.isLoading ||
       statesQuery.isLoading ||
@@ -119,27 +123,28 @@ export function useReminders(today: string = todayISO()): RemindersData {
     const cards = cardsQuery.data;
     const allExpenses = cardExpensesQuery.data;
     const allPayments = cardPaymentsQuery.data;
+    const allRollovers = cardRolloversQuery.data ?? [];
     const allDebts = debtsQuery.data;
     const splitShares = splitSharesQuery.data ?? [];
     const states = statesQuery.data ?? [];
 
-    const bills = cards
-      .filter((card) => card.is_active)
-      .flatMap((card) => {
-        const expenses = allExpenses.filter((e) => e.card_id === card.id);
-        const payments = allPayments.filter((p) => p.card_id === card.id);
-        return buildCompetenceSummaries(expenses, payments)
-          .filter((summary) => summary.saldoCents > 0)
-          .map((summary) => ({
-            key: `bill:${card.id}:${summary.month}`,
-            title: `Fatura ${card.name} · ${formatCompetenceMonthPtBr(summary.month)}`,
-            subtitle: `Saldo de ${formatCentsAsBRL(summary.saldoCents)}`,
-            competenceMonth: summary.month,
-            dueDay: card.due_day,
-            balanceCents: summary.saldoCents,
-            link: { path: "/cartoes", params: { card: card.id, month: summary.month } },
-          }));
-      });
+    // SSOT: resolveOpenCardInvoices inclui cartões inativos com saldo aberto (Blindagem #9) e aplica rollovers
+    const bills = resolveOpenCardInvoices({
+      cards,
+      expenses: allExpenses,
+      payments: allPayments,
+      rollovers: allRollovers,
+      today,
+      nearDueDays: preferences.billDaysBefore,
+    }).map((inv) => ({
+      key: `bill:${inv.cardId}:${inv.competenceMonth}`,
+      title: `Fatura ${inv.cardName} · ${formatCompetenceMonthPtBr(inv.competenceMonth)}`,
+      subtitle: `Saldo de ${formatCentsAsBRL(inv.saldoBrutoCents)}`,
+      competenceMonth: inv.competenceMonth,
+      dueDay: inv.dueDay,
+      balanceCents: inv.saldoBrutoCents,
+      link: { path: "/cartoes", params: { card: inv.cardId, month: inv.competenceMonth } },
+    }));
 
     const debts = allDebts
       .filter((d) => d.paid_at === null)
@@ -191,7 +196,8 @@ export function useReminders(today: string = todayISO()): RemindersData {
 
         const expenses = allExpenses.filter((e) => e.card_id === card.id);
         const payments = allPayments.filter((p) => p.card_id === card.id);
-        const summary = buildCompetenceSummaries(expenses, payments).find((s) => s.month === month);
+        const rollovers = allRollovers.filter((r) => r.card_id === card.id);
+        const summary = buildCompetenceSummaries(expenses, payments, rollovers).find((s) => s.month === month);
 
         const dueDate = invoiceDueDate(month, card.due_day);
         const balanceCents = summary?.saldoCents ?? 0;
@@ -250,6 +256,7 @@ export function useReminders(today: string = todayISO()): RemindersData {
     cardsQuery.isLoading,
     cardExpensesQuery.isLoading,
     cardPaymentsQuery.isLoading,
+    cardRolloversQuery.isLoading,
     debtsQuery.isLoading,
     splitSharesQuery.isLoading,
     statesQuery.isLoading,
@@ -257,6 +264,7 @@ export function useReminders(today: string = todayISO()): RemindersData {
     cardsQuery.data,
     cardExpensesQuery.data,
     cardPaymentsQuery.data,
+    cardRolloversQuery.data,
     debtsQuery.data,
     splitSharesQuery.data,
     statesQuery.data,

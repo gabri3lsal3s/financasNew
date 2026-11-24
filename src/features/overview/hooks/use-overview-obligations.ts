@@ -10,6 +10,7 @@ import {
   type OverviewPortfolioPositionLike,
 } from "@/domain/overview";
 import type {
+  CardBillRollover,
   CardPayment,
   CreditCard,
   Debt,
@@ -30,11 +31,13 @@ interface UseOverviewObligationsParams {
   cardsLoading: boolean;
   cardExpensesLoading: boolean;
   cardPaymentsLoading: boolean;
+  cardRolloversLoading?: boolean;
   debtsLoading: boolean;
   splitSharesLoading: boolean;
   cards?: readonly CreditCard[];
   cardExpenses?: readonly Expense[];
   cardPayments?: readonly CardPayment[];
+  cardRollovers?: readonly CardBillRollover[];
   debts?: readonly Debt[];
   incomes?: readonly Income[];
   splitShares?: readonly PublicShare[];
@@ -62,11 +65,13 @@ export function useOverviewObligations({
   cardsLoading,
   cardExpensesLoading,
   cardPaymentsLoading,
+  cardRolloversLoading = false,
   debtsLoading,
   splitSharesLoading,
   cards,
   cardExpenses,
   cardPayments,
+  cardRollovers,
   debts,
   incomes,
   splitShares,
@@ -76,9 +81,13 @@ export function useOverviewObligations({
   hasSurplus,
   goalDismissals,
 }: UseOverviewObligationsParams) {
+  const isCardDataLoading =
+    cardsLoading || cardExpensesLoading || cardPaymentsLoading || cardRolloversLoading || debtsLoading;
+
   const cashGapResult = useMemo(
     () =>
       buildOverviewCashGapResult({
+        isLoading: isCardDataLoading,
         currentBalanceCents,
         today,
         month,
@@ -86,12 +95,14 @@ export function useOverviewObligations({
         cards: cards ?? [],
         cardExpenses: cardExpenses ?? [],
         cardPayments: cardPayments ?? [],
+        cardRollovers: cardRollovers ?? [],
         debts: debts ?? [],
         incomes: incomes ?? [],
         hasLiquidityContext,
         predictedInflows,
       }),
     [
+      isCardDataLoading,
       currentBalanceCents,
       today,
       month,
@@ -99,6 +110,7 @@ export function useOverviewObligations({
       cards,
       cardExpenses,
       cardPayments,
+      cardRollovers,
       debts,
       incomes,
       hasLiquidityContext,
@@ -109,26 +121,25 @@ export function useOverviewObligations({
   const weeklyRadarSummary = useMemo(
     () =>
       buildOverviewWeeklyRadarSummary({
-        isLoading: cardsLoading || cardExpensesLoading || cardPaymentsLoading || debtsLoading,
+        isLoading: isCardDataLoading,
         today,
         month,
         currentBalanceCents,
         cards,
         cardExpenses,
         cardPayments,
+        cardRollovers,
         debts,
       }),
     [
-      cardsLoading,
-      cardExpensesLoading,
-      cardPaymentsLoading,
-      debtsLoading,
+      isCardDataLoading,
       today,
       month,
       currentBalanceCents,
       cards,
       cardExpenses,
       cardPayments,
+      cardRollovers,
       debts,
     ],
   );

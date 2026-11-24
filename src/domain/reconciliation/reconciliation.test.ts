@@ -4,6 +4,7 @@ import {
   cleanDescription,
   extractInstallmentInfo,
   generateStatementHash,
+  isStatementNoiseOrSummary,
   normalizeDateToISO,
   parseAmountToCents,
   parseCsvToRows,
@@ -1088,6 +1089,54 @@ OFXHEADER:100
       // Parcela real continua sendo extraída com precisão
       const realInst = extractInstallmentInfo("MAGALU PARC 04/10", "2026-11-04");
       expect(realInst).toEqual({ current: 4, total: 10 });
+    });
+
+    it("Blindagem #13: descarta linhas de saldo rolado/rotativo como ruído e concilia encargos pré-existentes da rolagem como exact_match", () => {
+      expect(isStatementNoiseOrSummary("Saldo financiado fatura anterior")).toBe(true);
+      expect(isStatementNoiseOrSummary("Saldo em rotativo")).toBe(true);
+      expect(isStatementNoiseOrSummary("Transferência saldo anterior")).toBe(true);
+      expect(isStatementNoiseOrSummary("Principal parcelamento fatura")).toBe(true);
+
+      const statementTransactions: StatementTransaction[] = [
+        {
+          id: "tx-juros",
+          index: 0,
+          occurrenceIndex: 0,
+          date: "2026-11-18",
+          rawDescription: "JUROS DE ROTATIVO FATURA",
+          cleanDescription: "JUROS DE ROTATIVO FATURA",
+          amountCents: 4850,
+          isRefund: false,
+          isPayment: false,
+          inferredChargeKind: "interest",
+          statementHash: "hash-juros-nov",
+        },
+      ];
+
+      const existingFromRollover: ExistingExpenseForReconciliation[] = [
+        {
+          id: "exp-rollover-juros",
+          date: "2026-11-01",
+          description: "Juros de Rotativo",
+          valueCents: 4850,
+          categoryId: "cat-encargos",
+          installmentNumber: null,
+          installmentsTotal: null,
+          chargeKind: "interest",
+        },
+      ];
+
+      const recon = reconcileStatementTransactions({
+        statementTransactions,
+        existingExpenses: existingFromRollover,
+        history: [],
+        defaultCategoryId: "cat-outros",
+      });
+
+      expect(recon.items).toHaveLength(1);
+      expect(recon.items[0]?.status).toBe("exact_match");
+      expect(recon.items[0]?.selected).toBe(false);
+      expect(recon.items[0]?.matchedExpenseId).toBe("exp-rollover-juros");
     });
   });
 });

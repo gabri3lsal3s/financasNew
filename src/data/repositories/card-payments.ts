@@ -37,7 +37,8 @@ export async function listCardPayments(cardId: string, options?: CardPaymentQuer
       : options.sinceMonth;
 
   if (resolvedSinceMonth) {
-    query = query.gte("competence_month", resolvedSinceMonth);
+    const sinceDate = `${resolvedSinceMonth}-01`;
+    query = query.or(`competence_month.gte.${resolvedSinceMonth},date.gte.${sinceDate}`);
   }
 
   const { data, error } = await resolveQuery<CardPayment[]>(
@@ -60,7 +61,8 @@ export async function listAllCardPayments(options?: CardPaymentQueryOptions): Pr
       : options.sinceMonth;
 
   if (resolvedSinceMonth) {
-    query = query.gte("competence_month", resolvedSinceMonth);
+    const sinceDate = `${resolvedSinceMonth}-01`;
+    query = query.or(`competence_month.gte.${resolvedSinceMonth},date.gte.${sinceDate}`);
   }
 
   const { data, error } = await resolveQuery<CardPayment[]>(

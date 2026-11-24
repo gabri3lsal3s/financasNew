@@ -31,6 +31,8 @@ vi.mock("@/state/queries/use-user-subscription", () => ({
 vi.mock("@/state/mutations/use-card-mutations", () => ({
   useUpdateCard: () => ({ mutate: vi.fn(), isPending: false }),
   useDeleteCardPayment: () => ({ mutate: vi.fn(), isPending: false }),
+  useDeleteCardBillRollover: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useRolloverCardBill: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 function createWrapper() {

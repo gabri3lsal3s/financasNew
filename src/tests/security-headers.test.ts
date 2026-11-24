@@ -59,14 +59,27 @@ describe("Tarefa 1.3 — Content-Security-Policy (CSP) & Segurança de Borda em 
     expect(csp).toMatch(/connect-src[^;]*https:\/\/challenges\.cloudflare\.com/);
   });
 
-  it("permite worker-src blob e cdn.jsdelivr.net para OCR client-side com Tesseract.js sem wildcards", () => {
+  it("permite worker-src blob e caminhos pinados do Tesseract.js em cdn.jsdelivr.net sem wildcards", () => {
     const content = readFileSync(headersPath, "utf8");
     const cspMatch = content.match(/Content-Security-Policy:\s*([^\r\n]+)/);
     const csp = cspMatch?.[1] ?? "";
 
-    expect(csp).toContain("worker-src 'self' blob: https://cdn.jsdelivr.net");
-    expect(csp).toMatch(/script-src[^;]*https:\/\/cdn\.jsdelivr\.net/);
-    expect(csp).toMatch(/connect-src[^;]*https:\/\/cdn\.jsdelivr\.net/);
+    expect(csp).toContain("worker-src 'self' blob: https://cdn.jsdelivr.net/npm/tesseract.js@v7.0.0/");
+    expect(csp).toMatch(/script-src[^;]*https:\/\/cdn\.jsdelivr\.net\/npm\/tesseract\.js@v7\.0\.0\//);
+    expect(csp).toMatch(/connect-src[^;]*https:\/\/cdn\.jsdelivr\.net\/npm\/tesseract\.js@v7\.0\.0\//);
+    expect(csp).not.toMatch(/https:\/\/cdn\.jsdelivr\.net(?:[;\s]|$)/);
+  });
+
+  it("aplica CSP mais restrita nas rotas /assinatura e /assinatura/* removendo cdn.jsdelivr.net e wasm-unsafe-eval (D-14/D-19)", () => {
+    const content = readFileSync(headersPath, "utf8");
+    const checkoutBlockMatch = content.match(/\/assinatura\s+!\s+Content-Security-Policy\s+Content-Security-Policy:\s*([^\r\n]+)/);
+    expect(checkoutBlockMatch).not.toBeNull();
+    const checkoutCsp = checkoutBlockMatch?.[1] ?? "";
+
+    expect(checkoutCsp).toContain("default-src 'self'");
+    expect(checkoutCsp).not.toContain("cdn.jsdelivr.net");
+    expect(checkoutCsp).not.toContain("'wasm-unsafe-eval'");
+    expect(content).toMatch(/\/assinatura\/\*\s+!\s+Content-Security-Policy/);
   });
 
   it("não possui wildcards permissivos (*) em script-src ou connect-src", () => {
@@ -87,6 +100,7 @@ describe("Tarefa 1.3 — Content-Security-Policy (CSP) & Segurança de Borda em 
     const content = readFileSync(headersPath, "utf8");
     expect(content).toContain("X-Content-Type-Options: nosniff");
     expect(content).toContain("X-Frame-Options: DENY");
+    expect(content).toContain("X-XSS-Protection: 0");
     expect(content).toContain("Referrer-Policy: strict-origin-when-cross-origin");
     expect(content).toContain(
       "Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), accelerometer=(), gyroscope=(), interest-cohort=()",

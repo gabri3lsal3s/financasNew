@@ -161,6 +161,7 @@ export function CardsPage() {
               previousUnpaidSummaries={state.previousUnpaidSummaries}
               onOpenPayment={state.handleOpenPayment}
               onOpenBatchPayment={state.handleOpenBatchPayment}
+              onOpenRollover={state.handleOpenRollover}
               onOpenCharge={state.handleOpenCharge}
             />
 
@@ -196,7 +197,10 @@ export function CardsPage() {
 
           <CardInvoicePaymentsFeed
             competencePayments={state.competencePayments}
+            competenceRollovers={state.competenceRollovers}
+            effectiveMonth={state.effectiveMonth}
             onDeletePayment={state.handleDeletePaymentClick}
+            onDeleteRollover={state.handleDeleteRolloverClick}
           />
         </>
       )}
@@ -216,8 +220,13 @@ export function CardsPage() {
         deletingPayment={state.deletingPayment}
         onCloseDeletePayment={() => state.setDeletingPayment(null)}
         onConfirmDeletePayment={state.handleConfirmDeletePayment}
+        deletingRollover={state.deletingRollover}
+        onCloseDeleteRollover={() => state.setDeletingRollover(null)}
+        onConfirmDeleteRollover={state.handleConfirmDeleteRollover}
         paymentMode={state.paymentMode}
         onClosePayment={() => state.setPaymentMode(null)}
+        rolloverOpen={state.rolloverOpen}
+        onRolloverOpenChange={state.setRolloverOpen}
         chargeOpen={state.chargeOpen}
         onCloseCharge={state.setChargeOpen}
         mixedCardSplit={state.mixedCardSplit}

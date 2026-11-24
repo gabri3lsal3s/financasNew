@@ -245,9 +245,9 @@ describe("projectInstallmentCashFlows — Mapeamento Cronológico de Parcelament
     const flows = projectInstallmentCashFlows({ card, installments });
 
     expect(flows).toHaveLength(3);
-    // Nenhuma parcela discursa em 01/08 (data da compra):
+    // Nenhuma parcela discursa em 01/08 (data da compra); 12/09/2026 é sábado -> prorroga para 14/09 (Blindagem #8):
     expect(flows[0]?.disbursementDate).toBe("2026-08-12");
-    expect(flows[1]?.disbursementDate).toBe("2026-09-12");
+    expect(flows[1]?.disbursementDate).toBe("2026-09-14");
     expect(flows[2]?.disbursementDate).toBe("2026-10-12");
   });
 
@@ -263,7 +263,8 @@ describe("projectInstallmentCashFlows — Mapeamento Cronológico de Parcelament
     expect(obs[0]?.dueDate).toBe("2026-11-12");
     expect(obs[0]?.amountCents).toBe(25000);
     expect(obs[0]?.kind).toBe("invoice");
-    expect(obs[1]?.dueDate).toBe("2026-12-12");
+    // 12/12/2026 é sábado -> prorroga para segunda 14/12 (Blindagem #8)
+    expect(obs[1]?.dueDate).toBe("2026-12-14");
   });
 });
 
@@ -300,9 +301,9 @@ describe("analyzeCashGap com cardProjection integrado (§4.3)", () => {
     expect(day2?.outflowCents).toBe(0);
     expect(day2?.projectedBalanceCents).toBe(20000);
 
-    // O outflow de R$ 500 ocorre exatamente no dia 15 (vencimento):
-    const day15 = result.runway.find((p) => p.date === "2026-08-15");
-    expect(day15?.outflowCents).toBe(50000);
-    expect(day15?.projectedBalanceCents).toBe(170000); // 200 + 2000 - 500 = 1700
+    // O outflow de R$ 500 ocorre no vencimento efetivo (15/08/2026 é sábado -> segunda 17/08, Blindagem #8):
+    const day17 = result.runway.find((p) => p.date === "2026-08-17");
+    expect(day17?.outflowCents).toBe(50000);
+    expect(day17?.projectedBalanceCents).toBe(170000); // 200 + 2000 - 500 = 1700
   });
 });

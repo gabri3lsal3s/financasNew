@@ -149,8 +149,9 @@ export function billReminder(
   today: string = todayISO(),
   nearDueDays = 3,
 ): ReminderItem | null {
+  if (balanceCents <= 0) return null;
   const status = invoiceStatus(source.dueDate.slice(0, 7), dueDay, balanceCents, today, nearDueDays);
-  if (status === "closed" || status === "open") return null;
+  if (status !== "overdue" && status !== "near_due") return null;
   const resolvedStatus: ReminderStatus =
     status === "overdue" ? "overdue" : source.dueDate === today ? "due_today" : "due_soon";
   return {

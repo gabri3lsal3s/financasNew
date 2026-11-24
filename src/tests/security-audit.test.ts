@@ -50,12 +50,12 @@ function statements(): string[] {
 }
 
 describe("F6.2 — RLS: cobertura total (D4 — multiusuário isolado)", () => {
-  it("toda tabela criada nas migrations tem RLS habilitado (70 tabelas)", () => {
+  it("toda tabela criada nas migrations tem RLS habilitado (72 tabelas)", () => {
     const createdMatches = [...ALL_SQL.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?public\.([a-zA-Z0-9_]+)/gi)]
       .map((m) => m[1]?.toLowerCase())
       .filter((name): name is string => Boolean(name));
     const created = Array.from(new Set(createdMatches));
-    expect(created.length).toBe(70);
+    expect(created.length).toBe(72);
     for (const table of created) {
       expect(ALL_SQL).toMatch(
         new RegExp(`alter\\s+table\\s+(?:only\\s+)?public\\.${table}\\s+enable\\s+row\\s+level\\s+security`, "i"),
@@ -866,14 +866,14 @@ describe("Tarefa 3.3 — Criação do Índice Composto Complementar em portfolio
 });
 
 describe("Tarefa 3.4 — Expansão da Suíte de Auditoria Integral de Banco & Governança InitPlan", () => {
-  it("todas as 70 tabelas possuem RLS habilitado e nenhuma migração contém disable row level security", () => {
+  it("todas as 71 tabelas possuem RLS habilitado e nenhuma migração contém disable row level security", () => {
     expect(ALL_SQL).not.toMatch(/disable\s+row\s+level\s+security/i);
 
     const createdMatches = [...ALL_SQL.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?public\.([a-zA-Z0-9_]+)/gi)]
       .map((m) => m[1]?.toLowerCase())
       .filter((name): name is string => Boolean(name));
     const created = Array.from(new Set(createdMatches));
-    expect(created.length).toBe(70);
+    expect(created.length).toBe(72);
     for (const table of created) {
       expect(ALL_SQL).toMatch(
         new RegExp(`alter\\s+table\\s+(?:only\\s+)?public\\.${table}\\s+enable\\s+row\\s+level\\s+security`, "i"),
@@ -1726,5 +1726,73 @@ describe("Auditoria de Segurança v3.15 — Remediação Integral F-01 a F-16 (M
     }
   });
 });
+
+describe("Fase P1 — Hardening Billing RLS, PII e Ciclo de Vida (Migration 0153)", () => {
+  const mig0153Path = resolve(
+    root,
+    "supabase/migrations/20260101000153_harden_billing_rls_pii_and_lifecycle.sql",
+  );
+
+  it("migration 0153 existe e endurece billing_intents, get_user_module_access e reconcile_expired_subscriptions (B-07, A-01, A-07)", () => {
+    expect(existsSync(mig0153Path)).toBe(true);
+    const sql = readFileSync(mig0153Path, "utf8");
+
+    // B-07: INSERT em billing_intents restrito a admins/service_role (sem user_id = auth.uid())
+    expect(sql).toMatch(/CREATE POLICY "Apenas service role e admins inserem billing_intents"[\s\S]*?\(SELECT public\.is_admin\(\)\)/i);
+    expect(sql).not.toMatch(/Apenas service role e admins inserem billing_intents[\s\S]*user_id\s*=\s*\(SELECT auth\.uid\(\)\)/i);
+    expect(sql).toMatch(/REVOKE INSERT, UPDATE, DELETE ON TABLE public\.billing_intents FROM anon;/i);
+
+    // A-01: trial exige sempre trial_ends_at > NOW(), mesmo com status = 'active'
+    expect(sql).toMatch(
+      /v_sub\.tier\s*=\s*'trial'::public\.subscription_tier[\s\S]*v_sub\.status\s+IN\s*\('trialing'::public\.subscription_status,\s*'active'::public\.subscription_status\)[\s\S]*v_sub\.trial_ends_at\s*>\s*NOW\(\)/i,
+    );
+
+    // A-07: reconcile_expired_subscriptions cobre Anual PIX sem recorrência e trial_scheduled órfão (> 3 dias)
+    expect(sql).toMatch(/expired_one_off[\s\S]*asaas_subscription_id\s+IS\s+NULL/i);
+    expect(sql).toMatch(/expired_scheduled_trials[\s\S]*scheduled_plan_id\s+IS\s+NOT\s+NULL[\s\S]*trial_ends_at\s*\+\s*INTERVAL\s*'3 days'\s*<=\s*now\(\)/i);
+  });
+
+  it("migration 0153 protege PII de profiles, preserva retenção fiscal ON DELETE SET NULL e cria rate limit + flag de chargeback (D-02, D-03, D-04, D-06)", () => {
+    const sql = readFileSync(mig0153Path, "utf8");
+
+    // D-02: REVOKE SELECT em profiles + GRANT apenas em colunas não-PII + get_my_billing_contact()
+    expect(sql).toMatch(/REVOKE SELECT ON TABLE public\.profiles FROM anon, authenticated;/i);
+    expect(sql).toMatch(/GRANT SELECT\s*\([\s\S]*id,[\s\S]*created_at[\s\S]*\)\s*ON TABLE public\.profiles TO authenticated;/i);
+    expect(sql).toMatch(/CREATE OR REPLACE FUNCTION public\.get_my_billing_contact\(\)/i);
+    expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.get_my_billing_contact\(\) FROM PUBLIC, anon;/i);
+    expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.get_my_billing_contact\(\) TO authenticated;/i);
+
+    // D-03: ON DELETE SET NULL em billing_processed_payments e billing_intents
+    expect(sql).toMatch(/ALTER TABLE public\.billing_processed_payments[\s\S]*ALTER COLUMN user_id DROP NOT NULL/i);
+    expect(sql).toMatch(/ALTER TABLE public\.billing_intents[\s\S]*ALTER COLUMN user_id DROP NOT NULL/i);
+    expect(sql).toMatch(/fk_billing_processed_payments_user_id[\s\S]*REFERENCES public\.profiles \(id\) ON DELETE SET NULL/i);
+    expect(sql).toMatch(/fk_billing_intents_user_id[\s\S]*REFERENCES public\.profiles \(id\) ON DELETE SET NULL/i);
+
+    // D-04: billing_rate_limits + check_billing_rate_limit restrito ao service_role
+    expect(sql).toMatch(/CREATE TABLE IF NOT EXISTS public\.billing_rate_limits/i);
+    expect(sql).toMatch(/ALTER TABLE public\.billing_rate_limits ENABLE ROW LEVEL SECURITY;/i);
+    expect(sql).toMatch(/ALTER TABLE public\.billing_rate_limits FORCE ROW LEVEL SECURITY;/i);
+    expect(sql).toMatch(/CREATE OR REPLACE FUNCTION public\.check_billing_rate_limit/i);
+    expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.check_billing_rate_limit[\s\S]*FROM PUBLIC, anon, authenticated;/i);
+    expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.check_billing_rate_limit[\s\S]*TO service_role;/i);
+
+    // D-06: chargeback_flagged_at
+    expect(sql).toMatch(/ADD COLUMN IF NOT EXISTS chargeback_flagged_at timestamptz/i);
+  });
+
+  it("migration 0153 bloqueia exclusão de conta com assinatura ativa e endurece admin_delete_user e admin_get_user_contact_details (D-01, D-18)", () => {
+    const sql = readFileSync(mig0153Path, "utf8");
+
+    // D-01: delete_current_user_account trava quando há asaas_subscription_id ativo
+    expect(sql).toMatch(/CREATE OR REPLACE FUNCTION public\.delete_current_user_account\(\)[\s\S]*ACTIVE_SUBSCRIPTION_EXISTS/i);
+
+    // D-18: admin_delete_user limpa trip_members.pix_key e admin_get_user_contact_details exige AAL2 para CPF completo
+    expect(sql).toMatch(/CREATE OR REPLACE FUNCTION public\.admin_delete_user\(target_user_id uuid\)[\s\S]*UPDATE public\.trip_members[\s\S]*pix_key\s*=\s*null/i);
+    expect(sql).toMatch(/CREATE OR REPLACE FUNCTION public\.admin_get_user_contact_details\(p_user_id uuid\)[\s\S]*aal2/i);
+    expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.admin_get_user_contact_details\(uuid\) FROM PUBLIC, anon;/i);
+    expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.admin_get_user_contact_details\(uuid\) TO authenticated;/i);
+  });
+});
+
 
 

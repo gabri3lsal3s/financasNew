@@ -102,7 +102,7 @@ describe("Card Invoice Feeds", () => {
       />
     );
 
-    expect(screen.getByText("Pagamentos e estornos")).toBeInTheDocument();
+    expect(screen.getByText("Pagamentos, estornos e ajustes")).toBeInTheDocument();
     expect(screen.getByText("Pagamento adiantado")).toBeInTheDocument();
 
     const user = userEvent.setup();

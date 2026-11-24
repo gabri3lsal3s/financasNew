@@ -70,7 +70,9 @@ export function SubscriptionCheckoutPage() {
             planPriceCents={c.planConfig.priceCents}
             email={c.confirmedEmail || c.authEmail}
             isCreditCard={c.activeMethod === "credit_card"}
-            cardLast4={c.confirmedCardLast4 || c.cardNumber.slice(-4)}
+            cardLast4={c.confirmedCardLast4 || undefined}
+            returnPath={c.checkoutReturnPath}
+            onResendConfirmation={c.handleResendConfirmation}
           />
         ) : (
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-12 items-start">
@@ -106,15 +108,8 @@ export function SubscriptionCheckoutPage() {
               <CheckoutPaymentMethodSelector
                 plan={c.plan}
                 activeMethod={c.activeMethod}
-                onSelectCreditCard={() => {
-                  c.setMethod("credit_card");
-                  c.setPixResult(null);
-                  c.setErrorMessage(null);
-                }}
-                onSelectPix={() => {
-                  c.setMethod("pix");
-                  c.setErrorMessage(null);
-                }}
+                onSelectCreditCard={() => c.handleSelectMethod("credit_card")}
+                onSelectPix={() => c.handleSelectMethod("pix")}
               />
 
               {c.errorMessage ? (
@@ -156,11 +151,17 @@ export function SubscriptionCheckoutPage() {
                   cardNumber={c.cardNumber}
                   cardExpiry={c.cardExpiry}
                   cardCcv={c.cardCcv}
+                  phone={c.phone}
+                  postalCode={c.postalCode}
+                  addressNumber={c.addressNumber}
                   detectedBrand={c.detectedBrand}
                   onHolderNameChange={c.setHolderName}
                   onCardNumberChange={c.handleCardNumberChange}
                   onCardExpiryChange={c.handleCardExpiryChange}
                   onCardCcvChange={c.handleCardCcvChange}
+                  onPhoneChange={c.handlePhoneChange}
+                  onPostalCodeChange={c.handlePostalCodeChange}
+                  onAddressNumberChange={c.handleAddressNumberChange}
                 />
               ) : c.pixResult ? (
                 <PixQrWaitingPanel

@@ -133,6 +133,10 @@ export async function refinanceCreditCardBill(input: {
     bill_competence: string;
   }>;
   expenseCategoryId: string;
+  principalInstallments?: Array<{
+    amount: number;
+    bill_competence: string;
+  }>;
 }): Promise<boolean> {
   return unwrapRpc(
     callRpc("refinance_credit_card_bill", {
@@ -141,6 +145,65 @@ export async function refinanceCreditCardBill(input: {
       p_initial_payment_amount: input.initialPaymentAmount,
       p_interest_installments: input.interestInstallments,
       p_expense_category_id: input.expenseCategoryId,
+      ...(input.principalInstallments
+        ? { p_principal_installments: input.principalInstallments }
+        : {}),
+    }),
+  );
+}
+
+export interface RolloverCardBillChargeItem extends CardBillChargeItem {
+  date?: string | null;
+}
+
+export interface RolloverCardBillParams {
+  cardId: string;
+  fromCompetenceMonth: string;
+  toCompetenceMonth: string;
+  principalAmount: number;
+  charges?: RolloverCardBillChargeItem[];
+  note?: string | null;
+}
+
+export interface RolloverCardBillResult {
+  rollover_id: string;
+  group_id: string;
+  from_competence_month: string;
+  to_competence_month: string;
+  principal_amount: number;
+  charges_amount: number;
+  created_expense_ids: string[];
+}
+
+export interface DeleteCardBillRolloverResult {
+  deleted_count: number;
+  group_id: string;
+  card_id: string;
+}
+
+/** Rolagem de saldo residual de fatura vencida para a competência seguinte (rotativo). */
+export async function rolloverCardBillRpc(
+  params: RolloverCardBillParams,
+): Promise<RolloverCardBillResult> {
+  return unwrapRpc(
+    callRpc("rollover_card_bill", {
+      p_card_id: params.cardId,
+      p_from_competence_month: params.fromCompetenceMonth,
+      p_to_competence_month: params.toCompetenceMonth,
+      p_principal_amount: params.principalAmount,
+      p_charges: params.charges ?? [],
+      p_note: params.note ?? null,
+    }),
+  );
+}
+
+/** Exclusão atômica de rolagem ou grupo de parcelamento de fatura. */
+export async function deleteCardBillRolloverRpc(
+  rolloverId: string,
+): Promise<DeleteCardBillRolloverResult> {
+  return unwrapRpc(
+    callRpc("delete_card_bill_rollover", {
+      p_rollover_id: rolloverId,
     }),
   );
 }

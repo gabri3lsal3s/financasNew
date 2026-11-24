@@ -142,6 +142,18 @@ export function useSimulatedAllCardPayments() {
   return makeSimulatedQueryResult(data);
 }
 
+/** Rolagens e parcelamentos de fatura simulados por cartão. */
+export function useSimulatedCardBillRollovers() {
+  const data = useMemo(() => [] as import("@/types").CardBillRollover[], []);
+  return makeSimulatedQueryResult(data);
+}
+
+/** Todas as rolagens e parcelamentos de fatura simulados. */
+export function useSimulatedAllCardBillRollovers() {
+  const data = useMemo(() => [] as import("@/types").CardBillRollover[], []);
+  return makeSimulatedQueryResult(data);
+}
+
 /** Orçamentos simulados. */
 export function useSimulatedBudgets(month?: string) {
   const data = useMemo(() => {

@@ -11,12 +11,23 @@ export interface CustomerBillingDetails {
   addressNumber?: string;
 }
 
+export interface BillingContactInfo {
+  name: string | null;
+  email: string | null;
+  cpf: string | null;
+  maskedCpf: string | null;
+  phone: string | null;
+  postalCode: string | null;
+  addressNumber: string | null;
+}
+
 export interface CreditCardPayload {
   holderName: string;
   number: string;
   expiryMonth: string;
   expiryYear: string;
   ccv: string;
+  phone?: string;
   postalCode?: string;
   addressNumber?: string;
 }
@@ -63,7 +74,9 @@ export interface DirectCreditCardResult {
   subscriptionId?: string;
   paymentId?: string;
   tier: SubscriptionTier;
-  status: "active" | "trialing" | "pending";
+  status: "active" | "trialing" | "pending" | "incomplete";
+  phase?: "trial_scheduled" | "immediate";
+  firstChargeAt?: string;
   needsEmailConfirmation?: boolean;
   email?: string;
   cardLast4?: string;
@@ -162,11 +175,6 @@ export interface BillingProviderAdapter {
    * Consulta a lista cronológica de faturas e comprovantes fiscais do cliente.
    */
   listInvoices?(): Promise<BillingInvoiceItem[]>;
-
-  /**
-   * Realiza a migração direta do plano Mensal para o plano Anual (Upsell 40%).
-   */
-  upgradeToAnnual?(): Promise<void>;
 
   /**
    * Agenda a troca de plano para a próxima renovação (mensal <-> anual).

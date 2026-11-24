@@ -223,6 +223,13 @@ export async function getMySubscription(): Promise<{
 }
 
 /**
+ * Consulta segura de PII de contato para pré-preenchimento de faturamento/cartão do próprio usuário (D-02).
+ */
+export async function getMyBillingContact() {
+  return unwrapRpc(callRpc("get_my_billing_contact", {}), true);
+}
+
+/**
  * Superadmin ou Admin altera o plano/tier/status da assinatura de um usuário.
  */
 export async function adminSetUserSubscription(params: {

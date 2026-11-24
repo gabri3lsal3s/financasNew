@@ -47,7 +47,11 @@ export function CheckoutOrderSummary({
               tone="default"
               deemphasizeCents={false}
             />{" "}
-            agendada para {billingSchedule.firstBillingDate.toLocaleDateString("pt-BR")}.
+            agendada para{" "}
+            {billingSchedule.firstBillingDate.toLocaleDateString("pt-BR", {
+              timeZone: "America/Sao_Paulo",
+            })}
+            .
           </p>
         ) : null}
       </div>

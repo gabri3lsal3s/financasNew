@@ -20,6 +20,7 @@ import { useOnboardingDismissed } from "@/hooks";
 import { useSafeViewScope } from "@/hooks/use-safe-business-scope";
 import { currentMonth, shiftMonth } from "@/lib/date";
 import {
+  useAllCardBillRollovers,
   useAllCardExpenses,
   useAllCardPayments,
   useBudgets,
@@ -75,6 +76,7 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
   const debtsQuery = useDebts();
   const cardExpensesQuery = useAllCardExpenses();
   const cardPaymentsQuery = useAllCardPayments();
+  const cardRolloversQuery = useAllCardBillRollovers();
   const contributionsQuery = usePortfolioContributions();
   const splitSharesQuery = useMyPublicShares("split");
   const goalSharesQuery = useMyPublicShares("goal_tracker");
@@ -244,11 +246,13 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
     cardsLoading: cardsQuery.isLoading,
     cardExpensesLoading: cardExpensesQuery.isLoading,
     cardPaymentsLoading: cardPaymentsQuery.isLoading,
+    cardRolloversLoading: cardRolloversQuery.isLoading,
     debtsLoading: debtsQuery.isLoading,
     splitSharesLoading: splitSharesQuery.isLoading,
     cards: scopedCards,
     cardExpenses: cardExpensesQuery.data,
     cardPayments: cardPaymentsQuery.data,
+    cardRollovers: cardRolloversQuery.data,
     debts: scopedDebts,
     incomes: scopedIncomes,
     splitShares: splitSharesQuery.data,
@@ -306,6 +310,7 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
     isQueryPending(expenseCategories) ||
     isQueryPending(cardExpensesQuery) ||
     isQueryPending(cardPaymentsQuery) ||
+    isQueryPending(cardRolloversQuery) ||
     isQueryPending(contributionsQuery) ||
     isQueryPending(splitSharesQuery) ||
     isQueryPending(goalSharesQuery) ||

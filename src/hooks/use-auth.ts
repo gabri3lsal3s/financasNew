@@ -60,8 +60,6 @@ export {
 };
 export type { SignUpResult, MfaAssuranceLevel, MfaFactorInfo, MfaEnrollResult };
 
-import type { AppMode } from "@/types";
-
 export interface AuthState {
   session: Session | null;
   user: User | null;
@@ -76,9 +74,9 @@ export interface AuthState {
   /** Nível de garantia da autenticação (aal1, aal2 ou null sem sessão). */
   aalLevel?: "aal1" | "aal2" | null;
   signIn: (email: string, password: string, captchaToken?: string) => Promise<void>;
-  signUp: (email: string, password: string, name?: string, inviteCode?: string, captchaToken?: string, appMode?: AppMode) => Promise<SignUpResult>;
+  signUp: (email: string, password: string, name?: string, inviteCode?: string, captchaToken?: string, redirectPath?: string) => Promise<SignUpResult>;
   resetPassword: (email: string, captchaToken?: string) => Promise<void>;
-  resendConfirmation: (email: string) => Promise<void>;
+  resendConfirmation: (email: string, redirectPath?: string) => Promise<void>;
 }
 
 

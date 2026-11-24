@@ -20,11 +20,11 @@
 
 - **Frontend:** Cloudflare Pages — Git Integration nativa via Webhooks (sem GitHub Actions). Roteamento SPA configurado via `public/_redirects` e segurança/cache via `public/_headers`.
 - **Segurança de Borda e Headers HTTP (`public/_headers`):**
-  - **Content-Security-Policy (CSP):** política estrita que restringe a execução de scripts e conexões a origens homologadas (`default-src 'self'`, `script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com https://cdn.jsdelivr.net`, `worker-src 'self' blob: https://cdn.jsdelivr.net`, `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`, `img-src 'self' data: blob: https://*.supabase.co`, `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://challenges.cloudflare.com https://brapi.dev https://cdn.jsdelivr.net blob:`, `font-src 'self' data: https://fonts.gstatic.com`, `frame-src 'self' https://challenges.cloudflare.com`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'`);
-  - **Defesa em Profundidade:** `Strict-Transport-Security` (HSTS preload), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection: 1; mode=block`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`;
-  - **CORS das Edge Functions:** allowlist (`ALLOWED_ORIGINS` + `*.workers.dev` + `*.pages.dev` + localhost/Capacitor); webhook Asaas sem CORS de browser; `quotes` só grava cache global com service role.
+  - **Content-Security-Policy (CSP):** política estrita que restringe a execução de scripts e conexões a origens homologadas (`default-src 'self'`, `script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com https://cdn.jsdelivr.net/npm/tesseract.js@v7.0.0/ https://cdn.jsdelivr.net/npm/tesseract.js-core@v7.0.0/`, `worker-src 'self' blob: https://cdn.jsdelivr.net/npm/tesseract.js@v7.0.0/`, `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`, `img-src 'self' data: blob: https://*.supabase.co`, `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://challenges.cloudflare.com https://brapi.dev https://cdn.jsdelivr.net/npm/tesseract.js@v7.0.0/ https://cdn.jsdelivr.net/npm/tesseract.js-core@v7.0.0/ https://cdn.jsdelivr.net/npm/@tesseract.js-data/ blob:`, `font-src 'self' data: https://fonts.gstatic.com`, `frame-src 'self' https://challenges.cloudflare.com`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'`). Nas rotas `/assinatura` e `/assinatura/*`, a CSP é ainda mais restrita e remove completamente `cdn.jsdelivr.net` e `'wasm-unsafe-eval'`;
+  - **Defesa em Profundidade:** `Strict-Transport-Security` (HSTS preload), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection: 0`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), accelerometer=(), gyroscope=(), interest-cohort=()`;
+  - **CORS das Edge Functions:** allowlist estrita (`ALLOWED_ORIGINS` com `https://axir.com.br` e `https://www.axir.com.br`, sem wildcards nem `localhost` em produção e sem `asaas-access-token` em rotas de browser); webhook Asaas sem CORS de browser; `quotes` só grava cache global com service role.
   - **Estratégia de Cache de Borda:** assets estáticos versionados (`/assets/*`) com cache imutável de 1 ano (`max-age=31536000, immutable`), e artefatos dinâmicos de ciclo de vida (`/index.html`, `/sw.js`, `/pwa/*`) com validação imediata (`max-age=0, must-revalidate`).
-- **Backend:** Supabase — migrations em `supabase/migrations/` (sequência canônica estrita 0001–0145: schema, RLS, RPCs, quotas, planos, conciliação, colaboração familiar/viagens, faturamento, auditoria, calibração não-destrutiva de snapshots, Notification Hub, subscriptions Web Push/FCM, preferências de resumo semanal, hardening `FORCE RLS` / RPCs de broadcasts e ciclo de vida, e camada FinOps/LGPD de Micro-IA Híbrida para comprovantes e faturas).
+- **Backend:** Supabase — migrations em `supabase/migrations/` (sequência canônica estrita 0001–0153: schema, RLS, RPCs, quotas, planos, conciliação, colaboração familiar/viagens, faturamento, auditoria, calibração não-destrutiva de snapshots, Notification Hub, subscriptions Web Push/FCM, preferências de resumo semanal, hardening `FORCE RLS` / PII em `profiles` + `get_my_billing_contact()`, `billing_rate_limits`, retenção fiscal `ON DELETE SET NULL`, `chargeback_flagged_at`, e camada FinOps/LGPD de Micro-IA Híbrida para comprovantes e faturas).
 - **Auth:** Supabase Auth (email/senha) + trigger `handle_new_user` (cria `profiles` e `user_preferences` automaticamente).
 - **Cotações:** tabela `asset_prices` com cache global (`user_id NULL`) + override manual do usuário. O cache global é escrito pela **edge function `quotes`** (implementada em `supabase/functions/quotes/`).
 
@@ -49,7 +49,7 @@
 2. Aplique as migrations **na ordem** (0001 → 0145) via `supabase db push` ou console SQL.
 3. **Auth — configurar URLs de redirect** (Settings → Auth → URL Configuration):
    - `Site URL`: `https://axir.com.br`
-   - `Redirect URLs`: adicionar `https://axir.com.br/**`, `https://www.axir.com.br/**`, `https://*.pages.dev/**` e `http://localhost:5173/**`
+   - `Redirect URLs`: adicionar `https://axir.com.br/**`, `https://www.axir.com.br/**` e `http://localhost:5173/**` (nunca use wildcards amplos como `*.pages.dev` ou `*.workers.dev` em produção)
    - O arquivo `supabase/config.toml` já contém as entradas `"https://axir.com.br"` e `"https://www.axir.com.br"`.
 
 ### 3.2 Supabase Auth: Checklist de Rate Limits & Proteção contra Força Bruta
@@ -145,8 +145,8 @@ Para evitar erros de redirecionamento ou links expirados em convites e resets de
    https://axir.com.br/**
    https://axir.com.br/redefinir-senha
    https://axir.com.br/confirmar-email
+   https://axir.com.br/assinatura
    https://www.axir.com.br/**
-   https://*.pages.dev/**
    http://localhost:5173/**
    ```
 4. Salve as alterações.

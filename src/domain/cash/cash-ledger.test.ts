@@ -66,7 +66,7 @@ describe("Cash Ledger Domain — calculateRealCashBalance & resolveCashFlowEvent
     expect(res.outflowSinceCheckpointCents).toBe(180000);
   });
 
-  it("soma estornos de fatura como entrada de caixa em conta", () => {
+  it("trata estornos de fatura como neutros para o saldo bancário em conta corrente (BUG-02)", () => {
     const res = calculateRealCashBalance({
       incomes: [{ id: "inc-1", date: "2026-08-01", value: 2000 }],
       cardPayments: [
@@ -75,12 +75,12 @@ describe("Cash Ledger Domain — calculateRealCashBalance & resolveCashFlowEvent
       referenceDate: "2026-08-24",
     });
 
-    // 2000 + 250 = 2250
-    expect(res.currentBalanceCents).toBe(225000);
-    expect(res.inflowSinceCheckpointCents).toBe(225000);
+    // Estorno reduz a fatura do cartão, mas NÃO injeta dinheiro na conta corrente
+    expect(res.currentBalanceCents).toBe(200000);
+    expect(res.inflowSinceCheckpointCents).toBe(200000);
   });
 
-  it("não duplica entrada de caixa quando renda automática [REFUND] e estorno de cartão coexistem", () => {
+  it("não soma renda automática [REFUND] nem estorno de cartão no saldo em conta", () => {
     const res = calculateRealCashBalance({
       incomes: [
         { id: "inc-1", date: "2026-08-01", value: 2000 },
@@ -92,9 +92,8 @@ describe("Cash Ledger Domain — calculateRealCashBalance & resolveCashFlowEvent
       referenceDate: "2026-08-24",
     });
 
-    // 2000 + 250 (apenas 1 vez, sem duplicidade da renda automática [REFUND]) = 2250
-    expect(res.currentBalanceCents).toBe(225000);
-    expect(res.inflowSinceCheckpointCents).toBe(225000);
+    expect(res.currentBalanceCents).toBe(200000);
+    expect(res.inflowSinceCheckpointCents).toBe(200000);
   });
 
   it("processa dívidas pagas e recebidas considerando paid_at", () => {

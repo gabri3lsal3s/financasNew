@@ -1,22 +1,94 @@
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
   cancelAsaasSubscription,
+  formatBrtDisplayDate,
+  isAsaasAlreadyCanceledError,
+  isValidCardExpiry,
+  isValidLuhn,
   listAsaasCustomerPayments,
+  mapAsaasCardErrorMessage,
   refundAsaasPayment,
+  sanitizePaymentLog,
   updateAsaasSubscriptionCreditCard,
   updateAsaasSubscriptionCycle,
-  isValidLuhn,
-  isValidCardExpiry,
-  sanitizePaymentLog,
 } from "../_shared/asaas.ts";
-import { buildCorsHeaders, jsonResponse, safeErrorResponse } from "../_shared/http.ts";
+import { ASAAS_PLAN_CATALOG } from "../_shared/asaas-plans.ts";
+import {
+  buildCorsHeaders,
+  extractClientIp,
+  isProductionEnvironment,
+  jsonResponse,
+  safeErrorResponse,
+} from "../_shared/http.ts";
 import { sendTransactionalEmail } from "../_shared/resend.ts";
 import {
   renderProPlanChangeScheduledEmail,
   renderSubscriptionCanceledEmail,
 } from "../_shared/email-templates.ts";
 
+declare const Deno: {
+  env: {
+    get(key: string): string | undefined;
+  };
+  serve: (handler: (req: Request) => Promise<Response> | Response) => void;
+};
+
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+async function enforceUpdateCardRateLimit(
+  req: Request,
+  supabase: SupabaseClient,
+  userId: string,
+  clientIp: string,
+): Promise<Response | null> {
+  const checks = [
+    { action: "update_card_15m", max: 5, window: 900 },
+    { action: "update_card_24h", max: 10, window: 86400 },
+  ];
+
+  for (const check of checks) {
+    const { data, error } = await supabase.rpc("check_billing_rate_limit", {
+      p_user_id: userId,
+      p_ip: clientIp || null,
+      p_action: check.action,
+      p_max_attempts: check.max,
+      p_window_seconds: check.window,
+    });
+
+    if (error) {
+      console.error("[asaas-manage] Erro ao validar check_billing_rate_limit:", error);
+      return jsonResponse(
+        req,
+        { error: "Serviço de proteção contra abuso indisponível. Tente novamente em instantes." },
+        503,
+      );
+    }
+
+    if (!data?.allowed) {
+      return jsonResponse(
+        req,
+        {
+          error:
+            "Muitas tentativas de atualização de cartão em um curto intervalo. Aguarde alguns minutos.",
+        },
+        429,
+        { "Retry-After": String(data?.retry_after_seconds ?? 60) },
+      );
+    }
+  }
+
+  return null;
+}
+
+function isAlreadyRefundedError(err: unknown): boolean {
+  const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+  return (
+    msg.includes("já estornad") ||
+    msg.includes("ja estornad") ||
+    msg.includes("already refunded") ||
+    msg.includes("já foi estornad")
+  );
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -55,18 +127,30 @@ Deno.serve(async (req: Request) => {
       return jsonResponse(req, { error: "Sessão inválida ou expirada" }, 401);
     }
 
+    if (!user.email_confirmed_at) {
+      return jsonResponse(
+        req,
+        { error: "Por favor, confirme seu endereço de e-mail antes de gerenciar sua assinatura." },
+        403,
+      );
+    }
+
     const payload = await req.json();
     const { action, card, targetPlan } = payload;
 
-    const { data: userSub } = await supabase
+    const { data: userSub, error: subErr } = await supabase
       .from("user_subscriptions")
-      .select("id, user_id, asaas_subscription_id, asaas_payment_id, asaas_customer_id, starts_at, billing_start_at, created_at, status, tier, current_period_end, trial_ends_at, trial_consumed_at, scheduled_plan_id, scheduled_first_charge_at, pending_plan_id")
+      .select(
+        "id, user_id, asaas_subscription_id, asaas_payment_id, asaas_customer_id, starts_at, billing_start_at, created_at, status, tier, current_period_end, trial_ends_at, trial_consumed_at, scheduled_plan_id, scheduled_first_charge_at, pending_plan_id",
+      )
       .eq("user_id", user.id)
       .single();
 
-    if (!userSub) {
+    if (subErr || !userSub) {
       return jsonResponse(req, { error: "Assinatura não localizada" }, 404);
     }
+
+    const nowIso = new Date().toISOString();
 
     // -------------------------------------------------------------------------
     // AÇÃO 1: AGENDAR TROCA DE PLANO (MENSAL <-> ANUAL NA PRÓXIMA RENOVAÇÃO)
@@ -76,8 +160,16 @@ Deno.serve(async (req: Request) => {
         return jsonResponse(req, { error: "Plano de destino inválido." }, 400);
       }
 
-      const targetPlanId = targetPlan === "annual" ? "pro_annual" : "pro_monthly";
-      if (userSub.tier === targetPlanId) {
+      if (!userSub.asaas_subscription_id) {
+        return jsonResponse(
+          req,
+          { error: "Esta operação está disponível apenas para assinaturas recorrentes no cartão de crédito." },
+          400,
+        );
+      }
+
+      const targetMeta = targetPlan === "annual" ? ASAAS_PLAN_CATALOG.annual : ASAAS_PLAN_CATALOG.monthly;
+      if (userSub.tier === targetMeta.planId) {
         return jsonResponse(req, { error: "Você já está no plano solicitado." }, 400);
       }
 
@@ -85,24 +177,33 @@ Deno.serve(async (req: Request) => {
         return jsonResponse(req, { error: "Não foi possível identificar a data de renovação atual." }, 400);
       }
 
-      if (userSub.asaas_subscription_id) {
-        try {
-          await updateAsaasSubscriptionCycle(userSub.asaas_subscription_id, {
-            value: targetPlan === "annual" ? 143.88 : 19.99,
-            cycle: targetPlan === "annual" ? "YEARLY" : "MONTHLY",
-          });
-        } catch (err: unknown) {
-          console.warn("[asaas-manage] Aviso ao atualizar ciclo de cobrança no Asaas:", err);
-        }
+      try {
+        await updateAsaasSubscriptionCycle(userSub.asaas_subscription_id, {
+          value: targetMeta.value,
+          cycle: targetMeta.cycle,
+        });
+      } catch (err: unknown) {
+        console.error("[asaas-manage] Falha ao atualizar ciclo de cobrança no Asaas:", sanitizePaymentLog(err));
+        return safeErrorResponse(
+          req,
+          502,
+          "Não foi possível sincronizar a alteração de plano com o gateway. Tente novamente.",
+        );
       }
 
-      await supabase
+      const { error: updateErr } = await supabase
         .from("user_subscriptions")
         .update({
-          pending_plan_id: targetPlanId,
+          pending_plan_id: targetMeta.planId,
           pending_plan_effective_at: userSub.current_period_end,
+          updated_at: nowIso,
         })
         .eq("user_id", user.id);
+
+      if (updateErr) {
+        console.error("[asaas-manage] Erro ao persistir troca de plano agendada:", updateErr);
+        return safeErrorResponse(req, 500, "Falha ao salvar agendamento de troca de plano.");
+      }
 
       await supabase.from("audit_events").insert({
         user_id: user.id,
@@ -111,14 +212,13 @@ Deno.serve(async (req: Request) => {
         action: "plan_change_scheduled",
         payload: {
           from_plan: userSub.tier,
-          to_plan: targetPlanId,
+          to_plan: targetMeta.planId,
           effective_at: userSub.current_period_end,
         },
       });
 
-      const formattedDate = new Date(userSub.current_period_end).toLocaleDateString("pt-BR");
+      const formattedDate = formatBrtDisplayDate(userSub.current_period_end);
 
-      // Disparo de e-mail transacional via Resend: Mudança de Ciclo PRO Agendada
       try {
         const appUrl = Deno.env.get("PUBLIC_APP_URL") || "https://axir.com.br";
         const { data: profile } = await supabase
@@ -129,11 +229,12 @@ Deno.serve(async (req: Request) => {
 
         const recipientEmail = profile?.email || user.email || "";
         if (recipientEmail) {
+          const formattedPrice = targetMeta.value.toFixed(2).replace(".", ",");
           const emailData = renderProPlanChangeScheduledEmail({
             name: profile?.name || user.email?.split("@")[0] || "Cliente",
             currentPlanName: userSub.tier === "pro_annual" ? "Plano Pro Anual" : "Plano Pro Mensal",
-            targetPlanName: targetPlan === "annual" ? "Plano Pro Anual" : "Plano Pro Mensal",
-            targetPlanValueFormatted: targetPlan === "annual" ? "R$ 143,88/ano" : "R$ 19,99/mês",
+            targetPlanName: targetMeta.name,
+            targetPlanValueFormatted: `R$ ${formattedPrice}/${targetPlan === "annual" ? "ano" : "mês"}`,
             effectiveDateFormatted: formattedDate,
             appUrl,
           });
@@ -144,16 +245,16 @@ Deno.serve(async (req: Request) => {
             html: emailData.html,
             text: emailData.text,
             userId: user.id,
-            idempotencyKey: `plan_change_${userSub.id}_${targetPlanId}_${new Date().toISOString().slice(0, 10)}`,
+            idempotencyKey: `plan_change_${userSub.id}_${targetMeta.planId}_${nowIso.slice(0, 10)}`,
           });
         }
       } catch (emailErr) {
-        console.warn("[asaas-manage] Aviso ao enviar e-mail de troca de ciclo agendada:", emailErr);
+        console.warn("[asaas-manage] Aviso ao enviar e-mail de troca de ciclo agendada:", sanitizePaymentLog(emailErr));
       }
 
       return jsonResponse(req, {
         ok: true,
-        message: `Sua mudança para o ${targetPlan === "annual" ? "Plano Pro Anual" : "Plano Pro Mensal"} foi agendada para ${formattedDate}. Até lá, seu plano atual continuará ativo.`,
+        message: `Sua mudança para o ${targetMeta.name} foi agendada para ${formattedDate}. Até lá, seu plano atual continuará ativo.`,
       });
     }
 
@@ -165,25 +266,44 @@ Deno.serve(async (req: Request) => {
         return jsonResponse(req, { error: "Não há nenhuma troca de plano agendada." }, 400);
       }
 
-      if (userSub.asaas_subscription_id) {
-        try {
-          const currentIsAnnual = userSub.tier === "pro_annual";
-          await updateAsaasSubscriptionCycle(userSub.asaas_subscription_id, {
-            value: currentIsAnnual ? 143.88 : 19.99,
-            cycle: currentIsAnnual ? "YEARLY" : "MONTHLY",
-          });
-        } catch (err: unknown) {
-          console.warn("[asaas-manage] Aviso ao reverter ciclo de cobrança no Asaas:", err);
-        }
+      if (!userSub.asaas_subscription_id) {
+        return jsonResponse(
+          req,
+          { error: "Assinatura recorrente não localizada no gateway para reverter ciclo." },
+          400,
+        );
       }
 
-      await supabase
+      const currentMeta =
+        userSub.tier === "pro_annual" ? ASAAS_PLAN_CATALOG.annual : ASAAS_PLAN_CATALOG.monthly;
+
+      try {
+        await updateAsaasSubscriptionCycle(userSub.asaas_subscription_id, {
+          value: currentMeta.value,
+          cycle: currentMeta.cycle,
+        });
+      } catch (err: unknown) {
+        console.error("[asaas-manage] Falha ao reverter ciclo de cobrança no Asaas:", sanitizePaymentLog(err));
+        return safeErrorResponse(
+          req,
+          502,
+          "Não foi possível reverter o ciclo de cobrança no gateway. Tente novamente.",
+        );
+      }
+
+      const { error: cancelChangeErr } = await supabase
         .from("user_subscriptions")
         .update({
           pending_plan_id: null,
           pending_plan_effective_at: null,
+          updated_at: nowIso,
         })
         .eq("user_id", user.id);
+
+      if (cancelChangeErr) {
+        console.error("[asaas-manage] Erro ao limpar pending_plan_id:", cancelChangeErr);
+        return safeErrorResponse(req, 500, "Falha ao cancelar agendamento de troca de plano.");
+      }
 
       await supabase.from("audit_events").insert({
         user_id: user.id,
@@ -200,23 +320,34 @@ Deno.serve(async (req: Request) => {
     }
 
     // -------------------------------------------------------------------------
-    // AÇÃO 3: CANCELAMENTO DE ASSINATURA (COM REGRA CDC DE 7 DIAS E RESPEITO AO TRIAL)
+    // AÇÃO 3: CANCELAMENTO DE ASSINATURA (FAIL-CLOSED + CDC 7 DIAS + TRIAL)
     // -------------------------------------------------------------------------
     if (action === "cancel") {
-      // 1. Caso TRIAL AGENDADO (F-09): Usuário em teste gratuito cadastrou cartão para renovação futura,
-      // mas ainda não ocorreu cobrança efetiva
-      const hasNeverBeenCharged = !userSub.billing_start_at && (userSub.tier === "trial" || Boolean(userSub.scheduled_first_charge_at));
+      // 1. Caso TRIAL AGENDADO (A-01 + D-01)
+      const hasNeverBeenCharged =
+        !userSub.billing_start_at &&
+        (userSub.tier === "trial" || Boolean(userSub.scheduled_first_charge_at));
 
       if (hasNeverBeenCharged) {
         if (userSub.asaas_subscription_id) {
           try {
             await cancelAsaasSubscription(userSub.asaas_subscription_id);
           } catch (err: unknown) {
-            console.warn("[asaas-manage] Aviso ao cancelar agendamento futuro no Asaas:", err);
+            if (!isAsaasAlreadyCanceledError(err)) {
+              console.error(
+                "[asaas-manage] Falha ao cancelar agendamento futuro no Asaas:",
+                sanitizePaymentLog(err),
+              );
+              return safeErrorResponse(
+                req,
+                502,
+                "Não foi possível cancelar o agendamento no gateway de pagamentos. Tente novamente.",
+              );
+            }
           }
         }
 
-        await supabase
+        const { error: trialUpdateErr } = await supabase
           .from("user_subscriptions")
           .update({
             asaas_subscription_id: null,
@@ -225,9 +356,16 @@ Deno.serve(async (req: Request) => {
             scheduled_first_charge_at: null,
             cancel_at_period_end: false,
             tier: "trial",
-            status: "active",
+            plan_id: "trial",
+            status: "trialing",
+            updated_at: nowIso,
           })
           .eq("user_id", user.id);
+
+        if (trialUpdateErr) {
+          console.error("[asaas-manage] Erro ao reverter trial agendado para trialing:", trialUpdateErr);
+          return safeErrorResponse(req, 500, "Falha ao atualizar status da assinatura.");
+        }
 
         await supabase.from("audit_events").insert({
           user_id: user.id,
@@ -238,7 +376,7 @@ Deno.serve(async (req: Request) => {
         });
 
         const trialEndsFormatted = userSub.trial_ends_at
-          ? new Date(userSub.trial_ends_at).toLocaleDateString("pt-BR")
+          ? formatBrtDisplayDate(userSub.trial_ends_at)
           : "o encerramento do seu teste";
 
         return jsonResponse(req, {
@@ -261,22 +399,20 @@ Deno.serve(async (req: Request) => {
         let refundRequested = false;
         let paymentToRefundId = userSub.asaas_payment_id;
 
-        // Se o paymentId não estiver no banco, busca os pagamentos confirmados recentes do cliente no Asaas
         if (!paymentToRefundId && userSub.asaas_customer_id) {
           try {
             const customerPayments = await listAsaasCustomerPayments(userSub.asaas_customer_id, 5);
             const confirmedPayment = customerPayments.find(
-              (p) => p.status === "CONFIRMED" || p.status === "RECEIVED"
+              (p) => p.status === "CONFIRMED" || p.status === "RECEIVED",
             );
             if (confirmedPayment) {
               paymentToRefundId = confirmedPayment.id;
-              await supabase
-                .from("user_subscriptions")
-                .update({ asaas_payment_id: confirmedPayment.id })
-                .eq("user_id", user.id);
             }
           } catch (err: unknown) {
-            console.warn("[asaas-manage] Falha ao consultar pagamentos recentes do cliente para estorno:", err);
+            console.warn(
+              "[asaas-manage] Falha ao consultar pagamentos recentes do cliente para estorno:",
+              sanitizePaymentLog(err),
+            );
           }
         }
 
@@ -288,7 +424,16 @@ Deno.serve(async (req: Request) => {
             );
             refundRequested = true;
           } catch (err: unknown) {
-            console.warn("[asaas-manage] Aviso ao estornar cobrança no Asaas:", err);
+            if (isAlreadyRefundedError(err)) {
+              refundRequested = true;
+            } else {
+              console.error("[asaas-manage] Falha ao estornar cobrança no Asaas (CDC):", sanitizePaymentLog(err));
+              return safeErrorResponse(
+                req,
+                502,
+                "Não foi possível solicitar o estorno junto ao gateway de pagamento. Sua assinatura não foi alterada; tente novamente.",
+              );
+            }
           }
         }
 
@@ -296,32 +441,47 @@ Deno.serve(async (req: Request) => {
           try {
             await cancelAsaasSubscription(userSub.asaas_subscription_id);
           } catch (err: unknown) {
-            console.warn("[asaas-manage] Aviso ao cancelar assinatura no Asaas:", err);
+            if (!isAsaasAlreadyCanceledError(err)) {
+              console.error("[asaas-manage] Falha ao cancelar assinatura no Asaas (CDC):", sanitizePaymentLog(err));
+              return safeErrorResponse(
+                req,
+                502,
+                "Não foi possível cancelar a assinatura recorrente no gateway. Tente novamente.",
+              );
+            }
           }
         }
 
-        await supabase
+        const { error: cdcUpdateErr } = await supabase
           .from("user_subscriptions")
           .update({
             tier: "read_only",
+            plan_id: "trial",
             status: "canceled",
             cancel_at_period_end: false,
-            trial_consumed_at: userSub.trial_consumed_at || new Date().toISOString(),
+            asaas_subscription_id: null,
+            trial_consumed_at: userSub.trial_consumed_at || nowIso,
             scheduled_plan_id: null,
             scheduled_first_charge_at: null,
-            current_period_end: new Date().toISOString(),
+            current_period_end: nowIso,
+            updated_at: nowIso,
+            ...(paymentToRefundId ? { asaas_payment_id: paymentToRefundId } : {}),
           })
           .eq("user_id", user.id);
+
+        if (cdcUpdateErr) {
+          console.error("[asaas-manage] Erro ao persistir cancelamento CDC:", cdcUpdateErr);
+          return safeErrorResponse(req, 500, "Falha ao atualizar assinatura após solicitação de estorno.");
+        }
 
         await supabase.from("audit_events").insert({
           user_id: user.id,
           entity_type: "user_subscription",
           entity_id: userSub.id,
           action: "cancelled_cdc_refund",
-          payload: { gateway: "asaas", refunded: refundRequested },
+          payload: { gateway: "asaas", refunded: refundRequested, payment_id: paymentToRefundId ?? null },
         });
 
-        // Disparo de e-mail transacional via Resend: Cancelamento CDC 7 dias
         try {
           const appUrl = Deno.env.get("PUBLIC_APP_URL") || "https://axir.com.br";
           const emailData = renderSubscriptionCanceledEmail({
@@ -336,37 +496,50 @@ Deno.serve(async (req: Request) => {
             html: emailData.html,
             text: emailData.text,
             userId: user.id,
-            idempotencyKey: `cancel_cdc_${userSub.id}_${new Date().toISOString().slice(0, 10)}`,
+            idempotencyKey: `cancel_cdc_${userSub.id}_${nowIso.slice(0, 10)}`,
           });
         } catch (emailErr) {
-          console.warn("[asaas-manage] Aviso ao enviar e-mail de cancelamento CDC:", emailErr);
+          console.warn("[asaas-manage] Aviso ao enviar e-mail de cancelamento CDC:", sanitizePaymentLog(emailErr));
         }
 
         return jsonResponse(req, {
           ok: true,
-          refunded: true,
+          refunded: refundRequested,
           message: refundRequested
             ? "Assinatura cancelada com sucesso. O estorno integral de 7 dias foi solicitado ao Asaas e seu acesso Pro foi encerrado."
             : "Assinatura cancelada com sucesso e acesso Pro encerrado dentro dos 7 dias.",
         });
       }
 
-      // Mais de 7 dias: sem reembolso, cancela renovação futura e mantém Pro até o fim do período vigente
+      // 3. Mais de 7 dias: sem reembolso, cancela renovação futura fail-closed e mantém Pro até o fim do período vigente
       if (userSub.asaas_subscription_id) {
         try {
           await cancelAsaasSubscription(userSub.asaas_subscription_id);
         } catch (err: unknown) {
-          console.warn("[asaas-manage] Aviso ao cancelar renovação no Asaas:", err);
+          if (!isAsaasAlreadyCanceledError(err)) {
+            console.error("[asaas-manage] Falha ao cancelar renovação no Asaas:", sanitizePaymentLog(err));
+            return safeErrorResponse(
+              req,
+              502,
+              "Não foi possível cancelar a renovação automática no gateway. Tente novamente.",
+            );
+          }
         }
       }
 
-      await supabase
+      const { error: cancelEndErr } = await supabase
         .from("user_subscriptions")
         .update({
           cancel_at_period_end: true,
-          trial_consumed_at: userSub.trial_consumed_at || new Date().toISOString(),
+          trial_consumed_at: userSub.trial_consumed_at || nowIso,
+          updated_at: nowIso,
         })
         .eq("user_id", user.id);
+
+      if (cancelEndErr) {
+        console.error("[asaas-manage] Erro ao gravar cancel_at_period_end:", cancelEndErr);
+        return safeErrorResponse(req, 500, "Falha ao registrar cancelamento da assinatura.");
+      }
 
       await supabase.from("audit_events").insert({
         user_id: user.id,
@@ -376,11 +549,10 @@ Deno.serve(async (req: Request) => {
         payload: { gateway: "asaas", subscription_id: userSub.asaas_subscription_id },
       });
 
-      // Disparo de e-mail transacional via Resend: Cancelamento com vigência até period_end
       try {
         const appUrl = Deno.env.get("PUBLIC_APP_URL") || "https://axir.com.br";
         const formattedEnd = userSub.current_period_end
-          ? new Date(userSub.current_period_end).toLocaleDateString("pt-BR")
+          ? formatBrtDisplayDate(userSub.current_period_end)
           : "o encerramento do ciclo";
         const emailData = renderSubscriptionCanceledEmail({
           name: user.email?.split("@")[0] || "Cliente",
@@ -395,10 +567,10 @@ Deno.serve(async (req: Request) => {
           html: emailData.html,
           text: emailData.text,
           userId: user.id,
-          idempotencyKey: `cancel_period_end_${userSub.id}_${new Date().toISOString().slice(0, 10)}`,
+          idempotencyKey: `cancel_period_end_${userSub.id}_${nowIso.slice(0, 10)}`,
         });
       } catch (emailErr) {
-        console.warn("[asaas-manage] Aviso ao enviar e-mail de cancelamento ao fim do período:", emailErr);
+        console.warn("[asaas-manage] Aviso ao enviar e-mail de cancelamento ao fim do período:", sanitizePaymentLog(emailErr));
       }
 
       return jsonResponse(req, {
@@ -409,12 +581,23 @@ Deno.serve(async (req: Request) => {
     }
 
     // -------------------------------------------------------------------------
-    // AÇÃO 4: ATUALIZAR CARTÃO
+    // AÇÃO 4: ATUALIZAR CARTÃO (RATE LIMIT + IP REAL + VALIDAÇÃO PRODUÇÃO)
     // -------------------------------------------------------------------------
     if (action === "update-card") {
       if (!userSub.asaas_subscription_id) {
         return jsonResponse(req, { error: "Usuário não possui assinatura com cartão recorrente ativa." }, 400);
       }
+
+      const realClientIp = extractClientIp(req);
+      const asaasRemoteIp = realClientIp || "127.0.0.1";
+
+      const rateLimitRes = await enforceUpdateCardRateLimit(
+        req,
+        supabase,
+        user.id,
+        realClientIp,
+      );
+      if (rateLimitRes) return rateLimitRes;
 
       if (!card || !card.number || !card.holderName || !card.expiryMonth || !card.expiryYear || !card.ccv) {
         return jsonResponse(req, { error: "Dados do cartão incompletos." }, 400);
@@ -433,19 +616,46 @@ Deno.serve(async (req: Request) => {
         return jsonResponse(req, { error: "Código de segurança (CVV) inválido." }, 400);
       }
 
-      const { data: profile } = await supabase
+      const { data: profile, error: profileErr } = await supabase
         .from("profiles")
         .select("name, email, cpf, phone, postal_code, address_number")
         .eq("id", user.id)
         .single();
 
-      const customerName = card.holderName || profile?.name || user.email?.split("@")[0] || "Cliente";
-      const customerEmail = profile?.email || user.email || "";
-      const customerCpf = (profile?.cpf || "").replace(/\D/g, "");
-      const customerPostalCode = (card.postalCode || profile?.postal_code || "").replace(/\D/g, "");
-      const customerAddressNumber = (card.addressNumber || profile?.address_number || "S/N").trim();
-      const customerPhone = (card.phone || profile?.phone || "").replace(/\D/g, "");
-      const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
+      if (profileErr || !profile) {
+        return safeErrorResponse(req, 500, "Perfil não localizado para atualização do cartão.");
+      }
+
+      const customerName = card.holderName || profile.name || user.email?.split("@")[0] || "Cliente";
+      const customerEmail = profile.email || user.email || "";
+      const customerCpf = (profile.cpf || "").replace(/\D/g, "");
+      const customerPostalCode = (card.postalCode || profile.postal_code || "").replace(/\D/g, "");
+      const customerAddressNumber = (card.addressNumber || profile.address_number || "").trim();
+      const customerPhone = (card.phone || profile.phone || "").replace(/\D/g, "");
+
+      if (isProductionEnvironment()) {
+        if (customerPhone.length < 10 || customerPhone.length > 13) {
+          return jsonResponse(
+            req,
+            { error: "Informe um telefone celular válido com DDD para validar o novo cartão." },
+            400,
+          );
+        }
+        if (customerPostalCode.length !== 8) {
+          return jsonResponse(
+            req,
+            { error: "Informe um CEP válido com 8 dígitos do titular do cartão." },
+            400,
+          );
+        }
+        if (!customerAddressNumber) {
+          return jsonResponse(
+            req,
+            { error: "Informe o número do endereço do titular do cartão." },
+            400,
+          );
+        }
+      }
 
       await updateAsaasSubscriptionCreditCard(userSub.asaas_subscription_id, {
         creditCard: {
@@ -460,30 +670,37 @@ Deno.serve(async (req: Request) => {
           email: customerEmail,
           cpfCnpj: customerCpf,
           postalCode: customerPostalCode,
-          addressNumber: customerAddressNumber,
+          addressNumber: customerAddressNumber || "S/N",
           phone: customerPhone,
         },
-        remoteIp: clientIp,
+        remoteIp: asaasRemoteIp,
       });
 
       const rawCardNum = String(card.number).replace(/\D/g, "");
       const cardLast4 = rawCardNum.length >= 4 ? rawCardNum.slice(-4) : "••••";
 
-      await supabase
+      const { error: cardUpdateErr } = await supabase
         .from("user_subscriptions")
-        .update({ card_last4: cardLast4 })
+        .update({ card_last4: cardLast4, updated_at: nowIso })
         .eq("user_id", user.id);
 
-      // Sincroniza campos de contato e endereço no perfil se fornecidos no cartão
+      if (cardUpdateErr) {
+        console.error("[asaas-manage] Erro ao salvar últimos 4 dígitos do cartão:", cardUpdateErr);
+        return safeErrorResponse(req, 500, "Cartão atualizado no gateway, mas falhou ao salvar no perfil.");
+      }
+
       if (card.phone || card.postalCode || card.addressNumber) {
-        await supabase
+        const { error: profUpdateErr } = await supabase
           .from("profiles")
           .update({
-            phone: customerPhone || profile?.phone,
-            postal_code: customerPostalCode || profile?.postal_code,
-            address_number: customerAddressNumber || profile?.address_number,
+            phone: customerPhone || profile.phone,
+            postal_code: customerPostalCode || profile.postal_code,
+            address_number: customerAddressNumber || profile.address_number,
           })
           .eq("id", user.id);
+        if (profUpdateErr) {
+          console.warn("[asaas-manage] Aviso ao sincronizar contato do titular em profiles:", profUpdateErr);
+        }
       }
 
       await supabase.from("audit_events").insert({
@@ -513,7 +730,7 @@ Deno.serve(async (req: Request) => {
         const invoices = await listAsaasCustomerPayments(userSub.asaas_customer_id, 20);
         return jsonResponse(req, { invoices });
       } catch (err: unknown) {
-        console.warn("[asaas-manage] Falha ao listar faturas no Asaas:", err);
+        console.warn("[asaas-manage] Falha ao listar faturas no Asaas:", sanitizePaymentLog(err));
         return jsonResponse(req, { invoices: [] });
       }
     }
@@ -522,6 +739,12 @@ Deno.serve(async (req: Request) => {
   } catch (err: unknown) {
     const rawMsg = err instanceof Error ? err.message : String(err);
     console.error("[asaas-manage] Falha ao gerenciar assinatura:", sanitizePaymentLog(rawMsg));
-    return safeErrorResponse(req, 500, "Falha ao gerenciar assinatura. Tente novamente.", err);
+
+    const friendlyError = mapAsaasCardErrorMessage(rawMsg);
+    if (friendlyError) {
+      return jsonResponse(req, { error: friendlyError }, 400);
+    }
+
+    return safeErrorResponse(req, 500, "Falha ao gerenciar assinatura. Tente novamente.");
   }
 });

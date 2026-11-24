@@ -15,8 +15,15 @@ const useAuthMock = vi.fn<() => {
   configError: null,
 }));
 
+const signUpWithEmailMock = vi.fn();
+const signInWithEmailMock = vi.fn();
+const resendConfirmationEmailMock = vi.fn();
+
 vi.mock("@/hooks/use-auth", () => ({
   useAuth: () => useAuthMock(),
+  signUpWithEmail: (...args: unknown[]) => signUpWithEmailMock(...args),
+  signInWithEmail: (...args: unknown[]) => signInWithEmailMock(...args),
+  resendConfirmationEmail: (...args: unknown[]) => resendConfirmationEmailMock(...args),
 }));
 
 const mutateAsyncMock = vi.fn().mockResolvedValue({
@@ -35,15 +42,18 @@ const userSubscriptionMock = vi.fn<() => Record<string, unknown>>(() => ({
   trialDaysRemaining: null,
   plan: null,
   status: "canceled",
+  currentPeriodEnd: null,
 }));
 
 vi.mock("@/state", () => ({
   useUserSubscription: () => userSubscriptionMock(),
+  useBillingContact: () => ({ data: null, isLoading: false }),
   useCheckoutMutation: () => ({
     mutateAsync: mutateAsyncMock,
     isPending: false,
   }),
   USER_SUBSCRIPTION_KEY: ["user-subscription"],
+  INVOICES_KEY: ["invoices"],
 }));
 
 function renderCheckout(initialRoute = "/assinatura?plano=pro-anual") {
@@ -68,11 +78,15 @@ vi.mock("@/data/repositories/billing", () => ({
 
 describe("SubscriptionCheckoutPage Component", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     useAuthMock.mockReturnValue({
       session: { user: { id: "user-123", email: "teste@exemplo.com" } },
       loading: false,
       configError: null,
     });
+    signUpWithEmailMock.mockResolvedValue({ needsEmailConfirmation: true });
+    signInWithEmailMock.mockResolvedValue(undefined);
+    resendConfirmationEmailMock.mockResolvedValue(undefined);
   });
   it("renderiza o resumo do plano anual e botões de pagamento", () => {
     renderCheckout();
@@ -200,6 +214,15 @@ describe("SubscriptionCheckoutPage Component", () => {
     const cvvInput = screen.getByPlaceholderText("123");
     await user.type(cvvInput, "123");
 
+    const phoneInput = screen.getByPlaceholderText("(11) 98765-4321");
+    await user.type(phoneInput, "11987654321");
+
+    const cepInput = screen.getByPlaceholderText("00000-000");
+    await user.type(cepInput, "01310100");
+
+    const addressNumberInput = screen.getByPlaceholderText("1000");
+    await user.type(addressNumberInput, "1000");
+
     const submitBtn = screen.getByRole("button", { name: /Confirmar Assinatura Pro/i });
     await user.click(submitBtn);
 
@@ -257,23 +280,14 @@ describe("SubscriptionCheckoutPage Component", () => {
     expect(privacyLinks.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("atualiza a tela para o card de confirmação de e-mail após cadastro integrado com cartão", async () => {
+  it("atualiza a tela para o card de confirmação de e-mail após cadastro integrado sem enviar cartão antes da confirmação (B-02)", async () => {
     useAuthMock.mockReturnValue({
       session: null,
       loading: false,
       configError: null,
     });
 
-    mutateAsyncMock.mockResolvedValueOnce({
-      ok: true,
-      method: "credit_card",
-      subscriptionId: "sub-novo-123",
-      tier: "pro_annual",
-      status: "active",
-      needsEmailConfirmation: true,
-      cardLast4: "4242",
-      email: "novo@exemplo.com",
-    });
+    signUpWithEmailMock.mockResolvedValueOnce({ needsEmailConfirmation: true });
 
     renderCheckout();
 
@@ -292,26 +306,67 @@ describe("SubscriptionCheckoutPage Component", () => {
     const cpfInput = screen.getByPlaceholderText("000.000.000-00");
     await user.type(cpfInput, "12345678909");
 
-    // Preenche dados do cartão
+    // Preenche dados do cartão + contato
     const holderInput = screen.getByPlaceholderText("Nome como impresso no cartão");
     const cardNumberInput = screen.getByPlaceholderText("0000 0000 0000 0000");
     const expiryInput = screen.getByPlaceholderText("MM/AA");
     const ccvInput = screen.getByPlaceholderText("123");
+    const phoneInput = screen.getByPlaceholderText("(11) 98765-4321");
+    const cepInput = screen.getByPlaceholderText("00000-000");
+    const addressNumberInput = screen.getByPlaceholderText("1000");
+
+    expect(ccvInput).toHaveAttribute("type", "password");
+    expect(ccvInput).toHaveAttribute("autocomplete", "off");
 
     await user.type(holderInput, "NOVO USUARIO");
     await user.type(cardNumberInput, "4242424242424242");
     await user.type(expiryInput, "12/28");
     await user.type(ccvInput, "123");
+    await user.type(phoneInput, "11987654321");
+    await user.type(cepInput, "01310100");
+    await user.type(addressNumberInput, "1000");
 
     // Clica no botão de submissão
     const submitButton = screen.getByRole("button", { name: /Confirmar Assinatura Pro/i });
     await user.click(submitButton);
 
-    // Verifica que a tela atualizou para a confirmação de e-mail
+    // Verifica que signUpWithEmail foi chamado com redirectPath interno e gateway não foi chamado sem sessão
+    expect(signUpWithEmailMock).toHaveBeenCalledWith(
+      "novo@exemplo.com",
+      "senha123",
+      "Novo Usuário",
+      undefined,
+      undefined,
+      "/assinatura?plano=pro-anual&metodo=cartao",
+    );
+    expect(mutateAsyncMock).not.toHaveBeenCalled();
+
+    // Verifica que a tela atualizou para a confirmação de e-mail sem exibir cartão falso salvo
     expect(await screen.findByRole("heading", { name: "Confirme seu endereço de e-mail" })).toBeInTheDocument();
     expect(screen.getByText("novo@exemplo.com")).toBeInTheDocument();
-    expect(screen.getByText(/Cartão com final \*{4} 4242/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Cartão com final/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Reenviar link de confirmação/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Ir para o login/i })).toBeInTheDocument();
+  });
+
+  it("limpa dados do cartão imediatamente ao alternar para PIX (D-10)", async () => {
+    const user = userEvent.setup();
+    renderCheckout("/assinatura?plano=pro-anual");
+
+    const cardInput = screen.getByPlaceholderText("0000 0000 0000 0000");
+    const expiryInput = screen.getByPlaceholderText("MM/AA");
+    const ccvInput = screen.getByPlaceholderText("123");
+
+    await user.type(cardInput, "4111222233334444");
+    await user.type(expiryInput, "12/28");
+    await user.type(ccvInput, "987");
+
+    await user.click(screen.getByRole("button", { name: /PIX Instantâneo/i }));
+    await user.click(screen.getByRole("button", { name: /Cartão de Crédito/i }));
+
+    expect(screen.getByPlaceholderText("0000 0000 0000 0000")).toHaveValue("");
+    expect(screen.getByPlaceholderText("MM/AA")).toHaveValue("");
+    expect(screen.getByPlaceholderText("123")).toHaveValue("");
   });
 
   it("exibe cobrança imediata integral e não concede novo período de teste para usuário em somente-leitura ou cancelado", () => {

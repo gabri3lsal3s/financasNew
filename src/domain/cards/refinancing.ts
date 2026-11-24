@@ -5,6 +5,8 @@
  * Cálculos 100% em centavos (inteiros) e competências em snapshot YYYY-MM.
  */
 
+import { splitCents } from "@/domain/money/parcelar";
+
 export interface BillRefinanceInput {
   remainingBalanceCents: number;
   installmentsCount: number;
@@ -69,21 +71,16 @@ export function calculateBillRefinancePlan(input: BillRefinanceInput): BillRefin
   const totalWithInterestCents = installmentCents * n;
   const totalInterestCents = Math.max(0, totalWithInterestCents - pv);
 
-  // Divide o juro total proporcionalmente entre as parcelas
-  const interestPerInstallment = Math.floor(totalInterestCents / n);
-  const interestRemainder = totalInterestCents % n;
-
-  // Divide o principal proporcionalmente
-  const principalPerInstallment = Math.floor(pv / n);
-  const principalRemainder = pv % n;
+  // Divide juros e principal com conservação exata de centavos via splitCents (resto nas primeiras parcelas)
+  const interestSplits = splitCents(totalInterestCents, n);
+  const principalSplits = splitCents(pv, n);
 
   const installments: RefinanceInstallmentItem[] = [];
 
   for (let i = 1; i <= n; i++) {
     const comp = addMonthsToCompetence(input.firstCompetenceMonth, i);
-    // Distribui restos nas primeiras parcelas
-    const currInterest = interestPerInstallment + (i <= interestRemainder ? 1 : 0);
-    const currPrincipal = principalPerInstallment + (i <= principalRemainder ? 1 : 0);
+    const currInterest = interestSplits[i - 1] ?? 0;
+    const currPrincipal = principalSplits[i - 1] ?? 0;
     const currTotal = currInterest + currPrincipal;
 
     installments.push({

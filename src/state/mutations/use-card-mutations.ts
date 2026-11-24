@@ -5,9 +5,17 @@ import {
   updateCreditCard,
   type CreditCardForm,
 } from "@/data/repositories/credit-cards";
+import {
+  deleteCardBillRollover,
+  rolloverCardBill,
+} from "@/data/repositories/card-bill-rollovers";
 import { createPayment, createRefundPayment, deleteCardPayment } from "@/data/repositories/card-payments";
 import { creditCardsKey } from "@/state/queries/use-credit-cards";
-import { cardPaymentsKey, cardExpensesKey } from "@/state/queries/use-card-payments";
+import {
+  cardBillRolloversKey,
+  cardExpensesKey,
+  cardPaymentsKey,
+} from "@/state/queries/use-card-payments";
 import { incomesKey } from "@/state/queries/use-incomes";
 import { expensesKey } from "@/state/queries/use-expenses";
 import {
@@ -15,8 +23,14 @@ import {
   type CardBillChargeItem,
   type PayCardBillWithChargesParams,
   type PayCardBillWithChargesResult,
+  type RolloverCardBillParams,
 } from "@/data/rpc/cards";
-export type { CardBillChargeItem, PayCardBillWithChargesParams, PayCardBillWithChargesResult };
+export type {
+  CardBillChargeItem,
+  PayCardBillWithChargesParams,
+  PayCardBillWithChargesResult,
+  RolloverCardBillParams,
+};
 import { formatCentsAsCurrency } from "@/services/masks/money";
 import { triggerSensory } from "@/services/sensory";
 import { getErrorMessage } from "@/services/errors";
@@ -108,6 +122,10 @@ export function useCreateCardPayment() {
     mutationFn: (input: Parameters<typeof createPayment>[0]) => createPayment(input),
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: cardPaymentsKey });
+      void queryClient.invalidateQueries({ queryKey: ["overview"] });
+      void queryClient.invalidateQueries({ queryKey: ["reminders"] });
+      void queryClient.invalidateQueries({ queryKey: ["insights"] });
+      void queryClient.invalidateQueries({ queryKey: ["reports"] });
       void cancelDueReminderNotification(`bill:${variables.cardId}:${variables.competenceMonth}`);
       pushToast({ title: "Pagamento registrado", variant: "default" });
     },
@@ -198,12 +216,65 @@ export function useRefinanceCreditCardBill() {
     mutationFn: (input: Parameters<typeof import("@/data/rpc").refinanceCreditCardBill>[0]) =>
       import("@/data/rpc").then((m) => m.refinanceCreditCardBill(input)),
     onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: cardBillRolloversKey });
       void queryClient.invalidateQueries({ queryKey: cardPaymentsKey });
       void queryClient.invalidateQueries({ queryKey: cardExpensesKey });
       void queryClient.invalidateQueries({ queryKey: expensesKey });
       void queryClient.invalidateQueries({ queryKey: ["overview"] });
+      void queryClient.invalidateQueries({ queryKey: ["reminders"] });
+      void queryClient.invalidateQueries({ queryKey: ["insights"] });
       void queryClient.invalidateQueries({ queryKey: ["reports"] });
       pushToast({ title: "Parcelamento de fatura registrado", variant: "default" });
+    },
+  });
+}
+
+export function useRolloverCardBill() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: RolloverCardBillParams) => rolloverCardBill(input),
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: cardBillRolloversKey });
+      void queryClient.invalidateQueries({ queryKey: cardPaymentsKey });
+      void queryClient.invalidateQueries({ queryKey: cardExpensesKey });
+      void queryClient.invalidateQueries({ queryKey: expensesKey });
+      void queryClient.invalidateQueries({ queryKey: ["budgets"] });
+      void queryClient.invalidateQueries({ queryKey: ["overview"] });
+      void queryClient.invalidateQueries({ queryKey: ["reminders"] });
+      void queryClient.invalidateQueries({ queryKey: ["insights"] });
+      void queryClient.invalidateQueries({ queryKey: ["reports"] });
+      void cancelDueReminderNotification(`bill:${variables.cardId}:${variables.fromCompetenceMonth}`);
+      pushToast({
+        title: "Saldo rolado para a próxima fatura",
+        description: `Fatura ${variables.fromCompetenceMonth} transferida para ${variables.toCompetenceMonth}.`,
+        variant: "default",
+      });
+    },
+  });
+}
+
+export function useDeleteCardBillRollover() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (rolloverId: string) => deleteCardBillRollover(rolloverId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: cardBillRolloversKey });
+      void queryClient.invalidateQueries({ queryKey: cardPaymentsKey });
+      void queryClient.invalidateQueries({ queryKey: cardExpensesKey });
+      void queryClient.invalidateQueries({ queryKey: expensesKey });
+      void queryClient.invalidateQueries({ queryKey: ["budgets"] });
+      void queryClient.invalidateQueries({ queryKey: ["overview"] });
+      void queryClient.invalidateQueries({ queryKey: ["reminders"] });
+      void queryClient.invalidateQueries({ queryKey: ["insights"] });
+      void queryClient.invalidateQueries({ queryKey: ["reports"] });
+      pushToast({ title: "Rolagem desfeita com sucesso", variant: "default" });
+    },
+    onError: (err) => {
+      pushToast({
+        title: "Não foi possível desfazer a rolagem",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
     },
   });
 }

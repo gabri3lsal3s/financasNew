@@ -4,6 +4,7 @@ import type {
   AuditEvent,
   BillingProcessedPayment,
   Budget,
+  CardBillRollover,
   CardCompetenceOverride,
   CardPayment,
   CashCheckpoint,
@@ -95,6 +96,7 @@ export interface Database {
       credit_cards: Table<CreditCard>;
       card_competence_overrides: Table<CardCompetenceOverride>;
       card_payments: Table<CardPayment>;
+      card_bill_rollovers: Table<CardBillRollover>;
       debts: Table<Debt>;
       loans: Table<Loan>;
       recurrences: Table<Recurrence>;
@@ -566,8 +568,45 @@ export interface Database {
           p_initial_payment_amount: number;
           p_interest_installments: unknown;
           p_expense_category_id: string;
+          p_principal_installments?: unknown;
         };
         Returns: boolean;
+      };
+      get_card_bill_open_balance: {
+        Args: {
+          p_card_id: string;
+          p_competence_month: string;
+        };
+        Returns: number;
+      };
+      rollover_card_bill: {
+        Args: {
+          p_card_id: string;
+          p_from_competence_month: string;
+          p_to_competence_month: string;
+          p_principal_amount: number;
+          p_charges?: unknown;
+          p_note?: string | null;
+        };
+        Returns: {
+          rollover_id: string;
+          group_id: string;
+          from_competence_month: string;
+          to_competence_month: string;
+          principal_amount: number;
+          charges_amount: number;
+          created_expense_ids: string[];
+        };
+      };
+      delete_card_bill_rollover: {
+        Args: {
+          p_rollover_id: string;
+        };
+        Returns: {
+          deleted_count: number;
+          group_id: string;
+          card_id: string;
+        };
       };
       receive_debt: {
         Args: { p_debt_id: string; p_create_income: boolean; p_income_category_id: string | null };
@@ -829,6 +868,18 @@ export interface Database {
           is_read_only: boolean;
           can_write: boolean;
           module_permissions: Record<string, string>;
+        };
+      };
+      get_my_billing_contact: {
+        Args: Record<string, never>;
+        Returns: {
+          name: string | null;
+          email: string | null;
+          cpf: string | null;
+          masked_cpf: string | null;
+          phone: string | null;
+          postal_code: string | null;
+          address_number: string | null;
         };
       };
       admin_set_user_subscription: {

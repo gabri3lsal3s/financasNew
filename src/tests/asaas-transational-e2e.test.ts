@@ -189,7 +189,11 @@ describe("Homologação Transacional Asaas (Go-Live & Portão de Qualidade 2)", 
     // 3. Caso o pagamento fique vencido sem compensação (PAYMENT_OVERDUE)
     const overdueDecision = decideWebhookAction({
       eventType: "PAYMENT_OVERDUE",
-      payment: { id: "pay_monthly_001" },
+      payment: {
+        id: "pay_monthly_001",
+        billingType: "CREDIT_CARD",
+        subscription: currentSub.asaasSubscriptionId,
+      },
       currentSub: { ...snapshot, cancel_at_period_end: true },
     });
 

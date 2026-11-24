@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { addCivilMonths, calculateCumulativePrice } from "@/domain/subscription";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
-import { USER_SUBSCRIPTION_KEY, useCumulativeCheckoutMutation } from "@/state";
+import { INVOICES_KEY, USER_SUBSCRIPTION_KEY, useCumulativeCheckoutMutation } from "@/state";
 
 export interface PixRenewalData {
   qrCodeBase64: string;
@@ -11,12 +11,28 @@ export interface PixRenewalData {
   expirationDate: string;
 }
 
+/**
+ * Verifica se o `currentPeriodEnd` da assinatura avançou após a geração do PIX
+ * acumulativo, sinalizando liquidação confirmada pelo webhook (A-09).
+ */
+export function hasPeriodEndAdvanced(baseline: string | null, current: string | null): boolean {
+  if (!current) return false;
+  const currentMs = Date.parse(current);
+  if (Number.isNaN(currentMs)) return false;
+  if (!baseline) return true;
+  const baselineMs = Date.parse(baseline);
+  if (Number.isNaN(baselineMs)) return true;
+  return currentMs > baselineMs;
+}
+
 export function useCumulativeRenewal(currentPeriodEnd: string | null) {
   const [selectedMonths, setSelectedMonths] = useState<number>(3);
   const [pixModalOpen, setPixModalOpen] = useState(false);
   const [copiedKey, setCopiedKey] = useState(false);
   const [pixData, setPixData] = useState<PixRenewalData | null>(null);
+  const [baselinePeriodEnd, setBaselinePeriodEnd] = useState<string | null>(null);
 
+  const hasConfirmedRef = useRef(false);
   const queryClient = useQueryClient();
   const checkoutMutation = useCumulativeCheckoutMutation();
 
@@ -26,11 +42,20 @@ export function useCumulativeRenewal(currentPeriodEnd: string | null) {
     const base = currentPeriodEnd ? new Date(currentPeriodEnd) : new Date();
     const target = addCivilMonths(base, selectedMonths);
     return target.toLocaleDateString("pt-BR", {
+      timeZone: "America/Sao_Paulo",
       day: "2-digit",
       month: "long",
       year: "numeric",
     });
   }, [currentPeriodEnd, selectedMonths]);
+
+  const isConfirmed = useMemo(
+    () => Boolean(pixModalOpen && pixData && hasPeriodEndAdvanced(baselinePeriodEnd, currentPeriodEnd)),
+    [pixModalOpen, pixData, baselinePeriodEnd, currentPeriodEnd],
+  );
+
+  const effectiveModalOpen = pixModalOpen && !isConfirmed;
+  const effectivePixData = isConfirmed ? null : pixData;
 
   const handleSelectMonths = (months: number) => {
     triggerSensory("selection");
@@ -44,9 +69,11 @@ export function useCumulativeRenewal(currentPeriodEnd: string | null) {
         method: "pix",
       });
 
-      if ("qrCodeBase64" in result && result.qrCodeBase64) {
+      if ("copyPasteKey" in result && result.copyPasteKey) {
+        setBaselinePeriodEnd(currentPeriodEnd);
+        hasConfirmedRef.current = false;
         setPixData({
-          qrCodeBase64: result.qrCodeBase64,
+          qrCodeBase64: result.qrCodeBase64 ?? "",
           copyPasteKey: result.copyPasteKey,
           expirationDate: result.expirationDate,
         });
@@ -58,9 +85,9 @@ export function useCumulativeRenewal(currentPeriodEnd: string | null) {
   };
 
   const handleCopyPix = async () => {
-    if (!pixData?.copyPasteKey) return;
+    if (!effectivePixData?.copyPasteKey) return;
     try {
-      await navigator.clipboard.writeText(pixData.copyPasteKey);
+      await navigator.clipboard.writeText(effectivePixData.copyPasteKey);
       setCopiedKey(true);
       triggerSensory("success");
       pushToast({
@@ -80,19 +107,40 @@ export function useCumulativeRenewal(currentPeriodEnd: string | null) {
   };
 
   useEffect(() => {
-    if (!pixModalOpen || !pixData) return;
+    if (!effectiveModalOpen || !effectivePixData) return;
     const intervalId = setInterval(() => {
       void queryClient.invalidateQueries({ queryKey: USER_SUBSCRIPTION_KEY });
     }, 4000);
     return () => clearInterval(intervalId);
-  }, [pixModalOpen, pixData, queryClient]);
+  }, [effectiveModalOpen, effectivePixData, queryClient]);
+
+  useEffect(() => {
+    if (!isConfirmed || hasConfirmedRef.current) return;
+
+    hasConfirmedRef.current = true;
+    void queryClient.invalidateQueries({ queryKey: INVOICES_KEY });
+    triggerSensory("success");
+    pushToast({
+      title: "Antecipação confirmada!",
+      description: "Seu pagamento via Pix foi confirmado e o vencimento do seu plano Pro foi estendido.",
+      variant: "success",
+    });
+  }, [isConfirmed, queryClient]);
+
+  const handleModalOpenChange = (open: boolean) => {
+    setPixModalOpen(open);
+    if (!open) {
+      setPixData(null);
+      setBaselinePeriodEnd(null);
+    }
+  };
 
   return {
     selectedMonths,
-    pixModalOpen,
-    setPixModalOpen,
+    pixModalOpen: effectiveModalOpen,
+    setPixModalOpen: handleModalOpenChange,
     copiedKey,
-    pixData,
+    pixData: effectivePixData,
     pricing,
     newPeriodEndFormatted,
     isPending: checkoutMutation.isPending,

@@ -3,6 +3,8 @@
  * Formatação de mensagens ricas em HTML, escape seguro e envio de notificações de suporte.
  */
 
+import { maskEmailForLog } from "./http.ts";
+
 export interface SupportTicketNotificationData {
   userName?: string | null;
   userEmail?: string | null;
@@ -179,7 +181,10 @@ export interface SaleNotificationData {
 }
 
 export function buildTelegramSaleMessage(data: SaleNotificationData): string {
-  const planLabel = data.plan === "annual" ? "Plano Pro Anual (12 meses)" : "Plano Pro Mensal";
+  const planLabel =
+    data.plan === "annual" || data.plan === "pro_annual"
+      ? "Plano Pro Anual (12 meses)"
+      : "Plano Pro Mensal";
   const amountFormatted = new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
@@ -191,7 +196,7 @@ export function buildTelegramSaleMessage(data: SaleNotificationData): string {
     `<b>Valor:</b> ${escapeTelegramHtml(amountFormatted)}`,
     `<b>Forma de Pagamento:</b> ${data.paymentMethod === "pix" ? "Pix Instantâneo" : "Cartão de Crédito"}`,
     data.userName ? `<b>Cliente:</b> ${escapeTelegramHtml(data.userName)}` : null,
-    data.userEmail ? `<b>E-mail:</b> ${escapeTelegramHtml(data.userEmail)}` : null,
+    data.userEmail ? `<b>E-mail:</b> ${escapeTelegramHtml(maskEmailForLog(data.userEmail))}` : null,
     data.paymentId ? `<b>ID Asaas:</b> <code>${escapeTelegramHtml(data.paymentId)}</code>` : null,
   ];
 

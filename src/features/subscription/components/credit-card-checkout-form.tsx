@@ -1,3 +1,4 @@
+import { BillingContactFields } from "@/components/modules/subscription";
 import { Badge, FormField, Input } from "@/components/ui";
 
 export interface CreditCardCheckoutFormProps {
@@ -5,11 +6,17 @@ export interface CreditCardCheckoutFormProps {
   cardNumber: string;
   cardExpiry: string;
   cardCcv: string;
+  phone: string;
+  postalCode: string;
+  addressNumber: string;
   detectedBrand: string | null;
   onHolderNameChange: (val: string) => void;
   onCardNumberChange: (val: string) => void;
   onCardExpiryChange: (val: string) => void;
   onCardCcvChange: (val: string) => void;
+  onPhoneChange: (val: string) => void;
+  onPostalCodeChange: (val: string) => void;
+  onAddressNumberChange: (val: string) => void;
 }
 
 export function CreditCardCheckoutForm({
@@ -17,11 +24,17 @@ export function CreditCardCheckoutForm({
   cardNumber,
   cardExpiry,
   cardCcv,
+  phone,
+  postalCode,
+  addressNumber,
   detectedBrand,
   onHolderNameChange,
   onCardNumberChange,
   onCardExpiryChange,
   onCardCcvChange,
+  onPhoneChange,
+  onPostalCodeChange,
+  onAddressNumberChange,
 }: CreditCardCheckoutFormProps) {
   return (
     <div className="space-y-3.5 pt-1">
@@ -78,16 +91,27 @@ export function CreditCardCheckoutForm({
         <FormField label="CVV" htmlFor="checkout-card-ccv">
           <Input
             id="checkout-card-ccv"
+            type="password"
             inputMode="numeric"
             placeholder="123"
             value={cardCcv}
             onChange={(e) => onCardCcvChange(e.target.value)}
             maxLength={4}
-            autoComplete="cc-csc"
+            autoComplete="off"
             className="text-base sm:text-sm"
           />
         </FormField>
       </div>
+
+      <BillingContactFields
+        idPrefix="checkout-card"
+        phone={phone}
+        postalCode={postalCode}
+        addressNumber={addressNumber}
+        onPhoneChange={onPhoneChange}
+        onPostalCodeChange={onPostalCodeChange}
+        onAddressNumberChange={onAddressNumberChange}
+      />
     </div>
   );
 }

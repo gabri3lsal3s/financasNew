@@ -1,10 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
+  formatBrtDisplayDate,
+  formatBrtIsoDate,
   isValidCPF,
   isValidLuhn,
   isValidCardExpiry,
   sanitizePaymentLog,
 } from "../../supabase/functions/_shared/asaas.ts";
+import {
+  buildCorsHeaders,
+  extractClientIp,
+  isOriginAllowed,
+} from "../../supabase/functions/_shared/http.ts";
 
 describe("Validações Financeiras e Sanitização PCI — Asaas", () => {
   describe("isValidCPF", () => {
@@ -108,6 +115,102 @@ describe("Validações Financeiras e Sanitização PCI — Asaas", () => {
       const sanitized = sanitizePaymentLog(payload) as typeof payload;
       expect(sanitized.creditCard.cvv).toBe("***");
       expect(sanitized.creditCard.number).toBe("**** **** **** 2222");
+    });
+
+    it("sanitiza strings livres e Errors com PAN (13-19 dígitos), CVV, CPF, e-mail e telefone preservando IDs (D-05)", () => {
+      const rawMsg =
+        'Erro ao enviar cartao 4532 0151 1283 0366 ccv=123 cpf=111.444.777-35 email=gabriel@axir.com.br phone=(11) 98765-4321 pay_9988776655443322 uuid=550e8400-e29b-41d4-a716-446655440000';
+      const cleaned = sanitizePaymentLog(rawMsg);
+
+      expect(cleaned).not.toContain("4532");
+      expect(cleaned).toContain("**** **** **** 0366");
+      expect(cleaned).not.toContain("123 ");
+      expect(cleaned).toContain("ccv=***");
+      expect(cleaned).not.toContain("111.444.777-35");
+      expect(cleaned).not.toContain("gabriel@axir.com.br");
+      expect(cleaned).not.toContain("98765-4321");
+      expect(cleaned).toContain("pay_9988776655443322");
+      expect(cleaned).toContain("550e8400-e29b-41d4-a716-446655440000");
+
+      const amexErr = sanitizePaymentLog(new Error("Recusado PAN 378282246310005"));
+      expect(amexErr).toContain("**** **** **** 0005");
+      expect(amexErr).not.toContain("378282246310005");
+    });
+  });
+
+  describe("Datas em BRT America/Sao_Paulo (D-07)", () => {
+    it("mantém a data local BRT entre 21:00 e 23:59 mesmo quando UTC já virou para D+1", () => {
+      // 2026-11-24 23:30:00 BRT = 2026-11-25 02:30:00 UTC
+      const lateNightBrt = new Date("2026-11-25T02:30:00.000Z");
+      expect(formatBrtIsoDate(lateNightBrt)).toBe("2026-11-24");
+      expect(formatBrtDisplayDate(lateNightBrt)).toBe("24/11/2026");
+
+      // Última noite de novembro em BRT (30/11 23:30 BRT = 01/12 02:30 UTC): cartão 11/2026 ainda é válido
+      const lastNightNovBrt = new Date("2026-12-01T02:30:00.000Z");
+      expect(isValidCardExpiry("11", "2026", lastNightNovBrt)).toBe(true);
+    });
+  });
+
+  describe("Fronteira HTTP: CORS estrito e extração confiável de IP (D-13 / D-04)", () => {
+    const originalEnv = { ...process.env };
+
+    afterEach(() => {
+      process.env = { ...originalEnv };
+    });
+
+    it("bloqueia http:// e localhost em produção e remove asaas-access-token do CORS de browser", () => {
+      process.env.ASAAS_ENVIRONMENT = "production";
+
+      expect(isOriginAllowed("https://axir.com.br")).toBe(true);
+      expect(isOriginAllowed("https://app.axir.com.br")).toBe(true);
+      expect(isOriginAllowed("capacitor://localhost")).toBe(true);
+      expect(isOriginAllowed("https://localhost")).toBe(true);
+
+      expect(isOriginAllowed("http://axir.com.br")).toBe(false);
+      expect(isOriginAllowed("http://localhost:5173")).toBe(false);
+      expect(isOriginAllowed("https://preview.financasnew.pages.dev")).toBe(false);
+
+      const req = new Request("https://example.supabase.co/functions/v1/asaas-checkout", {
+        headers: { Origin: "https://axir.com.br" },
+      });
+      const headers = buildCorsHeaders(req);
+      expect(headers["Access-Control-Allow-Origin"]).toBe("https://axir.com.br");
+      expect(headers["Access-Control-Allow-Headers"]).not.toContain("asaas-access-token");
+    });
+
+    it("prioriza cf-connecting-ip e ignora x-forwarded-for falsificável", () => {
+      const spoofedReq = new Request("https://example.supabase.co/functions/v1/asaas-checkout", {
+        headers: {
+          "x-forwarded-for": "1.2.3.4, 5.6.7.8",
+          "cf-connecting-ip": "177.10.20.30",
+        },
+      });
+      expect(extractClientIp(spoofedReq)).toBe("177.10.20.30");
+
+      const onlyXffReq = new Request("https://example.supabase.co/functions/v1/asaas-checkout", {
+        headers: { "x-forwarded-for": "1.2.3.4" },
+      });
+      expect(extractClientIp(onlyXffReq)).toBe("");
+    });
+    it("mascara e-mails e tokens PII em strings e campos novos (creditCardToken, remoteIp)", () => {
+      const sanitized = sanitizePaymentLog({
+        email: "usuario@axir.com.br",
+        creditCardToken: "tok_asaas_secret",
+        remoteIp: "177.12.34.56",
+        postalCode: "01310100",
+        addressNumber: "1000",
+        phone: "11987654321",
+        rawError: "Falha para usuario@axir.com.br com cartão 4111 2222 3333 4444",
+      });
+
+      expect(sanitized.email).toBe("us***@axir.com.br");
+      expect(sanitized.creditCardToken).toBe("***");
+      expect(sanitized.remoteIp).toBe("***");
+      expect(sanitized.postalCode).toBe("***");
+      expect(sanitized.addressNumber).toBe("***");
+      expect(sanitized.phone).toBe("(XX) *****-****");
+      expect(sanitized.rawError).not.toContain("4111 2222 3333 4444");
+      expect(sanitized.rawError).not.toContain("usuario@axir.com.br");
     });
   });
 });

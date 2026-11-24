@@ -7,11 +7,17 @@ export interface InvoiceStatusBadgeProps {
   className?: string;
 }
 
-const statusVariant: Record<InvoiceStatus, "positive" | "default" | "warning" | "critical"> = {
-  closed: "positive",
-  open: "default",
-  near_due: "warning",
+const statusVariant: Record<
+  InvoiceStatus,
+  "positive" | "default" | "muted" | "warning" | "critical"
+> = {
+  rolled_over: "muted",
+  empty: "muted",
+  paid: "positive",
   overdue: "critical",
+  near_due: "warning",
+  closed: "default",
+  open: "default",
 };
 
 /** Badge do status da fatura de cartão (ESPECIFICAÇÃO §3.3.3). */

@@ -1,4 +1,4 @@
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
   findOrCreateAsaasCustomer,
   createAsaasCreditCardSubscription,
@@ -13,13 +13,21 @@ import {
   isValidCardExpiry,
   sanitizePaymentLog,
   mapAsaasCardErrorMessage,
+  formatBrtIsoDate,
+  formatBrtDisplayDate,
 } from "../_shared/asaas.ts";
 import {
   ASAAS_PLAN_CATALOG,
   calculateCumulativePriceServer,
   addCivilMonthsServer,
 } from "../_shared/asaas-plans.ts";
-import { buildCorsHeaders, jsonResponse, safeErrorResponse } from "../_shared/http.ts";
+import {
+  buildCorsHeaders,
+  extractClientIp,
+  isProductionEnvironment,
+  jsonResponse,
+  safeErrorResponse,
+} from "../_shared/http.ts";
 import { sendTransactionalEmail } from "../_shared/resend.ts";
 import { renderTrialCardScheduledEmail } from "../_shared/email-templates.ts";
 
@@ -30,7 +38,56 @@ declare const Deno: {
   serve?: (handler: (req: Request) => Promise<Response> | Response) => void;
 } | undefined;
 
-const CONFIRMED_SUBSCRIPTION_STATUSES = new Set(["ACTIVE", "CONFIRMED"]);
+const CONFIRMED_PAYMENT_STATUSES = new Set(["CONFIRMED", "RECEIVED"]);
+
+async function enforceBillingRateLimit(
+  req: Request,
+  supabase: SupabaseClient,
+  userId: string,
+  clientIp: string,
+  isCreditCard: boolean,
+): Promise<Response | null> {
+  const checks = isCreditCard
+    ? [
+        { action: "checkout_card_15m", max: 5, window: 900 },
+        { action: "checkout_card_24h", max: 10, window: 86400 },
+      ]
+    : [{ action: "checkout_pix_15m", max: 10, window: 900 }];
+
+  for (const check of checks) {
+    const { data, error } = await supabase.rpc("check_billing_rate_limit", {
+      p_user_id: userId,
+      p_ip: clientIp || null,
+      p_action: check.action,
+      p_max_attempts: check.max,
+      p_window_seconds: check.window,
+    });
+
+    if (error) {
+      console.error("[asaas-checkout] Erro ao validar check_billing_rate_limit:", error);
+      return jsonResponse(
+        req,
+        { error: "Serviço de proteção contra abuso indisponível. Tente novamente em instantes." },
+        503,
+      );
+    }
+
+    if (!data?.allowed) {
+      const retryAfter = String(data?.retry_after_seconds ?? 60);
+      return jsonResponse(
+        req,
+        {
+          error:
+            "Muitas tentativas de pagamento em um curto intervalo. Aguarde alguns minutos antes de tentar novamente.",
+        },
+        429,
+        { "Retry-After": retryAfter },
+      );
+    }
+  }
+
+  return null;
+}
 
 Deno?.serve?.(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -51,7 +108,6 @@ Deno?.serve?.(async (req: Request) => {
     }
 
     // 1. Autenticação obrigatória com sessão JWT (D-04 / F-05)
-    // O checkout exige sessão ativa previamente confirmada por e-mail.
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return jsonResponse(req, { error: "Sessão não informada. Faça login para continuar." }, 401);
@@ -82,41 +138,86 @@ Deno?.serve?.(async (req: Request) => {
     const payload = await req.json();
     const { kind, months, plan, method, cpf, card, phone, postalCode, addressNumber } = payload;
 
-    // 2. Busca perfil e dados da assinatura atual
-    const { data: profile } = await supabase
+    const realClientIp = extractClientIp(req);
+    const asaasRemoteIp = realClientIp || "127.0.0.1";
+    const isCardAttempt = kind !== "cumulative_months" && method === "credit_card";
+
+    // 2. Busca assinatura atual e valida restrição por chargeback (D-06)
+    const { data: initialUserSub, error: userSubFetchErr } = await supabase
+      .from("user_subscriptions")
+      .select("*")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    let userSub = initialUserSub;
+
+    if (userSubFetchErr) {
+      console.error("[asaas-checkout] Erro ao consultar user_subscriptions:", userSubFetchErr);
+      return safeErrorResponse(req, 500, "Falha ao consultar dados da assinatura.");
+    }
+
+    if (userSub?.chargeback_flagged_at) {
+      return jsonResponse(
+        req,
+        {
+          error:
+            "Sua conta possui restrição de faturamento devido a contestação de pagamento anterior. Entre em contato com o suporte.",
+        },
+        403,
+      );
+    }
+
+    // 3. Rate limit anti-card-testing e anti-spam (D-04)
+    const rateLimitRes = await enforceBillingRateLimit(
+      req,
+      supabase,
+      user.id,
+      realClientIp,
+      isCardAttempt,
+    );
+    if (rateLimitRes) return rateLimitRes;
+
+    // 4. Busca perfil e normaliza dados do titular
+    const { data: profile, error: profileErr } = await supabase
       .from("profiles")
       .select("name, email, cpf, phone, postal_code, address_number")
       .eq("id", user.id)
       .single();
 
-    const cleanCpf = (cpf || profile?.cpf || "").replace(/\D/g, "");
+    if (profileErr || !profile) {
+      return safeErrorResponse(req, 500, "Perfil de usuário não encontrado para faturamento.");
+    }
+
+    const cleanCpf = (cpf || profile.cpf || "").replace(/\D/g, "");
     if (!cleanCpf || !isValidCPF(cleanCpf)) {
       return jsonResponse(req, { error: "CPF inválido ou não informado. Verifique o número digitado." }, 400);
     }
 
-    const cleanPhone = (phone || card?.phone || profile?.phone || "").replace(/\D/g, "");
-    const cleanPostalCode = (postalCode || card?.postalCode || profile?.postal_code || "").replace(/\D/g, "");
-    const cleanAddressNumber = String(addressNumber || card?.addressNumber || profile?.address_number || "").trim();
+    const cleanPhone = (phone || card?.phone || profile.phone || "").replace(/\D/g, "");
+    const cleanPostalCode = (postalCode || card?.postalCode || profile.postal_code || "").replace(/\D/g, "");
+    const cleanAddressNumber = String(addressNumber || card?.addressNumber || profile.address_number || "").trim();
 
-    // Atualiza dados cadastrais em profiles caso tenham sido informados
     const profileUpdates: Record<string, string> = {};
-    if (cleanCpf && cleanCpf !== profile?.cpf) profileUpdates.cpf = cleanCpf;
-    if (cleanPhone && cleanPhone !== profile?.phone) profileUpdates.phone = cleanPhone;
-    if (cleanPostalCode && cleanPostalCode !== profile?.postal_code) profileUpdates.postal_code = cleanPostalCode;
-    if (cleanAddressNumber && cleanAddressNumber !== profile?.address_number) profileUpdates.address_number = cleanAddressNumber;
-
-    if (Object.keys(profileUpdates).length > 0) {
-      await supabase.from("profiles").update(profileUpdates).eq("id", user.id);
+    if (cleanCpf && cleanCpf !== profile.cpf) profileUpdates.cpf = cleanCpf;
+    if (cleanPhone && cleanPhone !== profile.phone) profileUpdates.phone = cleanPhone;
+    if (cleanPostalCode && cleanPostalCode !== profile.postal_code) profileUpdates.postal_code = cleanPostalCode;
+    if (cleanAddressNumber && cleanAddressNumber !== profile.address_number) {
+      profileUpdates.address_number = cleanAddressNumber;
     }
 
-    const customerName = profile?.name || user.user_metadata?.name || user.email?.split("@")[0] || "Cliente";
-    const customerEmail = profile?.email || user.email || "";
+    if (Object.keys(profileUpdates).length > 0) {
+      const { error: profileUpdateErr } = await supabase
+        .from("profiles")
+        .update(profileUpdates)
+        .eq("id", user.id);
+      if (profileUpdateErr) {
+        console.error("[asaas-checkout] Erro ao atualizar dados cadastrais em profiles:", profileUpdateErr);
+        return safeErrorResponse(req, 500, "Falha ao atualizar dados cadastrais do titular.");
+      }
+    }
 
-    let { data: userSub } = await supabase
-      .from("user_subscriptions")
-      .select("*")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    const customerName = profile.name || user.user_metadata?.name || user.email?.split("@")[0] || "Cliente";
+    const customerEmail = profile.email || user.email || "";
 
     const customer = await findOrCreateAsaasCustomer({
       existingCustomerId: userSub?.asaas_customer_id,
@@ -126,12 +227,15 @@ Deno?.serve?.(async (req: Request) => {
       phone: cleanPhone || undefined,
     });
 
-    // Salva o asaas_customer_id na assinatura se ainda não estiver salvo
     if (userSub && userSub.asaas_customer_id !== customer.id) {
-      await supabase
+      const { error: custSyncErr } = await supabase
         .from("user_subscriptions")
         .update({ asaas_customer_id: customer.id })
         .eq("id", userSub.id);
+      if (custSyncErr) {
+        console.error("[asaas-checkout] Erro ao salvar asaas_customer_id:", custSyncErr);
+        return safeErrorResponse(req, 500, "Falha ao vincular cadastro de cliente no gateway.");
+      }
     }
 
     // =========================================================================
@@ -175,7 +279,6 @@ Deno?.serve?.(async (req: Request) => {
         );
       }
 
-      // Validação de teto máximo: não permite acumular além de 11 meses no futuro (F-13)
       const now = new Date();
       const currentEnd = userSub.current_period_end ? new Date(userSub.current_period_end) : now;
       const targetEnd = addCivilMonthsServer(currentEnd > now ? currentEnd : now, monthsCount);
@@ -193,7 +296,6 @@ Deno?.serve?.(async (req: Request) => {
 
       const pricing = calculateCumulativePriceServer(monthsCount);
 
-      // Reutiliza cobrança Pix recente (< 1 hora) se já existir uma intenção pendente idêntica
       const { data: existingIntent } = await supabase
         .from("billing_intents")
         .select("id, provider_payment_id, created_at, amount_cents")
@@ -237,14 +339,15 @@ Deno?.serve?.(async (req: Request) => {
             });
           }
         } catch (reuseErr) {
-          console.warn("[asaas-checkout] Falha ao consultar cobrança acumulativa anterior:", reuseErr);
+          console.warn("[asaas-checkout] Falha ao consultar cobrança acumulativa anterior:", sanitizePaymentLog(reuseErr));
         }
       }
 
-      // Cria a intenção de cobrança no banco (billing_intents)
-      const { data: intent, error: intentErr } = await supabase
+      const intentId = crypto.randomUUID();
+      const { error: intentErr } = await supabase
         .from("billing_intents")
         .insert({
+          id: intentId,
           user_id: user.id,
           kind: "cumulative_renewal",
           plan_id: "pro_monthly",
@@ -253,43 +356,56 @@ Deno?.serve?.(async (req: Request) => {
           method: "pix",
           status: "pending",
           provider: "asaas",
+          external_reference: intentId,
           metadata: {
             months: monthsCount,
             discount_percentage: pricing.discountPercentage,
             monthly_equivalent_cents: pricing.monthlyEquivalentCents,
             previous_period_end: userSub.current_period_end,
           },
-        })
-        .select("id")
-        .single();
+        });
 
-      if (intentErr || !intent) {
-        console.error("[asaas-checkout] Falha ao criar billing_intent:", intentErr);
+      if (intentErr) {
+        console.error("[asaas-checkout] Falha ao criar billing_intent acumulativa:", intentErr);
         return safeErrorResponse(req, 500, "Falha ao registrar intenção de cobrança.");
       }
 
-      const payment = await createAsaasPixCharge({
-        customerId: customer.id,
-        value: pricing.totalReais,
-        description: `Axir Pro — Antecipação de ${monthsCount} meses (${pricing.discountPercentage}% OFF)`,
-        externalReference: intent.id,
-      });
+      let payment: { id: string; status: string; value: number };
+      try {
+        payment = await createAsaasPixCharge({
+          customerId: customer.id,
+          value: pricing.totalReais,
+          description: `Axir Pro — Antecipação de ${monthsCount} meses (${pricing.discountPercentage}% OFF)`,
+          externalReference: intentId,
+        });
+      } catch (asaasPixErr) {
+        await supabase
+          .from("billing_intents")
+          .update({ status: "failed", updated_at: new Date().toISOString() })
+          .eq("id", intentId);
+        throw asaasPixErr;
+      }
 
       const qrCode = await getAsaasPixQrCode(payment.id);
 
-      await supabase
+      const { error: intentUpdateErr } = await supabase
         .from("billing_intents")
         .update({
           provider_payment_id: payment.id,
-          external_reference: intent.id,
+          updated_at: new Date().toISOString(),
         })
-        .eq("id", intent.id);
+        .eq("id", intentId);
+
+      if (intentUpdateErr) {
+        console.error("[asaas-checkout] Falha ao vincular provider_payment_id na intent acumulativa:", intentUpdateErr);
+        return safeErrorResponse(req, 500, "Falha ao concluir registro do pagamento PIX.");
+      }
 
       return jsonResponse(req, {
         ok: true,
         method: "pix",
         kind: "cumulative_months",
-        intentId: intent.id,
+        intentId,
         paymentId: payment.id,
         months: monthsCount,
         totalCents: pricing.totalCents,
@@ -315,10 +431,9 @@ Deno?.serve?.(async (req: Request) => {
     const planMeta = ASAAS_PLAN_CATALOG[planKey];
     const now = new Date();
 
-    // Garante que o registro de user_subscriptions exista
     if (!userSub) {
       const defaultTrialEnds = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-      const { data: upsertedSub } = await supabase
+      const { data: upsertedSub, error: subCreateErr } = await supabase
         .from("user_subscriptions")
         .upsert(
           {
@@ -329,36 +444,35 @@ Deno?.serve?.(async (req: Request) => {
             starts_at: now.toISOString(),
             trial_started_at: now.toISOString(),
             trial_ends_at: defaultTrialEnds.toISOString(),
+            asaas_customer_id: customer.id,
           },
           { onConflict: "user_id" },
         )
         .select()
         .maybeSingle();
 
-      if (upsertedSub) {
-        userSub = upsertedSub;
+      if (subCreateErr || !upsertedSub) {
+        console.error("[asaas-checkout] Erro ao criar registro inicial de assinatura:", subCreateErr);
+        return safeErrorResponse(req, 500, "Falha ao inicializar assinatura do usuário.");
       }
+      userSub = upsertedSub;
     }
 
-    // Autoridade do Servidor sobre Trial e Primeira Cobrança:
-    // O período de teste é único por usuário. Usuários com histórico de cobrança,
-    // com status cancelado/read_only_expired/past_due, ou cujo trial expirou
-    // são cobrados imediatamente no ato.
     const hasAlreadyConsumedTrial = Boolean(
-      userSub?.trial_consumed_at ||
-      userSub?.billing_start_at ||
-      userSub?.tier === "read_only" ||
-      userSub?.status === "canceled" ||
-      userSub?.status === "read_only_expired" ||
-      userSub?.status === "past_due" ||
-      (userSub && userSub.tier !== "trial")
+      userSub.trial_consumed_at ||
+      userSub.billing_start_at ||
+      userSub.tier === "read_only" ||
+      userSub.status === "canceled" ||
+      userSub.status === "read_only_expired" ||
+      userSub.status === "past_due" ||
+      userSub.tier !== "trial"
     );
 
-    const trialEndsDate = userSub?.trial_ends_at ? new Date(userSub.trial_ends_at) : null;
+    const trialEndsDate = userSub.trial_ends_at ? new Date(userSub.trial_ends_at) : null;
     const isTrialActive =
       !hasAlreadyConsumedTrial &&
-      userSub?.tier === "trial" &&
-      userSub?.status === "trialing" &&
+      userSub.tier === "trial" &&
+      userSub.status === "trialing" &&
       trialEndsDate !== null &&
       trialEndsDate.getTime() > now.getTime();
 
@@ -377,8 +491,7 @@ Deno?.serve?.(async (req: Request) => {
         );
       }
 
-      // Reaproveitamento de cobrança Pix pendente recente (< 1 hora)
-      if (userSub?.asaas_payment_id && userSub.status !== "active") {
+      if (userSub.asaas_payment_id && userSub.status !== "active") {
         try {
           const existingPayment = await getAsaasPayment(userSub.asaas_payment_id);
           const createdAtMillis = existingPayment.dateCreated
@@ -405,59 +518,85 @@ Deno?.serve?.(async (req: Request) => {
             });
           }
         } catch (err: unknown) {
-          console.warn("[asaas-checkout] Falha ao consultar cobrança Pix prévia, gerando nova:", err);
+          console.warn("[asaas-checkout] Falha ao consultar cobrança Pix prévia, gerando nova:", sanitizePaymentLog(err));
         }
       }
 
       const isUpgradeFromMonthly =
-        userSub?.tier === "pro_monthly" && userSub?.status === "active";
+        userSub.tier === "pro_monthly" && userSub.status === "active";
 
-      const { data: intent } = await supabase
+      const intentId = crypto.randomUUID();
+      const { error: intentErr } = await supabase
         .from("billing_intents")
         .insert({
+          id: intentId,
           user_id: user.id,
           kind: isUpgradeFromMonthly ? "plan_change" : "subscription_start",
           plan_id: planMeta.planId,
           amount_cents: planMeta.valueCents,
           method: "pix",
           status: "pending",
-        })
-        .select("id")
-        .single();
+          provider: "asaas",
+          external_reference: intentId,
+        });
 
-      const payment = await createAsaasPixCharge({
-        customerId: customer.id,
-        value: planMeta.value,
-        description: "Axir — Plano Pro Anual",
-        externalReference: intent?.id,
-      });
+      if (intentErr) {
+        console.error("[asaas-checkout] Falha ao registrar billing_intent PIX:", intentErr);
+        return safeErrorResponse(req, 500, "Falha ao registrar intenção de pagamento PIX.");
+      }
+
+      let payment: { id: string; status: string; value: number };
+      try {
+        payment = await createAsaasPixCharge({
+          customerId: customer.id,
+          value: planMeta.value,
+          description: "Axir — Plano Pro Anual",
+          externalReference: intentId,
+        });
+      } catch (asaasPixErr) {
+        await supabase
+          .from("billing_intents")
+          .update({ status: "failed", updated_at: new Date().toISOString() })
+          .eq("id", intentId);
+        throw asaasPixErr;
+      }
 
       const qrCode = await getAsaasPixQrCode(payment.id);
 
-      await supabase
+      // [A-04] NÃO marcar trial_consumed_at na geração de PIX (só após pagamento confirmado no webhook)
+      const { error: subPixErr } = await supabase
         .from("user_subscriptions")
         .update({
           asaas_customer_id: customer.id,
           asaas_payment_id: payment.id,
-          trial_consumed_at: userSub?.trial_consumed_at || now.toISOString(),
           scheduled_plan_id: null,
           scheduled_first_charge_at: null,
+          updated_at: new Date().toISOString(),
         })
         .eq("user_id", user.id);
 
-      if (intent?.id) {
-        await supabase
-          .from("billing_intents")
-          .update({
-            provider_payment_id: payment.id,
-            external_reference: intent.id,
-          })
-          .eq("id", intent.id);
+      if (subPixErr) {
+        console.error("[asaas-checkout] Falha ao atualizar user_subscriptions com payment_id PIX:", subPixErr);
+        return safeErrorResponse(req, 500, "Falha ao registrar pagamento PIX na assinatura.");
+      }
+
+      const { error: intentPixErr } = await supabase
+        .from("billing_intents")
+        .update({
+          provider_payment_id: payment.id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", intentId);
+
+      if (intentPixErr) {
+        console.error("[asaas-checkout] Falha ao vincular provider_payment_id PIX:", intentPixErr);
+        return safeErrorResponse(req, 500, "Falha ao vincular cobrança PIX.");
       }
 
       return jsonResponse(req, {
         ok: true,
         method: "pix",
+        intentId,
         paymentId: payment.id,
         qrCodeBase64: qrCode.encodedImage,
         copyPasteKey: qrCode.payload,
@@ -486,46 +625,124 @@ Deno?.serve?.(async (req: Request) => {
       return jsonResponse(req, { error: "Código de segurança (CVV) inválido." }, 400);
     }
 
-    // Cancelamento preventivo de assinatura recorrente anterior no Asaas (F-03)
-    if (userSub?.asaas_subscription_id) {
-      await ensurePreviousSubscriptionCanceled(userSub.asaas_subscription_id);
+    if (isProductionEnvironment()) {
+      if (cleanPhone.length < 10 || cleanPhone.length > 13) {
+        return jsonResponse(
+          req,
+          { error: "Informe um telefone celular válido com DDD para validação antifraude do cartão." },
+          400,
+        );
+      }
+      if (cleanPostalCode.length !== 8) {
+        return jsonResponse(
+          req,
+          { error: "Informe um CEP válido com 8 dígitos do titular do cartão." },
+          400,
+        );
+      }
+      if (!cleanAddressNumber) {
+        return jsonResponse(
+          req,
+          { error: "Informe o número do endereço do titular do cartão." },
+          400,
+        );
+      }
     }
 
-    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
-    const nextDueDate = isDelayedByTrial && serverTrialEnds
-      ? serverTrialEnds.toISOString().slice(0, 10)
-      : undefined;
+    // [B-08] Lock anti-double-submit em processamento concorrente (< 90s)
+    const lockCutoffIso = new Date(now.getTime() - 90_000).toISOString();
+    const { data: activeProcessingIntent } = await supabase
+      .from("billing_intents")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("method", "credit_card")
+      .eq("status", "processing")
+      .gte("created_at", lockCutoffIso)
+      .limit(1)
+      .maybeSingle();
 
-    const subscription = await createAsaasCreditCardSubscription({
-      customerId: customer.id,
-      plan: planKey,
-      creditCard: {
-        holderName: card.holderName,
-        number: card.number,
-        expiryMonth: card.expiryMonth,
-        expiryYear: card.expiryYear,
-        ccv: card.ccv,
-      },
-      holderInfo: {
-        name: customerName,
-        email: customerEmail,
-        cpfCnpj: cleanCpf,
-        postalCode: cleanPostalCode || card.postalCode,
-        addressNumber: cleanAddressNumber || card.addressNumber,
-        phone: cleanPhone || phone,
-      },
-      nextDueDate,
-      remoteIp: clientIp,
-    });
+    if (activeProcessingIntent) {
+      return jsonResponse(
+        req,
+        { error: "Já existe um pagamento com cartão em processamento. Aguarde alguns instantes." },
+        409,
+      );
+    }
 
-    const statusUpper = (subscription.status || "").toUpperCase();
-    const confirmed = CONFIRMED_SUBSCRIPTION_STATUSES.has(statusUpper);
+    const cardIntentKind =
+      userSub.status === "active"
+        ? "plan_change"
+        : userSub.status === "canceled" || userSub.status === "read_only_expired"
+          ? "reactivation"
+          : "subscription_start";
+
+    const intentId = crypto.randomUUID();
+    const { error: cardIntentInsertErr } = await supabase
+      .from("billing_intents")
+      .insert({
+        id: intentId,
+        user_id: user.id,
+        kind: cardIntentKind,
+        plan_id: planMeta.planId,
+        amount_cents: planMeta.valueCents,
+        method: "credit_card",
+        status: "processing",
+        provider: "asaas",
+        external_reference: intentId,
+      });
+
+    if (cardIntentInsertErr) {
+      console.error("[asaas-checkout] Falha ao criar lock de intenção de cartão:", cardIntentInsertErr);
+      return safeErrorResponse(req, 500, "Falha ao iniciar processamento do pagamento.");
+    }
+
+    const previousSubscriptionId = userSub.asaas_subscription_id || null;
+    const nextDueDate =
+      isDelayedByTrial && serverTrialEnds ? formatBrtIsoDate(serverTrialEnds) : undefined;
+
+    let subscription: { id: string; status: string };
+    try {
+      subscription = await createAsaasCreditCardSubscription({
+        customerId: customer.id,
+        plan: planKey,
+        creditCard: {
+          holderName: card.holderName,
+          number: card.number,
+          expiryMonth: card.expiryMonth,
+          expiryYear: card.expiryYear,
+          ccv: card.ccv,
+        },
+        holderInfo: {
+          name: customerName,
+          email: customerEmail,
+          cpfCnpj: cleanCpf,
+          postalCode: cleanPostalCode || card.postalCode,
+          addressNumber: cleanAddressNumber || card.addressNumber,
+          phone: cleanPhone || phone,
+        },
+        nextDueDate,
+        remoteIp: asaasRemoteIp,
+        externalReference: intentId,
+      });
+    } catch (cardErr) {
+      await supabase
+        .from("billing_intents")
+        .update({ status: "failed", updated_at: new Date().toISOString() })
+        .eq("id", intentId);
+      throw cardErr;
+    }
+
     const rawCardNum = String(card.number).replace(/\D/g, "");
     const cardLast4 = rawCardNum.length >= 4 ? rawCardNum.slice(-4) : "••••";
 
     // Cenário 1: Cartão agendado para o fim dos 30 dias grátis de Trial
     if (isDelayedByTrial && serverTrialEnds) {
-      await supabase
+      // [B-08] Cancela assinatura anterior somente APÓS aprovação da nova
+      if (previousSubscriptionId && previousSubscriptionId !== subscription.id) {
+        await ensurePreviousSubscriptionCanceled(previousSubscriptionId);
+      }
+
+      const { error: schedUpdateErr } = await supabase
         .from("user_subscriptions")
         .update({
           scheduled_plan_id: planMeta.planId,
@@ -534,16 +751,31 @@ Deno?.serve?.(async (req: Request) => {
           card_last4: cardLast4,
           asaas_customer_id: customer.id,
           asaas_subscription_id: subscription.id,
+          updated_at: new Date().toISOString(),
         })
         .eq("user_id", user.id);
 
-      // Disparo de e-mail transacional via Resend: Cartão cadastrado no Trial (Renovação Agendada)
+      if (schedUpdateErr) {
+        console.error("[asaas-checkout] Falha ao salvar agendamento de cartão no trial:", schedUpdateErr);
+        return safeErrorResponse(req, 500, "Falha ao registrar agendamento do cartão na assinatura.");
+      }
+
+      await supabase
+        .from("billing_intents")
+        .update({
+          status: "pending",
+          provider_subscription_id: subscription.id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", intentId);
+
+      // [A-03 / D-07] Usa planMeta.name e formatBrtDisplayDate
       try {
         const appUrl = Deno.env?.get?.("PUBLIC_APP_URL") || "https://axir.com.br";
         const emailContent = renderTrialCardScheduledEmail({
           name: customerName,
           cardLast4,
-          firstChargeDateFormatted: serverTrialEnds.toLocaleDateString("pt-BR"),
+          firstChargeDateFormatted: formatBrtDisplayDate(serverTrialEnds),
           planName: planMeta.name,
           planValueFormatted: `R$ ${planMeta.value.toFixed(2).replace(".", ",")}`,
           appUrl,
@@ -559,7 +791,7 @@ Deno?.serve?.(async (req: Request) => {
           idempotencyKey: `trial_card_scheduled_${user.id}_${subscription.id}`,
         });
       } catch (emailErr) {
-        console.warn("[asaas-checkout] Aviso ao disparar e-mail de cartão agendado:", emailErr);
+        console.warn("[asaas-checkout] Aviso ao disparar e-mail de cartão agendado:", sanitizePaymentLog(emailErr));
       }
 
       return jsonResponse(req, {
@@ -573,64 +805,125 @@ Deno?.serve?.(async (req: Request) => {
       });
     }
 
-    // Cenário 2: Cobrança imediata
+    // Cenário 2: Cobrança imediata ([B-05] nunca assume pagamento confirmado via subscription.status)
     let firstPaymentId: string | undefined;
-    let isFirstPaymentConfirmed = confirmed;
+    let isFirstPaymentConfirmed = false;
 
     try {
       const payments = await getAsaasSubscriptionPayments(subscription.id);
       if (payments && payments.length > 0) {
         firstPaymentId = payments[0]!.id;
         const pStatus = (payments[0]!.status || "").toUpperCase();
-        if (CONFIRMED_SUBSCRIPTION_STATUSES.has(pStatus) || pStatus === "RECEIVED") {
+        if (CONFIRMED_PAYMENT_STATUSES.has(pStatus)) {
           isFirstPaymentConfirmed = true;
         }
       }
-    } catch {
-      // Tolera erro de consulta da primeira fatura
+    } catch (pollErr) {
+      console.warn("[asaas-checkout] Aviso ao consultar primeira fatura da assinatura:", sanitizePaymentLog(pollErr));
     }
 
-    const currentPeriodBase = userSub?.current_period_end && new Date(userSub.current_period_end) > now
-      ? new Date(userSub.current_period_end)
-      : now;
-    const periodEnd = addCivilMonthsServer(currentPeriodBase, planKey === "annual" ? 12 : 1);
+    // [B-08] Cancela assinatura anterior somente APÓS sucesso da criação da nova
+    if (previousSubscriptionId && previousSubscriptionId !== subscription.id) {
+      await ensurePreviousSubscriptionCanceled(previousSubscriptionId);
+    }
 
-    await supabase
-      .from("user_subscriptions")
-      .update({
-        tier: planMeta.planId,
-        plan_id: planMeta.planId,
-        status: isFirstPaymentConfirmed ? "active" : "incomplete",
-        starts_at: userSub?.starts_at || now.toISOString(),
-        billing_start_at: now.toISOString(),
-        trial_consumed_at: userSub?.trial_consumed_at || now.toISOString(),
-        current_period_end: periodEnd.toISOString(),
-        cancel_at_period_end: false,
-        scheduled_plan_id: null,
-        scheduled_first_charge_at: null,
-        pending_plan_id: null,
-        pending_plan_effective_at: null,
-        payment_method: "credit_card",
-        card_last4: cardLast4,
-        asaas_customer_id: customer.id,
-        asaas_subscription_id: subscription.id,
-        ...(firstPaymentId ? { asaas_payment_id: firstPaymentId } : {}),
-      })
-      .eq("user_id", user.id);
+    const nowIso = now.toISOString();
 
-    if (firstPaymentId && isFirstPaymentConfirmed) {
-      await supabase.from("billing_processed_payments").upsert(
-        {
-          provider: "asaas",
-          provider_payment_id: firstPaymentId,
-          user_id: user.id,
-          kind: "subscription_first_charge",
-          amount_cents: planMeta.valueCents,
-          period_end_applied: periodEnd.toISOString(),
-          metadata: { subscription_id: subscription.id, tier: planMeta.planId },
-        },
-        { onConflict: "provider,provider_payment_id" },
-      );
+    if (isFirstPaymentConfirmed) {
+      const currentPeriodBase =
+        userSub.current_period_end && new Date(userSub.current_period_end) > now
+          ? new Date(userSub.current_period_end)
+          : now;
+      const periodEnd = addCivilMonthsServer(currentPeriodBase, planKey === "annual" ? 12 : 1);
+
+      if (firstPaymentId) {
+        const { error: lockErr } = await supabase.from("billing_processed_payments").upsert(
+          {
+            provider: "asaas",
+            provider_payment_id: firstPaymentId,
+            user_id: user.id,
+            kind: "subscription_first_charge",
+            amount_cents: planMeta.valueCents,
+            period_end_applied: periodEnd.toISOString(),
+            metadata: { subscription_id: subscription.id, tier: planMeta.planId },
+          },
+          { onConflict: "provider,provider_payment_id", ignoreDuplicates: true },
+        );
+        if (lockErr) {
+          console.error("[asaas-checkout] Falha ao gravar billing_processed_payments:", lockErr);
+          return safeErrorResponse(req, 500, "Falha ao registrar confirmação do pagamento.");
+        }
+      }
+
+      const { error: activeUpdateErr } = await supabase
+        .from("user_subscriptions")
+        .update({
+          tier: planMeta.planId,
+          plan_id: planMeta.planId,
+          status: "active",
+          starts_at: userSub.starts_at || nowIso,
+          billing_start_at: userSub.billing_start_at || nowIso,
+          trial_consumed_at: userSub.trial_consumed_at || nowIso,
+          current_period_end: periodEnd.toISOString(),
+          cancel_at_period_end: false,
+          scheduled_plan_id: null,
+          scheduled_first_charge_at: null,
+          pending_plan_id: null,
+          pending_plan_effective_at: null,
+          payment_method: "credit_card",
+          card_last4: cardLast4,
+          asaas_customer_id: customer.id,
+          asaas_subscription_id: subscription.id,
+          asaas_sync_status: "synced",
+          updated_at: nowIso,
+          ...(firstPaymentId ? { asaas_payment_id: firstPaymentId } : {}),
+        })
+        .eq("user_id", user.id);
+
+      if (activeUpdateErr) {
+        console.error("[asaas-checkout] Falha ao ativar user_subscriptions:", activeUpdateErr);
+        return safeErrorResponse(req, 500, "Falha ao atualizar status da assinatura.");
+      }
+
+      await supabase
+        .from("billing_intents")
+        .update({
+          status: "paid",
+          provider_subscription_id: subscription.id,
+          provider_payment_id: firstPaymentId ?? null,
+          updated_at: nowIso,
+        })
+        .eq("id", intentId);
+    } else {
+      // [B-05] Pagamento ainda não confirmado: NÃO altera current_period_end nem consome período
+      const nextStatus = userSub.status === "active" ? "active" : "incomplete";
+      const { error: incUpdateErr } = await supabase
+        .from("user_subscriptions")
+        .update({
+          status: nextStatus,
+          payment_method: "credit_card",
+          card_last4: cardLast4,
+          asaas_customer_id: customer.id,
+          asaas_subscription_id: subscription.id,
+          updated_at: nowIso,
+          ...(firstPaymentId ? { asaas_payment_id: firstPaymentId } : {}),
+        })
+        .eq("user_id", user.id);
+
+      if (incUpdateErr) {
+        console.error("[asaas-checkout] Falha ao gravar status pendente em user_subscriptions:", incUpdateErr);
+        return safeErrorResponse(req, 500, "Falha ao registrar assinatura pendente.");
+      }
+
+      await supabase
+        .from("billing_intents")
+        .update({
+          status: "pending",
+          provider_subscription_id: subscription.id,
+          provider_payment_id: firstPaymentId ?? null,
+          updated_at: nowIso,
+        })
+        .eq("id", intentId);
     }
 
     return jsonResponse(req, {
@@ -644,13 +937,14 @@ Deno?.serve?.(async (req: Request) => {
     });
   } catch (err: unknown) {
     const rawMsg = err instanceof Error ? err.message : String(err);
-    console.error("[asaas-checkout] Falha ao processar pagamento:", sanitizePaymentLog(rawMsg));
+    const sanitizedMsg = sanitizePaymentLog(rawMsg);
+    console.error("[asaas-checkout] Falha ao processar pagamento:", sanitizedMsg);
 
     const friendlyError = mapAsaasCardErrorMessage(rawMsg);
     if (friendlyError) {
       return jsonResponse(req, { error: friendlyError }, 400);
     }
 
-    return safeErrorResponse(req, 500, "Falha ao processar pagamento. Tente novamente.", err);
+    return safeErrorResponse(req, 500, "Falha ao processar pagamento. Tente novamente.");
   }
 });

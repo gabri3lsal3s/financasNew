@@ -108,38 +108,44 @@ describe("Otimização de Consultas de Cartões (Janela Temporal de 24 meses)", 
   });
 
   describe("listAllCardPayments", () => {
-    it("aplica a janela de 24 meses por padrão no campo competence_month", async () => {
+    it("aplica a janela de 24 meses por padrão de forma simétrica (competence_month ou date)", async () => {
       const expectedSinceMonth = shiftMonth(currentMonth(), -DEFAULT_CARD_PAYMENT_WINDOW_MONTHS);
+      const expectedSinceDate = `${expectedSinceMonth}-01`;
 
       await listAllCardPayments();
 
-      expect(builder.gte).toHaveBeenCalledWith("competence_month", expectedSinceMonth);
+      expect(builder.or).toHaveBeenCalledWith(
+        `competence_month.gte.${expectedSinceMonth},date.gte.${expectedSinceDate}`,
+      );
       expect(builder.order).toHaveBeenCalledWith("date", { ascending: false });
     });
 
     it("não aplica filtro de competência quando sinceMonth for null", async () => {
       await listAllCardPayments({ sinceMonth: null });
 
-      expect(builder.gte).not.toHaveBeenCalled();
+      expect(builder.or).not.toHaveBeenCalled();
       expect(builder.order).toHaveBeenCalledWith("date", { ascending: false });
     });
   });
 
   describe("listCardPayments", () => {
-    it("aplica filtro do card_id e janela de 24 meses por padrão", async () => {
+    it("aplica filtro do card_id e janela simétrica de 24 meses por padrão", async () => {
       const expectedSinceMonth = shiftMonth(currentMonth(), -DEFAULT_CARD_PAYMENT_WINDOW_MONTHS);
+      const expectedSinceDate = `${expectedSinceMonth}-01`;
 
       await listCardPayments("card-456");
 
       expect(builder.eq).toHaveBeenCalledWith("card_id", "card-456");
-      expect(builder.gte).toHaveBeenCalledWith("competence_month", expectedSinceMonth);
+      expect(builder.or).toHaveBeenCalledWith(
+        `competence_month.gte.${expectedSinceMonth},date.gte.${expectedSinceDate}`,
+      );
     });
 
     it("permite consulta irrestrita de pagamentos de um cartão com sinceMonth: null", async () => {
       await listCardPayments("card-456", { sinceMonth: null });
 
       expect(builder.eq).toHaveBeenCalledWith("card_id", "card-456");
-      expect(builder.gte).not.toHaveBeenCalled();
+      expect(builder.or).not.toHaveBeenCalled();
     });
   });
 });

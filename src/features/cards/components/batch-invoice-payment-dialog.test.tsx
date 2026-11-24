@@ -39,6 +39,9 @@ const mockUnpaidSummaries: CompetenceSummary[] = [
     saldoBrutoCents: 225585,
     saldoPonderadoCents: 225585,
     saldoCents: 225585,
+    principalRoladoRecebidoCents: 0,
+    principalRoladoEnviadoCents: 0,
+    totalFaturaBrutoCents: 225585,
   },
   {
     month: "2026-04",
@@ -52,6 +55,9 @@ const mockUnpaidSummaries: CompetenceSummary[] = [
     saldoBrutoCents: 358655,
     saldoPonderadoCents: 358655,
     saldoCents: 358655,
+    principalRoladoRecebidoCents: 0,
+    principalRoladoEnviadoCents: 0,
+    totalFaturaBrutoCents: 358655,
   },
 ];
 

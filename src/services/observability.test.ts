@@ -177,5 +177,82 @@ describe("services/observability (F6.3 — Sentry)", () => {
     await obs.setObservabilityUser(null);
     expect(setUserMock).toHaveBeenLastCalledWith(null);
   });
+
+  it("beforeSend higieniza exception.values, request.data, request.headers, contexts, tags e PANs de 13-19 dígitos (D-11)", async () => {
+    vi.stubEnv("VITE_SENTRY_DSN", "https://exemplo@ingest.sentry.io/1");
+    const obs = await import("@/services/observability");
+    await obs.initObservability();
+    const initCall = initMock.mock.calls[0]?.[0];
+
+    const rawEvent = {
+      exception: {
+        values: [
+          {
+            type: "Error",
+            value:
+              "Falha Amex 3782 822463 10005, Diners 30569309025904 e PAN19 4111111111111111111 CPF 12345678909",
+          },
+        ],
+      },
+      contexts: {
+        checkout: {
+          ccv: "789",
+          cardCcv: "321",
+          cardNumber: "4111111111111111",
+          holderName: "FULANO TAL",
+          postalCode: "01310100",
+          addressNumber: "1000",
+          phone: "11987654321",
+          plan: "annual",
+        },
+      },
+      tags: {
+        card: "4111222233334444",
+        route: "/assinatura",
+      },
+      request: {
+        url: "https://api.exemplo.com/checkout?ccv=123&phone=11987654321",
+        headers: {
+          Authorization: "Bearer super-secret-jwt",
+          Cookie: "session=abc",
+        },
+        data: {
+          card: {
+            number: "4111111111111111",
+            ccv: "123",
+          },
+        },
+      },
+    };
+
+    const scrubbed = initCall.beforeSend(rawEvent);
+    expect(scrubbed.exception.values[0].value).toBe(
+      "Falha Amex [REDACTED_CARD], Diners [REDACTED_CARD] e PAN19 [REDACTED_CARD] CPF [REDACTED_CPF]",
+    );
+    expect(scrubbed.contexts.checkout).toEqual({
+      ccv: "[REDACTED]",
+      cardCcv: "[REDACTED]",
+      cardNumber: "[REDACTED]",
+      holderName: "[REDACTED]",
+      postalCode: "[REDACTED]",
+      addressNumber: "[REDACTED]",
+      phone: "[REDACTED]",
+      plan: "annual",
+    });
+    expect(scrubbed.tags).toEqual({
+      card: "[REDACTED]",
+      route: "/assinatura",
+    });
+    expect(scrubbed.request.url).toBe(
+      "https://api.exemplo.com/checkout?ccv=[REDACTED]&phone=[REDACTED]",
+    );
+    expect(scrubbed.request.headers).toEqual({
+      Authorization: "[REDACTED]",
+      Cookie: "[REDACTED]",
+    });
+    expect(scrubbed.request.data).toEqual({
+      card: "[REDACTED]",
+    });
+  });
 });
 

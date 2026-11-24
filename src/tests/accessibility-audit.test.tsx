@@ -161,6 +161,13 @@ vi.mock("@/state", () => ({
     error: null,
     refetch: vi.fn(),
   }),
+  useAllCardBillRollovers: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
   useCreditCards: () => ({
     data: [{ id: "card1", name: "Nubank", color: "#8B5CF6", closing_day: 10, due_day: 15, is_active: true }],
     isLoading: false,
@@ -186,6 +193,15 @@ vi.mock("@/state", () => ({
     error: null,
     refetch: vi.fn(),
   }),
+  useCardBillRollovers: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
+  useRolloverCardBill: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteCardBillRollover: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useOnboardingCounts: () => ({
     data: { expenseCategories: 2, incomeCategories: 1, cashCheckpoints: 1, cards: 1, transactions: 3 },
     isLoading: false,

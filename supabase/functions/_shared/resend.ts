@@ -5,6 +5,7 @@
  */
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { maskEmailForLog, sanitizeLogString } from "./http.ts";
 
 export interface SendEmailOptions {
   to: string;
@@ -52,11 +53,18 @@ async function upsertEmailLog(
     metadata: Record<string, unknown>;
   },
 ): Promise<void> {
+  if (!row.user_id) {
+    console.warn(
+      "[resend] Ignorando persistência em transactional_email_logs sem userId (D-20):",
+      row.template_key,
+    );
+    return;
+  }
   const { error } = await supabaseAdmin
     .from("transactional_email_logs")
     .upsert(row, { onConflict: "dedup_key" });
   if (error) {
-    console.warn("[resend] Falha ao persistir transactional_email_logs:", error.message);
+    console.warn("[resend] Falha ao persistir transactional_email_logs:", sanitizeLogString(error.message));
   }
 }
 
@@ -72,7 +80,7 @@ export async function sendTransactionalEmail(
   const idempotencyKey = options.idempotencyKey?.trim() || null;
 
   if (!cleanTo || !cleanTo.includes("@")) {
-    console.warn("[resend] Destinatário inválido:", cleanTo);
+    console.warn("[resend] Destinatário inválido:", maskEmailForLog(cleanTo));
     return { success: false, error: "E-mail de destino inválido." };
   }
 
@@ -91,7 +99,10 @@ export async function sendTransactionalEmail(
         return { success: true, skipped: true, id: existingLog.provider_message_id || undefined };
       }
     } catch (err: unknown) {
-      console.warn("[resend] Falha ao verificar idempotência de e-mail:", err);
+      console.warn(
+        "[resend] Falha ao verificar idempotência de e-mail:",
+        sanitizeLogString(err instanceof Error ? err.message : String(err)),
+      );
     }
   }
 

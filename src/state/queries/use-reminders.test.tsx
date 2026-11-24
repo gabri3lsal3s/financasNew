@@ -75,6 +75,7 @@ vi.mock("@/state/queries/use-credit-cards", () => ({
 vi.mock("@/state/queries/use-overview", () => ({
   useAllCardExpenses: () => mockCardExpenses,
   useAllCardPayments: () => mockCardPayments,
+  useAllCardBillRollovers: () => ({ data: [], isLoading: false, error: null }),
 }));
 
 vi.mock("@/state/queries/use-debts", () => ({

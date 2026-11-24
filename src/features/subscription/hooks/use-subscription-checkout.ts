@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import {
   PLAN_CONFIGS,
@@ -6,13 +6,19 @@ import {
   resolvePlanFromQuery,
 } from "@/domain/subscription";
 import { formatCPF } from "@/domain/validation";
-import { useAuth } from "@/hooks/use-auth";
-import { detectCardBrand, formatCardExpiry, formatCardNumber } from "@/services/masks";
+import { resendConfirmationEmail, useAuth } from "@/hooks/use-auth";
+import {
+  detectCardBrand,
+  formatCardExpiry,
+  formatCardNumber,
+  formatCep,
+  formatPhoneBR,
+} from "@/services/masks";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
-import { useCheckoutMutation, useUserSubscription } from "@/state";
+import { useBillingContact, useCheckoutMutation, useUserSubscription } from "@/state";
 import type { SubscriptionPlan } from "@/types";
-import { submitCheckoutOrder } from "../utils/checkout-submit";
+import { buildCheckoutReturnPath, submitCheckoutOrder } from "../utils/checkout-submit";
 import {
   validateCheckoutFields,
   type CheckoutPaymentMethod,
@@ -20,7 +26,7 @@ import {
 import { useCheckoutPixFlow } from "./use-checkout-pix-flow";
 
 /**
- * Gerencia o estado, validações e submissão do checkout Pro.
+ * Gerencia o estado, validações, pré-preenchimento seguro e submissão do checkout Pro.
  */
 export function useSubscriptionCheckout() {
   const [searchParams] = useSearchParams();
@@ -28,6 +34,7 @@ export function useSubscriptionCheckout() {
   const { session, loading: authLoading } = useAuth();
   const subscription = useUserSubscription();
   const checkoutMutation = useCheckoutMutation();
+  const billingContactQuery = useBillingContact(Boolean(session));
 
   const plan: SubscriptionPlan = resolvePlanFromQuery(searchParams.get("plano"));
   const planConfig = PLAN_CONFIGS[plan];
@@ -66,18 +73,38 @@ export function useSubscriptionCheckout() {
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
 
-  const [cpf, setCpf] = useState("");
+  const [cpfInput, setCpfInput] = useState<string | null>(null);
   const [holderName, setHolderName] = useState("");
   const [cardNumber, setCardNumber] = useState("");
   const [cardExpiry, setCardExpiry] = useState("");
   const [cardCcv, setCardCcv] = useState("");
+  const [phoneInput, setPhoneInput] = useState<string | null>(null);
+  const [postalCodeInput, setPostalCodeInput] = useState<string | null>(null);
+  const [addressNumberInput, setAddressNumberInput] = useState<string | null>(null);
+
+  const prefill = session ? billingContactQuery.data : null;
+  const cpf = cpfInput ?? (prefill?.cpf ? formatCPF(prefill.cpf) : "");
+  const phone = phoneInput ?? (prefill?.phone ? formatPhoneBR(prefill.phone) : "");
+  const postalCode = postalCodeInput ?? (prefill?.postalCode ? formatCep(prefill.postalCode) : "");
+  const addressNumber = addressNumberInput ?? (prefill?.addressNumber?.trim() || "");
+
   const detectedBrand = useMemo(() => detectCardBrand(cardNumber), [cardNumber]);
 
   const [confirmationSent, setConfirmationSent] = useState(false);
   const [confirmedEmail, setConfirmedEmail] = useState("");
   const [confirmedCardLast4, setConfirmedCardLast4] = useState("");
 
-  const pixFlow = useCheckoutPixFlow(plan, Boolean(subscription.isPro));
+  const pixFlow = useCheckoutPixFlow(plan, {
+    isPro: Boolean(subscription.isPro),
+    tier: subscription.tier,
+    currentPeriodEnd: subscription.currentPeriodEnd ?? null,
+  });
+
+  const clearSensitiveCardState = useCallback(() => {
+    setCardNumber("");
+    setCardExpiry("");
+    setCardCcv("");
+  }, []);
 
   useEffect(() => {
     if (searchParams.get("status") === "pendente") {
@@ -91,10 +118,21 @@ export function useSubscriptionCheckout() {
   }, [searchParams]);
 
   const activeMethod: CheckoutPaymentMethod = plan === "monthly" ? "credit_card" : method;
+  const checkoutReturnPath = buildCheckoutReturnPath(plan, activeMethod);
 
   const handleBack = () => {
     if (window.history.length > 1) navigate(-1);
     else navigate("/planos");
+  };
+
+  const handleSelectMethod = (nextMethod: CheckoutPaymentMethod) => {
+    if (nextMethod === "pix") {
+      clearSensitiveCardState();
+    } else {
+      pixFlow.setPixResult(null);
+    }
+    setMethod(nextMethod);
+    setErrorMessage(null);
   };
 
   const handleSelectPlan = (targetPlan: SubscriptionPlan) => {
@@ -108,6 +146,12 @@ export function useSubscriptionCheckout() {
     navigate(`?${newParams.toString()}`, { replace: true });
     pixFlow.setPixResult(null);
     setErrorMessage(null);
+  };
+
+  const handleResendConfirmation = async () => {
+    const targetEmail = (confirmedEmail || authEmail).trim();
+    if (!targetEmail) return;
+    await resendConfirmationEmail(targetEmail, checkoutReturnPath);
   };
 
   const handleConfirm = async () => {
@@ -124,6 +168,9 @@ export function useSubscriptionCheckout() {
       cardNumber,
       cardExpiry,
       cardCcv,
+      phone,
+      postalCode,
+      addressNumber,
     });
     if (validationError) {
       triggerSensory("error");
@@ -152,21 +199,34 @@ export function useSubscriptionCheckout() {
         cardNumber,
         cardExpiry,
         cardCcv,
+        phone,
+        postalCode,
+        addressNumber,
         daysUntilFirstCharge: billingSchedule.daysUntilFirstCharge,
         firstBillingDate: billingSchedule.firstBillingDate,
         mutateCheckout: checkoutMutation.mutateAsync,
         onErrorMessage: setErrorMessage,
         onPixCreated: pixFlow.setPixResult,
         onEmailConfirmationRequired: (email, cardLast4) => {
+          clearSensitiveCardState();
+          setAuthPassword("");
           setConfirmedEmail(email);
-          if (cardLast4) setConfirmedCardLast4(cardLast4);
+          setConfirmedCardLast4(cardLast4 || "");
           setConfirmationSent(true);
         },
+        onPendingPayment: (message) => {
+          setCardCcv("");
+          setErrorMessage(message);
+        },
         onNavigateSuccess: (url) => {
+          clearSensitiveCardState();
+          setAuthPassword("");
           void navigate(url);
         },
       });
     } catch (err: unknown) {
+      // Limpa CVV imediatamente em falha de gateway (D-10)
+      setCardCcv("");
       triggerSensory("destructive");
       setErrorMessage(err instanceof Error ? err.message : "Falha ao processar pagamento.");
     } finally {
@@ -183,6 +243,7 @@ export function useSubscriptionCheckout() {
     billingSchedule,
     activeMethod,
     setMethod,
+    handleSelectMethod,
     isPending,
     errorMessage,
     setErrorMessage,
@@ -196,7 +257,7 @@ export function useSubscriptionCheckout() {
     setAuthPassword,
     cpf,
     handleCpfChange: (val: string) => {
-      setCpf(formatCPF(val));
+      setCpfInput(formatCPF(val));
       if (errorMessage) setErrorMessage(null);
     },
     holderName,
@@ -216,6 +277,21 @@ export function useSubscriptionCheckout() {
       setCardCcv(val.replace(/\D/g, "").slice(0, 4));
       if (errorMessage) setErrorMessage(null);
     },
+    phone,
+    handlePhoneChange: (val: string) => {
+      setPhoneInput(formatPhoneBR(val));
+      if (errorMessage) setErrorMessage(null);
+    },
+    postalCode,
+    handlePostalCodeChange: (val: string) => {
+      setPostalCodeInput(formatCep(val));
+      if (errorMessage) setErrorMessage(null);
+    },
+    addressNumber,
+    handleAddressNumberChange: (val: string) => {
+      setAddressNumberInput(val);
+      if (errorMessage) setErrorMessage(null);
+    },
     detectedBrand,
     pixResult: pixFlow.pixResult,
     setPixResult: pixFlow.setPixResult,
@@ -224,6 +300,8 @@ export function useSubscriptionCheckout() {
     confirmationSent,
     confirmedEmail,
     confirmedCardLast4,
+    checkoutReturnPath,
+    handleResendConfirmation,
     handleBack,
     handleSelectPlan,
     handleCopyPix: pixFlow.handleCopyPix,

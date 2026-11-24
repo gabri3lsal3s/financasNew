@@ -73,7 +73,9 @@ export function PaymentMethodCard({
               <p className="text-xs text-muted-foreground leading-relaxed">
                 Sua migração está programada para entrar em vigor em{" "}
                 <span className="font-semibold text-foreground">
-                  {new Date(subscription.pendingPlanEffectiveAt).toLocaleDateString("pt-BR")}
+                  {new Date(subscription.pendingPlanEffectiveAt).toLocaleDateString("pt-BR", {
+                    timeZone: "America/Sao_Paulo",
+                  })}
                 </span>
                 . Até lá, seu plano atual continuará funcionando normalmente.
               </p>

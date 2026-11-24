@@ -109,7 +109,7 @@ Nunca deixe o cliente esperando na fila enquanto investiga a rede:
 O Áxis Finance respeita integralmente o Código de Defesa do Consumidor e possui fluxo automatizado no app e contingência manual no Asaas:
 
 #### A. Autoatendimento no Aplicativo (`Configurações > Assinatura`):
-- **Cancelamento em até 7 dias corridos:** O próprio usuário clica em "Cancelar Assinatura e Reembolsar". A Edge Function `asaas-manage` calcula o intervalo de 7 dias, aciona a API do Asaas (`POST /payments/{id}/refund`), estorna o valor integral (Pix ou Cartão), cancela a assinatura recorrente e rebaixa imediatamente o usuário para `tier = 'read_only'`.
+- **Cancelamento em até 7 dias corridos:** O próprio usuário clica em "Cancelar Assinatura e Reembolsar". A Edge Function `asaas-manage` calcula o intervalo de 7 dias, aciona a API do Asaas (`POST /payments/{id}/refund`), estorna o valor integral (Pix ou Cartão), cancela a assinatura recorrente e rebaixa imediatamente o usuário para `tier = 'read_only'`. Em caso de indisponibilidade do gateway Asaas, a operação falha fechado com HTTP `502` sem corromper o estado local.
 - **Cancelamento após 7 dias corridos:** O usuário clica em "Cancelar Renovação". A Edge Function cancela a assinatura no Asaas (`DELETE /subscriptions/{id}`) para evitar cobranças futuras, marca `cancel_at_period_end = true` e o usuário mantém o acesso Pro completo até o fim da data paga (`current_period_end`). Ao expirar, o banco transiciona automaticamente para `read_only`.
 
 #### B. Procedimento Manual de Suporte (Painel Asaas):
@@ -131,7 +131,7 @@ O Axir adota o princípio de **Privacidade por Padrão (Privacy by Design)** com
 ### 4.1 Autoatendimento do Cliente no Aplicativo
 Oriente sempre o cliente a utilizar os recursos de autoatendimento nativos:
 - **Exportação de Dados:** O usuário pode baixar todas as suas contas, faturas, movimentações e histórico em formato aberto Excel (`.xlsx`) ou JSON acessando **Configurações > Conta > Exportação de Dados**;
-- **Zona de Perigo (Exclusão Autônoma):** O próprio usuário pode solicitar a eliminação irrevogável de sua conta e de todos os seus dados em **Configurações > Conta > Zona de Perigo**, acionando a RPC atômica `public.delete_user_account()`.
+- **Zona de Perigo (Exclusão Autônoma):** O próprio usuário pode solicitar a eliminação irrevogável de sua conta e de todos os seus dados em **Configurações > Conta > Zona de Perigo**, acionando a RPC atômica `public.delete_current_user_account()`. Se houver assinatura recorrente ativa no Asaas (`asaas_subscription_id`), a RPC bloqueia a exclusão (`ACTIVE_SUBSCRIPTION_EXISTS`) orientando o cancelamento prévio para evitar cobranças órfãs. Registros fiscais e de defesa anti-chargeback (`billing_processed_payments` e `billing_intents`) são anonimizados via `ON DELETE SET NULL`.
 
 ### 4.2 Atendimento a Solicitações de DPO / Encarregado de Dados
 Caso chegue uma solicitação formal pelo canal de privacidade (`axisfinance.app@gmail.com`):

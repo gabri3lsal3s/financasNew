@@ -5,6 +5,7 @@ interface Builder {
   select: ReturnType<typeof vi.fn>;
   eq: ReturnType<typeof vi.fn>;
   gte: ReturnType<typeof vi.fn>;
+  or: ReturnType<typeof vi.fn>;
   order: ReturnType<typeof vi.fn>;
   then: (onFulfilled: (value: unknown) => unknown) => Promise<unknown>;
 }
@@ -14,12 +15,14 @@ function makeBuilder(result: unknown): Builder {
     select: vi.fn(),
     eq: vi.fn(),
     gte: vi.fn(),
+    or: vi.fn(),
     order: vi.fn(),
     then: (onFulfilled: (value: unknown) => unknown) => Promise.resolve(result).then(onFulfilled),
   } as Builder;
   builder.select.mockReturnValue(builder);
   builder.eq.mockReturnValue(builder);
   builder.gte.mockReturnValue(builder);
+  builder.or.mockReturnValue(builder);
   builder.order.mockReturnValue(builder);
   return builder;
 }

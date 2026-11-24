@@ -52,16 +52,24 @@ describe("breakdownCycleObligations — Motor Puro de Discriminação de Obriga�
       referenceDate: TODAY,
     });
 
-    expect(result.invoices).toHaveLength(2);
+    expect(result.invoices).toHaveLength(3);
     expect(result.invoices[0]).toEqual({
+      cardId: "c3",
+      cardName: "Cartão Inativo",
+      cardColor: null,
+      competenceMonth: "2026-11",
+      dueDate: "2026-11-10",
+      saldoCents: 50000, // Blindagem #9: cartão inativo com dívida aberta entra
+    });
+    expect(result.invoices[1]).toEqual({
       cardId: "c1",
       cardName: "Nubank",
       cardColor: "#8A05BE",
       competenceMonth: "2026-11",
-      dueDate: "2026-11-15",
+      dueDate: "2026-11-16", // 15/11/2026 é domingo -> prorroga para segunda 16/11 (Blindagem #8)
       saldoCents: 100000, // R$ 1.000,00
     });
-    expect(result.invoices[1]).toEqual({
+    expect(result.invoices[2]).toEqual({
       cardId: "c2",
       cardName: "XP Visa Infinite",
       cardColor: "#000000",
@@ -69,8 +77,8 @@ describe("breakdownCycleObligations — Motor Puro de Discriminação de Obriga�
       dueDate: "2026-11-20",
       saldoCents: 80000, // R$ 800,00
     });
-    expect(result.openInvoicesCents).toBe(180000);
-    expect(result.committedObligationsCents).toBe(180000);
+    expect(result.openInvoicesCents).toBe(230000);
+    expect(result.committedObligationsCents).toBe(230000);
   });
 
   it("separa dívidas a pagar entre ciclo corrente, atrasadas e parcelas futuras", () => {

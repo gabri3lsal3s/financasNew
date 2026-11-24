@@ -162,9 +162,9 @@ describe("§3.3 — Cartões: fatura, pagamentos e estornos", () => {
   });
 
   it("invoiceStatus: fechada / aberta / a vencer na janela / vencida", () => {
-    expect(invoiceStatus("2026-08", 10, 0, TODAY)).toBe("closed");
+    expect(invoiceStatus("2026-08", 10, 0, TODAY)).toBe("paid");
     expect(invoiceStatus("2026-08", 20, 5000, TODAY)).toBe("open");
-    expect(invoiceStatus("2026-08", 15, 5000, TODAY)).toBe("near_due"); // 2 dias
+    expect(invoiceStatus("2026-08", 14, 5000, TODAY)).toBe("near_due"); // 1 dia (14/08 sexta)
     expect(invoiceStatus("2026-08", 10, 5000, TODAY)).toBe("overdue");
   });
 

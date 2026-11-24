@@ -6,5 +6,13 @@ export { formatCentsAsBRL, formatCentsAsCurrency, formatFxRate } from "./money";
 export { formatPercent, formatSignedPct } from "./percent";
 export { formatCardNumber, formatCardExpiry, detectCardBrand } from "./card";
 export { cleanCPF, formatCPF, maskCPF, isValidCPF } from "./cpf";
+export {
+  cleanPhoneBR,
+  formatPhoneBR,
+  isValidPhoneBR,
+  cleanCep,
+  formatCep,
+  isValidCep,
+} from "./contact";
 
 

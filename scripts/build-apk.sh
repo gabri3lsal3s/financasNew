@@ -169,11 +169,10 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Auth Multidispositivo, Inatividade Opt-in & Login + Motor Resiliente de Faturas",
-    "Sessao Multidispositivo & Seguranca: politica de inatividade opt-in (padrao Manter conectado), modo Computador compartilhado no login e revogacao real em tempo real",
-    "AppLock & PIN: backoff persistido contra tentativas, bloqueio por ociosidade e painel unificado em Seguranca & Privacidade",
-    "Motor Resiliente e Autoevolutivo de Faturas: ingestao universal por Magic Bytes (PDF/OFX/CSV/XLSX/Imagens), blueprints por banco e Quality Gate duplo",
-    "Aprendizado no Commit & Block Clipper: Shadow Replay automatico sem tokens em faturas futuras e assistente inline de recorte sem IA"
+    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Ciclo Integrado de Faturas, Rolagens & SSOT de Insights",
+    "Fonte Unica de Verdade (SSOT) para faturas em aberto alimentando Cash-Gap, Safe-to-Spend, Lembretes, Radar Semanal e Limite Usado",
+    "Ciclo completo de fatura com 7 estados canonicos, rolagem de saldo vencido com encargos opcionais e parcelamento sem bitributacao",
+    "Estorno de cartao neutro no saldo bancario, fallback resiliente de consultas e importador anti-duplicacao para saldo rotativo/encargos"
   ]
 }
 EOF

@@ -22,6 +22,8 @@ export interface InvoiceBreakdownParams {
   month: string;
   previstoBrutoCents: number;
   previstoPonderadoCents?: number;
+  principalRoladoRecebidoCents?: number;
+  principalRoladoEnviadoCents?: number;
   pagoCents: number;
   estornoCents?: number;
   creditoAnteriorCents?: number;
@@ -38,6 +40,8 @@ export function buildInvoiceBreakdown(params: InvoiceBreakdownParams): Calculati
     cardName,
     month,
     previstoBrutoCents,
+    principalRoladoRecebidoCents = 0,
+    principalRoladoEnviadoCents = 0,
     pagoCents,
     estornoCents = 0,
     creditoAnteriorCents = 0,
@@ -132,6 +136,16 @@ export function buildInvoiceBreakdown(params: InvoiceBreakdownParams): Calculati
     });
   }
 
+  if (principalRoladoRecebidoCents > 0) {
+    steps.push({
+      label: "Saldo anterior (rotativo/parcelamento)",
+      operator: "+",
+      rawValue: principalRoladoRecebidoCents,
+      hint: "Principal transferido de faturas anteriores vencidas ou parceladas",
+      tone: "negative",
+    });
+  }
+
   if (creditoAnteriorCents > 0) {
     steps.push({
       label: "Crédito Herdado da Fatura Anterior",
@@ -162,12 +176,26 @@ export function buildInvoiceBreakdown(params: InvoiceBreakdownParams): Calculati
     });
   }
 
+  if (principalRoladoEnviadoCents > 0) {
+    steps.push({
+      label: "Saldo rolado para próxima fatura",
+      operator: "-",
+      rawValue: principalRoladoEnviadoCents,
+      hint: "Principal transferido para competência posterior via rotativo ou parcelamento",
+      tone: "positive",
+    });
+  }
+
   const notes: string[] = [];
-  if (creditoRestanteCents > 0) {
+  if (principalRoladoEnviadoCents > 0 && saldoBrutoCents === 0) {
+    notes.push(
+      "Fatura Rolada: O saldo residual foi transferido para competência posterior via rotativo ou parcelamento.",
+    );
+  } else if (creditoRestanteCents > 0) {
     notes.push(
       `Crédito Transbordado: Os pagamentos e estornos superaram as compras desta fatura. O crédito restante será abatido automaticamente na fatura seguinte.`,
     );
-  } else if (saldoBrutoCents === 0 && previstoBrutoCents > 0) {
+  } else if (saldoBrutoCents === 0 && previstoBrutoCents + principalRoladoRecebidoCents > 0) {
     notes.push("Fatura Quitada: Todos os lançamentos desta competência foram totalmente liquidados.");
   }
 

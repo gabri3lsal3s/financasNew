@@ -10,13 +10,14 @@
  * 100% puro — sem dependências de UI ou Supabase.
  */
 
-import { invoiceDueDate, invoiceBalance } from "@/domain/cards";
-import { resolveBillCompetence } from "@/domain/competence";
+import { effectiveInvoiceDueDate, resolveOpenCardInvoices, type CardBillRolloverLike } from "@/domain/cards";
 
 export interface CashGapObligation {
   id: string;
   name: string;
   dueDate: string;
+  nominalDueDate?: string;
+  isOverdue?: boolean;
   amountCents: number;
   kind: "invoice" | "debt" | "expense";
 }
@@ -49,116 +50,61 @@ export interface CardPaymentProjectionItem {
   is_refund?: boolean;
 }
 
+export interface CardBillRolloverProjectionItem extends CardBillRolloverLike {
+  card_id: string;
+}
+
 export interface ProjectCardInvoiceObligationsParams {
   cards: readonly CardBillMeta[];
   expenses: readonly CardExpenseProjectionItem[];
   payments: readonly CardPaymentProjectionItem[];
+  rollovers?: readonly CardBillRolloverProjectionItem[];
   today: string;
   currentMonth?: string;
 }
 
 /**
- * Converte despesas e faturas de cartão de crédito em obrigações de fluxo de caixa (CashGapObligation).
- *
- * REGRA DE CONGRUÊNCIA (§4.3 / D3 / D12):
- * A data de desembolso no caixa bancário é estritamente a data de vencimento da fatura (`invoiceDueDate`),
- * e NUNCA a data em que a compra física foi efetuada (`expense.date`).
- *
- * Adicionalmente:
- * - O valor cobrado é o montante BRUTO nominal integral (100%), pois o banco exige quitação total da fatura;
- * - Faturas em aberto vencidas antes de `today` possuem exigibilidade imediata (`dueDate = today`);
- * - Excedentes de pagamento em competências anteriores abatem faturas subsequentes via carryover credit.
+ * Converte despesas e faturas de cartão de crédito em obrigações de fluxo de caixa (CashGapObligation)
+ * delegando integralmente à Fonte Única de Verdade (`resolveOpenCardInvoices`).
  */
 export function projectCardInvoiceObligations(
   params: ProjectCardInvoiceObligationsParams,
 ): CashGapObligation[] {
-  const { cards, expenses, payments, today, currentMonth } = params;
-  const obligations: CashGapObligation[] = [];
+  const { cards, expenses, payments, rollovers = [], today, currentMonth } = params;
 
-  for (const card of cards) {
-    const cardExpenses = expenses.filter(
-      (e) => e.card_id === card.id || (e.payment_method === "credit_card" && e.card_id === card.id),
-    );
-    const cardPayments = payments.filter((p) => p.card_id === card.id);
+  const openInvoices = resolveOpenCardInvoices({
+    cards,
+    expenses: expenses.map((e) => ({
+      card_id: e.card_id,
+      bill_competence: e.bill_competence ?? null,
+      value: e.amountCents !== undefined ? e.amountCents / 100 : (e.value ?? 0),
+      report_weight: e.report_weight ?? 1,
+    })),
+    payments: payments.map((p) => ({
+      card_id: p.card_id,
+      competence_month: p.competence_month,
+      amount: p.amountCents !== undefined ? p.amountCents / 100 : (p.amount ?? 0),
+      is_refund: p.is_refund,
+    })),
+    rollovers,
+    today,
+  });
 
-    // Identifica todas as competências que possuem lançamentos ou pagamentos
-    const competencesSet = new Set<string>();
-    for (const exp of cardExpenses) {
-      const comp =
-        exp.bill_competence ||
-        (card.closing_day
-          ? resolveBillCompetence(exp.date, card.closing_day)
-          : exp.date.slice(0, 7));
-      if (comp) competencesSet.add(comp);
-    }
-    for (const pay of cardPayments) {
-      if (pay.competence_month) competencesSet.add(pay.competence_month);
-    }
-    if (currentMonth) {
-      competencesSet.add(currentMonth);
-    }
-
-    if (competencesSet.size === 0) continue;
-
-    // Ordenação cronológica para propagação exata de créditos excedentes de pagamento
-    const sortedCompetences = Array.from(competencesSet).sort((a, b) => a.localeCompare(b));
-    let carryoverCreditCents = 0;
-
-    for (const competence of sortedCompetences) {
-      const monthExpenses = cardExpenses.filter((e) => {
-        const comp =
-          e.bill_competence ||
-          (card.closing_day
-            ? resolveBillCompetence(e.date, card.closing_day)
-            : e.date.slice(0, 7));
-        return comp === competence;
-      });
-
-      // Valor bruto nominal (100% bancário)
-      const expTotalCents = monthExpenses.reduce((acc, e) => {
-        const cents = e.amountCents ?? (e.value !== undefined ? Math.round(e.value * 100) : 0);
-        return acc + cents;
-      }, 0);
-
-      const monthPayments = cardPayments.filter((p) => p.competence_month === competence);
-      const payTotalCents = monthPayments
-        .filter((p) => !p.is_refund && (p.amountCents ?? (p.amount !== undefined ? Math.round(p.amount * 100) : 0)) > 0)
-        .reduce((acc, p) => {
-          const cents = p.amountCents ?? (p.amount !== undefined ? Math.round(p.amount * 100) : 0);
-          return acc + cents;
-        }, 0);
-
-      const refundTotalCents = monthPayments
-        .filter((p) => p.is_refund || (p.amountCents ?? (p.amount !== undefined ? Math.round(p.amount * 100) : 0)) < 0)
-        .reduce((acc, p) => {
-          const raw = p.amountCents ?? (p.amount !== undefined ? Math.round(p.amount * 100) : 0);
-          return acc + Math.abs(raw);
-        }, 0);
-
-      const saldoAbertoCents = invoiceBalance(expTotalCents, payTotalCents, refundTotalCents, carryoverCreditCents);
-
-      // Atualiza crédito excedente que transborda para o próximo ciclo
-      const totalDisponivel = payTotalCents + refundTotalCents + carryoverCreditCents;
-      carryoverCreditCents = Math.max(0, totalDisponivel - expTotalCents);
-
-      if (saldoAbertoCents <= 0) continue;
-
-      // O vencimento canônico da fatura:
-      const nominalDueDate = invoiceDueDate(competence, card.due_day);
-      // Se já venceu no passado e continua em aberto, a exigibilidade de caixa é imediata (hoje)
-      const effectiveDueDate = nominalDueDate < today ? today : nominalDueDate;
-
-      obligations.push({
-        id: `invoice-${card.id}-${competence}`,
-        name: competence === currentMonth ? `Fatura ${card.name}` : `Fatura ${card.name} (${competence})`,
-        dueDate: effectiveDueDate,
-        amountCents: saldoAbertoCents,
-        kind: "invoice",
-      });
-    }
-  }
-
-  return obligations;
+  return openInvoices.map((inv) => {
+    const isOverdue = inv.effectiveDueDate < today;
+    return {
+      id: `invoice-${inv.cardId}-${inv.competenceMonth}`,
+      name:
+        inv.competenceMonth === currentMonth
+          ? `Fatura ${inv.cardName}`
+          : `Fatura ${inv.cardName} (${inv.competenceMonth})`,
+      dueDate: isOverdue ? today : inv.effectiveDueDate,
+      nominalDueDate: inv.nominalDueDate,
+      isOverdue,
+      amountCents: inv.saldoBrutoCents,
+      kind: "invoice",
+    };
+  });
 }
 
 export interface CardInstallmentPlanItem {
@@ -204,7 +150,7 @@ export function projectInstallmentCashFlows(
   const { card, installments, today } = params;
 
   return installments.map((inst) => {
-    const nominalDueDate = invoiceDueDate(inst.billCompetence, card.due_day);
+    const nominalDueDate = effectiveInvoiceDueDate(inst.billCompetence, card.due_day);
     const disbursementDate = today && nominalDueDate < today ? today : nominalDueDate;
     const desc =
       inst.description ||

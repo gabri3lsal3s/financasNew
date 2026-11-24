@@ -55,6 +55,11 @@ vi.mock("@/state", () => ({
     isLoading: false,
     error: null,
   }),
+  useAllCardBillRollovers: () => ({
+    data: [],
+    isLoading: false,
+    error: null,
+  }),
   useDebts: () => ({
     data: stateMocks.debts,
     isLoading: false,

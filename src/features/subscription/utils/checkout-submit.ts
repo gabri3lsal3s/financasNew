@@ -1,6 +1,7 @@
 import { cleanCPF } from "@/domain/validation";
-import { signInWithEmail } from "@/hooks/use-auth";
+import { signInWithEmail, signUpWithEmail } from "@/hooks/use-auth";
 import { getErrorMessage } from "@/services/errors";
+import { cleanCep, cleanPhoneBR } from "@/services/masks";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import type {
@@ -15,6 +16,15 @@ const TEST_PIX_COPY_PASTE_KEY =
 
 type MutateCheckoutFn = ReturnType<typeof useCheckoutMutation>["mutateAsync"];
 type CheckoutSessionResult = Awaited<ReturnType<MutateCheckoutFn>>;
+
+export function buildCheckoutReturnPath(
+  plan: SubscriptionPlan,
+  activeMethod: CheckoutPaymentMethod,
+): string {
+  const planoSlug = plan === "annual" ? "pro-anual" : "pro-mensal";
+  const metodoSlug = activeMethod === "pix" ? "pix" : "cartao";
+  return `/assinatura?plano=${planoSlug}&metodo=${metodoSlug}`;
+}
 
 export interface SubmitCheckoutOrderParams {
   hasSession: boolean;
@@ -31,17 +41,23 @@ export interface SubmitCheckoutOrderParams {
   cardNumber: string;
   cardExpiry: string;
   cardCcv: string;
+  phone: string;
+  postalCode: string;
+  addressNumber: string;
   daysUntilFirstCharge: number;
   firstBillingDate: Date;
   mutateCheckout: MutateCheckoutFn;
   onErrorMessage: (message: string) => void;
   onPixCreated: (pix: PixCheckoutResult) => void;
   onEmailConfirmationRequired: (email: string, cardLast4?: string) => void;
+  onPendingPayment?: (message: string) => void;
   onNavigateSuccess: (url: string) => void;
 }
 
 /**
  * Executa a criação/login de conta e a chamada ao gateway de checkout (Cartão ou PIX).
+ * Em novos cadastros que exigem confirmação por e-mail (B-02), cria a conta antes no
+ * Supabase Auth e interrompe o envio de dados de cartão até o retorno autenticado.
  */
 export async function submitCheckoutOrder(params: SubmitCheckoutOrderParams): Promise<void> {
   if (!params.hasSession && params.authMode === "login") {
@@ -54,14 +70,35 @@ export async function submitCheckoutOrder(params: SubmitCheckoutOrderParams): Pr
     }
   }
 
-  const registration =
-    !params.hasSession && params.authMode === "register"
-      ? {
-          name: params.authName.trim(),
-          email: params.authEmail.trim(),
-          password: params.authPassword,
-        }
-      : undefined;
+  if (!params.hasSession && params.authMode === "register") {
+    const checkoutReturnPath = buildCheckoutReturnPath(params.plan, params.activeMethod);
+    try {
+      const signUpResult = await signUpWithEmail(
+        params.authEmail.trim(),
+        params.authPassword,
+        params.authName.trim(),
+        undefined,
+        undefined,
+        checkoutReturnPath,
+      );
+
+      if (signUpResult.needsEmailConfirmation) {
+        params.onEmailConfirmationRequired(params.authEmail.trim());
+        triggerSensory("success");
+        pushToast({
+          title: "Conta criada! Confirme seu e-mail",
+          description:
+            "Enviamos o link de confirmação. Ao clicar, você voltará automaticamente ao checkout para concluir a assinatura.",
+          variant: "default",
+        });
+        return;
+      }
+    } catch (authErr: unknown) {
+      triggerSensory("error");
+      params.onErrorMessage(getErrorMessage(authErr));
+      return;
+    }
+  }
 
   const customerEmail = params.authEmail.trim() || params.sessionEmail || "";
   const customerName = (
@@ -76,7 +113,6 @@ export async function submitCheckoutOrder(params: SubmitCheckoutOrderParams): Pr
       ...params,
       customerEmail,
       customerName,
-      registration,
     });
     return;
   }
@@ -84,7 +120,6 @@ export async function submitCheckoutOrder(params: SubmitCheckoutOrderParams): Pr
   await processPixCheckout({
     ...params,
     customerEmail,
-    registration,
   });
 }
 
@@ -92,11 +127,13 @@ async function processCreditCardCheckout(
   params: SubmitCheckoutOrderParams & {
     customerEmail: string;
     customerName: string;
-    registration?: { name: string; email: string; password: string };
   },
 ): Promise<void> {
   const [expMonth, expYear] = params.cardExpiry.split("/");
   const rawCardNumber = params.cardNumber.replace(/\D/g, "");
+  const cleanPhone = cleanPhoneBR(params.phone);
+  const cleanPostalCode = cleanCep(params.postalCode);
+  const cleanAddressNumber = params.addressNumber.trim();
 
   const res: CheckoutSessionResult = await params.mutateCheckout({
     plan: params.plan,
@@ -105,6 +142,9 @@ async function processCreditCardCheckout(
       name: params.customerName,
       email: params.customerEmail,
       cpf: cleanCPF(params.cpf),
+      phone: cleanPhone,
+      postalCode: cleanPostalCode,
+      addressNumber: cleanAddressNumber,
     },
     card: {
       holderName: params.holderName.trim().toUpperCase(),
@@ -112,8 +152,10 @@ async function processCreditCardCheckout(
       expiryMonth: (expMonth || "12").padStart(2, "0"),
       expiryYear: expYear || "28",
       ccv: params.cardCcv,
+      phone: cleanPhone,
+      postalCode: cleanPostalCode,
+      addressNumber: cleanAddressNumber,
     },
-    registration: params.registration,
     trialDaysRemaining: params.daysUntilFirstCharge,
     firstBillingDate: params.firstBillingDate.toISOString(),
   });
@@ -133,14 +175,33 @@ async function processCreditCardCheckout(
     const cardLast4 =
       "cardLast4" in res && typeof res.cardLast4 === "string"
         ? res.cardLast4
-        : rawCardNumber.slice(-4);
+        : undefined;
     params.onEmailConfirmationRequired(params.customerEmail, cardLast4);
     triggerSensory("success");
     pushToast({
-      title: "Conta criada e cartão cadastrado!",
+      title: "Conta criada!",
       description: "Enviamos um link de confirmação para o seu e-mail.",
       variant: "default",
     });
+    return;
+  }
+
+  if (res && "status" in res && res.status === "incomplete") {
+    const planSlug = params.plan === "annual" ? "pro-anual" : "pro-mensal";
+    triggerSensory("selection");
+    pushToast({
+      title: "Pagamento em análise",
+      description:
+        "Seu cartão está sendo validado pela operadora. Assim que aprovado, o plano Pro será ativado automaticamente.",
+      variant: "default",
+    });
+    if (params.onPendingPayment) {
+      params.onPendingPayment(
+        "Seu cartão está em validação pela operadora. Assim que aprovado, sua assinatura será ativada.",
+      );
+    } else {
+      params.onNavigateSuccess(`/assinatura?plano=${planSlug}&status=pendente`);
+    }
     return;
   }
 
@@ -162,10 +223,10 @@ async function processCreditCardCheckout(
 async function processPixCheckout(
   params: SubmitCheckoutOrderParams & {
     customerEmail: string;
-    registration?: { name: string; email: string; password: string };
   },
 ): Promise<void> {
   try {
+    const cleanPhone = cleanPhoneBR(params.phone);
     const res = await params.mutateCheckout({
       plan: "annual",
       method: "pix",
@@ -173,8 +234,8 @@ async function processPixCheckout(
         name: (params.authName.trim() || params.sessionName || "Cliente").toUpperCase(),
         email: params.customerEmail,
         cpf: cleanCPF(params.cpf),
+        ...(cleanPhone ? { phone: cleanPhone } : {}),
       },
-      registration: params.registration,
     });
 
     if (res.method === "pix") {

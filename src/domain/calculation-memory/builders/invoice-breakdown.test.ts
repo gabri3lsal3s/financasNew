@@ -99,6 +99,22 @@ describe("buildInvoiceBreakdown", () => {
     expect(breakdown.steps[2]?.label).toBe("Multa por Atraso");
     expect(breakdown.notes?.some((n) => n.includes("Composição de Encargos"))).toBe(true);
   });
+
+  it("inclui saldo anterior rolado e saldo rolado para próxima fatura", () => {
+    const breakdown = buildInvoiceBreakdown({
+      cardName: "Nubank",
+      month: "2026-08",
+      previstoBrutoCents: 50000,
+      principalRoladoRecebidoCents: 20000,
+      principalRoladoEnviadoCents: 70000,
+      pagoCents: 0,
+      saldoBrutoCents: 0,
+    });
+
+    expect(breakdown.steps.some((s) => s.label === "Saldo anterior (rotativo/parcelamento)" && s.rawValue === 20000)).toBe(true);
+    expect(breakdown.steps.some((s) => s.label === "Saldo rolado para próxima fatura" && s.rawValue === 70000)).toBe(true);
+    expect(breakdown.notes?.[0]).toContain("Fatura Rolada");
+  });
 });
 
 describe("buildCardLimitBreakdown", () => {

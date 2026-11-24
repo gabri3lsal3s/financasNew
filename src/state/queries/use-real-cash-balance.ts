@@ -22,7 +22,7 @@ import type { TransactionScope, ViewScope } from "@/types";
 import { useLatestCashCheckpoint } from "./use-cash-checkpoints";
 import { useIncomesByRange } from "./use-incomes";
 import { useExpensesByRange } from "./use-expenses";
-import { useAllCardPayments, useAllCardExpenses } from "./use-overview";
+import { useAllCardBillRollovers, useAllCardExpenses, useAllCardPayments } from "./use-overview";
 import { useCreditCards } from "./use-credit-cards";
 import { useDebts } from "./use-debts";
 import { usePortfolioContributions } from "./use-portfolio";
@@ -67,6 +67,7 @@ export function useRealCashBalance(
   const cardsQuery = useCreditCards();
   const cardPaymentsQuery = useAllCardPayments();
   const cardExpensesQuery = useAllCardExpenses();
+  const cardRolloversQuery = useAllCardBillRollovers();
   const debtsQuery = useDebts();
   const contributionsQuery = usePortfolioContributions();
 
@@ -77,6 +78,7 @@ export function useRealCashBalance(
     cardsQuery.isLoading ||
     cardPaymentsQuery.isLoading ||
     cardExpensesQuery.isLoading ||
+    cardRolloversQuery.isLoading ||
     debtsQuery.isLoading ||
     contributionsQuery.isLoading;
 
@@ -87,6 +89,7 @@ export function useRealCashBalance(
     cardsQuery.error ??
     cardPaymentsQuery.error ??
     cardExpensesQuery.error ??
+    cardRolloversQuery.error ??
     debtsQuery.error ??
     contributionsQuery.error;
 
@@ -113,10 +116,10 @@ export function useRealCashBalance(
     () => filterCardsByViewScope(cardsQuery.data ?? [], activeScope),
     [cardsQuery.data, activeScope],
   );
-  const scopedCardExpenses = useMemo(
-    () => filterExpensesByViewScope(cardExpensesQuery.data ?? [], activeScope, { mode: "cashflow" }),
-    [cardExpensesQuery.data, activeScope],
-  );
+  // Blindagem #11: faturas de cartão (incluindo cartões mistos) sempre usam 100% das despesas/pagamentos/rollovers do cartão;
+  // o escopo PF/PJ filtra apenas quais cartões entram no cálculo.
+  const allCardExpenses = useMemo(() => cardExpensesQuery.data ?? [], [cardExpensesQuery.data]);
+  const allCardRollovers = useMemo(() => cardRolloversQuery.data ?? [], [cardRolloversQuery.data]);
   const scopedDebts = useMemo(
     () => filterDebtsByViewScope(debtsQuery.data ?? [], activeScope),
     [debtsQuery.data, activeScope],
@@ -154,15 +157,17 @@ export function useRealCashBalance(
   const cycleBreakdown = useMemo(() => {
     return breakdownCycleObligations({
       cards: scopedCards,
-      cardExpenses: scopedCardExpenses,
+      cardExpenses: allCardExpenses,
       cardPayments: scopedCardPayments,
+      cardRollovers: allCardRollovers,
       debts: scopedDebts,
       referenceDate,
     });
   }, [
     scopedCards,
-    scopedCardExpenses,
+    allCardExpenses,
     scopedCardPayments,
+    allCardRollovers,
     scopedDebts,
     referenceDate,
   ]);
@@ -232,6 +237,7 @@ export function useRealCashBalance(
       cardsQuery.refetch(),
       cardPaymentsQuery.refetch(),
       cardExpensesQuery.refetch(),
+      cardRolloversQuery.refetch(),
       debtsQuery.refetch(),
       contributionsQuery.refetch(),
     ]);

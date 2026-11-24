@@ -9,7 +9,7 @@
  *  - Garante invariantes de soma com o Safe-to-Spend.
  */
 
-import { autoSelectBillMonth, buildCompetenceSummaries, invoiceDueDate } from "@/domain/cards";
+import { resolveOpenCardInvoices } from "@/domain/cards";
 import { todayISO } from "@/domain/debts";
 import { numberToCents } from "@/domain/money";
 import { shiftMonth } from "@/lib/date";
@@ -53,6 +53,7 @@ export interface BreakdownCycleObligationsParams {
     id: string;
     name: string;
     due_day: number;
+    closing_day?: number;
     color?: string | null;
     is_active?: boolean;
   }[];
@@ -66,6 +67,14 @@ export interface BreakdownCycleObligationsParams {
     card_id: string;
     competence_month: string;
     amount: number;
+    is_refund?: boolean;
+  }[];
+  cardRollovers?: readonly {
+    card_id: string;
+    from_competence_month: string;
+    to_competence_month: string;
+    principal_amount: number;
+    kind?: "rollover" | "refinance";
   }[];
   debts: readonly {
     id: string;
@@ -85,6 +94,7 @@ export function breakdownCycleObligations(
     cards,
     cardExpenses,
     cardPayments,
+    cardRollovers = [],
     debts,
     referenceDate = todayISO(),
   } = params;
@@ -92,35 +102,26 @@ export function breakdownCycleObligations(
   const currentMonthStr = referenceDate.slice(0, 7);
   const currentMonthRangeEnd = `${shiftMonth(currentMonthStr, 1)}-01`;
 
-  // 1. Apuração de faturas de cartão de crédito no ciclo
-  const activeCards = cards.filter((c) => c.is_active !== false);
-  const invoiceItems: CycleInvoiceItem[] = [];
-  let openInvoicesCents = 0;
+  // 1. Apuração de faturas de cartão de crédito no ciclo (SSOT: inclui vencidas e ciclo atual; inclui cartões inativos com saldo aberto)
+  const openInvoices = resolveOpenCardInvoices({
+    cards,
+    expenses: cardExpenses,
+    payments: cardPayments,
+    rollovers: cardRollovers,
+    today: referenceDate,
+  }).filter(
+    (inv) => inv.competenceMonth <= currentMonthStr || inv.effectiveDueDate < currentMonthRangeEnd,
+  );
 
-  for (const card of activeCards) {
-    const cardExp = cardExpenses.filter((e) => e.card_id === card.id);
-    const cardPay = cardPayments.filter((p) => p.card_id === card.id);
-    const summaries = buildCompetenceSummaries(cardExp, cardPay);
-    if (summaries.length === 0) continue;
-
-    const month = autoSelectBillMonth(summaries, referenceDate);
-    const summary = summaries.find((s) => s.month === month);
-    if (summary && summary.saldoCents > 0) {
-      const dueDate = invoiceDueDate(month, card.due_day);
-      invoiceItems.push({
-        cardId: card.id,
-        cardName: card.name,
-        cardColor: card.color ?? null,
-        competenceMonth: month,
-        dueDate,
-        saldoCents: summary.saldoCents,
-      });
-      openInvoicesCents += summary.saldoCents;
-    }
-  }
-
-  // Ordena faturas pela data de vencimento
-  invoiceItems.sort((a, b) => (a.dueDate < b.dueDate ? -1 : a.dueDate > b.dueDate ? 1 : 0));
+  const invoiceItems: CycleInvoiceItem[] = openInvoices.map((inv) => ({
+    cardId: inv.cardId,
+    cardName: inv.cardName,
+    cardColor: inv.cardColor,
+    competenceMonth: inv.competenceMonth,
+    dueDate: inv.effectiveDueDate,
+    saldoCents: inv.saldoBrutoCents,
+  }));
+  const openInvoicesCents = invoiceItems.reduce((acc, item) => acc + item.saldoCents, 0);
 
   // 2. Apuração de dívidas a pagar e a receber do ciclo
   const payableDebts: CycleDebtItem[] = [];

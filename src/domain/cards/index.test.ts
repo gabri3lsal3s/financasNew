@@ -6,9 +6,11 @@ import {
   cardLimitUsage,
   daysUntilDue,
   divideIntoInstallments,
+  effectiveInvoiceDueDate,
   invoiceBalance,
   invoiceStatus,
   partitionInvoiceExpenses,
+  resolveOpenCardInvoices,
   sortCardsByPreference,
 } from "./index";
 import { APP_START_DATE } from "@/types";
@@ -41,8 +43,8 @@ describe("invoiceBalance (§3.3.3)", () => {
 });
 
 describe("invoiceStatus", () => {
-  it("fechada quando sem pendências", () => {
-    expect(invoiceStatus("2026-08", 10, 0, TODAY)).toBe("closed");
+  it("paga quando sem pendências e sem metadata", () => {
+    expect(invoiceStatus("2026-08", 10, 0, TODAY)).toBe("paid");
   });
 
   it("vencida quando o vencimento passou", () => {
@@ -51,8 +53,8 @@ describe("invoiceStatus", () => {
   });
 
   it("vence em breve dentro da janela", () => {
-    // Vencimento 15/08 — 2 dias após hoje (janela 3)
-    expect(invoiceStatus("2026-08", 15, 5000, TODAY)).toBe("near_due");
+    // Vencimento 14/08 (sexta-feira) — 1 dia após hoje (janela 3)
+    expect(invoiceStatus("2026-08", 14, 5000, TODAY)).toBe("near_due");
   });
 
   it("em aberto fora da janela", () => {
@@ -60,8 +62,12 @@ describe("invoiceStatus", () => {
     expect(invoiceStatus("2026-08", 20, 5000, TODAY)).toBe("open");
   });
 
-  it("clampa o vencimento ao mês (31/02 → 28/02)", () => {
-    expect(invoiceStatus("2026-02", 31, 5000, "2026-02-27")).toBe("near_due");
+  it("clampa o vencimento ao mês (31/02 → 28/02) e prorroga sábado para segunda (02/03)", () => {
+    // 2026-02-28 é sábado -> effectiveDueDate = 2026-03-02 (segunda)
+    expect(effectiveInvoiceDueDate("2026-02", 31)).toBe("2026-03-02");
+    expect(invoiceStatus("2026-02", 31, 5000, "2026-02-28")).toBe("near_due");
+    expect(invoiceStatus("2026-02", 31, 5000, "2026-03-01")).toBe("near_due");
+    expect(invoiceStatus("2026-02", 31, 5000, "2026-03-03")).toBe("overdue");
   });
 });
 
@@ -632,6 +638,105 @@ describe("sortCardsByPreference", () => {
   it("lida graciosamente com listas vazias ou com 1 único item", () => {
     expect(sortCardsByPreference([])).toEqual([]);
     expect(sortCardsByPreference([cards[0]!])).toEqual([cards[0]!]);
+  });
+});
+
+describe("FSM v2, Rolagens, Estornos Tardios e SSOT (Blindagens #6-#9)", () => {
+  it("Blindagem #7: rolled_over prevalece sobre paid em pagamento parcial + rolagem", () => {
+    const summaries = buildCompetenceSummaries(
+      [{ bill_competence: "2026-08", value: 1000, report_weight: 1 }],
+      [{ competence_month: "2026-08", amount: 400 }],
+      [{ from_competence_month: "2026-08", to_competence_month: "2026-09", principal_amount: 600, kind: "rollover" }],
+    );
+
+    const aug = summaries.find((s) => s.month === "2026-08")!;
+    const sep = summaries.find((s) => s.month === "2026-09")!;
+
+    expect(aug.saldoBrutoCents).toBe(0);
+    expect(aug.principalRoladoEnviadoCents).toBe(60000);
+    expect(sep.principalRoladoRecebidoCents).toBe(60000);
+    expect(sep.totalFaturaBrutoCents).toBe(60000);
+    expect(sep.saldoBrutoCents).toBe(60000);
+
+    const augStatus = invoiceStatus("2026-08", 10, aug.saldoBrutoCents, "2026-08-15", 3, {
+      closingDay: 3,
+      totalFaturaBrutoCents: aug.totalFaturaBrutoCents,
+      principalRoladoEnviadoCents: aug.principalRoladoEnviadoCents,
+    });
+    expect(augStatus).toBe("rolled_over");
+  });
+
+  it("Blindagem #6: transição reversa paid -> open e estorno tardio em rolled_over transborda para M+1", () => {
+    // 1. Sem lançamentos -> empty
+    expect(
+      invoiceStatus("2026-08", 20, 0, "2026-08-05", 3, {
+        closingDay: 13,
+        totalFaturaBrutoCents: 0,
+      }),
+    ).toBe("empty");
+
+    // 2. Pagamento antecipado zera -> paid; nova compra antes do fechamento -> volta para open
+    expect(
+      invoiceStatus("2026-08", 20, 0, "2026-08-05", 3, {
+        closingDay: 13,
+        totalFaturaBrutoCents: 10000,
+      }),
+    ).toBe("paid");
+    expect(
+      invoiceStatus("2026-08", 20, 5000, "2026-08-06", 3, {
+        closingDay: 13,
+        totalFaturaBrutoCents: 15000,
+      }),
+    ).toBe("open");
+
+    // 3. Entre closing_day e near_due -> closed
+    expect(
+      invoiceStatus("2026-08", 20, 5000, "2026-08-14", 3, {
+        closingDay: 13,
+        totalFaturaBrutoCents: 15000,
+      }),
+    ).toBe("closed");
+
+    // 4. Estorno tardio em competência já rolada gera creditoAnterior abatendo M+1
+    const summaries = buildCompetenceSummaries(
+      [{ bill_competence: "2026-08", value: 500, report_weight: 1 }],
+      [{ competence_month: "2026-08", amount: -150, is_refund: true }],
+      [{ from_competence_month: "2026-08", to_competence_month: "2026-09", principal_amount: 500, kind: "rollover" }],
+    );
+    const aug = summaries.find((s) => s.month === "2026-08")!;
+    const sep = summaries.find((s) => s.month === "2026-09")!;
+    expect(aug.creditoRestanteCents).toBe(15000);
+    expect(sep.creditoAnteriorCents).toBe(15000);
+    expect(sep.saldoBrutoCents).toBe(35000);
+  });
+
+  it("Blindagem #8: prorrogação bancária de vencimento no sábado/domingo para segunda-feira", () => {
+    // 2026-08-15 é sábado -> prorroga para 2026-08-17 (segunda)
+    expect(effectiveInvoiceDueDate("2026-08", 15)).toBe("2026-08-17");
+    expect(invoiceStatus("2026-08", 15, 10000, "2026-08-16")).toBe("near_due"); // domingo não é overdue
+    expect(invoiceStatus("2026-08", 15, 10000, "2026-08-17")).toBe("near_due"); // segunda é dia do vencimento
+    expect(invoiceStatus("2026-08", 15, 10000, "2026-08-18")).toBe("overdue"); // terça é vencida
+  });
+
+  it("Blindagem #9: resolveOpenCardInvoices inclui cartão inativo com saldo aberto", () => {
+    const open = resolveOpenCardInvoices({
+      cards: [
+        { id: "c-inactive", name: "Cartão Cancelado", due_day: 10, closing_day: 3, is_active: false },
+        { id: "c-active", name: "Cartão Ativo", due_day: 20, closing_day: 13, is_active: true },
+      ],
+      expenses: [
+        { card_id: "c-inactive", bill_competence: "2026-07", value: 250, report_weight: 1 },
+        { card_id: "c-active", bill_competence: "2026-08", value: 100, report_weight: 1 },
+      ],
+      payments: [],
+      today: "2026-08-13",
+    });
+
+    expect(open).toHaveLength(2);
+    expect(open[0]?.cardId).toBe("c-inactive");
+    expect(open[0]?.isCardActive).toBe(false);
+    expect(open[0]?.isOverdue).toBe(true);
+    expect(open[0]?.saldoBrutoCents).toBe(25000);
   });
 });
 

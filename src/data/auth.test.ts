@@ -174,6 +174,44 @@ describe("data/auth — operações de autenticação", () => {
         signUpWithEmail("teste@exemplo.com", "senha123", "Gabriel"),
       ).rejects.toThrow(AppError);
     });
+
+    it("aceita redirectPath interno válido e rejeita tentativas de open redirect", async () => {
+      mockSignUp.mockResolvedValue({ data: { session: null }, error: null });
+
+      await signUpWithEmail(
+        "checkout@exemplo.com",
+        "senha123",
+        "Gabriel",
+        undefined,
+        undefined,
+        "/assinatura?plano=pro-anual&metodo=cartao",
+      );
+      expect(mockSignUp).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          options: expect.objectContaining({
+            emailRedirectTo: getPublicAppUrl("/assinatura?plano=pro-anual&metodo=cartao"),
+          }),
+        }),
+      );
+
+      for (const malicious of ["https://evil.com", "//evil.com", "/\\evil.com"]) {
+        await signUpWithEmail(
+          "checkout@exemplo.com",
+          "senha123",
+          "Gabriel",
+          undefined,
+          undefined,
+          malicious,
+        );
+        expect(mockSignUp).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            options: expect.objectContaining({
+              emailRedirectTo: getPublicAppUrl("/entrar"),
+            }),
+          }),
+        );
+      }
+    });
   });
 
   describe("resetPasswordForEmail", () => {
@@ -224,6 +262,28 @@ describe("data/auth — operações de autenticação", () => {
         error: { message: "Too many requests", status: 429 },
       });
       await expect(resendConfirmationEmail("pendente@exemplo.com")).rejects.toThrow(AppError);
+    });
+
+    it("repassa redirectPath interno válido em resendConfirmationEmail e bloqueia externos", async () => {
+      mockResend.mockResolvedValue({ error: null });
+
+      await resendConfirmationEmail("pendente@exemplo.com", "/assinatura?plano=pro-anual");
+      expect(mockResend).toHaveBeenLastCalledWith({
+        type: "signup",
+        email: "pendente@exemplo.com",
+        options: {
+          emailRedirectTo: getPublicAppUrl("/assinatura?plano=pro-anual"),
+        },
+      });
+
+      await resendConfirmationEmail("pendente@exemplo.com", "https://evil.com/phish");
+      expect(mockResend).toHaveBeenLastCalledWith({
+        type: "signup",
+        email: "pendente@exemplo.com",
+        options: {
+          emailRedirectTo: getPublicAppUrl("/entrar"),
+        },
+      });
     });
   });
 

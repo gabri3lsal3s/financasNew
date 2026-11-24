@@ -8156,6 +8156,21 @@ flowchart TD
 >   - Quality Gate Contábil Duplo (`quality-gate.ts`: `cycleNet` + `statementBalance`), deduplicação contra lançamentos existentes no app (`app-duplicates.ts`), escalada IA 3A → 3B governada por cota (`batch_calls`) e Shadow Replay obrigatório (`score >= 85`) no commit (`statement-blueprint-store.ts`);
 >   - Assistente inline sem tokens (`StatementBlockClipperStep`) com recorte Início–Fim, exclusão pontual de linhas intrusas e conferência ao vivo.
 
+---
+
+### Fase 129 — Ciclo Integrado de Faturas de Cartão, Rolagens & SSOT de Insights (v3.25.0)
+
+> **Status:** Concluída em Código e Testes (`PLANO_FLUXO_INTEGRADO_CARTOES.md`), Versionamento v3.25.0 e APK Build 110; Migration `0154` pronta para aplicação no Supabase remoto (`supabase db push`):
+> - **Banco de Dados & RPCs (`20260101000154_card_bill_lifecycle_and_rollovers.sql`):**
+>   - Nova tabela `public.card_bill_rollovers` com RLS InitPlan (`(select auth.uid())`), `expenses.rollover_id` (`ON DELETE CASCADE`), helper SQL `get_card_bill_open_balance`, RPCs `rollover_card_bill`, `delete_card_bill_rollover`, `pay_card_bill_with_charges`, `refinance_credit_card_bill`, `recalculate_bill_competences`, proteção em `delete_expense_installments`/`update_expense_installments_group` e `restore_backup` atualizado.
+>   - Fallback defensivo em `src/data/repositories/card-bill-rollovers.ts` para `PGRST205`/`42P01` caso a migration `0154` ainda não esteja aplicada no banco remoto.
+> - **Domínio Puro & Fonte Única de Verdade (`src/domain/cards/`):**
+>   - `effectiveInvoiceDueDate` com prorrogação bancária de fim de semana, 7 estados canônicos de `InvoiceStatus` (`rolled_over`, `empty`, `paid`, `overdue`, `near_due`, `closed`, `open`), `buildCompetenceSummaries` com carryover/rolagem e SSOT `resolveOpenCardInvoices`.
+>   - `card_refund` neutro no livro-caixa (`cash-ledger.ts`) e conservação exata de centavos via `splitCents` em `refinancing.ts`.
+> - **Consumidores, Insights, Importador & UI:**
+>   - Cash-Gap (`cash-gap.ts`), Safe-to-Spend (`cycle-obligations.ts`), Lembretes (`reminders/index.ts`), Memória de Cálculo (`cash-breakdown.ts`, `invoice-breakdown.ts`), Radar Semanal e Limite Usado unificados sobre `resolveOpenCardInvoices` e validados por `ssot-congruence.test.ts`.
+>   - Anti-duplicação no importador de faturas (`clean.ts`, `scorer.ts`) e nova UI de Cartões (`BillRolloverDialog`, `InvoiceStatusBadge` com 7 estados, invalidação completa de caches em `use-card-mutations.ts`).
+
 
 
 

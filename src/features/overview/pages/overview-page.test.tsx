@@ -261,6 +261,12 @@ vi.mock("@/state", () => ({
     isError: false,
     error: null,
   }),
+  useAllCardBillRollovers: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+    error: null,
+  }),
   useOnboardingCounts: () => ({
     data: onboardingCountsMock,
     isLoading: false,

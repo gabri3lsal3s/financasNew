@@ -28,6 +28,7 @@ export function InvoiceHistoryCard({ subscription }: InvoiceHistoryCardProps) {
 
   const renewDate = subscription.currentPeriodEnd
     ? new Date(subscription.currentPeriodEnd).toLocaleDateString("pt-BR", {
+        timeZone: "America/Sao_Paulo",
         day: "2-digit",
         month: "short",
         year: "numeric",
@@ -98,6 +99,7 @@ export function InvoiceHistoryCard({ subscription }: InvoiceHistoryCardProps) {
                     const dateFormatted =
                       inv.paymentDate || inv.dateCreated
                         ? new Date(inv.paymentDate || inv.dateCreated).toLocaleDateString("pt-BR", {
+                            timeZone: "America/Sao_Paulo",
                             day: "2-digit",
                             month: "short",
                             year: "numeric",

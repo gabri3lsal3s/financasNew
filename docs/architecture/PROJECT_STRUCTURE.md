@@ -242,8 +242,8 @@
     │   ├── transactions/          #   Transações (swipe-to-action F8) + wizard de lançamento + reconciliação de extratos
     │   │                          #     pages/ (share-receipt-page.tsx), wizard/ (step-quick.tsx — lançamento rápido em 1 tela),
     │   │                          #     components/split/ (split-expense-dialog, manage-split-dialog, split-edit-tab, split-public-config-tab)
-    │   ├── cards/                 #   Cartões (faturas, pagamentos, estornos, refinanciamento)
-    │   │                          #     components/ (card-invoice-expenses-feed, card-invoice-payments-feed, statement-import-helpers.ts — orquestração de importação em lotes)
+    │   ├── cards/                 #   Cartões (faturas, pagamentos, estornos, rolagem de saldo vencido, refinanciamento)
+    │   │                          #     components/ (card-invoice-expenses-feed, card-invoice-payments-feed, bill-rollover-dialog, bill-refinance-dialog, statement-import-helpers.ts — orquestração de importação em lotes)
     │   ├── debts/                 #   Dívidas (status, quitação com juros/multa/desconto, empréstimos Price/SAC, loan-schedule-dialog, loan-edit-dialog F72, debts-page-demo.test.tsx)
     │   ├── categories/            #   Categorias (/categorias — catálogo de despesas e receitas, cores, ícones e kits temáticos)
     │   │                          #     components/ (category-card, category-form-dialog, category-form-fields, category-kits-modal, delete-category-dialog),
@@ -347,7 +347,7 @@
     │   ├── expenses/              #   resolução dos modos de exclusão de despesa
     │   │                          #     (single/all/subsequent — resolveExpenseDeleteIds,
     │   │                          #     espelha o RPC p/ atualizações otimistas F30)
-    │   ├── cards/                 #   saldo/status de fatura, schemas.ts (Zod) + refinancing (parcelamento sem double-counting)
+    │   ├── cards/                 #   SSOT de faturas em aberto (`resolveOpenCardInvoices`), 7 estados canônicos de `InvoiceStatus`, `effectiveInvoiceDueDate`, `buildCompetenceSummaries` com rollovers, `ssot-congruence.test.ts`, schemas.ts (Zod) + refinancing (`splitCents` sem double-counting)
     │   ├── loans/                 #   cronogramas Price/SAC, saldo devedor, amortização extraordinária a valor presente e progresso do contrato
     │   ├── recurrences/           #   F32: geração de ocorrências por frequência
     │   │                          #     (monthly/weekly/quarterly/yearly, fim por data ou

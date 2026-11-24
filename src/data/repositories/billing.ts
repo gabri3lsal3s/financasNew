@@ -1,6 +1,8 @@
 import { getSupabase } from "@/data/client";
+import { getMyBillingContact as getMyBillingContactRpc } from "@/data/rpc";
 import { AppError } from "@/services/errors";
 import type {
+  BillingContactInfo,
   BillingInvoiceItem,
   BillingProviderAdapter,
   BillingProviderName,
@@ -17,6 +19,7 @@ import type {
 } from "@/types/billing";
 
 export type {
+  BillingContactInfo,
   BillingInvoiceItem,
   BillingProviderAdapter,
   BillingProviderName,
@@ -46,6 +49,7 @@ export interface CheckoutCreditCardParams {
     expiryMonth: string;
     expiryYear: string;
     ccv: string;
+    phone?: string;
     postalCode?: string;
     addressNumber?: string;
   };
@@ -73,12 +77,31 @@ export const asaasBillingAdapter: BillingProviderAdapter = {
   providerName: "asaas",
 
   async createCheckoutSession(params: CreateCheckoutParams): Promise<CheckoutSessionResult> {
+    const cleanPhone =
+      (params.customer.phone || params.card?.phone || "").replace(/\D/g, "") || undefined;
+    const cleanPostalCode =
+      (params.customer.postalCode || params.card?.postalCode || "").replace(/\D/g, "") ||
+      undefined;
+    const cleanAddressNumber =
+      (params.customer.addressNumber || params.card?.addressNumber || "").trim() || undefined;
+
+    const normalizedCard = params.card
+      ? {
+          ...params.card,
+          ...(cleanPhone ? { phone: cleanPhone } : {}),
+          ...(cleanPostalCode ? { postalCode: cleanPostalCode } : {}),
+          ...(cleanAddressNumber ? { addressNumber: cleanAddressNumber } : {}),
+        }
+      : undefined;
+
     const payload = {
       plan: params.plan,
       method: params.method,
       cpf: params.customer.cpf,
-      phone: params.customer.phone,
-      card: params.card,
+      phone: cleanPhone,
+      postalCode: cleanPostalCode,
+      addressNumber: cleanAddressNumber,
+      card: normalizedCard,
       name: params.customer.name,
       email: params.customer.email,
       registration: params.registration,
@@ -135,10 +158,27 @@ export const asaasBillingAdapter: BillingProviderAdapter = {
   },
 
   async updatePaymentMethod(params: UpdatePaymentParams): Promise<void> {
+    const cleanPhone = params.card?.phone ? params.card.phone.replace(/\D/g, "") : undefined;
+    const cleanPostalCode = params.card?.postalCode
+      ? params.card.postalCode.replace(/\D/g, "")
+      : undefined;
+    const cleanAddressNumber = params.card?.addressNumber
+      ? params.card.addressNumber.trim()
+      : undefined;
+
+    const normalizedCard = params.card
+      ? {
+          ...params.card,
+          ...(cleanPhone ? { phone: cleanPhone } : {}),
+          ...(cleanPostalCode ? { postalCode: cleanPostalCode } : {}),
+          ...(cleanAddressNumber ? { addressNumber: cleanAddressNumber } : {}),
+        }
+      : undefined;
+
     const { data, error } = await getSupabase().functions.invoke("asaas-manage", {
       body: {
         action: "update-card",
-        card: params.card,
+        card: normalizedCard,
       },
     });
 
@@ -158,17 +198,6 @@ export const asaasBillingAdapter: BillingProviderAdapter = {
     }
 
     return (data.invoices || []) as BillingInvoiceItem[];
-  },
-
-  async upgradeToAnnual(): Promise<void> {
-    const { data, error } = await getSupabase().functions.invoke("asaas-manage", {
-      body: { action: "upgrade-to-annual" },
-    });
-
-    if (error || !data || data.error) {
-      const errorMsg = data?.error || error?.message || "Falha ao migrar para o plano anual.";
-      throw new AppError("network", errorMsg, error);
-    }
   },
 
   async schedulePlanChange(targetPlan: "monthly" | "annual"): Promise<{ ok: boolean; message: string }> {
@@ -260,20 +289,31 @@ export async function updateSubscriptionCreditCard(card: CreditCardPayload): Pro
   return updatePaymentMethod({ subscriptionId: "", card });
 }
 
+/**
+ * Busca os dados de contato de cobrança do usuário autenticado via RPC SECURITY DEFINER (D-02),
+ * evitando SELECT direto nas colunas PII de `profiles`.
+ */
+export async function getMyBillingContact(): Promise<BillingContactInfo | null> {
+  const raw = await getMyBillingContactRpc();
+  if (!raw) return null;
+
+  return {
+    name: raw.name ?? null,
+    email: raw.email ?? null,
+    cpf: raw.cpf ?? null,
+    maskedCpf: raw.masked_cpf ?? null,
+    phone: raw.phone ?? null,
+    postalCode: raw.postal_code ?? null,
+    addressNumber: raw.address_number ?? null,
+  };
+}
+
 export async function listInvoices(): Promise<BillingInvoiceItem[]> {
   const adapter = getBillingAdapter();
   if (adapter.listInvoices) {
     return adapter.listInvoices();
   }
   return [];
-}
-
-export async function upgradeToAnnual(): Promise<void> {
-  const adapter = getBillingAdapter();
-  if (adapter.upgradeToAnnual) {
-    return adapter.upgradeToAnnual();
-  }
-  throw new AppError("validation", "Provedor atual não suporta migração direta de plano.");
 }
 
 export async function schedulePlanChange(targetPlan: "monthly" | "annual"): Promise<{ ok: boolean; message: string }> {

@@ -47,6 +47,7 @@ vi.mock("@/state", () => ({
   useCreditCards: () => ({ data: [], isLoading: false }),
   useAllCardExpenses: () => ({ data: [], isLoading: false }),
   useAllCardPayments: () => ({ data: [], isLoading: false }),
+  useAllCardBillRollovers: () => ({ data: [], isLoading: false }),
   useBudgets: () => ({ data: [], isLoading: false }),
   useExpenses: () => ({ data: [], isLoading: false }),
   useCategories: () => ({ data: [], isLoading: false }),

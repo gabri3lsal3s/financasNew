@@ -6,7 +6,6 @@ import { buildCheckoutUrl } from "@/domain/subscription/plans";
 import {
   useCancelScheduledPlanChangeMutation,
   useCancelSubscriptionMutation,
-  useUpgradeToAnnualMutation,
   useUserSubscription,
 } from "@/state";
 import type { SubscriptionPlan } from "@/types";
@@ -40,6 +39,7 @@ export function SubscriptionTab() {
 
   const currentPeriodFormatted = subscription.currentPeriodEnd
     ? new Date(subscription.currentPeriodEnd).toLocaleDateString("pt-BR", {
+        timeZone: "America/Sao_Paulo",
         day: "2-digit",
         month: "long",
         year: "numeric",
@@ -47,16 +47,7 @@ export function SubscriptionTab() {
     : null;
 
   const cancelMutation = useCancelSubscriptionMutation();
-  const upgradeMutation = useUpgradeToAnnualMutation();
   const cancelScheduledPlanMutation = useCancelScheduledPlanChangeMutation();
-
-  const handleUpgradeToAnnual = async () => {
-    try {
-      await upgradeMutation.mutateAsync();
-    } catch {
-      // Erro tratado pela mutation
-    }
-  };
 
   const handleProceedToCheckout = (plan: SubscriptionPlan) => {
     setUpgradeOpen(false);
@@ -92,9 +83,7 @@ export function SubscriptionTab() {
       {subscription.isPro && subscription.plan === "monthly" && !subscription.pendingPlanId ? (
         <CumulativeRenewalCard
           currentPeriodEnd={subscription.currentPeriodEnd}
-          onUpgradeToAnnual={() => {
-            void handleUpgradeToAnnual();
-          }}
+          onUpgradeToAnnual={() => handleProceedToCheckout("annual")}
         />
       ) : null}
 
@@ -129,7 +118,13 @@ export function SubscriptionTab() {
         reason={cancelReason}
         isWithinGuarantee={isWithinGuarantee}
         isTrialScheduled={subscription.billingPhase === "trial_scheduled" || (Boolean(subscription.isTrial) && Boolean(subscription.hasCardRegistered) && !subscription.billingStartAt)}
-        trialEndsFormatted={subscription.trialEndsAt ? new Date(subscription.trialEndsAt).toLocaleDateString("pt-BR") : null}
+        trialEndsFormatted={
+          subscription.trialEndsAt
+            ? new Date(subscription.trialEndsAt).toLocaleDateString("pt-BR", {
+                timeZone: "America/Sao_Paulo",
+              })
+            : null
+        }
         currentPeriodFormatted={currentPeriodFormatted}
         isPending={cancelMutation.isPending}
         onOpenChange={(open) => {

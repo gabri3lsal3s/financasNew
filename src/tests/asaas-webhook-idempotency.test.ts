@@ -178,31 +178,56 @@ describe("Webhook Asaas — Lógica de Decisão e Idempotência", () => {
     expect(decision.action).toBe("ignore_unknown_plan");
   });
 
-  it("transiciona status para 'past_due' em PAYMENT_OVERDUE", () => {
+  it("transiciona status para 'past_due' em PAYMENT_OVERDUE vinculado à assinatura recorrente ativa", () => {
     const activeSub: UserSubscriptionSnapshot = {
       ...baseTrialSub,
       status: "active",
       tier: "pro_monthly",
+      asaas_subscription_id: "sub_rec_123",
     };
 
     const decision = decideWebhookAction({
       eventType: "PAYMENT_OVERDUE",
-      payment: { id: "pay_123" },
+      payment: { id: "pay_123", billingType: "CREDIT_CARD", subscription: "sub_rec_123" },
       currentSub: activeSub,
     });
 
     expect(decision.action).toBe("mark_past_due");
   });
 
+  it("ignora PAYMENT_OVERDUE de PIX avulso ou cobrança sem vínculo com a assinatura recorrente ativa (B-06)", () => {
+    const activeSub: UserSubscriptionSnapshot = {
+      ...baseTrialSub,
+      status: "active",
+      tier: "pro_monthly",
+      asaas_subscription_id: "sub_rec_123",
+    };
+
+    const pixOverdue = decideWebhookAction({
+      eventType: "PAYMENT_OVERDUE",
+      payment: { id: "pay_pix_avulso", billingType: "PIX" },
+      currentSub: activeSub,
+    });
+    expect(pixOverdue.action).toBe("ignore_unrelated_payment");
+
+    const mismatchOverdue = decideWebhookAction({
+      eventType: "PAYMENT_OVERDUE",
+      payment: { id: "pay_old_sub", billingType: "CREDIT_CARD", subscription: "sub_old_999" },
+      currentSub: activeSub,
+    });
+    expect(mismatchOverdue.action).toBe("ignore_unrelated_payment");
+  });
+
   it("descarta repetido PAYMENT_OVERDUE se a assinatura já estiver past_due (idempotência)", () => {
     const pastDueSub: UserSubscriptionSnapshot = {
       ...baseTrialSub,
       status: "past_due",
+      asaas_subscription_id: "sub_rec_123",
     };
 
     const decision = decideWebhookAction({
       eventType: "PAYMENT_OVERDUE",
-      payment: { id: "pay_123" },
+      payment: { id: "pay_123", billingType: "CREDIT_CARD", subscription: "sub_rec_123" },
       currentSub: pastDueSub,
     });
 
@@ -257,7 +282,7 @@ describe("Webhook Asaas — Lógica de Decisão e Idempotência", () => {
 
     const decision = decideWebhookAction({
       eventType: "PAYMENT_REFUNDED",
-      payment: { id: "pay_123" },
+      payment: { id: "pay_pix_999" },
       currentSub: activeSub,
     });
 
@@ -292,5 +317,155 @@ describe("Webhook Asaas — Lógica de Decisão e Idempotência", () => {
     });
 
     expect(decision.action).toBe("unsupported_event");
+  });
+
+  it("processa SUBSCRIPTION_DELETED e SUBSCRIPTION_UPDATED com payload subscription sem payment (B-03 / D-16)", () => {
+    const activeSub: UserSubscriptionSnapshot = {
+      ...baseTrialSub,
+      status: "active",
+      tier: "pro_monthly",
+      asaas_subscription_id: "sub_rec_123",
+      cancel_at_period_end: false,
+    };
+
+    const deletedDecision = decideWebhookAction({
+      eventType: "SUBSCRIPTION_DELETED",
+      payment: null,
+      subscription: { id: "sub_rec_123", status: "INACTIVE" },
+      currentSub: activeSub,
+    });
+    expect(deletedDecision.action).toBe("mark_cancelled");
+
+    const updatedDecision = decideWebhookAction({
+      eventType: "SUBSCRIPTION_UPDATED",
+      payment: null,
+      subscription: { id: "sub_rec_123", status: "ACTIVE", nextDueDate: "2026-12-24" },
+      currentSub: activeSub,
+    });
+    expect(updatedDecision.action).toBe("sync_subscription_updated");
+  });
+
+  it("trata PAYMENT_CHARGEBACK_REQUESTED com mark_chargeback e deduplica se já sinalizado (D-06)", () => {
+    const activeSub: UserSubscriptionSnapshot = {
+      ...baseTrialSub,
+      status: "active",
+      tier: "pro_monthly",
+      asaas_subscription_id: "sub_rec_123",
+    };
+
+    const cbDecision = decideWebhookAction({
+      eventType: "PAYMENT_CHARGEBACK_REQUESTED",
+      payment: { id: "pay_cb_1" },
+      currentSub: activeSub,
+    });
+    expect(cbDecision.action).toBe("mark_chargeback");
+
+    const dupCb = decideWebhookAction({
+      eventType: "PAYMENT_CHARGEBACK_REQUESTED",
+      payment: { id: "pay_cb_1" },
+      currentSub: {
+        ...activeSub,
+        tier: "read_only",
+        status: "canceled",
+        chargeback_flagged_at: "2026-11-24T12:00:00.000Z",
+      },
+    });
+    expect(dupCb.action).toBe("ignore_duplicate");
+  });
+
+  it("trata disputas de chargeback, estorno parcial, dunning e estorno de antecipação acumulativa (D-16)", () => {
+    const now = new Date("2026-11-24T12:00:00.000Z");
+    const activeSub: UserSubscriptionSnapshot = {
+      ...baseTrialSub,
+      status: "active",
+      tier: "pro_monthly",
+      current_period_end: "2027-04-24T12:00:00.000Z",
+    };
+
+    expect(
+      decideWebhookAction({
+        eventType: "PAYMENT_CHARGEBACK_DISPUTE",
+        payment: { id: "pay_1" },
+        currentSub: activeSub,
+      }).action,
+    ).toBe("record_chargeback_dispute");
+
+    expect(
+      decideWebhookAction({
+        eventType: "PAYMENT_PARTIALLY_REFUNDED",
+        payment: { id: "pay_1", value: 10 },
+        currentSub: activeSub,
+      }).action,
+    ).toBe("record_partial_refund");
+
+    expect(
+      decideWebhookAction({
+        eventType: "PAYMENT_DUNNING_RECEIVED",
+        payment: { id: "pay_dunning_1", billingType: "CREDIT_CARD", value: 19.99 },
+        currentSub: { ...activeSub, status: "past_due" },
+        now,
+      }).action,
+    ).toBe("activate");
+
+    const cumRefund = decideWebhookAction({
+      eventType: "PAYMENT_REFUNDED",
+      payment: { id: "pay_cum_1", billingType: "PIX", value: 53.97 },
+      currentSub: activeSub,
+      intent: {
+        id: "intent_cum_1",
+        user_id: activeSub.user_id,
+        kind: "cumulative_renewal",
+        months_count: 3,
+        amount_cents: 5397,
+        status: "paid",
+      },
+      processedPaymentKind: "cumulative_renewal",
+      now,
+    });
+    expect(cumRefund.action).toBe("refund_cumulative_renewal");
+    if (cumRefund.action === "refund_cumulative_renewal") {
+      expect(cumRefund.monthsCount).toBe(3);
+      expect(cumRefund.newPeriodEnd).toBe("2027-01-24T12:00:00.000Z");
+    }
+  });
+
+  it("ancora referenceDate date-only (YYYY-MM-DD) no fim do dia BRT para evitar corte de 1 dia (D-16)", () => {
+    const decision = decideWebhookAction({
+      eventType: "PAYMENT_RECEIVED",
+      payment: {
+        id: "pay_dateonly",
+        billingType: "PIX",
+        value: 143.88,
+        confirmedDate: "2026-11-24",
+      },
+      currentSub: baseTrialSub,
+      now: new Date("2026-11-24T22:00:00-03:00"),
+    });
+
+    expect(decision.action).toBe("activate");
+    if (decision.action === "activate") {
+      // 2026-11-24T23:59:59-03:00 = 2026-11-25T02:59:59Z -> +12 meses = 2027-11-25T02:59:59Z (24/11/2027 23:59 BRT)
+      expect(decision.currentPeriodEnd.slice(0, 10)).toBe("2027-11-25");
+    }
+  });
+
+  it("não revoga acesso ativo quando PAYMENT_REFUNDED refere-se a um paymentId antigo diferente do vigente (M-02)", () => {
+    const activeSub: UserSubscriptionSnapshot = {
+      ...baseTrialSub,
+      status: "active",
+      tier: "pro_monthly",
+      asaas_payment_id: "pay_atual_999",
+    };
+
+    const decision = decideWebhookAction({
+      eventType: "PAYMENT_REFUNDED",
+      payment: { id: "pay_antigo_111", billingType: "CREDIT_CARD", value: 19.99 },
+      currentSub: activeSub,
+    });
+
+    expect(decision).toEqual({
+      action: "ignore_unrelated_payment",
+      reason: "refund_for_non_current_payment",
+    });
   });
 });

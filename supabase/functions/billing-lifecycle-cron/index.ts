@@ -1,5 +1,9 @@
-import { createClient } from "jsr:@supabase/supabase-js@2";
-import { getAsaasSubscription, postponeAsaasSubscriptionAfterPrepayment } from "../_shared/asaas.ts";
+import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import {
+  getAsaasSubscription,
+  postponeAsaasSubscriptionAfterPrepayment,
+  sanitizePaymentLog,
+} from "../_shared/asaas.ts";
 import {
   buildCorsHeaders,
   jsonResponse,
@@ -11,6 +15,64 @@ import {
   renderTrialEndingReminderEmail,
   renderTrialExpiredReadOnlyEmail,
 } from "../_shared/email-templates.ts";
+import { escapeTelegramHtml, sendTelegramNotification } from "../_shared/telegram.ts";
+
+declare const Deno: {
+  env: {
+    get(key: string): string | undefined;
+  };
+  serve: (handler: (req: Request) => Promise<Response> | Response) => void;
+};
+
+async function recordResyncFailureAndAlert(
+  supabaseAdmin: SupabaseClient,
+  sub: { id: string; user_id: string; asaas_subscription_id: string | null },
+  errMsg: string,
+): Promise<void> {
+  const nowIso = new Date().toISOString();
+  const safeError = sanitizePaymentLog(errMsg).slice(0, 300);
+
+  // Gira fila FIFO para evitar head-of-line blocking no limit(10)
+  await supabaseAdmin
+    .from("user_subscriptions")
+    .update({ updated_at: nowIso })
+    .eq("id", sub.id);
+
+  await supabaseAdmin.from("audit_events").insert({
+    user_id: sub.user_id,
+    entity_type: "user_subscription",
+    entity_id: sub.id,
+    action: "asaas_resync_failed",
+    payload: {
+      subscription_id: sub.asaas_subscription_id,
+      error: safeError,
+    },
+  });
+
+  const lookbackIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { count } = await supabaseAdmin
+    .from("audit_events")
+    .select("id", { count: "exact", head: true })
+    .eq("entity_type", "user_subscription")
+    .eq("entity_id", sub.id)
+    .eq("action", "asaas_resync_failed")
+    .gte("created_at", lookbackIso);
+
+  if ((count ?? 0) >= 3) {
+    const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
+    const chatId = Deno.env.get("TELEGRAM_CHAT_ID");
+    if (botToken && chatId) {
+      const text = [
+        `<b>[AXIR] ALERTA DE FALHA PERSISTENTE EM RESYNC ASAAS</b>`,
+        `<b>Assinatura ID:</b> <code>${escapeTelegramHtml(sub.id)}</code>`,
+        `<b>Asaas Sub ID:</b> <code>${escapeTelegramHtml(sub.asaas_subscription_id || "—")}</code>`,
+        `<b>Falhas nos últimos 7 dias:</b> ${count}`,
+        `<b>Último erro:</b> ${escapeTelegramHtml(safeError)}`,
+      ].join("\n");
+      await sendTelegramNotification({ botToken, chatId, text });
+    }
+  }
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -47,18 +109,21 @@ Deno.serve(async (req: Request) => {
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     // 1. Executa reconciliação de períodos expirados no banco de dados
-    const { data: reconciledCount, error: rpcError } = await supabaseAdmin.rpc("reconcile_expired_subscriptions");
+    const { data: reconciledCount, error: rpcError } = await supabaseAdmin.rpc(
+      "reconcile_expired_subscriptions",
+    );
     if (rpcError) {
       console.error("[billing-lifecycle-cron] Erro ao executar reconcile_expired_subscriptions:", rpcError);
     }
 
-    // 2. Reconciliação de assinaturas em estado pending_resync com a API do Asaas
+    // 2. Reconciliação FIFO de assinaturas em estado pending_resync com a API do Asaas (D-17)
     let resyncedCount = 0;
     const { data: pendingSubscriptions } = await supabaseAdmin
       .from("user_subscriptions")
       .select("id, user_id, asaas_subscription_id, current_period_end, status, tier")
       .eq("asaas_sync_status", "pending_resync")
       .not("asaas_subscription_id", "is", null)
+      .order("updated_at", { ascending: true })
       .limit(10);
 
     for (const sub of pendingSubscriptions || []) {
@@ -76,26 +141,45 @@ Deno.serve(async (req: Request) => {
         if (postponeOk) {
           const asaasSub = await getAsaasSubscription(sub.asaas_subscription_id);
           const isAsaasActive = asaasSub?.status === "ACTIVE";
-          const newStatus = isAsaasActive ? "active" : "canceled";
+          const hasPaidRemaining =
+            Boolean(sub.current_period_end) && new Date(sub.current_period_end!) > new Date();
+
+          const updateFields: Record<string, unknown> = {
+            asaas_sync_status: "synced",
+            updated_at: new Date().toISOString(),
+          };
+          if (isAsaasActive) {
+            updateFields.status = "active";
+          } else if (hasPaidRemaining) {
+            updateFields.status = "active";
+            updateFields.cancel_at_period_end = true;
+          } else {
+            updateFields.status = "canceled";
+          }
+
           await supabaseAdmin
             .from("user_subscriptions")
-            .update({
-              status: newStatus,
-              asaas_sync_status: "synced",
-              updated_at: new Date().toISOString(),
-            })
+            .update(updateFields)
             .eq("id", sub.id);
           resyncedCount++;
         } else {
-          console.warn(`[billing-lifecycle-cron] Adiamento no Asaas pendente de retentativa para sub ${sub.id}`);
+          await recordResyncFailureAndAlert(
+            supabaseAdmin,
+            sub,
+            "Falha parcial ao remover cobranças PENDING anteriores ao novo vencimento.",
+          );
+          console.warn(
+            `[billing-lifecycle-cron] Adiamento no Asaas pendente de retentativa para sub ${sub.id}`,
+          );
         }
       } catch (err: unknown) {
-        console.warn(`[billing-lifecycle-cron] Falha ao sincronizar sub ${sub.id}:`, err);
+        const errMsg = err instanceof Error ? err.message : String(err);
+        await recordResyncFailureAndAlert(supabaseAdmin, sub, errMsg);
+        console.warn(`[billing-lifecycle-cron] Falha ao sincronizar sub ${sub.id}:`, sanitizePaymentLog(err));
       }
     }
 
     // 3. Identifica trials prestes a expirar (janela segura de 28h: 48h a 76h antes do vencimento)
-    // A deduplicacao estrita via idempotencyKey evita reenvios mesmo se o cron rodar multiplas vezes no dia.
     const now = new Date();
     const windowStart = new Date(now.getTime() + 48 * 60 * 60 * 1000).toISOString();
     const windowEnd = new Date(now.getTime() + 76 * 60 * 60 * 1000).toISOString();
@@ -161,12 +245,11 @@ Deno.serve(async (req: Request) => {
           remindersSent++;
         }
       } catch (err: unknown) {
-        console.warn(`[billing-lifecycle-cron] Falha ao enviar lembrete para user ${sub.user_id}:`, err);
+        console.warn(`[billing-lifecycle-cron] Falha ao enviar lembrete para user ${sub.user_id}:`, sanitizePaymentLog(err));
       }
     }
 
     // 4. Notifica usuários cujo período de testes de 30 dias encerrou recentemente (últimas 48h)
-    // e que migraram para Somente Leitura (read_only_expired), garantindo envio único via idempotencyKey.
     const expiredLookback = new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString();
     const { data: recentlyExpiredTrials, error: expiredTrialsError } = await supabaseAdmin
       .from("user_subscriptions")
@@ -216,8 +299,28 @@ Deno.serve(async (req: Request) => {
           expiredNoticesSent++;
         }
       } catch (err: unknown) {
-        console.warn(`[billing-lifecycle-cron] Falha ao enviar aviso de trial expirado para user ${sub.user_id}:`, err);
+        console.warn(`[billing-lifecycle-cron] Falha ao enviar aviso de trial expirado para user ${sub.user_id}:`, sanitizePaymentLog(err));
       }
+    }
+
+    // 5. Rotina de TTL LGPD (D-18): expurga logs antigos de webhook (>90d) e e-mail (>180d)
+    const webhookCutoffIso = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString();
+    const emailCutoffIso = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000).toISOString();
+
+    const { count: purgedWebhookLogs, error: webhookPurgeErr } = await supabaseAdmin
+      .from("billing_webhook_logs")
+      .delete({ count: "exact" })
+      .lt("created_at", webhookCutoffIso);
+    if (webhookPurgeErr) {
+      console.warn("[billing-lifecycle-cron] Aviso ao expurgar billing_webhook_logs:", webhookPurgeErr);
+    }
+
+    const { count: purgedEmailLogs, error: emailPurgeErr } = await supabaseAdmin
+      .from("transactional_email_logs")
+      .delete({ count: "exact" })
+      .lt("created_at", emailCutoffIso);
+    if (emailPurgeErr) {
+      console.warn("[billing-lifecycle-cron] Aviso ao expurgar transactional_email_logs:", emailPurgeErr);
     }
 
     return jsonResponse(req, {
@@ -227,6 +330,8 @@ Deno.serve(async (req: Request) => {
       resyncedSubscriptions: resyncedCount,
       expiringTrialsNotified: remindersSent,
       expiredTrialsNotified: expiredNoticesSent,
+      purgedWebhookLogs: purgedWebhookLogs ?? 0,
+      purgedEmailLogs: purgedEmailLogs ?? 0,
     });
   } catch (err) {
     return safeErrorResponse(req, 500, "Erro ao processar ciclo de vida de faturamento.", err);

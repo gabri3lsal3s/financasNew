@@ -12,8 +12,10 @@ import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import { useSafeBusinessMode, useSafeIncomes, useSafeViewScope } from "@/hooks/use-safe-business-scope";
 import { currentMonth } from "@/lib/date";
 import {
+  useAllCardBillRollovers,
   useAllCardExpenses,
   useAllCardPayments,
+  useCardBillRollovers,
   useCardExpenses,
   useCardPayments,
   useCategories,
@@ -42,6 +44,7 @@ export function useCardsPageState() {
   const cardsQuery = useCreditCards();
   const allCardExpensesQuery = useAllCardExpenses();
   const allCardPaymentsQuery = useAllCardPayments();
+  const allCardRolloversQuery = useAllCardBillRollovers();
   const userPreferencesQuery = useUserPreferences();
 
   const primaryCardId = userPreferencesQuery.data?.custom_settings?.primaryCardId ?? null;
@@ -67,10 +70,11 @@ export function useCardsPageState() {
 
   const allExpenses = useMemo(() => allCardExpensesQuery.data ?? [], [allCardExpensesQuery.data]);
   const allPayments = useMemo(() => allCardPaymentsQuery.data ?? [], [allCardPaymentsQuery.data]);
+  const allRollovers = useMemo(() => allCardRolloversQuery.data ?? [], [allCardRolloversQuery.data]);
 
   const prioritySelection = useMemo(
-    () => selectPriorityCardAndMonth(cards, allExpenses, allPayments, primaryCardId),
-    [cards, allExpenses, allPayments, primaryCardId],
+    () => selectPriorityCardAndMonth(cards, allExpenses, allPayments, primaryCardId, allRollovers),
+    [cards, allExpenses, allPayments, primaryCardId, allRollovers],
   );
 
   const [pickedCardId, setPickedCardId] = useState<string | null>(null);
@@ -82,10 +86,14 @@ export function useCardsPageState() {
   const cardId = selectedCard?.id ?? null;
   const expensesQuery = useCardExpenses(cardId);
   const paymentsQuery = useCardPayments(cardId);
+  const rolloversQuery = useCardBillRollovers(cardId);
   const categoriesQuery = useCategories("expense");
 
-  const loading = cardsQuery.isLoading || (cardId !== null && (expensesQuery.isLoading || paymentsQuery.isLoading));
-  const queryError = cardsQuery.error ?? expensesQuery.error ?? paymentsQuery.error ?? categoriesQuery.error;
+  const loading =
+    cardsQuery.isLoading ||
+    (cardId !== null && (expensesQuery.isLoading || paymentsQuery.isLoading || rolloversQuery.isLoading));
+  const queryError =
+    cardsQuery.error ?? expensesQuery.error ?? paymentsQuery.error ?? rolloversQuery.error ?? categoriesQuery.error;
 
   const categoryById = useMemo(
     () => new Map((categoriesQuery.data ?? []).map((c) => [c.id, c])),
@@ -93,8 +101,13 @@ export function useCardsPageState() {
   );
 
   const summaries = useMemo(
-    () => buildCompetenceSummaries(expensesQuery.data ?? [], paymentsQuery.data ?? []),
-    [expensesQuery.data, paymentsQuery.data],
+    () =>
+      buildCompetenceSummaries(
+        expensesQuery.data ?? [],
+        paymentsQuery.data ?? [],
+        rolloversQuery.data ?? [],
+      ),
+    [expensesQuery.data, paymentsQuery.data, rolloversQuery.data],
   );
   const effectiveMonth =
     paramMonth ??
@@ -115,6 +128,15 @@ export function useCardsPageState() {
   const competencePayments = useMemo(
     () => (paymentsQuery.data ?? []).filter((p) => p.competence_month === effectiveMonth),
     [paymentsQuery.data, effectiveMonth],
+  );
+  const competenceRollovers = useMemo(
+    () =>
+      (rolloversQuery.data ?? []).filter(
+        (r) =>
+          r.from_competence_month === effectiveMonth ||
+          r.to_competence_month === effectiveMonth,
+      ),
+    [rolloversQuery.data, effectiveMonth],
   );
   const incomesQuery = useSafeIncomes(effectiveMonth, {
     enabled: isBusinessModeEnabled && Boolean(cardId),
@@ -139,14 +161,19 @@ export function useCardsPageState() {
   );
 
   const usedLimitMap = useMemo(
-    () => buildUsedLimitMap(cards, allExpenses, allPayments, effectiveMonth),
-    [cards, allExpenses, allPayments, effectiveMonth],
+    () => buildUsedLimitMap(cards, allExpenses, allPayments, effectiveMonth, allRollovers),
+    [cards, allExpenses, allPayments, effectiveMonth, allRollovers],
   );
 
   const actions = useCardsActions({
     isReadOnlyMode: permission.isReadOnlyMode,
     onRefetchAll: () => {
-      void Promise.all([cardsQuery.refetch(), expensesQuery.refetch(), paymentsQuery.refetch()]);
+      void Promise.all([
+        cardsQuery.refetch(),
+        expensesQuery.refetch(),
+        paymentsQuery.refetch(),
+        rolloversQuery.refetch(),
+      ]);
     },
   });
 
@@ -174,9 +201,20 @@ export function useCardsPageState() {
   };
 
   const getMonthStatus = (targetMonth: string) => {
-    if (!selectedCard) return "closed";
+    if (!selectedCard) return "empty";
     const sum = summaries.find((s) => s.month === targetMonth);
-    return invoiceStatus(targetMonth, selectedCard.due_day, sum?.saldoCents ?? 0);
+    return invoiceStatus(
+      targetMonth,
+      selectedCard.due_day,
+      sum?.saldoCents ?? 0,
+      undefined,
+      undefined,
+      {
+        closingDay: selectedCard.closing_day,
+        totalFaturaBrutoCents: sum?.totalFaturaBrutoCents ?? 0,
+        principalRoladoEnviadoCents: sum?.principalRoladoEnviadoCents ?? 0,
+      },
+    );
   };
 
   const handleFormOpenChange = (next: boolean) => {
@@ -227,6 +265,7 @@ export function useCardsPageState() {
     competenceExpenses,
     consumptionExpenses,
     competencePayments,
+    competenceRollovers,
     installments,
     regular,
     charges,

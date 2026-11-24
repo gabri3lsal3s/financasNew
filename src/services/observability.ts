@@ -20,12 +20,12 @@
  * • Parâmetros confidenciais em query strings e URLs.
  */
 const CPF_REGEX = /\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g;
-const CREDIT_CARD_REGEX = /\b(?:\d{4}[ -]?){3}\d{4}\b/g;
+const CREDIT_CARD_REGEX = /\b(?:\d[ -]?){12,18}\d\b/g;
 const BEARER_TOKEN_REGEX = /\b(Bearer\s+)[a-zA-Z0-9_.-]{20,}\b/gi;
-const QUERY_PARAM_REGEX = /((?:^|[?&])(?:password|senha|secret|token|authorization|apikey|api_key|cvv|cvc|cpf|email)=)[^&#\s]+/gi;
+const QUERY_PARAM_REGEX = /((?:^|[?&])(?:password|senha|secret|token|authorization|apikey|api_key|cvv|cvc|ccv|card_number|cardNumber|cardCcv|pan|holderName|postalCode|addressNumber|phone|cpf|email)=)[^&#\s]+/gi;
 
 /** Chaves de contexto que contêm senhas, tokens, credenciais ou dados restritos. */
-const SENSITIVE_KEYS_REGEX = /^(?:password|senha|secret|token|authorization|apikey|api_key|cvv|cvc|cpf|credit_card|card_number|account_number|email)$/i;
+const SENSITIVE_KEYS_REGEX = /^(?:password|senha|secret|token|authorization|apikey|api_key|cvv|cvc|ccv|card_?ccv|card_?cvv|card_?number|credit_?card|card|pan|expiry_?month|expiry_?year|expiry|holder_?name|cpf|cnpj|account_?number|email|phone|mobile_?phone|postal_?code|cep|address_?number|cookie|set-cookie)$/i;
 
 /**
  * Higieniza recursivamente qualquer payload de contexto antes de enviar à telemetria:
@@ -97,12 +97,30 @@ export function initObservability(): Promise<void> {
         if (event.message) {
           event.message = scrubSensitiveData(event.message) as string;
         }
+        if (event.exception?.values) {
+          event.exception.values = event.exception.values.map((ex) => ({
+            ...ex,
+            value: ex.value ? (scrubSensitiveData(ex.value) as string) : ex.value,
+          }));
+        }
+        if (event.contexts) {
+          event.contexts = scrubSensitiveData(event.contexts) as typeof event.contexts;
+        }
+        if (event.tags) {
+          event.tags = scrubSensitiveData(event.tags) as typeof event.tags;
+        }
         if (event.request) {
           if (event.request.url) {
             event.request.url = scrubSensitiveData(event.request.url);
           }
           if (event.request.query_string) {
             event.request.query_string = scrubSensitiveData(event.request.query_string);
+          }
+          if (event.request.data !== undefined) {
+            event.request.data = scrubSensitiveData(event.request.data);
+          }
+          if (event.request.headers) {
+            event.request.headers = scrubSensitiveData(event.request.headers) as Record<string, string>;
           }
         }
         return event;

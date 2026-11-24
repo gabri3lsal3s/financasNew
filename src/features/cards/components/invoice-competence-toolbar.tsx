@@ -1,4 +1,4 @@
-import { CheckCircle2, Clock, Undo2 } from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock, Undo2 } from "lucide-react";
 import { Button, MoneyText } from "@/components/ui";
 import { InvoiceStatusBadge, MonthPicker } from "@/components/modules";
 import { shiftMonth, type CompetenceSummary, type InvoiceStatus } from "@/domain/cards";
@@ -18,6 +18,7 @@ export interface InvoiceCompetenceToolbarProps {
   previousUnpaidSummaries: CompetenceSummary[];
   onOpenPayment: (mode: CardPaymentDialogMode) => void;
   onOpenBatchPayment: () => void;
+  onOpenRollover?: () => void;
   onOpenCharge?: () => void;
 }
 
@@ -35,6 +36,7 @@ export function InvoiceCompetenceToolbar({
   previousUnpaidSummaries,
   onOpenPayment,
   onOpenBatchPayment,
+  onOpenRollover,
   onOpenCharge,
 }: InvoiceCompetenceToolbarProps) {
   const currMonth = currentMonth();
@@ -176,6 +178,30 @@ export function InvoiceCompetenceToolbar({
               </span>
             </div>
           )}
+        </div>
+      ) : null}
+
+      {/* Aviso de fatura vencida com opção de rolar saldo para o próximo mês */}
+      {selectedCard && invStatus === "overdue" && (summary?.saldoBrutoCents ?? 0) > 0 && onOpenRollover ? (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-critical/35 bg-critical/5 text-xs text-foreground">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Clock className="size-4 shrink-0 text-critical-strong" aria-hidden="true" />
+            <span>
+              Esta fatura venceu com saldo em aberto de{" "}
+              <MoneyText cents={summary!.saldoBrutoCents} tone="default" className="font-semibold" />.
+              Se já pagou, registre o pagamento; caso contrário, role o saldo para o próximo mês.
+            </span>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={onOpenRollover}
+            className="shrink-0 gap-1.5 self-start sm:self-auto border-critical/40 hover:bg-critical/10"
+          >
+            <span>Rolar para próxima fatura</span>
+            <ArrowRight className="size-3.5" aria-hidden="true" />
+          </Button>
         </div>
       ) : null}
 

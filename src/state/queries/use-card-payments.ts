@@ -1,12 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
 import { listCardPayments } from "@/data/repositories/card-payments";
+import { listCardBillRollovers } from "@/data/repositories/card-bill-rollovers";
 import { listExpensesByCard } from "@/data/repositories/expenses";
 import { STATIC_GC_TIME, STALE_TIMES } from "@/state/cache-policy";
 import { useDemoSession } from "@/state/demo-mode";
-import { useSimulatedCardExpenses, useSimulatedCardPayments } from "./use-simulated-queries";
+import {
+  useSimulatedCardBillRollovers,
+  useSimulatedCardExpenses,
+  useSimulatedCardPayments,
+} from "./use-simulated-queries";
 
 export const cardPaymentsKey = ["card_payments"] as const;
 export const cardExpensesKey = ["card_expenses"] as const;
+export const cardBillRolloversKey = ["card_bill_rollovers"] as const;
 
 export interface UseCardQueryOptions {
   /**
@@ -52,6 +58,27 @@ export function useCardExpenses(cardId: string | null, options?: UseCardQueryOpt
       options?.sinceMonth !== undefined
         ? listExpensesByCard(cardId as string, { sinceMonth: options.sinceMonth })
         : listExpensesByCard(cardId as string),
+    enabled: (options?.enabled ?? true) && cardId !== null && !isDemoActive,
+    staleTime: STALE_TIMES.static,
+    gcTime: STATIC_GC_TIME,
+  });
+
+  return isDemoActive ? simulated : real;
+}
+
+/** Rolagens e parcelamentos de um cartão (todas as competências com janela de 24 meses ou customizada). */
+export function useCardBillRollovers(cardId: string | null, options?: UseCardQueryOptions) {
+  const { isDemoActive } = useDemoSession();
+  const simulated = useSimulatedCardBillRollovers();
+  const real = useQuery({
+    queryKey:
+      options?.sinceMonth !== undefined
+        ? [...cardBillRolloversKey, cardId, options.sinceMonth]
+        : [...cardBillRolloversKey, cardId],
+    queryFn: () =>
+      options?.sinceMonth !== undefined
+        ? listCardBillRollovers(cardId as string, { sinceMonth: options.sinceMonth })
+        : listCardBillRollovers(cardId as string),
     enabled: (options?.enabled ?? true) && cardId !== null && !isDemoActive,
     staleTime: STALE_TIMES.static,
     gcTime: STATIC_GC_TIME,

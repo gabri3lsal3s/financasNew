@@ -26,6 +26,7 @@ export function SubscriptionSuccessPage() {
 
   const scheduledChargeFormatted = primeiraCobrancaParam
     ? new Date(primeiraCobrancaParam).toLocaleDateString("pt-BR", {
+        timeZone: "America/Sao_Paulo",
         day: "2-digit",
         month: "long",
         year: "numeric",
@@ -37,12 +38,14 @@ export function SubscriptionSuccessPage() {
     isTrialScheduled && scheduledChargeFormatted
       ? scheduledChargeFormatted
       : nextRenewalDate.toLocaleDateString("pt-BR", {
+          timeZone: "America/Sao_Paulo",
           day: "2-digit",
           month: "long",
           year: "numeric",
         });
 
   const today = new Date().toLocaleDateString("pt-BR", {
+    timeZone: "America/Sao_Paulo",
     day: "2-digit",
     month: "2-digit",
     year: "numeric",

@@ -180,15 +180,8 @@ export function resolveCashFlowEvents(params: CalculateCashBalanceParams): CashL
     if (amountCents === 0) continue;
 
     if (pay.is_refund || amountCents < 0) {
-      // Estorno creditado em conta corrente
-      events.push({
-        id: pay.id ?? `pay-${pay.date}-${Math.abs(amountCents)}`,
-        kind: "card_refund",
-        date: pay.date,
-        description: pay.note || "Estorno de fatura",
-        amountCents: Math.abs(amountCents),
-        flow: "in",
-      });
+      // Estorno de cartão reduz apenas o saldo da fatura; é neutro para o saldo em conta corrente (BUG-02)
+      continue;
     } else {
       // Pagamento de fatura debitado da conta corrente
       events.push({

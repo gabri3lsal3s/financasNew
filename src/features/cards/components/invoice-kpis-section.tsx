@@ -44,6 +44,8 @@ export function InvoiceKpisSection({
       month: summary.month,
       previstoBrutoCents: summary.previstoBrutoCents,
       previstoPonderadoCents: summary.previstoPonderadoCents,
+      principalRoladoRecebidoCents: summary.principalRoladoRecebidoCents,
+      principalRoladoEnviadoCents: summary.principalRoladoEnviadoCents,
       pagoCents: summary.pagoCents,
       estornoCents: summary.estornoCents,
       creditoAnteriorCents: summary.creditoAnteriorCents,
@@ -59,10 +61,15 @@ export function InvoiceKpisSection({
       <KpiGrid columns={3} data-tour="cards-invoice-summary">
         <KpiCard
           label="Fatura Total (Bruto)"
-          cents={summary?.previstoBrutoCents ?? 0}
+          cents={summary?.totalFaturaBrutoCents ?? summary?.previstoBrutoCents ?? 0}
           action={invoiceBreakdown ? <CalculationMemoryModal breakdown={invoiceBreakdown} /> : undefined}
           hint={
-            summary && summary.previstoBrutoCents !== summary.previstoPonderadoCents ? (
+            summary && summary.principalRoladoRecebidoCents > 0 ? (
+              <span className="inline-flex flex-wrap items-center gap-1 font-medium text-foreground text-[11px] tabular-nums">
+                <span>Inclui rotativo anterior:</span>
+                <MoneyText cents={summary.principalRoladoRecebidoCents} tone="negative" className="text-[11px] tabular-nums" />
+              </span>
+            ) : summary && summary.previstoBrutoCents !== summary.previstoPonderadoCents ? (
               <span className="inline-flex flex-wrap items-center gap-1 font-medium text-foreground text-[11px] tabular-nums">
                 <span className="hidden sm:inline">Ponderada:</span>
                 <span className="sm:hidden">Pond:</span>
@@ -101,7 +108,12 @@ export function InvoiceKpisSection({
           tone={summary && summary.saldoBrutoCents > 0 ? "negative" : "positive"}
           action={invoiceBreakdown ? <CalculationMemoryModal breakdown={invoiceBreakdown} /> : undefined}
           hint={
-            summary && summary.creditoRestanteCents > 0 ? (
+            summary && summary.principalRoladoEnviadoCents > 0 ? (
+              <span className="inline-flex flex-wrap items-center gap-1 font-medium text-muted-foreground text-[11px] tabular-nums">
+                <span>Rolado p/ próxima:</span>
+                <MoneyText cents={summary.principalRoladoEnviadoCents} tone="default" className="text-[11px] tabular-nums" />
+              </span>
+            ) : summary && summary.creditoRestanteCents > 0 ? (
               <span className="inline-flex flex-wrap items-center gap-1 font-medium text-positive-strong text-[11px] tabular-nums">
                 <span className="hidden sm:inline">Crédito p/ fatura seguinte:</span>
                 <span className="sm:hidden">Créd. seguinte:</span>

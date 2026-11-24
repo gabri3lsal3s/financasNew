@@ -1,4 +1,5 @@
 import { isValidCPF } from "@/domain/validation";
+import { isValidCep, isValidPhoneBR } from "@/services/masks";
 
 export type CheckoutPaymentMethod = "credit_card" | "pix";
 
@@ -14,6 +15,9 @@ export interface ValidateCheckoutParams {
   cardNumber: string;
   cardExpiry: string;
   cardCcv: string;
+  phone: string;
+  postalCode: string;
+  addressNumber: string;
 }
 
 /**
@@ -55,6 +59,15 @@ export function validateCheckoutFields(params: ValidateCheckoutParams): string |
     }
     if (params.cardCcv.length < 3) {
       return "Código de segurança (CVV) inválido.";
+    }
+    if (!isValidPhoneBR(params.phone)) {
+      return "Informe um telefone válido com DDD para validação do cartão.";
+    }
+    if (!isValidCep(params.postalCode)) {
+      return "Informe um CEP válido (8 dígitos) do endereço de cobrança.";
+    }
+    if (!params.addressNumber.trim()) {
+      return "Informe o número do endereço de cobrança (ou S/N).";
     }
   }
 

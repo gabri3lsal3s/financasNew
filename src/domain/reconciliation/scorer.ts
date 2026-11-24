@@ -159,7 +159,9 @@ export function calculateMatchScore(
     bonusCategory = 10;
   }
 
-  // 5. Bônus Semântico de Encargo (+15%)
+  // 5. Bônus Semântico de Encargo (+25% quando valor exato na competência, +15% caso contrário)
+  // Garante exact_match (>= 75) para encargos pré-criados via BillRolloverDialog / pay_card_bill_with_charges
+  // mesmo quando a data de lançamento do encargo no app diverge da data impressa no PDF.
   let bonusCharge = 0;
   if (
     statement.inferredChargeKind &&
@@ -168,7 +170,7 @@ export function calculateMatchScore(
     existing.chargeKind !== "regular" &&
     statement.inferredChargeKind === existing.chargeKind
   ) {
-    bonusCharge = 15;
+    bonusCharge = diffCents === 0 ? 25 : 15;
   }
 
   // 6. Bônus/Penalidade de Coincidência de Parcelamento

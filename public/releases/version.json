@@ -1,16 +1,15 @@
 {
-  "version": "3.24.0",
-  "versionCode": 109,
-  "releaseDate": "2026-11-24T19:44:30Z",
-  "minSupportedVersion": "3.24.0",
+  "version": "3.25.0",
+  "versionCode": 110,
+  "releaseDate": "2026-11-24T22:28:15Z",
+  "minSupportedVersion": "3.25.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "ecec92d8834f210e508d00c6feb6c47977156e63a08b9005517007223960f21b",
-  "fileSizeBytes": 13486567,
+  "sha256": "bef7a0cd777d472a8e79ca1f2aa834fda423625ae5872fe096ef4110f2fe515f",
+  "fileSizeBytes": 13494538,
   "changelog": [
-    "Axir v3.24.0 (Build 109): Auth Multidispositivo, Inatividade Opt-in & Login + Motor Resiliente de Faturas",
-    "Sessao Multidispositivo & Seguranca: politica de inatividade opt-in (padrao Manter conectado), modo Computador compartilhado no login e revogacao real em tempo real",
-    "AppLock & PIN: backoff persistido contra tentativas, bloqueio por ociosidade e painel unificado em Seguranca & Privacidade",
-    "Motor Resiliente e Autoevolutivo de Faturas: ingestao universal por Magic Bytes (PDF/OFX/CSV/XLSX/Imagens), blueprints por banco e Quality Gate duplo",
-    "Aprendizado no Commit & Block Clipper: Shadow Replay automatico sem tokens em faturas futuras e assistente inline de recorte sem IA"
+    "Axir v3.25.0 (Build 110): Ciclo Integrado de Faturas, Rolagens & SSOT de Insights",
+    "Fonte Unica de Verdade (SSOT) para faturas em aberto alimentando Cash-Gap, Safe-to-Spend, Lembretes, Radar Semanal e Limite Usado",
+    "Ciclo completo de fatura com 7 estados canonicos, rolagem de saldo vencido com encargos opcionais e parcelamento sem bitributacao",
+    "Estorno de cartao neutro no saldo bancario, fallback resiliente de consultas e importador anti-duplicacao para saldo rotativo/encargos"
   ]
 }

@@ -84,6 +84,10 @@ function BillRefinanceContent({
           installment_number: item.installmentNumber,
           bill_competence: item.billCompetence,
         })),
+        principalInstallments: plan.installments.map((item) => ({
+          amount: item.principalCents / 100,
+          bill_competence: item.billCompetence,
+        })),
       });
       sensory.success();
       onOpenChange(false);

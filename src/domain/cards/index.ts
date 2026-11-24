@@ -14,28 +14,42 @@ import { clampDay, resolveBillCompetence } from "@/domain/competence";
 import { addMonthsClamped, splitCents, toISODate } from "@/domain/money/parcelar";
 import { APP_START_DATE } from "@/types";
 
-/** Saldo aberto de uma fatura (previsto − pago − estorno − creditoAnterior, nunca negativo). */
+/** Saldo aberto de uma fatura (totalFatura − pago − estorno − creditoAnterior − principalRoladoEnviado, nunca negativo). */
 export function invoiceBalance(
   previstoCents: number,
   pagoCents: number,
   estornoCents = 0,
   creditoAnteriorCents = 0,
+  principalRoladoEnviadoCents = 0,
 ): number {
-  return Math.max(0, previstoCents - pagoCents - estornoCents - creditoAnteriorCents);
+  return Math.max(
+    0,
+    previstoCents - pagoCents - estornoCents - creditoAnteriorCents - principalRoladoEnviadoCents,
+  );
 }
 
-export type InvoiceStatus = "closed" | "open" | "near_due" | "overdue";
+export type InvoiceStatus =
+  | "rolled_over"
+  | "empty"
+  | "paid"
+  | "overdue"
+  | "near_due"
+  | "closed"
+  | "open";
 
 export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
-  closed: "Fechada",
-  open: "Em aberto",
-  near_due: "Vence em breve",
+  rolled_over: "Rolada",
+  empty: "Sem lançamentos",
+  paid: "Paga",
   overdue: "Vencida",
+  near_due: "Vence em breve",
+  closed: "Fechada",
+  open: "Aberta",
 };
 
 /**
- * Data de vencimento de uma competência (YYYY-MM-DD), com dia clampado
- * ao mês (dia 31 em fevereiro → último dia). Usada pelo status e lembretes.
+ * Data de vencimento nominal de uma competência (YYYY-MM-DD), com dia clampado
+ * ao mês (dia 31 em fevereiro → último dia).
  */
 export function invoiceDueDate(competenceMonth: string, dueDay: number): string {
   const [year, month] = competenceMonth.split("-").map(Number);
@@ -45,12 +59,48 @@ export function invoiceDueDate(competenceMonth: string, dueDay: number): string 
 }
 
 /**
- * Status da fatura de uma competência.
- * @param competenceMonth YYYY-MM da fatura
- * @param dueDay dia do vencimento (1–31, clampado ao mês)
- * @param balanceCents saldo aberto (previsto − pago)
- * @param today referência (YYYY-MM-DD) — injetável
- * @param nearDueDays janela de "vence em breve" (default 3)
+ * Data de vencimento efetiva (YYYY-MM-DD) com prorrogação bancária de fim de semana:
+ * sábado (+2 dias) ou domingo (+1 dia) → segunda-feira.
+ */
+export function effectiveInvoiceDueDate(competenceMonth: string, dueDay: number): string {
+  const nominal = invoiceDueDate(competenceMonth, dueDay);
+  const [year, month, day] = nominal.split("-").map(Number);
+  const localDate = new Date(year ?? 2000, (month ?? 1) - 1, day ?? 1);
+  const dayOfWeek = localDate.getDay();
+  if (dayOfWeek === 6) return addDaysISO(nominal, 2);
+  if (dayOfWeek === 0) return addDaysISO(nominal, 1);
+  return nominal;
+}
+
+/**
+ * Resolve a data civil (YYYY-MM-DD) de fechamento da fatura de uma competência.
+ * Quando closingDay >= dueDay, o corte ocorre no mês anterior ao vencimento.
+ */
+export function invoiceClosingDate(
+  competenceMonth: string,
+  closingDay: number,
+  dueDay: number,
+): string {
+  const closingMonth =
+    closingDay >= dueDay ? shiftMonth(competenceMonth, -1) : competenceMonth;
+  return invoiceDueDate(closingMonth, closingDay);
+}
+
+export interface InvoiceStatusOptions {
+  closingDay?: number;
+  totalFaturaBrutoCents?: number;
+  principalRoladoEnviadoCents?: number;
+}
+
+/**
+ * Status da fatura de uma competência seguindo estritamente a precedência canônica:
+ * 1. `rolled_over`: saldo === 0 e principalRoladoEnviadoCents > 0 (prevalece sobre paid)
+ * 2. `empty`: saldo === 0 e totalFaturaBrutoCents === 0
+ * 3. `paid`: saldo === 0 (com fatura > 0 ou sem metadata)
+ * 4. `overdue`: saldo > 0 e today > effectiveDueDate
+ * 5. `near_due`: saldo > 0 e effectiveDueDate <= today + nearDueDays
+ * 6. `closed`: saldo > 0, closingDay informado e today >= closingDate
+ * 7. `open`: saldo > 0 (em acumulação)
  */
 export function invoiceStatus(
   competenceMonth: string,
@@ -58,13 +108,26 @@ export function invoiceStatus(
   balanceCents: number,
   today: string = todayISO(),
   nearDueDays = 3,
+  options?: InvoiceStatusOptions,
 ): InvoiceStatus {
-  if (balanceCents <= 0) return "closed";
+  if (balanceCents <= 0) {
+    if ((options?.principalRoladoEnviadoCents ?? 0) > 0) return "rolled_over";
+    if (options?.totalFaturaBrutoCents !== undefined && options.totalFaturaBrutoCents <= 0) {
+      return "empty";
+    }
+    return "paid";
+  }
 
-  const dueDate = invoiceDueDate(competenceMonth, dueDay);
+  const dueDate = effectiveInvoiceDueDate(competenceMonth, dueDay);
 
-  if (dueDate < today) return "overdue";
+  if (today > dueDate) return "overdue";
   if (dueDate <= addDaysISO(today, nearDueDays)) return "near_due";
+
+  if (options?.closingDay !== undefined) {
+    const closingDate = invoiceClosingDate(competenceMonth, options.closingDay, dueDay);
+    if (today >= closingDate) return "closed";
+  }
+
   return "open";
 }
 
@@ -77,15 +140,28 @@ export function shiftMonth(month: string, delta: number): string {
   return `${y}-${String(m).padStart(2, "0")}`;
 }
 
+export interface CardBillRolloverLike {
+  from_competence_month: string;
+  to_competence_month: string;
+  principal_amount: number;
+  kind?: "rollover" | "refinance";
+}
+
 export interface CompetenceSummary {
   /** YYYY-MM */
   month: string;
-  /** Previsto Bruto = soma nominal de todas as despesas lançadas (100%, centavos). */
+  /** Previsto Bruto = soma nominal das despesas lançadas na competência (100%, centavos). */
   previstoBrutoCents: number;
   /** Previsto Ponderado = soma das despesas com peso de relatório aplicado (centavos). */
   previstoPonderadoCents: number;
-  /** Previsto = soma das despesas com peso aplicado (alias compatível, centavos). */
+  /** Previsto = soma das despesas (alias compatível, centavos). */
   previstoCents: number;
+  /** Principal recebido via rolagem/parcelamento de faturas anteriores (centavos). */
+  principalRoladoRecebidoCents: number;
+  /** Principal enviado via rolagem/parcelamento para faturas posteriores (centavos). */
+  principalRoladoEnviadoCents: number;
+  /** Total da Fatura Bruto = previstoBrutoCents + principalRoladoRecebidoCents (centavos). */
+  totalFaturaBrutoCents: number;
   /** Pago = soma dos pagamentos positivos (centavos). Estornos ficam à parte. */
   pagoCents: number;
   /** Soma dos estornos (valores absolutos, centavos). */
@@ -94,19 +170,17 @@ export interface CompetenceSummary {
   creditoAnteriorCents: number;
   /** Crédito restante após abater esta competência, que transborda para a seguinte (centavos). */
   creditoRestanteCents: number;
-  /** Saldo aberto bruto = max(0, previstoBruto − pago − estorno − creditoAnterior) (centavos). */
+  /** Saldo aberto bruto = max(0, totalFaturaBruto − pago − estorno − creditoAnterior − principalRoladoEnviado) (centavos). */
   saldoBrutoCents: number;
-  /** Saldo aberto ponderado = max(0, previstoPonderado − pago − estorno − creditoAnterior) (centavos). */
+  /** Saldo aberto ponderado = max(0, (previstoPonderado + principalRoladoRecebido) − pago − estorno − creditoAnterior − principalRoladoEnviado) (centavos). */
   saldoPonderadoCents: number;
-  /** Saldo aberto = max(0, previsto − pago − estorno − creditoAnterior) (alias compatível, centavos). */
+  /** Saldo aberto = saldoBrutoCents (alias compatível, centavos). */
   saldoCents: number;
 }
 
 /**
- * Resumos por competência a partir das despesas do cartão (com peso aplicado
- * e base_amount preservado) e dos pagamentos/estornos — ESPECIFICAÇÃO §3.3.3.
- * Pagamentos ou estornos a maior (pago + estorno > previsto) geram créditos
- * que transbordam para abater a fatura da competência posterior.
+ * Resumos por competência a partir das despesas do cartão, pagamentos/estornos
+ * e rolagens/parcelamentos (`card_bill_rollovers`) — Equação Contábil Única.
  * Motor puro: nenhuma consulta, apenas derivação exibível.
  */
 export function buildCompetenceSummaries(
@@ -115,13 +189,22 @@ export function buildCompetenceSummaries(
     value: number;
     report_weight: number;
   }[],
-  payments: readonly { competence_month: string; amount: number }[],
+  payments: readonly {
+    competence_month: string;
+    amount: number;
+    is_refund?: boolean;
+  }[],
+  rollovers: readonly CardBillRolloverLike[] = [],
 ): CompetenceSummary[] {
   const months = new Set<string>();
   for (const expense of expenses) {
     if (expense.bill_competence) months.add(expense.bill_competence);
   }
   for (const payment of payments) months.add(payment.competence_month);
+  for (const rollover of rollovers) {
+    months.add(rollover.from_competence_month);
+    months.add(rollover.to_competence_month);
+  }
 
   if (months.size === 0) return [];
 
@@ -135,27 +218,58 @@ export function buildCompetenceSummaries(
     const monthExpenses = expenses.filter((e) => e.bill_competence === month);
     const previstoBruto = monthExpenses.reduce((acc, e) => acc + Math.round(e.value * 100), 0);
     const previstoPonderado = monthExpenses.reduce((acc, e) => acc + Math.round(e.value * e.report_weight * 100), 0);
-    const pago = payments
-      .filter((p) => p.competence_month === month && p.amount > 0)
+
+    const principalRoladoRecebido = rollovers
+      .filter((r) => r.to_competence_month === month)
+      .reduce((acc, r) => acc + Math.round(r.principal_amount * 100), 0);
+    const principalRoladoEnviado = rollovers
+      .filter((r) => r.from_competence_month === month)
+      .reduce((acc, r) => acc + Math.round(r.principal_amount * 100), 0);
+
+    const totalFaturaBruto = previstoBruto + principalRoladoRecebido;
+    const totalFaturaPonderado = previstoPonderado + principalRoladoRecebido;
+
+    const monthPayments = payments.filter((p) => p.competence_month === month);
+    const isRefund = (p: { amount: number; is_refund?: boolean }) =>
+      p.is_refund === true || p.amount < 0;
+
+    const pago = monthPayments
+      .filter((p) => !isRefund(p) && p.amount > 0)
       .reduce((acc, p) => acc + Math.round(p.amount * 100), 0);
-    const estorno = payments
-      .filter((p) => p.competence_month === month && p.amount < 0)
-      .reduce((acc, p) => acc + Math.round(-p.amount * 100), 0);
+    const estorno = monthPayments
+      .filter(isRefund)
+      .reduce((acc, p) => acc + Math.round(Math.abs(p.amount) * 100), 0);
 
     const creditoAnterior = carryoverCredit;
     const totalDisponivel = pago + estorno + creditoAnterior;
 
-    const saldoBruto = invoiceBalance(previstoBruto, pago, estorno, creditoAnterior);
-    const saldoPonderado = invoiceBalance(previstoPonderado, pago, estorno, creditoAnterior);
+    const saldoBruto = invoiceBalance(
+      totalFaturaBruto,
+      pago,
+      estorno,
+      creditoAnterior,
+      principalRoladoEnviado,
+    );
+    const saldoPonderado = invoiceBalance(
+      totalFaturaPonderado,
+      pago,
+      estorno,
+      creditoAnterior,
+      principalRoladoEnviado,
+    );
 
-    // Excesso de pagamento bancário transborda como crédito para a competência seguinte
-    carryoverCredit = Math.max(0, totalDisponivel - previstoBruto);
+    // Excesso de pagamento/estorno além da parcela não rolada transborda como crédito para a competência seguinte
+    const netTargetBeforeRollout = Math.max(0, totalFaturaBruto - principalRoladoEnviado);
+    carryoverCredit = Math.max(0, totalDisponivel - netTargetBeforeRollout);
 
     summaries.push({
       month,
       previstoBrutoCents: previstoBruto,
       previstoPonderadoCents: previstoPonderado,
       previstoCents: previstoBruto,
+      principalRoladoRecebidoCents: principalRoladoRecebido,
+      principalRoladoEnviadoCents: principalRoladoEnviado,
+      totalFaturaBrutoCents: totalFaturaBruto,
       pagoCents: pago,
       estornoCents: estorno,
       creditoAnteriorCents: creditoAnterior,
@@ -177,6 +291,9 @@ export function buildCompetenceSummaries(
           previstoBrutoCents: 0,
           previstoPonderadoCents: 0,
           previstoCents: 0,
+          principalRoladoRecebidoCents: 0,
+          principalRoladoEnviadoCents: 0,
+          totalFaturaBrutoCents: 0,
           pagoCents: 0,
           estornoCents: 0,
           creditoAnteriorCents: carryoverCredit,
@@ -190,6 +307,133 @@ export function buildCompetenceSummaries(
   }
 
   return summaries.sort((a, b) => (a.month < b.month ? 1 : -1));
+}
+
+export interface ResolveOpenCardInvoicesParams {
+  cards: readonly {
+    id: string;
+    name: string;
+    due_day: number;
+    closing_day?: number;
+    color?: string | null;
+    is_active?: boolean;
+  }[];
+  expenses: readonly {
+    card_id?: string | null;
+    bill_competence?: string | null;
+    value: number;
+    report_weight?: number;
+  }[];
+  payments: readonly {
+    card_id: string;
+    competence_month: string;
+    amount: number;
+    is_refund?: boolean;
+  }[];
+  rollovers?: readonly {
+    card_id: string;
+    from_competence_month: string;
+    to_competence_month: string;
+    principal_amount: number;
+    kind?: "rollover" | "refinance";
+  }[];
+  today?: string;
+  nearDueDays?: number;
+  maxCompetenceMonth?: string;
+}
+
+export interface OpenCardInvoice {
+  cardId: string;
+  cardName: string;
+  cardColor: string | null;
+  isCardActive: boolean;
+  competenceMonth: string;
+  dueDay: number;
+  nominalDueDate: string;
+  effectiveDueDate: string;
+  saldoBrutoCents: number;
+  saldoPonderadoCents: number;
+  status: InvoiceStatus;
+  isOverdue: boolean;
+}
+
+/**
+ * Fonte Única de Verdade (SSOT) para faturas em aberto em todo o sistema
+ * (Cash-Gap, Safe-to-Spend, Lembretes, Radar Semanal e Limite Comprometido).
+ *
+ * - Blindagem #9: nunca omite cartão `is_active === false` que tenha `saldoBrutoCents > 0`;
+ * - Blindagem #11: calcula sempre com 100% das despesas/pagamentos/rollovers do `card_id`.
+ */
+export function resolveOpenCardInvoices(
+  params: ResolveOpenCardInvoicesParams,
+): OpenCardInvoice[] {
+  const {
+    cards,
+    expenses,
+    payments,
+    rollovers = [],
+    today = todayISO(),
+    nearDueDays = 3,
+    maxCompetenceMonth,
+  } = params;
+
+  const openInvoices: OpenCardInvoice[] = [];
+
+  for (const card of cards) {
+    const cardExpenses = expenses
+      .filter((e) => e.card_id === card.id)
+      .map((e) => ({
+        bill_competence: e.bill_competence ?? null,
+        value: e.value,
+        report_weight: e.report_weight ?? 1,
+      }));
+    const cardPayments = payments.filter((p) => p.card_id === card.id);
+    const cardRollovers = rollovers.filter((r) => r.card_id === card.id);
+
+    const summaries = buildCompetenceSummaries(cardExpenses, cardPayments, cardRollovers);
+
+    for (const summary of summaries) {
+      if (summary.saldoBrutoCents <= 0) continue;
+      if (maxCompetenceMonth && summary.month > maxCompetenceMonth) continue;
+
+      const nominalDueDate = invoiceDueDate(summary.month, card.due_day);
+      const effectiveDueDate = effectiveInvoiceDueDate(summary.month, card.due_day);
+      const status = invoiceStatus(
+        summary.month,
+        card.due_day,
+        summary.saldoBrutoCents,
+        today,
+        nearDueDays,
+        {
+          closingDay: card.closing_day,
+          totalFaturaBrutoCents: summary.totalFaturaBrutoCents,
+          principalRoladoEnviadoCents: summary.principalRoladoEnviadoCents,
+        },
+      );
+
+      openInvoices.push({
+        cardId: card.id,
+        cardName: card.name,
+        cardColor: card.color ?? null,
+        isCardActive: card.is_active !== false,
+        competenceMonth: summary.month,
+        dueDay: card.due_day,
+        nominalDueDate,
+        effectiveDueDate,
+        saldoBrutoCents: summary.saldoBrutoCents,
+        saldoPonderadoCents: summary.saldoPonderadoCents,
+        status,
+        isOverdue: status === "overdue",
+      });
+    }
+  }
+
+  return openInvoices.sort((a, b) => {
+    if (a.effectiveDueDate !== b.effectiveDueDate) {
+      return a.effectiveDueDate.localeCompare(b.effectiveDueDate);
+    }
+    return b.saldoBrutoCents - a.saldoBrutoCents;
+  });
 }
 
 export interface InvoiceExpensePartition<T> {

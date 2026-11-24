@@ -1,14 +1,22 @@
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-bokVdDALSzUA7BYUpF9PdUoP1HPxpfcNve83Nyw4xZQ=' https://challenges.cloudflare.com https://cdn.jsdelivr.net; worker-src 'self' blob: https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://challenges.cloudflare.com https://brapi.dev https://economia.awesomeapi.com.br https://api.bcb.gov.br https://*.r2.dev https://cdn.jsdelivr.net blob:; font-src 'self' data: https://fonts.gstatic.com; frame-src 'self' https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-bokVdDALSzUA7BYUpF9PdUoP1HPxpfcNve83Nyw4xZQ=' https://challenges.cloudflare.com https://cdn.jsdelivr.net/npm/tesseract.js@v7.0.0/ https://cdn.jsdelivr.net/npm/tesseract.js-core@v7.0.0/; worker-src 'self' blob: https://cdn.jsdelivr.net/npm/tesseract.js@v7.0.0/; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://challenges.cloudflare.com https://brapi.dev https://economia.awesomeapi.com.br https://api.bcb.gov.br https://*.r2.dev https://cdn.jsdelivr.net/npm/tesseract.js@v7.0.0/ https://cdn.jsdelivr.net/npm/tesseract.js-core@v7.0.0/ https://cdn.jsdelivr.net/npm/@tesseract.js-data/ blob:; font-src 'self' data: https://fonts.gstatic.com; frame-src 'self' https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
-  X-XSS-Protection: 1; mode=block
+  X-XSS-Protection: 0
   Referrer-Policy: strict-origin-when-cross-origin
   Cross-Origin-Opener-Policy: same-origin-allow-popups
   Cross-Origin-Resource-Policy: same-origin
   X-DNS-Prefetch-Control: on
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), accelerometer=(), gyroscope=(), interest-cohort=()
+
+/assinatura
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-bokVdDALSzUA7BYUpF9PdUoP1HPxpfcNve83Nyw4xZQ=' https://challenges.cloudflare.com; worker-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://challenges.cloudflare.com; font-src 'self' data: https://fonts.gstatic.com; frame-src 'self' https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+
+/assinatura/*
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-bokVdDALSzUA7BYUpF9PdUoP1HPxpfcNve83Nyw4xZQ=' https://challenges.cloudflare.com; worker-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://challenges.cloudflare.com; font-src 'self' data: https://fonts.gstatic.com; frame-src 'self' https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
 
 /assets/*
   Cache-Control: public, max-age=31536000, immutable

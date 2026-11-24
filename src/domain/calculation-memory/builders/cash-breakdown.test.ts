@@ -157,9 +157,45 @@ describe("Builders de Memória de Cálculo: Cash", () => {
 
       expect(breakdown.id).toBe("dash-cash-gap");
       expect(breakdown.steps.some((s) => s.label === "Fatura Nubank" && s.rawValue === 250000)).toBe(true);
-      expect(breakdown.steps.some((s) => s.label === "Entradas Previstas no Horizonte" && s.rawValue === 50000)).toBe(true);
+      expect(breakdown.steps.some((s) => s.label === "Entradas Previstas até o Déficit" && s.rawValue === 50000)).toBe(true);
       expect(breakdown.result.rawValue).toBe(-150000);
       expect(breakdown.notes?.[0]).toContain("Lente Caixa estrita");
+    });
+
+    it("exibe data real vencida para faturas atrasadas e filtra entradas posteriores ao gapDate", () => {
+      const breakdown = buildCashGapBreakdown({
+        currentBalanceCents: 50000,
+        predictedInflows: [
+          { expectedDate: "2026-11-24", amountCents: 10000 },
+          { expectedDate: "2026-11-30", amountCents: 200000 }, // após gapDate -> não entra
+        ],
+        result: {
+          isCashGapDetected: true,
+          severity: "critical",
+          gapDate: "2026-11-24",
+          daysUntilGap: 0,
+          maxDeficitCents: 40000,
+          nextInflowDate: "2026-11-30",
+          causingObligations: [
+            {
+              id: "invoice-c1-2026-08",
+              name: "Fatura Rico (2026-08)",
+              dueDate: "2026-11-24",
+              nominalDueDate: "2026-08-10",
+              isOverdue: true,
+              amountCents: 100000,
+              kind: "invoice",
+            },
+          ],
+          recommendationMessage: "Risco de saldo negativo.",
+          runway: [],
+        },
+      });
+
+      const invStep = breakdown.steps.find((s) => s.label === "Fatura Rico (2026-08)");
+      expect(invStep?.hint).toBe("Vencida em 10/08/2026 — exigível hoje");
+      const inflowStep = breakdown.steps.find((s) => s.label === "Entradas Previstas até o Déficit");
+      expect(inflowStep?.rawValue).toBe(10000);
     });
   });
 });

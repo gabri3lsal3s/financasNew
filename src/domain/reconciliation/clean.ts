@@ -404,6 +404,13 @@ const STATEMENT_SUMMARY_OR_NOISE_KEYWORDS = [
   "juros do rotativo",
   "credito rotativo",
   "crédito rotativo",
+  "saldo financiado",
+  "saldo rotativo",
+  "saldo em rotativo",
+  "rotativo fatura anterior",
+  "transferencia saldo anterior",
+  "transferência saldo anterior",
+  "principal parcelamento fatura",
 ];
 
 const METADATA_NOISE_REGEX =

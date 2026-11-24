@@ -265,13 +265,19 @@ export interface CashGapBreakdownParams {
   result: CashGapAnalysisResult;
   currentBalanceCents: number;
   predictedInflowsTotalCents?: number;
+  predictedInflows?: readonly { expectedDate: string; amountCents: number }[];
 }
 
 /**
  * Constrói a memória de cálculo do Radar Preditivo de Descasamento de Fluxo (Lente Caixa estrita).
  */
 export function buildCashGapBreakdown(params: CashGapBreakdownParams): CalculationBreakdown {
-  const { result, currentBalanceCents, predictedInflowsTotalCents = 0 } = params;
+  const {
+    result,
+    currentBalanceCents,
+    predictedInflowsTotalCents = 0,
+    predictedInflows,
+  } = params;
 
   const steps: BreakdownStep[] = [
     {
@@ -293,7 +299,10 @@ export function buildCashGapBreakdown(params: CashGapBreakdownParams): Calculati
       label: obligation.name,
       operator: "-",
       rawValue: obligation.amountCents,
-      hint: `Vencimento em ${formatDateBR(obligation.dueDate)} (valor bruto nominal)`,
+      hint:
+        obligation.isOverdue && obligation.nominalDueDate
+          ? `Vencida em ${formatDateBR(obligation.nominalDueDate)} — exigível hoje`
+          : `Vencimento em ${formatDateBR(obligation.nominalDueDate ?? obligation.dueDate)} (valor bruto nominal)`,
       tone: "negative",
     });
   }
@@ -313,12 +322,18 @@ export function buildCashGapBreakdown(params: CashGapBreakdownParams): Calculati
     }
   }
 
-  if (predictedInflowsTotalCents > 0) {
+  const inflowsUntilGapCents = predictedInflows
+    ? predictedInflows
+        .filter((inf) => !result.gapDate || inf.expectedDate <= result.gapDate)
+        .reduce((acc, inf) => acc + inf.amountCents, 0)
+    : predictedInflowsTotalCents;
+
+  if (inflowsUntilGapCents > 0) {
     steps.push({
-      label: "Entradas Previstas no Horizonte",
+      label: result.gapDate ? "Entradas Previstas até o Déficit" : "Entradas Previstas no Horizonte",
       operator: "+",
-      rawValue: predictedInflowsTotalCents,
-      hint: "Rendas recorrentes e recebíveis esperados na janela projetada",
+      rawValue: inflowsUntilGapCents,
+      hint: "Rendas recorrentes e recebíveis esperados até a data do descasamento",
       tone: "positive",
     });
   }

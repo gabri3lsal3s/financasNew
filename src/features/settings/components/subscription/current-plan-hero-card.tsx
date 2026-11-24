@@ -40,6 +40,7 @@ function InfoRow({ icon: Icon, label, value }: InfoRowProps) {
 function formatLongDateBR(iso: string | null | undefined): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("pt-BR", {
+    timeZone: "America/Sao_Paulo",
     day: "2-digit",
     month: "long",
     year: "numeric",
