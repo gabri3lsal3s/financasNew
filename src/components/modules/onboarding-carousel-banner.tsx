@@ -48,7 +48,10 @@ export function OnboardingCarouselBanner({
         </span>
         <div className="flex flex-col min-w-0 flex-1 gap-0.5">
           <div className="flex items-center gap-2 min-w-0 flex-wrap">
-            <h2 className="text-sm font-semibold tracking-tight text-foreground truncate">
+            <h2
+              className="text-sm font-semibold tracking-tight text-foreground truncate"
+              title="Primeiros passos no Axir"
+            >
               Primeiros passos no Axir
             </h2>
             <Badge size="xs" variant="default" className="num shrink-0">

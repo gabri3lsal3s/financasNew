@@ -1,134 +1,16 @@
 import { numberToCents } from "@/domain/money";
 
-export * from "./kits";
+export * from "@/domain/categories";
 
 /**
  * Orçamentos e metas de renda — ESPECIFICAÇÃO §3.5.2 / §3.5.3.
  *
  * Motores puros (testáveis isoladamente):
- *   • Sugestão inteligente por nome de categoria (ícone/cor/% da renda);
  *   • Faixas de atenção 85/90/95% + excedido;
  *   • KPI global (% usado com fallback para rendas);
  *   • Herança de limite do mês anterior;
  *   • Recomendação de realocação (maior excesso → maior folga).
  */
-
-// ---------------------------------------------------------------------------
-// Sugestão inteligente por nome (§3.5.1)
-// ---------------------------------------------------------------------------
-
-export interface DefaultCategorySeed {
-  name: string;
-  type: "expense" | "income";
-  icon: string;
-  color: string;
-  is_reserved?: boolean;
-}
-
-export const RESERVED_CHARGES_CATEGORY_NAME = "Tarifas e Encargos";
-
-export const CANONICAL_DEFAULT_CATEGORIES: readonly DefaultCategorySeed[] = [
-  // Despesas Essenciais (Necessidades 50%)
-  { name: "Alimentação", type: "expense", icon: "alimentacao", color: "#DDA726" },
-  { name: "Moradia", type: "expense", icon: "moradia", color: "#8B5CF6" },
-  { name: "Transporte", type: "expense", icon: "transporte", color: "#3B82F6" },
-  { name: "Saúde", type: "expense", icon: "saude", color: "#EF4444" },
-  { name: "Educação", type: "expense", icon: "educacao", color: "#2A9D8F" },
-  { name: "Manutenção do Lar", type: "expense", icon: "moradia", color: "#8B5CF6" },
-  { name: "Animais de Estimação (Pets)", type: "expense", icon: "pets", color: "#EC4899" },
-  { name: "Impostos e Tributos", type: "expense", icon: "impostos", color: "#EF4444" },
-  // Despesas de Estilo de Vida (Desejos 30% / Radar de Assinaturas)
-  { name: "Lazer", type: "expense", icon: "lazer", color: "#EC4899" },
-  { name: "Compras", type: "expense", icon: "compras", color: "#06B6D4" },
-  { name: "Assinaturas", type: "expense", icon: "assinaturas", color: "#6366F1" },
-  // Despesas Financeiras e Encargos (Reservada de Sistema)
-  { name: RESERVED_CHARGES_CATEGORY_NAME, type: "expense", icon: "taxas", color: "#64748B", is_reserved: true },
-  // Receitas
-  { name: "Salário", type: "income", icon: "salario", color: "#10B981" },
-  { name: "Serviços e Renda Extra", type: "income", icon: "salario", color: "#10B981" },
-  { name: "Investimentos", type: "income", icon: "investimentos", color: "#3B82F6" },
-  { name: "Outras Rendas", type: "income", icon: "salario", color: "#8B5CF6" },
-] as const;
-
-export interface CategoryRule {
-  /** Nome do ícone (schema `categories.icon` — ver CATEGORY_ICON_MAP). */
-  icon: string;
-  /** Cor sugerida (hex). */
-  color: string;
-  /** % da renda sugerida como limite (0–100). */
-  limitPercent: number;
-}
-
-/** Regras por palavra-chave do nome da categoria (moradia, alimentação, transporte…). */
-const CATEGORY_RULES: Record<string, CategoryRule> = {
-  moradia: { icon: "moradia", color: "#8B5CF6", limitPercent: 30 },
-  aluguel: { icon: "moradia", color: "#8B5CF6", limitPercent: 30 },
-  casa: { icon: "moradia", color: "#8B5CF6", limitPercent: 30 },
-  alimentacao: { icon: "alimentacao", color: "#DDA726", limitPercent: 15 },
-  mercado: { icon: "mercado", color: "#DDA726", limitPercent: 15 },
-  supermercado: { icon: "mercado", color: "#DDA726", limitPercent: 15 },
-  restaurante: { icon: "alimentacao", color: "#DDA726", limitPercent: 10 },
-  transporte: { icon: "transporte", color: "#3B82F6", limitPercent: 10 },
-  combustivel: { icon: "transporte", color: "#3B82F6", limitPercent: 10 },
-  saude: { icon: "saude", color: "#EF4444", limitPercent: 10 },
-  farmacia: { icon: "saude", color: "#EF4444", limitPercent: 10 },
-  medico: { icon: "saude", color: "#EF4444", limitPercent: 10 },
-  educacao: { icon: "educacao", color: "#2A9D8F", limitPercent: 10 },
-  curso: { icon: "educacao", color: "#2A9D8F", limitPercent: 10 },
-  escola: { icon: "educacao", color: "#2A9D8F", limitPercent: 10 },
-  faculdade: { icon: "educacao", color: "#2A9D8F", limitPercent: 10 },
-  lazer: { icon: "lazer", color: "#EC4899", limitPercent: 5 },
-  entretenimento: { icon: "lazer", color: "#EC4899", limitPercent: 5 },
-  compras: { icon: "compras", color: "#06B6D4", limitPercent: 10 },
-  vestuario: { icon: "vestuario", color: "#06B6D4", limitPercent: 10 },
-  roupas: { icon: "vestuario", color: "#06B6D4", limitPercent: 10 },
-  assinatura: { icon: "assinaturas", color: "#6366F1", limitPercent: 5 },
-  assinaturas: { icon: "assinaturas", color: "#6366F1", limitPercent: 5 },
-  telefone: { icon: "telefone", color: "#6366F1", limitPercent: 5 },
-  internet: { icon: "internet", color: "#6366F1", limitPercent: 5 },
-  energia: { icon: "energia", color: "#FACC15", limitPercent: 8 },
-  agua: { icon: "agua", color: "#38BDF8", limitPercent: 5 },
-  tarifa: { icon: "taxas", color: "#64748B", limitPercent: 5 },
-  tarifas: { icon: "taxas", color: "#64748B", limitPercent: 5 },
-  encargo: { icon: "taxas", color: "#64748B", limitPercent: 5 },
-  encargos: { icon: "taxas", color: "#64748B", limitPercent: 5 },
-  pets: { icon: "pets", color: "#EC4899", limitPercent: 5 },
-  pet: { icon: "pets", color: "#EC4899", limitPercent: 5 },
-  veterinario: { icon: "pets", color: "#EC4899", limitPercent: 5 },
-  manutencao: { icon: "moradia", color: "#8B5CF6", limitPercent: 8 },
-  impostos: { icon: "impostos", color: "#EF4444", limitPercent: 10 },
-  imposto: { icon: "impostos", color: "#EF4444", limitPercent: 10 },
-  tributos: { icon: "tributos", color: "#EF4444", limitPercent: 10 },
-  tributo: { icon: "tributos", color: "#EF4444", limitPercent: 10 },
-  servicos: { icon: "salario", color: "#10B981", limitPercent: 10 },
-  servico: { icon: "salario", color: "#10B981", limitPercent: 10 },
-};
-
-/** Remove acentos ("Alimentação" → "alimentacao") para casar com as regras. */
-function normalizeKeyword(name: string): string {
-  return name
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-}
-
-/** Sugestão para o nome de uma categoria de despesa (ícone/cor/% da renda). */
-export function suggestCategory(name: string): CategoryRule | null {
-  const normalized = normalizeKeyword(name);
-  if (!normalized) return null;
-  for (const [keyword, rule] of Object.entries(CATEGORY_RULES)) {
-    if (normalized.includes(keyword)) return rule;
-  }
-  return null;
-}
-
-/** Limite sugerido em centavos a partir da renda mensal (arredondado para baixo a R$ 10). */
-export function suggestLimitCents(monthlyIncomeCents: number, limitPercent: number): number {
-  if (monthlyIncomeCents <= 0 || limitPercent <= 0) return 0;
-  const raw = Math.floor((monthlyIncomeCents * limitPercent) / 100);
-  return Math.max(1000, Math.floor(raw / 1000) * 1000);
-}
 
 // ---------------------------------------------------------------------------
 // Faixas de atenção (§3.5.2) — 85/90/95/excedido

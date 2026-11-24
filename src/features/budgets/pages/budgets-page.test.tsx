@@ -230,16 +230,13 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
     setIncomeGoalMock.mockResolvedValue(undefined);
   });
 
-  it("aba categorias: exibe o catálogo completo de categorias com botões de edição", async () => {
+  it("exibe atalho para o módulo de Categorias no cabeçalho e redireciona ao acessar com ?tab=categories", async () => {
     const user = userEvent.setup();
     renderBudgetsPage();
-    await user.click(screen.getByRole("tab", { name: "Categorias" }));
 
-    expect(screen.getByText("Catálogo com todas as categorias do sistema e personalizadas.")).toBeInTheDocument();
-    expect(screen.getByText("Moradia")).toBeInTheDocument();
-    expect(screen.getByText("Lazer")).toBeInTheDocument();
-    expect(screen.getByText("Salário")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Editar cadastro de Moradia" })).toBeInTheDocument();
+    const catBtn = screen.getByRole("button", { name: "Gerenciar categorias" });
+    expect(catBtn).toBeInTheDocument();
+    await user.click(catBtn);
   });
 
   it("exibe o botão 'Ajustar orçamento' ao lado de 'Nova categoria' e abre o modal de ajuste proporcional", async () => {
@@ -308,22 +305,6 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
     expect(screen.getAllByText("Total Bruto").length).toBeGreaterThanOrEqual(1);
     // Exibe badge informando a sua parte pessoal para Moradia
     expect(screen.getByText(/Sua parte:/)).toBeInTheDocument();
-  });
-
-  it("aba categorias: exibe EmptyState com ação de carregar categorias pré-prontas quando houver apenas categorias de sistema", async () => {
-    baseCategories = [
-      { id: "res-1", name: "Estorno", icon: "rotate-ccw", color: null, type: "income", is_reserved: true },
-    ];
-    const user = userEvent.setup();
-    renderBudgetsPage();
-    await user.click(screen.getByRole("tab", { name: "Categorias" }));
-
-    expect(screen.getByText("Nenhuma categoria encontrada")).toBeInTheDocument();
-    expect(
-      screen.getByText(/Sua conta ainda não possui categorias ativas de receitas e despesas/),
-    ).toBeInTheDocument();
-    const seedBtn = screen.getByRole("button", { name: /Explorar Kits de Categorias/i });
-    expect(seedBtn).toBeInTheDocument();
   });
 
   it("quando não há limites configurados no mês, exibe estado calmo sem alerta vermelho de excedido", () => {

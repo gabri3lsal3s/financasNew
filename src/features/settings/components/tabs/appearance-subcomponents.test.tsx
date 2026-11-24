@@ -180,5 +180,26 @@ describe("Appearance Subcomponents (Fase 1 — Tarefa 1.3)", () => {
       expect(calcMemorySwitch).toBeInTheDocument();
       expect(calcMemorySwitch).toBeChecked();
     });
+
+    it("renderiza a opção de Playbooks e Guias Metodológicos", async () => {
+      renderWithProviders(
+        <InterfaceShortcutsCard
+          headerButtons={{
+            logo: true,
+            calculatorButton: false,
+            themeToggle: false,
+            privacyToggle: false,
+          }}
+          onToggleHeaderButton={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByText("Playbooks e Guias Metodológicos")).toBeInTheDocument();
+      const playbooksSwitch = screen.getByRole("switch", {
+        name: "Playbooks e Guias Metodológicos",
+      });
+      expect(playbooksSwitch).toBeInTheDocument();
+      expect(playbooksSwitch).toBeChecked();
+    });
   });
 });

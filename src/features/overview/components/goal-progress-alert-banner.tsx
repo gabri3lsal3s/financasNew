@@ -77,7 +77,18 @@ export function GoalProgressAlertBanner({
 
         <div className="flex flex-col gap-0.5 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-sm font-semibold text-foreground truncate">
+            <h2
+              className="text-sm font-semibold text-foreground truncate"
+              title={
+                isCompleted
+                  ? `Meta Conquistada: ${title}`
+                  : isFinalStretch
+                    ? `Reta Final: ${title}`
+                    : hasSurplus
+                      ? `Aporte Sugerido: ${title}`
+                      : `Meta: ${title}`
+              }
+            >
               {isCompleted
                 ? `Meta Conquistada: ${title}`
                 : isFinalStretch

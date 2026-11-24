@@ -331,15 +331,17 @@ Diretrizes canônicas para autenticação, controle de credenciais, gestão de s
 
 ### 3.5 Categorias, Orçamentos e Metas
 
-#### 3.5.1 Categorias
+#### 3.5.1 Categorias (Módulo Autônomo e Rota Dedicada `/categorias`)
 
-- CRUD de categorias de despesa e renda (nome, ícone, cor).
+- **Desacoplamento e Módulo de 1ª Classe (`/categorias`):** a gestão de categorias foi extraída do aninhamento interno em Orçamentos e promovida a um módulo autônomo de primeira classe (`src/features/categories/` e `src/domain/categories/`), acessível diretamente pela navegação principal, rota `/categorias` e atalho contextual no topo de `/orcamentos`.
+- CRUD de categorias de despesa e renda (nome, ícone, cor, escopo pessoal / negócio PJ / família).
+- **Abas especializadas e filtros de escopo:** visualização segmentada por tipo (Despesas vs. Receitas) com contadores em tempo real, barra de busca textual instantânea e filtros por chip de escopo (*Todas*, *Pessoal*, *Negócio PJ*, *Família*).
 - **Sugestão inteligente por nome:** infere ícone/cor e limite sugerido por regra de nome (moradia, alimentação, transporte, saúde, educação, lazer, compras, outros).
 - **Exclusão com migração** (RPC `delete_category_migrate`): mover lançamentos para outra categoria antes de excluir.
 - **Ergonomia e Saneamento Visual:** ausência de botões externos soltos de edição nos cards de limites de gastos (`LimitDialog`) e metas de renda (`GoalCard`); a interação primária de clique no card abre o respectivo modal operacional, de onde o usuário acessa diretamente o editor detalhado da categoria (`CategoryFormDialog`) via ação contextual "Editar detalhes da categoria (nome, cor, ícone)". No catálogo de categorias, o toque direto no card abre o formulário cadastral, preservando a interface limpa e sem ruído de botões duplicados.
 - **Catálogo de Kits Temáticos de Categorias & Aposentadoria da Restauração Monolítica:**
-  - O antigo botão destrutivo e cego "Restaurar categorias padrões" foi totalmente descontinuado. Em seu lugar, a aba de categorias disponibiliza o modal **"Kits de categorias"** (`CategoryKitsModal`), permitindo exploração e instalação temática tanto de kits completos quanto de categorias individuais avulsas.
-  - **Kit Essencial (Padrão):** funciona como prateleira de recuperação inteligente. Contém as 15 categorias essenciais canônicas do sistema (excluindo as categorias reservadas de sistema como "Tarifas e Encargos", "Estorno" e "Transferência Interna"). Se o usuário excluir qualquer uma de suas categorias padrão, ela reaparece no kit como disponível para recuperação imediata (`+ Adicionar`).
+  - O antigo botão destrutivo e cego "Restaurar categorias padrões" foi totalmente descontinuado. Em seu lugar, a tela de categorias disponibiliza o modal **"Kits de categorias"** (`CategoryKitsModal`), permitindo exploração e instalação temática tanto de kits completos quanto de categorias individuais avulsas.
+  - **Kit Essencial (Padrão):** funciona como prateleira de recuperação inteligente. Contém as 16 categorias essenciais canônicas do sistema (excluindo as categorias reservadas de sistema como "Tarifas e Encargos", "Estorno" e "Transferência Interna"). Se o usuário excluir qualquer uma de suas categorias padrão, ela reaparece no kit como disponível para recuperação imediata (`+ Adicionar`).
   - **Kit Negócio (PJ / MEI / Autônomo):** categorias operacionais dedicadas ao fluxo de caixa profissional (`Prestação de Serviços`, `Vendas de Produtos`, `Impostos e Tributos PJ`, `Ferramentas e Softwares PJ`, `Custos Operacionais`, `Fornecedores e Matéria-Prima`, `Serviços Terceirizados PJ`).
   - **Kit Família & Casa:** categorias voltadas à gestão do lar e dependentes (`Dependentes e Filhos`, `Mercado e Feira`, `Manutenção do Lar`, `Animais de Estimação (Pets)`, `Saúde da Família`, `Pensão e Auxílio Familiar`, `Aluguéis e Condomínio`).
   - **Kit Veículo & Transporte:** despesas específicas de mobilidade (`Combustível`, `Manutenção Veicular`, `Seguro Auto`, `Estacionamento e Pedágios`, `IPVA e Licenciamento`).
@@ -347,8 +349,10 @@ Diretrizes canônicas para autenticação, controle de credenciais, gestão de s
   - **Idempotência Estrita na Instalação:** a reconciliação e criação em lote compara normalizações de `name` e `type`, impedindo a criação de categorias duplicadas no banco de dados mesmo em múltiplos acionamentos.
   - **Provisionamento Silencioso no Onboarding e Ativação de Modos:** quando o usuário seleciona seu objetivo principal no modal de boas-vindas (`welcome-modal`), o sistema ativa o modo correspondente e provisiona silenciosamente as categorias operacionais essenciais sem burocracia ou enxurrada de seleções. A mesma ativação fluida ocorre ao ligar o Modo Negócio em `/negocio`.
 
-#### 3.5.2 Orçamentos (despesas)
+#### 3.5.2 Orçamentos (Planejamento e Tetos em `/orcamentos`)
 
+- **Foco Executivo em 2 Abas:** a página `/orcamentos` concentra-se estritamente na governança e planejamento financeiro: aba **"Despesas"** (tetos de gastos) e aba **"Metas"** (expectativas de receita), eliminando o esmagamento de abas e respeitando a Regra 9 do `AGENTS.md` para $\le 3$ itens.
+- **Redirecionamento Retrocompatível:** acessos com parâmetros legados (`/orcamentos?tab=categories`, `?aba=categorias` ou `?kit=...`) são redirecionados automaticamente e de forma transparente para `/categorias`.
 - **Limite mensal por categoria:** valor por `(categoria, mês)`, upsert; salvar `0,00` ou acionar a remoção de limite torna a categoria livre/sem limite ativo no mês atual.
 - **Herança de limite vs. Limite zero explícito:** sem limite cadastrado no mês atual, herda o do mês anterior mais recente (fallback de exibição/alerta). Caso o usuário cadastre explicitamente `0,00` ou clique em *"Deixar sem limite"* em uma categoria herdada, o sistema grava o teto em zero (`limit = 0.00`, restrição `check ("limit" >= 0)`), interrompendo a herança de meses anteriores e tratando a categoria como livre de orçamento no mês. A ação de remoção/anulação está sempre disponível no modal `LimitDialog` (inclusive para limites herdados).
 - **Coerência de Escopo e Resumo Geral:**

@@ -75,7 +75,10 @@ export function SurplusAporteBanner({
         </span>
         <div className="flex flex-col gap-0.5 min-w-0">
           <div className="flex items-center gap-2 min-w-0 flex-wrap">
-            <h2 className="text-sm font-semibold tracking-tight text-foreground truncate">
+            <h2
+              className="text-sm font-semibold tracking-tight text-foreground truncate"
+              title={isEmergencyPriority ? "Reforçar Reserva de Emergência" : "Capacidade de Aporte Estimada"}
+            >
               {isEmergencyPriority ? "Reforçar Reserva de Emergência" : "Capacidade de Aporte Estimada"}
             </h2>
             <Badge variant={isEmergencyPriority ? "positive" : "portfolio"} size="xs">

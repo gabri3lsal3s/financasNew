@@ -1,14 +1,17 @@
-import { Download, Plus } from "lucide-react";
+import { useState } from "react";
+import { BookOpen, Download, Plus } from "lucide-react";
 import { Button, ErrorState } from "@/components/ui";
 import { MonthPicker, ReadOnlyBanner } from "@/components/modules";
 import { PageHeader } from "@/components/layout";
 import { buildCheckoutUrl } from "@/domain/subscription/plans";
+import { useVisualCustomization } from "@/hooks/use-visual-customization";
 import { getErrorMessage } from "@/services/errors";
 import { setStepIndex, startDemo } from "@/state";
 import {
   ActiveSplitsCard,
   TransactionSummaryKpis,
 } from "@/features/transactions/components";
+import { TransactionEducationalGuideModal } from "@/features/transactions/components/transaction-educational-guide-modal";
 import {
   TransactionFeedList,
   TransactionFilterBar,
@@ -18,6 +21,8 @@ import {
 
 export function TransactionListPage() {
   const tx = useTransactionList();
+  const { isPlaybookVisible } = useVisualCustomization();
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
 
   return (
     <div className="flex flex-col gap-5 sm:gap-6">
@@ -26,6 +31,19 @@ export function TransactionListPage() {
         description="Extrato consolidado de receitas, despesas e transferências por competência"
         actions={
           <>
+            {isPlaybookVisible("transactions") && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsGuideOpen(true)}
+                className="gap-1.5"
+                title="Abrir guia metodológico de lançamentos e cartões"
+              >
+                <BookOpen className="size-3.5" aria-hidden="true" />
+                <span>Guia</span>
+              </Button>
+            )}
             <Button
               type="button"
               variant="outline"
@@ -147,6 +165,13 @@ export function TransactionListPage() {
           tx.setUpgradeOpen(false);
           tx.navigate(buildCheckoutUrl({ plan }));
         }}
+      />
+
+      <TransactionEducationalGuideModal
+        open={isGuideOpen}
+        onOpenChange={setIsGuideOpen}
+        onOpenNewTransaction={tx.handleNewTransaction}
+        onOpenImport={() => tx.navigate("/cartoes")}
       />
     </div>
   );

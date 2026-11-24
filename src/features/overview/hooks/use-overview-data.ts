@@ -184,6 +184,9 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
     incomesQuery.isLoading ||
     expensesQuery.isLoading ||
     userPreferencesQuery.isLoading ||
+    cardsQuery.isLoading ||
+    debtsQuery.isLoading ||
+    (onboardingQuery.isLoading && !onboardingQuery.data) ||
     (isCurrentMonth && realCashData.isLoading);
 
   const error =
@@ -279,11 +282,13 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
   );
   const isCashGapEligible =
     !isCardDismissed("cash-gap-alert") && !isFamilyUnderDecay(advisorDecayMeta.cash_gap);
-  const isTrialBannerEligible = shouldShowTrialBanner(
-    subscription.trialDaysRemaining,
-    Boolean(subscription.hasAutoRenew),
-    alertDismissals.cards?.["trial-ending"],
-  );
+  const isTrialBannerEligible =
+    !subscription.isLoading &&
+    shouldShowTrialBanner(
+      subscription.trialDaysRemaining,
+      Boolean(subscription.hasAutoRenew),
+      alertDismissals.cards?.["trial-ending"],
+    );
 
   return {
     month,

@@ -18,6 +18,9 @@ export type ModuleAccessLevel = "none" | "read" | "write" | "admin";
  * Todos os componentes de UI consomem este contrato via `useUserSubscription()`.
  */
 export type SubscriptionStatus = {
+  /** Verdadeiro enquanto o status real da assinatura ainda está sendo consultado no backend. */
+  isLoading?: boolean;
+
   /** Tier atual do usuário. */
   tier: SubscriptionTier;
 

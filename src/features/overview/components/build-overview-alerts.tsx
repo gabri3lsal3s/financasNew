@@ -103,9 +103,10 @@ export function buildOverviewAlertItems(
   );
   const trip = activeTrips[0];
   const isPastDueBannerActive =
-    subscription.status === "past_due" ||
-    subscription.status === "unpaid" ||
-    subscription.billingPhase === "past_due";
+    !subscription.isLoading &&
+    (subscription.status === "past_due" ||
+      subscription.status === "unpaid" ||
+      subscription.billingPhase === "past_due");
 
   const paceBreakdown =
     showPaceAlert && isPaceEligible

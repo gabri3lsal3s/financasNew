@@ -42,7 +42,10 @@ export function ActiveTripBanner({
 
         <div className="flex flex-col gap-0.5 min-w-0 flex-1">
           <div className="flex items-center gap-2 min-w-0">
-            <h2 className="text-sm font-semibold text-foreground truncate">
+            <h2
+              className="text-sm font-semibold text-foreground truncate"
+              title={trip.title}
+            >
               {trip.title}
             </h2>
             <Badge size="xs" variant="default" className="shrink-0">

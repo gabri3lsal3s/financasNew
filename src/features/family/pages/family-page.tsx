@@ -131,7 +131,7 @@ export function FamilyPage() {
                 variant="outline"
                 size="sm"
                 sensoryIntent="selection"
-                className="gap-1.5 max-sm:min-h-11"
+                className="gap-1.5"
                 onClick={() => {
                   setSettingsTab("members");
                   setIsSettingsOpen(true);
@@ -148,7 +148,7 @@ export function FamilyPage() {
               variant="outline"
               size="sm"
               sensoryIntent="selection"
-              className="gap-1.5 max-sm:min-h-11"
+              className="gap-1.5"
               onClick={() => {
                 setSettingsTab("general");
                 setIsSettingsOpen(true);

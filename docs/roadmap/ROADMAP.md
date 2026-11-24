@@ -8101,6 +8101,34 @@ flowchart TD
 >   - `billing-lifecycle-cron` dispara `renderTrialExpiredReadOnlyEmail` de forma idempotente para trials recém-expirados;
 >   - Suíte `src/tests/email-templates-integrity.test.ts` expandida para 12 testes certificando a separação visual Teal vs PRO, zero menções a `"Áxis"`/`"Finance"` e zero emojis.
 
+---
+
+### Fase 127 — Módulo Autônomo de Categorias (/categorias), Catálogo de Kits Temáticos e Desacoplamento de Orçamentos (v3.18.0)
+
+> **Status:** Concluída, Testada com 134 Testes Unitários Passando, Typecheck e Linter 100% Verdes:
+> - **Domínio Puro (`src/domain/categories/`):**
+>   - Definições canônicas de presets (`canonical.ts`: 16 categorias padrão divididas em 12 despesas e 4 rendas, além da categoria reservada de sistema `"Tarifas e Encargos"`);
+>   - Regras de inferência inteligente (`rules.ts`: ícone, cor e sugestão de teto por nome da categoria);
+>   - Catálogo de kits temáticos (`kits.ts`: Essencial, Negócio PJ, Família & Casa, Veículo & Transporte), cálculo de itens faltantes (`getMissingKitItems`) e verificação de idempotência (`isKitItemInstalled`);
+>   - Schemas Zod (`schemas.ts`: validação estrita de cadastro e edição de categorias, com sanitização de texto e prevenção de XSS);
+>   - Re-exportações retrocompatíveis em `src/domain/budgets/` para garantir interoperabilidade total com módulos legados.
+> - **Feature Dedicada e Rota de 1ª Classe (`src/features/categories/`):**
+>   - Página `/categorias` (`CategoriesPage`) com `PageHeader` padronizado, atalho para `/orcamentos`, abas segmentadas por tipo (Despesas com contador vs. Receitas com contador), barra de busca textual em tempo real e chips de filtro por escopo (*Todas*, *Pessoal*, *Negócio PJ*, *Família*);
+>   - Cards canônicos (`CategoryCard`) com hierarquia sóbria de ícones (`CategoryIcon`), badges de escopo (*Sistema*, *Negócio PJ*, *Família*, *Pessoal*), ações contextuais de edição e exclusão com migração (RPC `delete_category_migrate`);
+>   - Catálogo modular de kits (`CategoryKitsModal`), formulário inteligente de criação e edição (`CategoryFormDialog`) e diálogo de confirmação com migração opcional (`DeleteCategoryDialog`).
+> - **Desacoplamento e Foco em Orçamentos (`src/features/budgets/`):**
+>   - `BudgetsPage` simplificada para 2 abas executivas: **"Despesas"** (tetos de gastos) e **"Metas"** (expectativas de receita), atendendo a Regra 9 do `AGENTS.md` para $\le 3$ itens;
+>   - Atalho de navegação no cabeçalho de Orçamentos (*"Categorias"* com ícone `Tags`) apontando para `/categorias`;
+>   - Redirecionamento retrocompatível transparente em `use-budgets-page.ts`: acessos legados com `?tab=categories`, `?aba=categorias` ou `?kit=...` são redirecionados automaticamente para `/categorias`.
+> - **Navegação e Roteamento Global:**
+>   - Item "Categorias" adicionado em `src/components/layout/nav-items.tsx` no grupo "Estratégia & Análise" e no menu principal;
+>   - Rota `/categorias` registrada com code-splitting lazy em `src/app/routes.tsx` e mapeada em `ROUTE_FEATURE_MAP` sob a feature flag `budgets`.
+> - **Qualidade & Blindagem:**
+>   - 134 testes unitários passando em 16 arquivos em `src/features/categories/`, `src/domain/categories/`, `src/domain/budgets/` e `src/features/budgets/`;
+>   - Typecheck (`npm run typecheck`) 100% verde;
+>   - Lint (`npm run lint`) com 0 erros, certificando conformidade total com a Regra 8 do `AGENTS.md` (zero emojis e zero caracteres decorativos).
+
+
 
 
 

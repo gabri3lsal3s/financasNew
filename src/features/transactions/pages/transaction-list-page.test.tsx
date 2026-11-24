@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render as originalRender, screen, within } from "@testing-library/react";
+import { render as originalRender, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TransactionListPage } from "./transaction-list-page";
@@ -433,6 +433,19 @@ describe("TransactionListPage — listagem por mês", () => {
       expect(content).toContain("Cinema Individual");
       expect(content).toContain("Salário Individual");
       expect(content).toContain("Ajuda de Custo Familiar");
+    });
+  });
+
+  it("renderiza o botão de Guia metodológico e abre o modal ao clicar", async () => {
+    const user = userEvent.setup();
+    render(<TransactionListPage />);
+
+    const guiaButton = screen.getByRole("button", { name: /guia/i });
+    expect(guiaButton).toBeInTheDocument();
+
+    await user.click(guiaButton);
+    await waitFor(() => {
+      expect(screen.getByText("Guia de Lançamentos & Gestão de Cartões")).toBeInTheDocument();
     });
   });
 });

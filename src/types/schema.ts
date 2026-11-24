@@ -421,6 +421,8 @@ export type UserCustomSettings = {
   preferredChargeCategoryId?: string | null;
   initialGoal?: OnboardingGoalId;
   showCalculationMemory?: boolean;
+  showEducationalPlaybooks?: boolean;
+  dismissedPlaybookKeys?: string[];
   themePreference?: ThemePreference;
   darkThemeVariant?: DarkThemeVariant;
   themeSchedule?: ThemeScheduleConfig;

@@ -6,6 +6,8 @@ import {
   Eye,
   Users,
   Plane,
+  BookOpen,
+  RotateCcw,
 } from "lucide-react";
 import {
   Card,
@@ -22,6 +24,7 @@ import {
   type HeaderButtonsConfig,
 } from "@/hooks/use-visual-customization";
 import { triggerSensory } from "@/services/sensory";
+import { getDismissedPlaybooksSummary } from "@/domain/playbooks/registry";
 import { cn } from "@/lib/utils";
 
 export interface InterfaceShortcutsCardProps {
@@ -41,8 +44,16 @@ export function InterfaceShortcutsCard({
     isPending: isUpdatingBusinessMode,
   } = useBusinessMode();
   const { guardAction, upgradeModal } = useMutationGuard();
-  const { showCalculationMemory, setShowCalculationMemory } = useVisualCustomization();
+  const {
+    showCalculationMemory,
+    setShowCalculationMemory,
+    showEducationalPlaybooks,
+    setShowEducationalPlaybooks,
+    dismissedPlaybookKeys,
+    restoreAllPlaybooks,
+  } = useVisualCustomization();
   const updateCustomSettingsMutation = useUpdateCustomSettings();
+  const dismissedSummary = getDismissedPlaybooksSummary(dismissedPlaybookKeys ?? []);
 
   const activeSlots = [
     headerButtons.calculatorButton,
@@ -272,6 +283,58 @@ export function InterfaceShortcutsCard({
                 }}
                 aria-label="Memória de Cálculo e Explicabilidade"
               />
+            </div>
+
+            <div
+              className={cn(
+                "flex flex-col gap-2 p-3.5 rounded-xl border transition-colors duration-150",
+                showEducationalPlaybooks ? "border-primary/40 bg-primary/5" : "border-border/80 bg-surface",
+              )}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <BookOpen className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                  <div className="min-w-0">
+                    <div className="font-semibold text-xs text-foreground">
+                      Playbooks e Guias Metodológicos
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">
+                      {showEducationalPlaybooks
+                        ? "Ativo. Exibe atalhos para guias práticos em Lançamentos, Família, Viagens, Investimentos, Dívidas e Negócio."
+                        : "Oculto. Mantém a interface 100% minimalista e focada em dados, ocultando os botões de guias educativos."}
+                    </div>
+                  </div>
+                </div>
+                <Switch
+                  checked={showEducationalPlaybooks}
+                  disabled={updateCustomSettingsMutation.isPending}
+                  onCheckedChange={(checked) => {
+                    triggerSensory("toggle");
+                    setShowEducationalPlaybooks(checked);
+                    updateCustomSettingsMutation.mutate({ showEducationalPlaybooks: checked });
+                  }}
+                  aria-label="Playbooks e Guias Metodológicos"
+                />
+              </div>
+
+              {showEducationalPlaybooks && dismissedSummary ? (
+                <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-border/60 text-[11px]">
+                  <span className="text-muted-foreground truncate">{dismissedSummary}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerSensory("selection");
+                      restoreAllPlaybooks();
+                      updateCustomSettingsMutation.mutate({ dismissedPlaybookKeys: [] });
+                    }}
+                    disabled={updateCustomSettingsMutation.isPending}
+                    className="text-primary hover:underline font-medium inline-flex items-center gap-1 shrink-0 cursor-pointer"
+                  >
+                    <RotateCcw className="size-3" aria-hidden="true" />
+                    <span>Reativar todos</span>
+                  </button>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

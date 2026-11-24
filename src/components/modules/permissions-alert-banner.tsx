@@ -64,7 +64,10 @@ export function PermissionsAlertBanner({
         </div>
         <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-sm font-semibold text-foreground truncate">
+            <h2
+              className="text-sm font-semibold text-foreground truncate"
+              title={title}
+            >
               {title}
             </h2>
             <Badge variant="warning" size="xs">

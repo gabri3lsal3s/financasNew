@@ -1,10 +1,12 @@
-import { FileUp, Plus } from "lucide-react";
+import { useState } from "react";
+import { BookOpen, FileUp, Plus } from "lucide-react";
 import { Alert, Badge, Button, ErrorState } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
 import { CreditCardWallet, ReadOnlyBanner, TransactionRow } from "@/components/modules";
 import { numberToCents } from "@/domain/money";
 import { formatDateBR, monthLabel } from "@/lib/date";
 import { cn } from "@/lib/utils";
+import { useVisualCustomization } from "@/hooks/use-visual-customization";
 import { getErrorMessage } from "@/services/errors";
 import {
   CardInvoiceExpensesFeed,
@@ -16,6 +18,7 @@ import {
   InvoiceCompetenceToolbar,
   InvoiceKpisSection,
 } from "@/features/cards/components";
+import { TransactionEducationalGuideModal } from "@/features/transactions/components/transaction-educational-guide-modal";
 import { useCardsPageState } from "@/features/cards/hooks/use-cards-page-state";
 import type { Expense } from "@/types";
 
@@ -27,6 +30,8 @@ import type { Expense } from "@/types";
  */
 export function CardsPage() {
   const state = useCardsPageState();
+  const { isPlaybookVisible } = useVisualCustomization();
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
 
   const renderInvoiceRow = (expense: Expense) => {
     const category = state.categoryById.get(expense.category_id);
@@ -62,6 +67,19 @@ export function CardsPage() {
         description="Gestão integrada de cartões, faturas por competência, limites e conciliação"
         actions={
           <>
+            {isPlaybookVisible("transactions") && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsGuideOpen(true)}
+                className="gap-1.5"
+                title="Abrir guia metodológico de lançamentos e cartões"
+              >
+                <BookOpen className="size-3.5" aria-hidden="true" />
+                <span>Guia</span>
+              </Button>
+            )}
             <Button
               type="button"
               variant="outline"
@@ -230,6 +248,12 @@ export function CardsPage() {
         isReadOnlyMode={state.permission.isReadOnlyMode}
         aiExtractionEnabled={!state.aiPermission.isHidden && state.aiPermission.canWrite}
         onCompetenceChange={state.setMonth}
+      />
+
+      <TransactionEducationalGuideModal
+        open={isGuideOpen}
+        onOpenChange={setIsGuideOpen}
+        onOpenImport={state.handleOpenImport}
       />
     </div>
   );

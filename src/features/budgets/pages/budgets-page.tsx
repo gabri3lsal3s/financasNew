@@ -1,10 +1,9 @@
-import { PiggyBank, Plus, SlidersHorizontal, Target, TrendingDown } from "lucide-react";
+import { Plus, SlidersHorizontal, Tags, Target, TrendingDown } from "lucide-react";
 import { Button, ErrorState, Tabs } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
 import { ReadOnlyBanner } from "@/components/modules";
 import { getErrorMessage } from "@/services/errors";
 import {
-  BudgetsCategoriesTab,
   BudgetsDialogs,
   BudgetsGoalsTab,
   BudgetsLimitsTab,
@@ -20,9 +19,19 @@ export function BudgetsPage() {
     <div className="flex flex-col gap-5 sm:gap-6">
       <PageHeader
         title="Orçamentos"
-        description="Tetos de gastos mensais, metas de renda e controle de categorias"
+        description="Tetos de gastos mensais e metas de renda por categoria"
         actions={
           <>
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label="Gerenciar categorias"
+              onClick={() => b.navigate("/categorias")}
+              className="gap-1.5"
+            >
+              <Tags aria-hidden="true" className="size-4" />
+              <span>Categorias</span>
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -130,23 +139,6 @@ export function BudgetsPage() {
                   onEditCategory={b.handleEditCategory}
                   onShareGoal={b.handleShareGoal}
                   onOpenCreateCategory={b.handleOpenCreateCategory}
-                />
-              ),
-            },
-            {
-              value: "categories",
-              label: "Categorias",
-              icon: <PiggyBank className="size-4" aria-hidden="true" />,
-              content: (
-                <BudgetsCategoriesTab
-                  allCategories={b.allCategories}
-                  onOpenKitsModal={() => b.handleOpenKitsModal()}
-                  onSeedCategories={() => void b.handleSeedCategories()}
-                  isSeeding={b.isSeeding}
-                  isSeedError={b.isSeedError}
-                  seedFeedback={b.seedFeedback}
-                  onOpenCreateCategory={b.handleOpenCreateCategory}
-                  onEditCategory={b.handleEditCategory}
                 />
               ),
             },

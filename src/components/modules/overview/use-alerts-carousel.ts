@@ -24,14 +24,24 @@ export function useAlertsCarousel(total: number, autoplayIntervalMs: number, ite
   const touchStartXRef = useRef<number | null>(null);
 
   if (itemsKey !== undefined && prevItemsKey !== itemsKey) {
+    const prevIds = prevItemsKey ? prevItemsKey.split(",") : [];
+    const prevActiveId = prevIds[(physicalIndex - 1 + prevTotal) % Math.max(1, prevTotal)];
+    const newIds = itemsKey ? itemsKey.split(",") : [];
+    const matchedIndex = prevActiveId ? newIds.indexOf(prevActiveId) : -1;
+
     setPrevItemsKey(itemsKey);
     setPrevTotal(total);
-    setPhysicalIndex(1);
     setIsTransitioning(false);
+
+    if (matchedIndex !== -1) {
+      setPhysicalIndex(matchedIndex + 1);
+    } else {
+      setPhysicalIndex(Math.min(Math.max(1, physicalIndex), Math.max(1, total)));
+    }
   } else if (prevTotal !== total) {
     setPrevTotal(total);
-    setPhysicalIndex(1);
     setIsTransitioning(false);
+    setPhysicalIndex((prev) => Math.min(Math.max(1, prev), Math.max(1, total)));
   }
 
   const logicalIndex = total > 0 ? (physicalIndex - 1 + total) % total : 0;
@@ -67,7 +77,10 @@ export function useAlertsCarousel(total: number, autoplayIntervalMs: number, ite
 
   const advanceNext = useCallback(() => {
     setPhysicalIndex((prev) => {
-      if (prev >= total + 1) return total + 1;
+      if (prev >= total + 1) {
+        if (!reducedMotion) setIsTransitioning(true);
+        return 2;
+      }
       if (!reducedMotion) setIsTransitioning(true);
       return prev + 1;
     });
@@ -75,11 +88,14 @@ export function useAlertsCarousel(total: number, autoplayIntervalMs: number, ite
 
   const advancePrev = useCallback(() => {
     setPhysicalIndex((prev) => {
-      if (prev <= 0) return 0;
+      if (prev <= 0) {
+        if (!reducedMotion) setIsTransitioning(true);
+        return Math.max(1, total - 1);
+      }
       if (!reducedMotion) setIsTransitioning(true);
       return prev - 1;
     });
-  }, [reducedMotion]);
+  }, [total, reducedMotion]);
 
   const nextSlide = useCallback(() => {
     triggerSensory("selection");

@@ -55,6 +55,8 @@ export interface VisualCustomization {
   dashboardWidgets: DashboardWidgetsConfig;
   headerButtons: HeaderButtonsConfig;
   showCalculationMemory: boolean;
+  showEducationalPlaybooks: boolean;
+  dismissedPlaybookKeys: string[];
 }
 
 export const VISUAL_STORAGE_KEYS = {
@@ -70,6 +72,8 @@ export const VISUAL_STORAGE_KEYS = {
   dashboardWidgets: "dashboard_widgets",
   headerButtons: "header_buttons",
   showCalculationMemory: "show_calculation_memory",
+  showEducationalPlaybooks: "show_educational_playbooks",
+  dismissedPlaybookKeys: "dismissed_playbook_keys",
 } as const;
 
 export const VALID_ACCENT_THEMES: readonly AccentTheme[] = [
@@ -124,6 +128,8 @@ export const DEFAULT_CONFIG: VisualCustomization = {
   dashboardWidgets: DEFAULT_WIDGETS,
   headerButtons: DEFAULT_HEADER_BUTTONS,
   showCalculationMemory: true,
+  showEducationalPlaybooks: true,
+  dismissedPlaybookKeys: [],
 };
 
 export function isValidAccentTheme(value: unknown): value is AccentTheme {
@@ -267,6 +273,12 @@ export function normalizeCloudVisualPartial(
   }
   if (customSettings.showCalculationMemory !== undefined) {
     partial.showCalculationMemory = customSettings.showCalculationMemory;
+  }
+  if (customSettings.showEducationalPlaybooks !== undefined) {
+    partial.showEducationalPlaybooks = customSettings.showEducationalPlaybooks;
+  }
+  if (Array.isArray(customSettings.dismissedPlaybookKeys)) {
+    partial.dismissedPlaybookKeys = customSettings.dismissedPlaybookKeys;
   }
 
   return partial;

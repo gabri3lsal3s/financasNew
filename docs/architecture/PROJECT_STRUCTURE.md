@@ -242,8 +242,11 @@
     │   ├── cards/                 #   Cartões (faturas, pagamentos, estornos, refinanciamento)
     │   │                          #     components/ (card-invoice-expenses-feed, card-invoice-payments-feed — extratos extraídos da página)
     │   ├── debts/                 #   Dívidas (status, quitação com juros/multa/desconto, empréstimos Price/SAC, loan-schedule-dialog, loan-edit-dialog F72, debts-page-demo.test.tsx)
-    │   ├── budgets/               #   Orçamentos (limites, realocação)
-    │   │                          #     components/tabs/ (budgets-limits-tab, budgets-goals-tab, budgets-categories-tab)
+    │   ├── categories/            #   Categorias (/categorias — catálogo de despesas e receitas, cores, ícones e kits temáticos)
+    │   │                          #     components/ (category-card, category-form-dialog, category-form-fields, category-kits-modal, delete-category-dialog),
+    │   │                          #     hooks/ (use-categories-page.ts), pages/ (categories-page.tsx)
+    │   ├── budgets/               #   Orçamentos (tetos de despesas, metas de renda e realocação)
+    │   │                          #     components/tabs/ (budgets-limits-tab, budgets-goals-tab)
     │   ├── family/                #   Modo Família Colaborativo Multi-Contas (/familia, /convite-familiar/:token)
     │   │                          #     pages: family-page, family-invite-page
     │   │                          #     components: household-ceiling-card, household-balance-card, household-comparison-card,
@@ -346,7 +349,8 @@
     │   ├── recurrences/           #   F32: geração de ocorrências por frequência
     │   │                          #     (monthly/weekly/quarterly/yearly, fim por data ou
     │   │                          #     por contagem) + modos de exclusão em grupo
-    │   ├── budgets/               #   regras por categoria (CATEGORY_RULES), status/limites e schemas.ts (Zod)
+    │   ├── categories/            #   Categorias: presets canônicos (canonical.ts), regras de inferência (rules.ts), kits temáticos (kits.ts) e schemas.ts (Zod)
+    │   ├── budgets/               #   Orçamentos: status/limites, realocação, metas de renda e schemas.ts (Zod)
     │   ├── overview/              #   computeOverview (KPIs), percentChange, buildDailyFlow
     │   ├── reports/               #   peso de relatório (base × weight), detailed-close.ts (fechamento),
     │   │                          #     allocation-gaps.ts, concentration-risk.ts, consolidated-balance.ts,

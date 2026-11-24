@@ -268,7 +268,10 @@ export function SmartAdvisorCard({
           </span>
           <div className="flex flex-col gap-0.5 min-w-0 flex-1">
             <div className="flex items-center gap-2 min-w-0 flex-wrap">
-              <h3 className="text-sm font-semibold text-foreground tracking-tight truncate">
+              <h3
+                className="text-sm font-semibold text-foreground tracking-tight truncate"
+                title={activeInsight.title}
+              >
                 {activeInsight.title}
               </h3>
               <Badge variant={presentation.badgeVariant} size="xs" className="shrink-0 font-medium">

@@ -27,7 +27,7 @@ import { deriveBudgetsLimitsData } from "./budgets-limits-derived";
 import { useBudgetsActions } from "./use-budgets-actions";
 import { useBudgetsDialogs } from "./use-budgets-dialogs";
 
-export type BudgetsTabKey = "limits" | "goals" | "categories";
+export type BudgetsTabKey = "limits" | "goals";
 
 export function useBudgetsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -46,14 +46,20 @@ export function useBudgetsPage() {
   const [spendMetric, setSpendMetric] = useState<"personal" | "household">("personal");
   const [nowMs] = useState(() => Date.now());
 
+  // Redirecionamento retrocompatível: links antigos de categorias apontando para orçamentos vão para /categorias
+  useEffect(() => {
+    if (paramTab === "categories" || paramAba === "categorias" || targetType === "category" || Boolean(paramKit)) {
+      const nextUrl = paramKit ? `/categorias?kit=${encodeURIComponent(paramKit)}` : "/categorias";
+      navigate(nextUrl, { replace: true });
+    }
+  }, [paramTab, paramAba, targetType, paramKit, navigate]);
+
   const tab: BudgetsTabKey =
     targetType === "income" || paramTab === "goals" || paramAba === "metas"
       ? "goals"
-      : targetType === "category" || paramTab === "categories" || paramAba === "categorias" || Boolean(paramKit)
-        ? "categories"
-        : paramTab === "limits" || paramAba === "limites" || Boolean(targetCategory)
-          ? "limits"
-          : pickedTab;
+      : paramTab === "limits" || paramAba === "limites" || Boolean(targetCategory)
+        ? "limits"
+        : pickedTab;
 
   const handleTabChange = (next: BudgetsTabKey) => {
     setPickedTab(next);

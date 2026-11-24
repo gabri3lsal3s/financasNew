@@ -171,6 +171,7 @@ const ROUTE_FEATURE_MAP: Record<string, string> = {
   "/cartoes": "cards",
   "/dividas": "debts",
   "/orcamentos": "budgets",
+  "/categorias": "budgets",
   "/relatorios": "reports",
   "/insights": "insights",
   "/investments": "investments",
@@ -336,7 +337,6 @@ export function AppRouter() {
             <Route element={<RequireActiveAccount />}>
               {/* Redirecionamento de compatibilidade para atalhos PWA / links legados / rotas unificadas */}
               <Route path="/transacoes/novo" element={<Navigate to="/transacoes?novo=transacao" replace />} />
-              <Route path="/categorias" element={<RedirectWithSearch to="/orcamentos" />} />
               <Route path="/metas" element={<RedirectWithSearch to="/orcamentos?tab=goals" />} />
               <Route path="/investimentos" element={<RedirectWithSearch to="/investments" />} />
               <Route path="/carteira" element={<RedirectWithSearch to="/investments" />} />

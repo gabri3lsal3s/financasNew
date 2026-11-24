@@ -87,7 +87,7 @@ export function OverviewPage() {
 
   const advisor = useSmartAdvisorInsights({
     month,
-    enabled: data.isCurrentMonth && !data.showVirginGuide,
+    enabled: data.isCurrentMonth && !data.showVirginGuide && !data.loading,
     savingsSurplusCents: data.surplusCapacity.suggestedAporteCents,
     safeToSpendCents: data.realCashData.safeToSpend.safeToSpendCents,
     committedObligationsCents: data.realCashData.safeToSpend.committedObligationsCents,

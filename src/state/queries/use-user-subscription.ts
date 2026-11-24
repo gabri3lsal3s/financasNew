@@ -30,7 +30,7 @@ export function useUserSubscription(): SubscriptionStatus {
   return useMemo((): SubscriptionStatus => {
     // Se o dado real do backend já carregou, utiliza-o diretamente
     if (subData) {
-      return subData;
+      return { ...subData, isLoading: false };
     }
 
     // Estado inicial (loading) — se o cache já indica status PRO, honra visualmente
@@ -38,7 +38,10 @@ export function useUserSubscription(): SubscriptionStatus {
     const cachedTier = getCachedIconTier();
     const fallbackTier = cachedTier === "PRO" ? "pro_monthly" : "trial";
 
-    return buildFallbackStatus(fallbackTier, profile?.created_at ?? null);
+    return {
+      ...buildFallbackStatus(fallbackTier, profile?.created_at ?? null),
+      isLoading: true,
+    };
   }, [subData, profile?.created_at]);
 }
 

@@ -176,6 +176,12 @@ export function readStoredVisualConfig(userId?: string | null): VisualCustomizat
     const calcMemRaw = getUserStorageItem(VISUAL_STORAGE_KEYS.showCalculationMemory, userId);
     const showCalculationMemory = calcMemRaw !== null ? calcMemRaw !== "false" : true;
 
+    const playbooksRaw = getUserStorageItem(VISUAL_STORAGE_KEYS.showEducationalPlaybooks, userId);
+    const showEducationalPlaybooks = playbooksRaw !== null ? playbooksRaw !== "false" : true;
+
+    const dismissedRaw = getUserStorageItem(VISUAL_STORAGE_KEYS.dismissedPlaybookKeys, userId);
+    const dismissedPlaybookKeys = parseDismissedPlaybookKeys(dismissedRaw);
+
     const experiencePreset: ExperiencePreset =
       rawPreset && VALID_EXPERIENCE_PRESETS.includes(rawPreset as ExperiencePreset)
         ? (rawPreset as ExperiencePreset)
@@ -201,9 +207,26 @@ export function readStoredVisualConfig(userId?: string | null): VisualCustomizat
       dashboardWidgets,
       headerButtons,
       showCalculationMemory,
+      showEducationalPlaybooks,
+      dismissedPlaybookKeys,
     };
   } catch {
     return DEFAULT_CONFIG;
+  }
+}
+
+export function parseDismissedPlaybookKeys(raw: string | null): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return Array.from(
+        new Set(parsed.filter((k): k is string => typeof k === "string" && k.trim().length > 0)),
+      );
+    }
+    return [];
+  } catch {
+    return [];
   }
 }
 
@@ -271,6 +294,23 @@ export function writeVisualStorageDiff(
       setUserStorageItem(
         VISUAL_STORAGE_KEYS.showCalculationMemory,
         String(next.showCalculationMemory),
+        userId,
+      );
+    }
+    if (partial.showEducationalPlaybooks !== undefined || next.showEducationalPlaybooks !== prev.showEducationalPlaybooks) {
+      setUserStorageItem(
+        VISUAL_STORAGE_KEYS.showEducationalPlaybooks,
+        String(next.showEducationalPlaybooks),
+        userId,
+      );
+    }
+    if (
+      partial.dismissedPlaybookKeys !== undefined ||
+      JSON.stringify(next.dismissedPlaybookKeys) !== JSON.stringify(prev.dismissedPlaybookKeys)
+    ) {
+      setUserStorageItem(
+        VISUAL_STORAGE_KEYS.dismissedPlaybookKeys,
+        JSON.stringify(next.dismissedPlaybookKeys),
         userId,
       );
     }

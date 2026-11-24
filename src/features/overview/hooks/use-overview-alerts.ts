@@ -147,7 +147,7 @@ export function useOverviewPermissionsBanner(navigate: NavigateFunction) {
   const showPushMissing = isPushDueMissing && !isPushDueDismissed;
 
   const shouldShowPermissionsBanner =
-    isNative && (showBankMissing || showPushMissing);
+    isNative && !isChecking && (showBankMissing || showPushMissing);
 
   const permissionBannerType: PermissionAlertBannerType =
     showBankMissing && showPushMissing

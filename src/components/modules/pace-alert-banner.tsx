@@ -101,7 +101,10 @@ export function PaceAlertBanner({
         </span>
         <div className="flex flex-col gap-0.5 min-w-0">
           <div className="flex items-center gap-2 min-w-0 flex-wrap">
-            <h2 className="text-sm font-semibold text-foreground truncate">
+            <h2
+              className="text-sm font-semibold text-foreground truncate"
+              title={isDeficit ? "Projeção pede ajuste no mês" : "Ritmo acima do planejado"}
+            >
               {isDeficit ? "Projeção pede ajuste no mês" : "Ritmo acima do planejado"}
             </h2>
             <Badge

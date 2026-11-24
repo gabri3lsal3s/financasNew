@@ -185,3 +185,7 @@ export type {
   CalculationMemoryViewProps,
   CalculationMemoryModalProps,
 } from "./calculation-memory";
+export {
+  InteractivePlaybookModal,
+  type InteractivePlaybookModalProps,
+} from "./playbooks";

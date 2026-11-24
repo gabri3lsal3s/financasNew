@@ -11,6 +11,7 @@ import {
   Settings,
   ShieldCheck,
   Sparkles,
+  Tags,
   Users,
   Plane,
 } from "lucide-react";
@@ -44,6 +45,7 @@ export const navItems: NavItem[] = [
   { label: "Modo Viagem", shortLabel: "Viagens", path: "/viagens", icon: Plane, tripOnly: true },
   { label: "Investimentos", shortLabel: "Carteira", path: "/investments", icon: ChartLine, featureKey: "investments" },
   { label: "Orçamentos", shortLabel: "Orçamentos", path: "/orcamentos", icon: PiggyBank, featureKey: "budgets" },
+  { label: "Categorias", shortLabel: "Categorias", path: "/categorias", icon: Tags, featureKey: "budgets" },
   { label: "Modo Família", shortLabel: "Família", path: "/familia", icon: Users, familyOnly: true },
   { label: "Relatórios", shortLabel: "Relatórios", path: "/relatorios", icon: ChartPie, featureKey: "reports" },
   { label: "Insights", shortLabel: "Insights", path: "/insights", icon: Sparkles, featureKey: "insights" },
@@ -70,6 +72,7 @@ export const navGroups: NavGroup[] = [
     items: [
       { label: "Investimentos", shortLabel: "Carteira", path: "/investments", icon: ChartLine, featureKey: "investments" },
       { label: "Orçamentos", shortLabel: "Orçamentos", path: "/orcamentos", icon: PiggyBank, featureKey: "budgets" },
+      { label: "Categorias", shortLabel: "Categorias", path: "/categorias", icon: Tags, featureKey: "budgets" },
       { label: "Modo Família", shortLabel: "Família", path: "/familia", icon: Users, familyOnly: true },
       { label: "Relatórios", shortLabel: "Relatórios", path: "/relatorios", icon: ChartPie, featureKey: "reports" },
       { label: "Insights", shortLabel: "Insights", path: "/insights", icon: Sparkles, featureKey: "insights" },

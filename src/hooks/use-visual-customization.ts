@@ -21,6 +21,7 @@ import {
   type VisibleHeaderSlot,
   type VisualCustomization,
 } from "@/domain/preferences/visual-defaults";
+import { isPlaybookVisible as checkIsPlaybookVisible } from "@/domain/playbooks/registry";
 import {
   applyVisualDomAttributes,
   readStoredVisualConfig,
@@ -192,6 +193,24 @@ export function useVisualCustomization() {
     },
     setShowCalculationMemory: (showCalculationMemory: boolean) =>
       updateVisualCustomization({ showCalculationMemory }),
+    setShowEducationalPlaybooks: (showEducationalPlaybooks: boolean) =>
+      updateVisualCustomization({ showEducationalPlaybooks }),
+    setDismissedPlaybookKeys: (dismissedPlaybookKeys: string[]) =>
+      updateVisualCustomization({ dismissedPlaybookKeys }),
+    dismissPlaybook: (moduleKey: string) => {
+      const current = config.dismissedPlaybookKeys ?? [];
+      if (!current.includes(moduleKey)) {
+        updateVisualCustomization({ dismissedPlaybookKeys: [...current, moduleKey] });
+      }
+    },
+    restoreAllPlaybooks: () =>
+      updateVisualCustomization({ dismissedPlaybookKeys: [] }),
+    isPlaybookVisible: (moduleKey: string) =>
+      checkIsPlaybookVisible(
+        moduleKey,
+        config.showEducationalPlaybooks ?? true,
+        config.dismissedPlaybookKeys ?? [],
+      ),
     resetToDefaults: () => updateVisualCustomization(DEFAULT_CONFIG),
   };
 }

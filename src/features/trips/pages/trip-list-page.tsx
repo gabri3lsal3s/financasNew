@@ -170,7 +170,7 @@ export function TripListPage() {
             type="button"
             size="sm"
             onClick={() => setIsCreateOpen(true)}
-            className="gap-1.5 w-full sm:w-auto min-h-11 sm:min-h-8 shadow-xs"
+            className="gap-1.5 shadow-xs"
           >
             <Plus className="size-4" aria-hidden="true" />
             <span>Nova Viagem</span>
