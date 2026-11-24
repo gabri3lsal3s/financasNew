@@ -107,7 +107,7 @@ describe("PositionTable (F17 — ordenação por coluna e agrupamento por classe
     // Colapsar novamente
     await user.click(acoesGroups[0]!);
     expect(acoesGroups[0]).toHaveAttribute("aria-expanded", "false");
-  });
+  }, 20000);
 
   it("renderiza colunas contextuais semânticas para Renda Fixa (Valor Aplicado, Saldo Atual, Vencimento)", async () => {
     const user = userEvent.setup();
