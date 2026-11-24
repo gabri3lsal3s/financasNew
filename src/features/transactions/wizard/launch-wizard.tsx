@@ -280,6 +280,9 @@ export function LaunchWizard({
               onToggleShowAllCategories={() => setShowAllCategories((v) => !v)}
               onScopeChange={wizard.handleScopeChange}
               onTaxDeductibleChange={(d) => set("isTaxDeductible", d)}
+              onTaxWithheldChange={wizard.handleTaxWithheldChange}
+              onSplitPFPJToggle={wizard.handleSplitPFPJToggle}
+              onSplitPFPJBusinessPercentChange={wizard.handleSplitPFPJBusinessPercentChange}
               onSplitToggle={wizard.handleSplitToggle}
               onSplitPeopleCountChange={wizard.handleSplitPeopleCountChange} onSwitchToGuided={wizard.switchToGuided}
               categories={displayedCategories} categoriesLoading={categoriesQuery.isLoading}

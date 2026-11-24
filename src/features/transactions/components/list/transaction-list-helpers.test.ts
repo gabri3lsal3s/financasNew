@@ -112,4 +112,122 @@ describe("transaction-list-helpers — computePagedFeed com Busca Semântica", (
     });
     expect(byCard.filteredFeedItems.map((i) => i.id)).toEqual(["exp-1"]);
   });
+
+  it("filtra feed por aba de negócio e sub-chips contextuais (dedutível, reembolso, transferências)", () => {
+    const bizExpenses: Expense[] = [
+      {
+        id: "exp-pj-1",
+        user_id: "u1",
+        date: "2026-11-12",
+        description: "Contador Online",
+        value: 300,
+        base_amount: 300,
+        category_id: "cat-casa",
+        payment_method: "pix",
+        card_id: null,
+        bill_competence: null,
+        installments_total: 1,
+        installment_number: 1,
+        installment_group_id: null,
+        report_weight: 1,
+        scope: "business",
+        is_tax_deductible: true,
+        created_at: "2026-11-12T10:00:00Z",
+      },
+      {
+        id: "exp-pj-card",
+        user_id: "u1",
+        date: "2026-11-13",
+        description: "Google Cloud PJ",
+        value: 150,
+        base_amount: 150,
+        category_id: "cat-casa",
+        payment_method: "credit_card",
+        card_id: "card-nubank",
+        bill_competence: "2026-11",
+        installments_total: 1,
+        installment_number: 1,
+        installment_group_id: null,
+        report_weight: 1,
+        scope: "business",
+        is_tax_deductible: false,
+        created_at: "2026-11-13T10:00:00Z",
+      },
+      {
+        id: "exp-transfer",
+        user_id: "u1",
+        date: "2026-11-14",
+        description: "Pró-Labore Transferência",
+        value: 2000,
+        base_amount: 2000,
+        category_id: "cat-casa",
+        payment_method: "transfer",
+        card_id: null,
+        bill_competence: null,
+        installments_total: 1,
+        installment_number: 1,
+        installment_group_id: null,
+        report_weight: 1,
+        scope: "business",
+        is_internal_transfer: true,
+        transfer_kind: "pro_labore",
+        transfer_pair_id: "pair-1",
+        created_at: "2026-11-14T10:00:00Z",
+      },
+    ];
+
+    const categoryById = new Map(categories.map((c) => [c.id, c]));
+
+    // 1. Todos do negócio
+    const allBiz = computePagedFeed({
+      expenses: bizExpenses,
+      incomes: [],
+      filter: "business",
+      businessSubFilter: "all",
+      searchQuery: "",
+      categoryById,
+      visibleCount: 50,
+      highlightId: null,
+    });
+    expect(allBiz.filteredFeedItems).toHaveLength(3);
+
+    // 2. Dedutíveis
+    const deductible = computePagedFeed({
+      expenses: bizExpenses,
+      incomes: [],
+      filter: "business",
+      businessSubFilter: "deductible",
+      searchQuery: "",
+      categoryById,
+      visibleCount: 50,
+      highlightId: null,
+    });
+    expect(deductible.filteredFeedItems.map((i) => i.id)).toEqual(["exp-pj-1"]);
+
+    // 3. A Reembolsar (compras no cartão)
+    const reimbursement = computePagedFeed({
+      expenses: bizExpenses,
+      incomes: [],
+      filter: "business",
+      businessSubFilter: "reimbursement",
+      searchQuery: "",
+      categoryById,
+      visibleCount: 50,
+      highlightId: null,
+    });
+    expect(reimbursement.filteredFeedItems.map((i) => i.id)).toEqual(["exp-pj-card"]);
+
+    // 4. Transferências internas
+    const transfers = computePagedFeed({
+      expenses: bizExpenses,
+      incomes: [],
+      filter: "business",
+      businessSubFilter: "transfers",
+      searchQuery: "",
+      categoryById,
+      visibleCount: 50,
+      highlightId: null,
+    });
+    expect(transfers.filteredFeedItems.map((i) => i.id)).toEqual(["exp-transfer"]);
+  });
 });

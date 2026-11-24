@@ -32,7 +32,7 @@ export function CorporateDividendsBanner({
     <div
       role="region"
       aria-label="Aviso de proventos"
-      className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 p-3.5 sm:p-4 rounded-2xl border border-border/80 bg-surface shadow-xs transition-all"
+      className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 w-full h-full min-h-[104px] sm:min-h-[84px] flex-1 p-3.5 sm:p-4 rounded-2xl border border-border/80 bg-surface shadow-xs transition-all"
     >
       <div className={cn("flex items-center gap-3 min-w-0", onDismiss && "pr-6 sm:pr-0")}>
         <div
@@ -62,7 +62,7 @@ export function CorporateDividendsBanner({
                 : "Provisionado"}
             </Badge>
           </div>
-          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 sm:line-clamp-1 break-words">
+          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 break-words">
             {hasAvailable ? (
               <>
                 {availableCount} {availableCount === 1 ? "provento disponível" : "proventos disponíveis"} totalizando{" "}

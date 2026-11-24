@@ -102,7 +102,7 @@ export function TrialEndingBanner({
       role="region"
       aria-label="Aviso do Período de Teste Pro"
       className={cn(
-        "relative w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border p-3.5 sm:p-4 shadow-xs transition-all",
+        "relative w-full h-full min-h-[104px] sm:min-h-[84px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border p-3.5 sm:p-4 shadow-xs transition-all",
         containerClasses,
         className,
       )}
@@ -125,7 +125,7 @@ export function TrialEndingBanner({
           </div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground leading-relaxed">
             <ShieldCheck className="size-3.5 shrink-0 text-positive-strong" aria-hidden="true" />
-            <span className="line-clamp-2 sm:line-clamp-1 break-words min-w-0">{descriptionText}</span>
+            <span className="line-clamp-2 break-words min-w-0">{descriptionText}</span>
           </div>
         </div>
       </div>

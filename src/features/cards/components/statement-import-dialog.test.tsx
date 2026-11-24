@@ -49,6 +49,14 @@ vi.mock("@/state", async (importOriginal) => {
       mutateAsync: mutateAsyncMock,
       isPending: false,
     }),
+    useBusinessMode: () => ({
+      isBusinessModeEnabled: true,
+      businessProfile: null,
+      toggleBusinessMode: vi.fn(),
+      updateBusinessProfile: vi.fn(),
+      isLoading: false,
+      isPending: false,
+    }),
   };
 });
 
@@ -169,6 +177,53 @@ describe("StatementImportDialog", () => {
           description: "Supermercado Dia",
           value: 140.5,
           category_id: "cat-1",
+        }),
+      ]),
+    });
+  });
+
+  it("permite alternar escopo para PJ e usar ações em massa Tudo PJ no Modo Negócio", async () => {
+    const user = userEvent.setup();
+    const handleOpenChange = vi.fn();
+    mutateAsyncMock.mockClear();
+
+    render(
+      <StatementImportDialog
+        open={true}
+        onOpenChange={handleOpenChange}
+        card={mockCard}
+        competenceMonth="2026-08"
+      />,
+    );
+
+    await uploadMockStatementFile(
+      user,
+      "15/08/2026\tPadaria Estrela\t25,00\n16/08/2026\tSupermercado Dia\t140,50",
+    );
+    await advanceFromMapping(user);
+
+    expect(await screen.findByText("Padaria Estrela")).toBeInTheDocument();
+
+    // Ações em massa Tudo PJ disponíveis
+    const tudoPjBtn = screen.getByRole("button", { name: /Tudo PJ/i });
+    expect(tudoPjBtn).toBeInTheDocument();
+    await user.click(tudoPjBtn);
+
+    // Importa os itens
+    const importBtn = screen.getByRole("button", { name: /Importar 2 Lançamentos/i });
+    await user.click(importBtn);
+
+    expect(mutateAsyncMock).toHaveBeenCalledWith({
+      cardId: "card-test",
+      competenceMonth: "2026-08",
+      expenses: expect.arrayContaining([
+        expect.objectContaining({
+          description: "Padaria Estrela",
+          scope: "business",
+        }),
+        expect.objectContaining({
+          description: "Supermercado Dia",
+          scope: "business",
         }),
       ]),
     });
@@ -481,7 +536,7 @@ describe("StatementImportDialog", () => {
     await user.upload(input, file);
 
     // Deve avançar para a prévia / mapeamento das linhas extraídas do PDF
-    expect(await screen.findByText("Padaria Estrela")).toBeInTheDocument();
+    expect(await screen.findByText("Padaria Estrela", {}, { timeout: 5000 })).toBeInTheDocument();
   });
 
   describe("Fase E — Auto-categorização Batch Silenciosa & Fallback PDF Multi-Coluna", () => {

@@ -38,6 +38,9 @@ export interface StatementReconcileStepProps {
   onRemoveItem?: (id: string) => void;
   onAddManualItem?: (item: StatementItemPatch) => void;
   onUncheckDuplicates?: () => void;
+  isBusinessModeEnabled?: boolean;
+  onToggleScope?: (id: string) => void;
+  onSetScopeAll?: (scope: "personal" | "business") => void;
   onBack: () => void;
   onConfirm: () => void;
   isPending: boolean;
@@ -64,6 +67,9 @@ export function StatementReconcileStep({
   onRemoveItem,
   onAddManualItem,
   onUncheckDuplicates,
+  isBusinessModeEnabled = false,
+  onToggleScope,
+  onSetScopeAll,
   onBack,
   onConfirm,
   isPending,
@@ -190,6 +196,8 @@ export function StatementReconcileStep({
         onOpenAddManual={() => setFormState({ open: true, mode: "add", item: null })}
         onToggleAll={onToggleAll}
         onUncheckDuplicates={onUncheckDuplicates}
+        isBusinessModeEnabled={isBusinessModeEnabled}
+        onSetScopeAll={onSetScopeAll}
       />
 
       <div className="rounded-xl border border-border/80 bg-surface divide-y divide-border/60">
@@ -219,6 +227,8 @@ export function StatementReconcileStep({
               categoryOptions={categoryOptions}
               onToggleItem={onToggleItem}
               onChangeCategory={onChangeCategory}
+              isBusinessModeEnabled={isBusinessModeEnabled}
+              onToggleScope={onToggleScope}
               onEdit={
                 onEditItem
                   ? (target) => setFormState({ open: true, mode: "edit", item: target })

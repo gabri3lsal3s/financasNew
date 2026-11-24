@@ -2,7 +2,7 @@ import { useMemo, type ReactNode } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { MoneyText } from "@/components/ui/money-text";
-import { detectScopeConflict } from "@/domain/business";
+import { detectScopeConflict, splitMixedExpenseByPercent } from "@/domain/business";
 import { formatDateBR, monthLabel } from "@/lib/date";
 import { PAYMENT_METHOD_LABELS, RECURRENCE_FREQUENCY_LABELS } from "@/lib/labels";
 import { buildRecurrenceOccurrences } from "@/domain/recurrences";
@@ -67,12 +67,35 @@ export function StepReview({
   const recurrenceOccurrences = recurrenceRule ? buildRecurrenceOccurrences(recurrenceRule) : [];
   const recurrencePreview = recurrenceOccurrences.slice(0, 12);
 
+  const isSplitPFPJ = Boolean(isBusinessModeEnabled && isExpense && state.splitPFPJEnabled);
+  const isBusiness = (state.scope ?? "personal") === "business";
+  const splitPFPJResult = isSplitPFPJ
+    ? splitMixedExpenseByPercent({
+        totalCents: state.valueCents,
+        businessPercent: state.splitPFPJBusinessPercent ?? 50,
+      })
+    : null;
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 rounded-xl border border-border/80 bg-surface p-4 shadow-xs">
         <Row label="Tipo" value={isExpense ? "Despesa" : "Renda"} />
         <Row label="Valor" value={<MoneyText cents={state.valueCents} tone="default" />} />
-        <Row label="Sua Participação / Rateio" value={reportWeightLabel(effectiveReportWeight(state), state.valueCents)} />
+        {!isBusiness && !isSplitPFPJ ? (
+          <Row label="Sua Participação / Rateio" value={reportWeightLabel(effectiveReportWeight(state), state.valueCents)} />
+        ) : null}
+        {!isExpense && isBusiness && state.taxWithheldCents && state.taxWithheldCents > 0 ? (
+          <>
+            <Row
+              label="Retenção na Fonte (IRRF/ISS)"
+              value={<MoneyText cents={state.taxWithheldCents} tone="negative" />}
+            />
+            <Row
+              label="Caixa Líquido a Receber"
+              value={<MoneyText cents={state.valueCents - state.taxWithheldCents} tone="positive" />}
+            />
+          </>
+        ) : null}
         <Row label="Categoria" value={categoryName ?? "—"} />
         {tripName ? (
           <Row
@@ -95,7 +118,11 @@ export function StepReview({
           <Row
             label="Esfera"
             value={
-              state.scope === "business" ? (
+              isSplitPFPJ ? (
+                <Badge variant="warning" size="xs">
+                  Uso Misto (Split PF/PJ)
+                </Badge>
+              ) : state.scope === "business" ? (
                 <Badge variant="portfolio" size="xs">
                   Meu Negócio (PJ)
                 </Badge>
@@ -105,17 +132,32 @@ export function StepReview({
             }
           />
         ) : null}
-        {isBusinessModeEnabled && state.scope === "business" && isExpense && state.isTaxDeductible ? (
+        {isSplitPFPJ && splitPFPJResult ? (
+          <Row
+            label="Divisão PF / PJ"
+            value={
+              <div className="flex flex-col items-end gap-0.5 text-xs">
+                <span>
+                  PF: <strong className="font-semibold text-foreground">R$ {(splitPFPJResult.personalCents / 100).toFixed(2).replace(".", ",")}</strong> ({100 - (state.splitPFPJBusinessPercent ?? 50)}%)
+                </span>
+                <span>
+                  PJ: <strong className="font-semibold text-portfolio">R$ {(splitPFPJResult.businessCents / 100).toFixed(2).replace(".", ",")}</strong> ({state.splitPFPJBusinessPercent ?? 50}%)
+                </span>
+              </div>
+            }
+          />
+        ) : null}
+        {isBusinessModeEnabled && (state.scope === "business" || isSplitPFPJ) && isExpense && state.isTaxDeductible ? (
           <Row
             label="Dedutibilidade"
             value={
               <Badge variant="positive" size="xs">
-                Dedutível para IR
+                Dedutível para IR (fatia PJ)
               </Badge>
             }
           />
         ) : null}
-        {isFamilyModeEnabled && (!isBusinessModeEnabled || state.scope !== "business") ? (
+        {isFamilyModeEnabled && (!isBusinessModeEnabled || (!isBusiness && !isSplitPFPJ)) ? (
           <Row
             label="Modo Família"
             value={

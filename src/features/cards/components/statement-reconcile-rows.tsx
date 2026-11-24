@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCheck, Copy, Edit3, Sparkles, Trash2 } from "lucide-react";
+import { AlertTriangle, Briefcase, CheckCheck, Copy, Edit3, Sparkles, Trash2 } from "lucide-react";
 import { Badge, Button, Checkbox, MoneyText, Select, type SelectOption } from "@/components/ui";
 import type { ExistingExpenseForReconciliation, ReconciliationItem } from "@/domain/reconciliation";
 import { formatDateBR } from "@/lib/date";
@@ -66,6 +66,8 @@ export interface StatementReconcileItemRowProps {
   onChangeCategory: (id: string, categoryId: string) => void;
   onEdit?: (item: ReconciliationItem) => void;
   onRemove?: (id: string) => void;
+  isBusinessModeEnabled?: boolean;
+  onToggleScope?: (id: string) => void;
 }
 
 export function StatementReconcileItemRow({
@@ -75,6 +77,8 @@ export function StatementReconcileItemRow({
   onChangeCategory,
   onEdit,
   onRemove,
+  isBusinessModeEnabled = false,
+  onToggleScope,
 }: StatementReconcileItemRowProps) {
   const tx = item.transaction;
 
@@ -165,6 +169,29 @@ export function StatementReconcileItemRow({
       </div>
 
       <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 shrink-0 pl-7 sm:pl-0 w-full sm:w-auto">
+        {isBusinessModeEnabled ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            className={`h-7 px-2 text-[11px] font-semibold border shrink-0 cursor-pointer ${
+              (item.scope ?? "personal") === "business"
+                ? "border-portfolio/40 bg-portfolio/15 text-portfolio hover:bg-portfolio/20"
+                : "border-border/80 bg-surface text-muted-foreground hover:text-foreground"
+            }`}
+            onClick={() => onToggleScope?.(tx.id)}
+            title={
+              (item.scope ?? "personal") === "business"
+                ? "Despesa do Negócio (PJ). Clique para mudar para Pessoal (PF)."
+                : "Despesa Pessoal (PF). Clique para mudar para Negócio (PJ)."
+            }
+            aria-label={`Alternar esfera de ${tx.cleanDescription} entre Pessoal e Negócio`}
+          >
+            <Briefcase className="size-3 mr-1" aria-hidden="true" />
+            <span>{(item.scope ?? "personal") === "business" ? "PJ" : "PF"}</span>
+          </Button>
+        ) : null}
+
         <div className="flex-1 sm:flex-initial sm:w-44 min-w-0">
           <Select
             value={item.selectedCategoryId}

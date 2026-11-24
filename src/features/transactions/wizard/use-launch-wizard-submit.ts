@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { splitMixedExpenseByPercent } from "@/domain/business";
 import { extractLastFourDigits } from "@/domain/notifications";
 import { getErrorMessage } from "@/services/errors";
 import { recordTransactionLearning } from "@/services/merchant-learning";
@@ -123,6 +124,57 @@ export function useLaunchWizardSubmit(params: UseLaunchWizardSubmitParams) {
             : {}),
         });
       } else if (state.type === "expense") {
+        if (state.splitPFPJEnabled) {
+          const splitResult = splitMixedExpenseByPercent({
+            totalCents: state.valueCents,
+            businessPercent: state.splitPFPJBusinessPercent ?? 50,
+          });
+
+          // 1. Lançamento da perna pessoal (PF)
+          await createExpense.mutateAsync(
+            buildExpensePayload(
+              {
+                ...state,
+                valueCents: splitResult.personalCents,
+                scope: "personal",
+                reportWeight: 1,
+                description: state.description
+                  ? `${state.description} (Parcela Pessoal)`
+                  : "Despesa mista (Parcela Pessoal)",
+              },
+              selectedCard?.closing_day ?? null,
+            ),
+          );
+
+          // 2. Lançamento da perna negócio (PJ)
+          await createExpense.mutateAsync(
+            buildExpensePayload(
+              {
+                ...state,
+                valueCents: splitResult.businessCents,
+                scope: "business",
+                reportWeight: 1,
+                isTaxDeductible: state.isTaxDeductible,
+                description: state.description
+                  ? `${state.description} (Parcela Negócio)`
+                  : "Despesa mista (Parcela Negócio)",
+              },
+              selectedCard?.closing_day ?? null,
+            ),
+          );
+
+          triggerSensory("success");
+          pushToast({
+            title: "Despesa mista dividida entre PF e PJ com sucesso",
+            description: `Registrados R$ ${(splitResult.personalCents / 100).toFixed(2).replace(".", ",")} no Pessoal e R$ ${(splitResult.businessCents / 100).toFixed(2).replace(".", ",")} no Negócio.`,
+            variant: "success",
+          });
+          onSuccess?.();
+          onOpenChange?.(false);
+          setState(defaultLaunchState(initialType, defaultScope === "business" ? { scope: "business" } : undefined));
+          return;
+        }
+
         createdExpenseId = await createExpense.mutateAsync(buildExpensePayload(state, selectedCard?.closing_day ?? null));
         if (state.tripId && createdExpenseId) {
           try {
@@ -146,12 +198,14 @@ export function useLaunchWizardSubmit(params: UseLaunchWizardSubmitParams) {
           description: state.description || null, reportWeight: effectiveReportWeight(state),
           installments: buildIncomeInstallments({ totalCents: state.valueCents, count: state.installments, startDate: state.date }),
           isFamily: state.isFamily,
+          taxWithheld: state.taxWithheldCents ? state.taxWithheldCents / 100 : undefined,
           ...(launchScope !== "personal" ? { scope: launchScope } : {}),
         });
       } else {
         const input = {
           value: state.valueCents / 100, date: state.date, category_id: state.categoryId, receive_type: state.receiveType,
           description: state.description || null, report_weight: effectiveReportWeight(state), source_ref: null, is_family: state.isFamily,
+          tax_withheld: state.taxWithheldCents ? state.taxWithheldCents / 100 : undefined,
           ...(launchScope !== "personal" ? { scope: launchScope } : {}),
         } satisfies Omit<DbInsert<Income>, "user_id">;
         await createIncome.mutateAsync(input);

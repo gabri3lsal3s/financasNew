@@ -1,11 +1,11 @@
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { filterExpensesByViewScope, filterIncomesByViewScope } from "@/domain/business";
-import type { FeedFilter } from "@/domain/expenses";
+import type { BusinessSubFilter, FeedFilter } from "@/domain/expenses";
 import { parseStructuredSearchQuery } from "@/domain/search";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
-import { useSafeViewScope } from "@/hooks/use-safe-business-scope";
+import { useSafeBusinessMode, useSafeViewScope } from "@/hooks/use-safe-business-scope";
 import { currentMonth, isValidMonth, shiftMonth, todayLocalIso } from "@/lib/date";
 import { RECURRENCE_FREQUENCY_LABELS } from "@/lib/labels";
 import { useMerchantLearning } from "@/services/merchant-learning";
@@ -20,7 +20,7 @@ import {
   usePermission,
   useRecurrences,
 } from "@/state";
-import type { Expense, Income } from "@/types";
+import type { Expense, Income, ViewScope } from "@/types";
 import {
   TRANSACTIONS_PAGE_SIZE,
   buildPriceEvolutionMap,
@@ -83,11 +83,24 @@ export function useTransactionList() {
     [cardsQuery.data],
   );
 
+  const { isBusinessModeEnabled } = useSafeBusinessMode();
+  const [businessSubFilter, setBusinessSubFilter] = useState<BusinessSubFilter>("all");
+
+  const paramFilter = searchParams.get("tipo") ?? searchParams.get("filter");
+  const initialFilter = useMemo(() => resolveInitialFeedFilter(paramFilter), [paramFilter]);
+  const [filter, setFilter] = useState<FeedFilter>(initialFilter);
+  const [prevInitialFilter, setPrevInitialFilter] = useState<FeedFilter>(initialFilter);
+  if (prevInitialFilter !== initialFilter) {
+    setPrevInitialFilter(initialFilter);
+    setFilter(initialFilter);
+  }
+
   const { effectiveViewScope } = useSafeViewScope();
+  const targetScope: ViewScope = filter === "business" ? "business" : effectiveViewScope;
   const { memory: merchantLearning } = useMerchantLearning();
   const expenses = useMemo(
-    () => filterExpensesByViewScope(expensesQuery.data ?? [], effectiveViewScope, { mode: "cashflow" }),
-    [expensesQuery.data, effectiveViewScope],
+    () => filterExpensesByViewScope(expensesQuery.data ?? [], targetScope, { mode: "cashflow" }),
+    [expensesQuery.data, targetScope],
   );
   const deduplicatedCashflowHistory = useMemo(() => {
     const merged = [
@@ -97,13 +110,13 @@ export function useTransactionList() {
       ...(prevMonth3Query.data ?? []),
     ];
     const unique = Array.from(new Map(merged.map((e) => [e.id, e])).values());
-    return filterExpensesByViewScope(unique, effectiveViewScope, { mode: "cashflow" });
+    return filterExpensesByViewScope(unique, targetScope, { mode: "cashflow" });
   }, [
     expensesQuery.data,
     prevMonth1Query.data,
     prevMonth2Query.data,
     prevMonth3Query.data,
-    effectiveViewScope,
+    targetScope,
   ]);
   const allHistoryExpenses = useMemo(
     () =>
@@ -114,26 +127,17 @@ export function useTransactionList() {
           ...(prevMonth2Query.data ?? []),
           ...(prevMonth3Query.data ?? []),
         ],
-        effectiveViewScope,
+        targetScope,
         { mode: "dre" },
       ),
-    [expensesQuery.data, prevMonth1Query.data, prevMonth2Query.data, prevMonth3Query.data, effectiveViewScope],
+    [expensesQuery.data, prevMonth1Query.data, prevMonth2Query.data, prevMonth3Query.data, targetScope],
   );
   const incomes = useMemo(
-    () => filterIncomesByViewScope(incomesQuery.data ?? [], effectiveViewScope, { mode: "cashflow" }),
-    [incomesQuery.data, effectiveViewScope],
+    () => filterIncomesByViewScope(incomesQuery.data ?? [], targetScope, { mode: "cashflow" }),
+    [incomesQuery.data, targetScope],
   );
 
   const totals = useMemo(() => computeTransactionTotals(expenses, incomes), [expenses, incomes]);
-
-  const paramFilter = searchParams.get("tipo") ?? searchParams.get("filter");
-  const initialFilter = useMemo(() => resolveInitialFeedFilter(paramFilter), [paramFilter]);
-  const [filter, setFilter] = useState<FeedFilter>(initialFilter);
-  const [prevInitialFilter, setPrevInitialFilter] = useState<FeedFilter>(initialFilter);
-  if (prevInitialFilter !== initialFilter) {
-    setPrevInitialFilter(initialFilter);
-    setFilter(initialFilter);
-  }
 
   const paramBusca = searchParams.get("busca") ?? "";
   const [searchQuery, setSearchQueryState] = useState(paramBusca);
@@ -200,6 +204,7 @@ export function useTransactionList() {
         expenses: usesMultiMonthScope ? deduplicatedCashflowHistory : expenses,
         incomes,
         filter,
+        businessSubFilter,
         searchQuery,
         categoryById,
         cardById,
@@ -215,6 +220,7 @@ export function useTransactionList() {
       expenses,
       incomes,
       filter,
+      businessSubFilter,
       searchQuery,
       categoryById,
       cardById,
@@ -352,6 +358,9 @@ export function useTransactionList() {
     month,
     handleMonthChange,
     isFamilyModeEnabled: Boolean(isFamilyModeEnabled),
+    isBusinessModeEnabled,
+    businessSubFilter,
+    setBusinessSubFilter,
     loading,
     error,
     categoryById,

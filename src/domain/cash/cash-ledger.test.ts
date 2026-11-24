@@ -304,4 +304,33 @@ describe("Safe-to-Spend Forecast — calculateSafeToSpend", () => {
     expect(res.safeToSpendWithBudgetsCents).toBe(100000);
     expect(res.safeToSpendWithReceivablesCents).toBe(100000);
   });
+
+  it("desconta retenções tributárias na fonte (tax_withheld) refletindo estritamente a entrada líquida de caixa", () => {
+    const res = calculateRealCashBalance({
+      incomes: [
+        { id: "inc-rpa", date: "2026-08-01", value: 4000, tax_withheld: 600, description: "Consultoria RPA" },
+      ],
+      referenceDate: "2026-08-24",
+    });
+
+    // Bruto R$ 4.000, Retido R$ 600 -> Entrada real em caixa = R$ 3.400 = 340000 centavos
+    expect(res.currentBalanceCents).toBe(340000);
+    expect(res.inflowSinceCheckpointCents).toBe(340000);
+  });
+
+  it("deduz estritamente o Caixa Derivado PJ (derivedBusinessCashCents) no Safe-to-Spend em conta única", () => {
+    const res = calculateSafeToSpend({
+      realCashBalanceCents: 500000, // R$ 5.000 saldo no banco
+      openInvoicesCents: 100000,    // R$ 1.000 fatura aberta
+      payablePendingCents: 50000,   // R$ 500 dívidas a pagar
+      derivedBusinessCashCents: 200000, // R$ 2.000 pertencem à operação da empresa em conta compartilhada
+    });
+
+    // Obrigações = 1.000 + 500 + 2.000 = R$ 3.500
+    expect(res.derivedBusinessCashCents).toBe(200000);
+    expect(res.committedObligationsCents).toBe(350000);
+
+    // Saldo Livre Real da PF = 5.000 - 3.500 = R$ 1.500
+    expect(res.safeToSpendCents).toBe(150000);
+  });
 });

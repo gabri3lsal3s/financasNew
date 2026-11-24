@@ -1,6 +1,11 @@
 import type { ColumnMapping, RawParsedRow, StatementTransaction } from "../types";
 import { inferChargeKindFromDescription } from "@/domain/cards/charges";
-import { cleanDescription, isLikelyIncomeDescription, isPaymentOrSettlement } from "../clean";
+import {
+  classifyTransactionNature,
+  cleanDescription,
+  isLikelyIncomeDescription,
+  isPaymentOrSettlement,
+} from "../clean";
 import { extractInstallmentInfo } from "../installments";
 import { generateStatementHash } from "../hash";
 import { normalizeDateToISO, parseAmountToCents, sniffColumnMapping } from "./type-sniffer";
@@ -13,6 +18,7 @@ export * from "./csv-parser";
 export * from "./ofx-parser";
 export * from "./text-parser";
 export * from "./spreadsheet-parser";
+export * from "./spatial-pdf-parser";
 
 function hasExplicitYearToken(rawDate: string): boolean {
   const t = rawDate.trim();
@@ -122,33 +128,54 @@ export function buildTransactionsFromRows(
       }
     }
 
-    const isPayment = isPaymentOrSettlement(rawDesc);
+    const isPayment = isPaymentOrSettlement(rawDesc, isCredit);
     const isRefund = isCredit && !isPayment;
 
     // rawDescription preserva o texto original da linha para que as palavras-chave
     // de renda estejam disponíveis ao motor de classificação no reconciliador.
     const rawDescForTx = row.rawText || rawDesc;
     const cleanDesc = cleanDescription(rawDesc) || rawDesc.trim() || "Transação";
-    const installment = extractInstallmentInfo(rawDesc);
+    const installment = extractInstallmentInfo(rawDesc, date);
 
-    const occKey = `${date}|${amountCents}|${cleanDesc.toLowerCase()}`;
+    // Clamping de datas anteriores a 2026-01-01 preservando a data original no hash
+    const APP_START_DATE = "2026-01-01";
+    let effectiveDate = date;
+    let originalDate: string | undefined;
+    if (date < APP_START_DATE) {
+      originalDate = date;
+      effectiveDate = APP_START_DATE;
+    }
+
+    const hashDate = originalDate || effectiveDate;
+    const occKey = `${hashDate}|${amountCents}|${cleanDesc.toLowerCase()}`;
     const occIndex = occurrenceCounter.get(occKey) ?? 0;
     occurrenceCounter.set(occKey, occIndex + 1);
 
     const statementHash = generateStatementHash({
       cardId: params.cardId,
       competenceMonth: params.competenceMonth,
-      date,
+      date: hashDate,
       amountCents,
       cleanDescription: cleanDesc,
       occurrenceIndex: occIndex,
+    });
+
+    const inferredChargeKind = inferChargeKindFromDescription(rawDescForTx);
+    const nature = classifyTransactionNature({
+      rawDescription: rawDescForTx,
+      isCredit,
+      isPayment,
+      isRefund,
+      hasChargeKind: inferredChargeKind != null && inferredChargeKind !== "regular",
     });
 
     transactions.push({
       id: `stmt-${index}`,
       index: index++,
       occurrenceIndex: occIndex,
-      date,
+      date: effectiveDate,
+      originalDate,
+      nature,
       rawDescription: rawDescForTx,
       cleanDescription: cleanDesc,
       amountCents,
@@ -156,7 +183,7 @@ export function buildTransactionsFromRows(
       isPayment,
       installment,
       statementHash,
-      inferredChargeKind: inferChargeKindFromDescription(rawDescForTx),
+      inferredChargeKind,
     });
   }
 

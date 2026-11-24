@@ -148,4 +148,12 @@ describe("spreadsheet-parser (.xlsx, .xls HTML e SpreadsheetML XML — 0 IA)", (
     expect(rows[0]?.cells).toEqual(["Data", "Estabelecimento", "Valor"]);
     expect(rows[1]?.cells).toEqual(["2026-08-15", "Amazon Brasil 02/05", "199.90"]);
   });
+
+  it("rejeita com erro claro planilhas binárias legadas .xls (BIFF8 0xD0, 0xCF, 0x11, 0xE0)", async () => {
+    const biff8Buffer = new Uint8Array([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb2, 0xc3, 0xd4]).buffer;
+
+    await expect(parseSpreadsheetOrHtmlToRows(biff8Buffer)).rejects.toThrow(
+      "Planilhas no formato binário legado (.xls / Excel 97-2003) não são suportadas diretamente",
+    );
+  });
 });

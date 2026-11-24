@@ -37,7 +37,7 @@ export function OnboardingCarouselBanner({
     <div
       role="region"
       aria-label="Progresso dos primeiros passos"
-      className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 p-3.5 sm:p-4 rounded-2xl border border-border/80 bg-surface shadow-xs transition-all"
+      className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 w-full h-full min-h-[104px] sm:min-h-[84px] flex-1 p-3.5 sm:p-4 rounded-2xl border border-border/80 bg-surface shadow-xs transition-all"
     >
       <div className="flex items-start sm:items-center gap-3 min-w-0 pr-6 sm:pr-0 flex-1">
         <span
@@ -55,7 +55,7 @@ export function OnboardingCarouselBanner({
               {progress.done}/{progress.total} concluídos
             </Badge>
           </div>
-          <p className="text-xs text-muted-foreground line-clamp-2 sm:line-clamp-1 break-words">
+          <p className="text-xs text-muted-foreground line-clamp-2 break-words">
             {nextStepLabel
               ? `Próximo passo: ${nextStepLabel}`
               : "Finalize os passos iniciais quando preferir."}

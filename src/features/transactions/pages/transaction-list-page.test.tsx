@@ -72,6 +72,14 @@ vi.mock("react-router", () => ({
 }));
 
 vi.mock("@/state", () => ({
+  useBusinessMode: () => ({
+    isBusinessModeEnabled: false,
+    businessProfile: null,
+    toggleBusinessMode: vi.fn(),
+    updateBusinessProfile: vi.fn(),
+    isLoading: false,
+    isPending: false,
+  }),
   useFamilyMode: () => ({
     isFamilyModeEnabled: mockIsFamilyModeEnabled,
     toggleFamilyMode: vi.fn(),

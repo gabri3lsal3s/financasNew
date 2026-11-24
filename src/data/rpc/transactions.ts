@@ -245,6 +245,7 @@ export interface CreateIncomeInstallmentsParams {
   installments: InstallmentInput[];
   isFamily?: boolean;
   scope?: TransactionScope | null;
+  taxWithheld?: number;
 }
 
 /** Renda parcelada (1–60) numa única transação — invariantes D12. */
@@ -264,6 +265,9 @@ export async function createIncomeInstallments(params: CreateIncomeInstallmentsP
   };
   if (params.scope && params.scope !== "personal") {
     args.p_scope = params.scope;
+  }
+  if (params.taxWithheld && params.taxWithheld > 0) {
+    args.p_tax_withheld = params.taxWithheld;
   }
   return unwrapRpc(callRpc("create_income_installments", args));
 }

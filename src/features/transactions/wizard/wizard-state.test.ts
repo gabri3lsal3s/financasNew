@@ -216,6 +216,21 @@ describe("peso no relatório — presets e valor personalizado", () => {
         reportCustomAmountCents: 10000,
       }),
     ).toBe(1);
+    // Trava do Modo Negócio e Split PF/PJ: peso é sempre 1.0 nominal
+    expect(
+      effectiveReportWeight({
+        ...base,
+        scope: "business",
+        reportWeight: 0.5,
+      }),
+    ).toBe(1);
+    expect(
+      effectiveReportWeight({
+        ...base,
+        splitPFPJEnabled: true,
+        reportWeight: 0.25,
+      }),
+    ).toBe(1);
   });
 });
 
@@ -367,6 +382,39 @@ describe("Validação Zod dos Passos do Wizard (D10 / Fase 17)", () => {
     if (parsed.success) {
       expect(parsed.data.scope).toBe("business");
       expect(parsed.data.isTaxDeductible).toBe(true);
+    }
+  });
+
+  it("valida retenção na fonte no wizard sem permitir valor maior que o faturamento bruto", () => {
+    const incomeState = defaultLaunchState("income", {
+      scope: "business",
+      valueCents: 100000, // R$ 1.000,00
+      taxWithheldCents: 15000, // R$ 150,00
+      categoryId: "cat-servicos",
+    });
+    const validParsed = launchStateSchema.safeParse(incomeState);
+    expect(validParsed.success).toBe(true);
+
+    const invalidIncomeState = {
+      ...incomeState,
+      taxWithheldCents: 120000, // R$ 1.200,00 > R$ 1.000,00
+    };
+    const invalidParsed = launchStateSchema.safeParse(invalidIncomeState);
+    expect(invalidParsed.success).toBe(false);
+  });
+
+  it("preserva configuração de divisão de uso misto (Split PF/PJ)", () => {
+    const splitState = defaultLaunchState("expense", {
+      splitPFPJEnabled: true,
+      splitPFPJBusinessPercent: 70,
+      valueCents: 20000,
+      categoryId: "cat-internet",
+    });
+    const parsed = launchStateSchema.safeParse(splitState);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.splitPFPJEnabled).toBe(true);
+      expect(parsed.data.splitPFPJBusinessPercent).toBe(70);
     }
   });
 

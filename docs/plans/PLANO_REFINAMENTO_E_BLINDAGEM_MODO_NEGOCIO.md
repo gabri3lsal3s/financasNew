@@ -1,8 +1,8 @@
-# AUDITORIA ARQUITETURAL, MATEMÁTICA & PLANO DE REFINAMENTO v2.0: MODO NEGÓCIO (MEI / AUTÔNOMO)
+# AUDITORIA ARQUITETURAL, MATEMÁTICA & PLANO DE REFINAMENTO v2.1: MODO NEGÓCIO (MEI / AUTÔNOMO)
 
 > **Documento Canônico de Auditoria, Blindagem Contábil, Didática ao Usuário e Plano de Execução**  
-> **Status:** Aprovado para Execução  
-> **Versão:** 2.0 (Consolidada com Meta-Análise, Guia Didático e Memória de Cálculo)  
+> **Status:** Concluído com Êxito — Fases 1, 2 e 3 Implementadas, Verificadas e Blindadas  
+> **Versão:** 2.1 (Canônica: Auditada contra o Código Real + 5 Ajustes Cirúrgicos + 100% dos Quality Gates Aprovados)  
 > **Data:** Novembro de 2026  
 > **Público-alvo:** Engenheiros de Software, Product Designers e Auditores de Governança Financeira
 
@@ -30,17 +30,17 @@ Na implementação inicial da Fase 2A, foi inserido um componente flutuante no t
 
 ### 2.2 Por que a eliminação deste filtro foi mandatória (Auditada e Corrigida):
 - **Sobrecarga Cognitiva e Fadiga Visual (*Accent Fatigue*):** O usuário abria a Home ou o Extrato e se deparava com um seletor permanente disputando atenção com o saldo e os cartões.
-- **Conflito com o Modelo Mental de Área Dedicada:** No Modo Família, não existe um switcher global `[ Tudo | Individual | Família ]` no topo da Home. O usuário gerencia a família em `/familia` e apenas categoriza os gastos no lançamento. O Modo Negócio deve seguir a mesma elegância.
+- **Conflito com o Modelo Mental de Área Dedicada:** No Modo Família, não existe um switcher global `[ Tudo | Individual | Família ]` no topo da Home. O usuário gerencia a família em `/familia` e apenas categoriza os gastos no lançamento. O Modo Negócio segue a mesma elegância.
 - **A Solução Adotada (Opção 1 + Opção 3):**
   - **Home Consolidada (Opção 1):** A Home exibe a visão financeira consolidada real do usuário, identificando transações da empresa com um badge sutil `PJ`, e neutralizando transferências internas (como pró-labore) para não duplicar dinheiro.
-  - **Filtro Contextual no Extrato (Opção 3):** O filtro por escopo é transferido exclusivamente para onde o usuário audita lançamentos: o Extrato de Transações (`/transacoes`), como uma aba natural e discreta.
+  - **Filtro Contextual no Extrato (Opção 3):** O filtro por escopo é transferido exclusivamente para onde o usuário audita lançamentos: o Extrato de Transações (`/transacoes`), como uma aba natural e discreta com chips rápidos contextuais.
   - **Visão Dedicada nos Relatórios (`/relatorios`):** Seletor de esfera analítica (Consolidado, Pessoal, Negócio) estritamente dentro da aba de Finanças & DRE.
 
 ---
 
 ## 3. AUDITORIA PROFUNDA DE FRAGILIDADES, INCONGRUÊNCIAS & MATEMÁTICA FINANCEIRA
 
-Abaixo está o levantamento exaustivo de todas as variáveis e incongruências que surgem ao relacionar Pessoa Física e Negócio, com a definição técnica de como o Axir soluciona cada uma.
+Abaixo está o levantamento exaustivo de todas as variáveis e incongruências auditadas contra o código real do repositório, com a definição técnica de como o Axir soluciona cada uma.
 
 ```mermaid
 flowchart TD
@@ -54,23 +54,23 @@ flowchart TD
         I7["7. Pesos Fracionados (report_weight)"]
         I8["8. Teto MEI Proporcional de Abertura"]
         I9["9. Faixa de Tolerância +20% MEI"]
-        I10["10. Retenção de Tributos na Fonte (IRRF/ISS)"]
-        I11["11. Capital de Giro Inicial (Aporte PF->PJ)"]
+        I10["10. Retenção Tributária (Autônomo/Simples)"]
+        I11["11. Saldo Inicial PJ vs. Checkpoint Bancário"]
         I12["12. Importação Mista de Fatura de Cartão"]
     end
 
     subgraph SOL["Soluções Canônicas Axir"]
         S1["Caixa Operacional Derivado sem inflar Home"]
-        S2["Transferência Pareada com transfer_group_id"]
+        S2["Transferência Pareada via transfer_pair_id"]
         S3["Reembolso Patrimonial Neutro"]
         S4["Orçamento Doméstico isolado (scope='personal')"]
         S5["Cálculo de Reserva com base estrita pessoal"]
         S6["Contas a Receber como Ativo PJ"]
         S7["Trava de report_weight=1.0 + Split PF/PJ"]
-        S8["Teto Pro-Rata por Data de Abertura"]
+        S8["Teto Pro-Rata por Data de Abertura (com clamp)"]
         S9["Semáforo de Tolerância e Enquadramento"]
         S10["Tratamento de Valor Bruto vs. Líquido"]
-        S11["Aporte de Capital e Saldo de Abertura"]
+        S11["openingBalanceCents em BusinessProfileSettings"]
         S12["Classificação Individual de Itens da Fatura"]
     end
 
@@ -119,14 +119,22 @@ Originalmente, o campo `report_weight` (valor de 0.0 a 1.0) foi criado para expu
 
 ### 3.2 As 12 Incongruências de Cálculo e Soluções Estruturais
 
-#### Incongruência 1: Conta Bancária Única vs. Contas Separadas (Checkpoints de Saldo)
-- **O Problema:** A grande maioria dos autônomos e MEIs no Brasil não possui conta PJ formal separada (ou mistura todas as transações na mesma conta bancária do dia a dia).
+#### Incongruência 1: Conta Bancária Única vs. Mista & Saldo Inicial Virtual PJ
+- **O Problema:** A grande maioria dos autônomos e MEIs no Brasil não possui conta PJ formal separada (mistura todas as transações na mesma conta bancária do dia a dia).
   - Se o app exigisse dois checkpoints separados ("Saldo Bancário Pessoal" e "Saldo Bancário do Negócio") e o usuário digitasse o saldo de sua conta única em ambos (ex.: R$ 8.000), a Home Consolidada somaria R$ 16.000, criando um saldo fantasma.
 - **A Solução Canônica:**
-  - O checkpoint bancário ("Bater com o banco") continua sendo o **saldo real da conta no banco**.
+  - O checkpoint bancário (`cash_checkpoints`) continua sendo restrito à **reconciliação bancária física real da conta**.
+  - O saldo inicial de caixa da empresa não cria um checkpoint concorrente: ele é salvo como `openingBalanceCents` dentro de `BusinessProfileSettings` no `custom_settings`.
   - Na tela `/negocio`, o caixa da empresa é calculado como **Caixa Operacional Derivado**:
-    $$\text{Caixa do Negócio} = \text{Saldo Inicial} + \text{Aportes PF}\rightarrow\text{PJ} + \text{Receitas PJ Recebidas} - \text{Custos PJ Pagos} - \text{Pró-labores Retirados} - \text{Reembolsos Pagos}$$
-  - Isso dispensa a obrigatoriedade de conta bancária jurídica separada e mantém o saldo consolidado da Home 100% compatível com a vida real.
+    $$\begin{aligned}
+    \text{Caixa Derivado PJ} = &\text{ openingBalanceCents} \\
+    &+ \sum \text{Aportes de Capital (PF }\rightarrow\text{ PJ)} \\
+    &+ \sum (\text{Receita Bruta PJ} - \text{Retenções na Fonte}) \text{ [à vista/compensadas]} \\
+    &- \sum \text{Despesas PJ Pagas em Conta/PIX/Débito} \\
+    &- \sum \text{Pró-Labores Transferidos (PJ }\rightarrow\text{ PF)} \\
+    &- \sum \text{Reembolsos Pagos à PF por Compras em Cartão PF}
+    \end{aligned}$$
+  - **Invariante Matemática:** Compras PJ feitas no cartão de crédito PF **NUNCA** saem do Caixa Derivado PJ na data da compra; saem estritamente quando quitadas via `card_reimbursement`.
 
 ---
 
@@ -136,10 +144,11 @@ Originalmente, o campo `report_weight` (valor de 0.0 a 1.0) foi criado para expu
     $$\text{Receitas Totais} = \text{R\$\,10.000 (clientes)} + \text{R\$\,4.000 (pró-labore)} = \text{R\$\,14.000}$$
     Isso geraria uma **falsa ilusão de riqueza**, pois o usuário não ganhou R$ 14.000; ganhou R$ 10.000 e apenas movimentou R$ 4.000 de um bolso para o outro.
 - **A Solução Canônica:**
-  - O mecanismo de **Transferências Internas Pareadas (`is_internal_transfer = true`, `transfer_kind = 'pro_labore'`, `transfer_group_id`)**:
+  - O mecanismo de **Transferências Internas Pareadas (`is_internal_transfer = true`, `transfer_kind = 'pro_labore'`, `transfer_pair_id`)**:
     - **Na Home Consolidada:** É **100% neutralizada**. O fluxo de caixa consolidado registra apenas os R$ 10.000 externos de clientes.
     - **No DRE da Empresa (`/negocio`):** Faturamento Bruto R$ 10.000 $\rightarrow$ Custos $\rightarrow$ Lucro Operacional $\rightarrow$ Pró-Labore R$ 4.000 $\rightarrow$ Lucro Retido da Empresa.
     - **Nos Relatórios Pessoais (`/relatorios` - visão Pessoal):** Os R$ 4.000 aparecem exatamente como o salário/renda do mês com o qual o usuário paga o aluguel, condomínio e mercado da família.
+    - **Integridade Atômica no Banco:** O trigger PostgreSQL `guard_paired_transfer_mutation()` já impede alterações ou exclusões desbalanceadas com erro `42501`. Na UI, a exclusão/edição opera sobre o par completo via `delete_internal_transfer_pair`.
 
 ---
 
@@ -152,6 +161,7 @@ Originalmente, o campo `report_weight` (valor de 0.0 a 1.0) foi criado para expu
   - O motor `card-reimbursement.ts` e o fluxo em 1 clique:
     - A despesa no cartão entra com `scope = 'business'`. Ela é o **Custo Contábil no DRE**.
     - O reembolso PJ $\rightarrow$ PF é classificado como **Devolução Patrimonial Neutra (`transfer_kind = 'card_reimbursement'`)**: não infla a renda pessoal nem dobra o custo da empresa.
+    - **Cartão Parcelado:** O reembolso opera **fatura a fatura** via `bill_competence`. Uma compra de 3x R$ 100 gera R$ 100 a reembolsar em cada mês respectivo, mantendo paridade com o desembolso da fatura da PF.
 
 ---
 
@@ -159,7 +169,7 @@ Originalmente, o campo `report_weight` (valor de 0.0 a 1.0) foi criado para expu
 - **O Problema:** O usuário estipulou uma meta de gastar no máximo R$ 800/mês com "Combustível".
   - Na vida pessoal gastou R$ 500.
   - Mas pela empresa viajou para visitar clientes e gastou R$ 600 de combustível.
-  - Se os orçamentos misturarem tudo, a barra de progresso acusaria estouro (R$ 1.100 de R$ 800) em vermelho. O usuário ficaria frustrado, pois seu gasto pessoal cumpriu a meta, e o combustível da empresa foi um custo de venda que gerou faturamento.
+  - Com o switcher do shell removido, `effectiveViewScope` em `/orcamentos` vale `"all"`. As despesas da empresa somavam-se às da casa, fazendo o orçamento estourar em R$ 1.100 (vermelho).
 - **A Solução Canônica:**
   - O módulo de Orçamentos e Limites de Gastos da família computa **estritamente despesas com `scope = 'personal'`** (mesmo em categorias compartilhadas como Combustível ou Alimentação).
   - A disciplina de custos da empresa é gerida pela **Margem de Lucro** e **Ponto de Equilíbrio** dentro da aba `/negocio`, e não por orçamentos domésticos.
@@ -168,9 +178,9 @@ Originalmente, o campo `report_weight` (valor de 0.0 a 1.0) foi criado para expu
 
 #### Incongruência 5: Reserva de Emergência e Carteira de Investimentos
 - **A armadilha:** O termômetro de Reserva de Emergência calcula 6 meses do custo de vida pessoal da família.
-  - Se os custos da empresa (estoque, anúncios, fornecedores) fossem somados ao custo de vida pessoal, o app calcularia que a família gasta R$ 35.000/mês e exigiria uma reserva doméstica de R$ 210.000! Isso desregularia totalmente os aportes em ações, FIIs e previdência.
+  - Em `src/state/selectors/use-user-financial-context.ts:234-246`, o hook utilizava `effectiveViewScope` (que na Home é `"all"`). Compras de estoque ou insumos da empresa (ex.: R$ 20.000) inflavam o custo de vida mensal e exigiam uma reserva doméstica irreal de R$ 120.000 adicionais!
 - **A Solução Canônica:**
-  - O cálculo da **Reserva de Emergência Pessoal** baseia-se exclusivamente em **despesas com `scope = 'personal'`**.
+  - O cálculo da **Reserva de Emergência Pessoal, Média de Gastos e Taxa de Poupança** baseia-se exclusivamente em **despesas com `scope = 'personal'`** (`filterExpensesByViewScope(..., 'personal', { mode: 'dre' })`).
   - A saúde de caixa da empresa é tratada de forma separada como **Capital de Giro Operacional** em `/negocio`.
 
 ---
@@ -178,7 +188,7 @@ Originalmente, o campo `report_weight` (valor de 0.0 a 1.0) foi criado para expu
 #### Incongruência 6: Dívidas, Empréstimos e Clientes a Receber (`debts`)
 - **A armadilha:** Empréstimos empresariais (ex.: Pronampe R$ 25.000 para capital de giro) ou faturas pendentes de clientes a receber:
   - Uma conta a receber de cliente PJ é um **Ativo Circulante**, não uma dívida pessoal.
-  - Um boleto de fornecedor PJ a vencer não deve travar o Safe-to-Spend (saldo livre para compras do dia a dia) da família.
+  - Um boleto de fornecedor PJ a vencer não deve travar o Safe-to-Spend pessoal da família.
 - **A Solução Canônica:**
   - No módulo `/dividas`, os compromissos PJ recebem badge semântico `PJ`.
   - No DRE da empresa (`/negocio`), os recebíveis de clientes entram no indicador específico **"Receitas Previstas a Receber"**, permitindo antecipar o fechamento do mês sem misturar com as finanças da casa.
@@ -187,7 +197,7 @@ Originalmente, o campo `report_weight` (valor de 0.0 a 1.0) foi criado para expu
 
 #### Incongruência 7: Mutua Exclusão de Escopo e Família (`scope = 'business'` vs. `is_family = true`)
 - **O Problema:** Um lançamento não pode ser simultaneamente despesa da empresa (dedutível no DRE) e despesa compartilhada do orçamento familiar (`is_family = true`).
-  - No banco de dados, o RPC já forçava `is_family = false` quando `scope = 'business'`. Contudo, se o formulário do Wizard permitisse marcar ambos, criava descompasso e desorientação.
+  - No banco de dados, o RPC já forçava `is_family = false` quando `scope = 'business'`.
 - **A Solução Canônica:**
   - No `LaunchWizard` e em `use-launch-wizard-submit.ts`, a seleção de contexto é mutuamente exclusiva:
     - Se selecionado `Negócio` $\rightarrow$ `scope = 'business'` e `is_family = false`.
@@ -197,13 +207,11 @@ Originalmente, o campo `report_weight` (valor de 0.0 a 1.0) foi criado para expu
 ---
 
 #### Incongruência 8: Teto Proporcional do MEI no Ano de Abertura
-- **O Problema:** O teto anual do MEI (R$ 81.000 em 2026) aplica-se apenas a empresas abertas em anos anteriores.
-  - Se o usuário abriu seu MEI em **Julho**, o limite legal não é R$ 81.000, mas sim:
-    $$\text{Teto Proporcional} = (12 - 7 + 1) \times \text{R\$\,6.750} = 6 \times \text{R\$\,6.750} = \text{R\$\,40.500}$$
-  - Se o app calcular com base em R$ 81.000, o usuário pode faturar R$ 60.000 achando que está seguro e ser desenquadrado pela Receita Federal com cobrança retroativa de impostos com multas e juros.
-- **A Solução Canônica:**
-  - Nas configurações do Modo Negócio, o usuário pode informar opcionalmente a **Data de Abertura do MEI**.
-  - O motor `mei-limit.ts` calcula o teto pro-rata com base no mês de abertura no primeiro ano fiscal, e teto cheio nos anos seguintes.
+- **O Problema:** O teto anual do MEI (R$ 81.000 em 2026) aplica-se apenas a empresas com atividade em anos anteriores.
+  - Se o usuário abriu seu MEI em **Julho** do ano corrente, o limite legal é:
+    $$\text{Teto Proporcional} = (12 - \text{Mês Abertura} + 1) \times \text{R\$\,6.750} = 6 \times \text{R\$\,6.750} = \text{R\$\,40.500}$$
+- **A Solução Canônica (com Clamp e Proteção):**
+  - O cálculo pro-rata `(12 - mesAbertura + 1)` aplica-se **estritamente quando `anoAbertura === anoAtual`**, com clamp de segurança $\ge 1$ e guarda contra data futura no mesmo ano. Nos anos posteriores, aplica-se o teto integral do ano vigente.
 
 ---
 
@@ -214,42 +222,41 @@ Originalmente, o campo `report_weight` (valor de 0.0 a 1.0) foi criado para expu
 - **A Solução Canônica:**
   - O componente `MeiCeilingCard` e a memória de cálculo do teto dividem o monitoramento em três zonas semânticas:
     - **Zona Segura:** Faturamento acumulado $\le 100\%$ do teto legal.
-    - **Zona de Atenção (Tolerância até +20%):** Alerta explicativo de migração planejada para ME no ano seguinte.
-    - **Zona Crítica (Excesso > 20%):** Alerta grave de desenquadramento retroativo.
+    - **Zona de Atenção (Tolerância até +20%):** Alerta explicativo de migração planejada para ME no ano seguinte com DAS complementar.
+    - **Zona Crítica (Excesso > 20%):** Alerta grave de desenquadramento retroativo a 1º de janeiro.
 
 ---
 
-#### Incongruência 10: Retenção Tributária na Fonte (Faturamento Bruto vs. Valor Líquido)
-- **O Problema:** Ao emitir uma nota fiscal de prestação de serviços de R$ 5.000 para uma pessoa jurídica média ou grande, pode haver retenção de IRRF (1,5%), ISS (2% a 5%) ou INSS. O cliente deposita na conta do MEI/autônomo o valor líquido (ex.: R$ 4.700).
-  - Para o **Teto do MEI** e **Faturamento Bruto no DRE**, a receita fiscal foi de R$ 5.000.
-  - Para o **Extrato Bancário**, entraram R$ 4.700.
+#### Incongruência 10: Retenção Tributária na Fonte (Autônomo PF / Simples ME)
+- **O Problema:** Ao emitir um RPA ou nota fiscal de prestação de serviços de R$ 5.000 para uma pessoa jurídica, pode haver retenção de IRRF (1,5%) e ISS (2% a 5%). O cliente deposita na conta o valor líquido de R$ 4.700.
+  - Para o **DRE Gerencial** e **Faturamento Fiscal**, a receita foi de R$ 5.000.
+  - Para o **Saldo Bancário Real (Extrato)**, entraram fisicamente R$ 4.700.
+  - *(Nota Contábil: O MEI goza de imunidade/isenção de retenção na fonte conforme art. 13 da LC 123/2006; este tratamento aplica-se a Autônomos e Simples Nacional).*
 - **A Solução Canônica:**
-  - No cadastro de receita com `scope = 'business'`, permitir o preenchimento opcional de **Retenções na Fonte**:
-    - `amount_cents`: R$ 5.000 (Faturamento Bruto / DRE / Teto MEI).
-    - `tax_withheld_cents`: R$ 300 (Retenções na fonte / Deduções).
-    - `net_cash_received_cents`: R$ 4.700 (Entrada real de caixa).
-  - Isso garante perfeita conciliação bancária sem violar o faturamento fiscal.
+  - Migration `0149_business_tax_withheld.sql` adiciona `tax_withheld numeric(12, 2) not null default 0` em `public.incomes`.
+  - `amount_cents`: R$ 5.000 (Faturamento Bruto no DRE).
+  - `tax_withheld_cents`: R$ 300 (Retenções na fonte).
+  - `net_cash_received_cents`: R$ 4.700 (Entrada real de caixa calculada em memória; debita `tax_withheld` do saldo real da Home em `cash-ledger.ts`).
 
 ---
 
-#### Incongruência 11: Aporte de Capital PF $\rightarrow$ PJ e Saldo Inicial de Caixa
-- **O Problema:** O empreendedor começa o ano colocando R$ 3.000 do seu bolso pessoal para capital de giro da empresa comprar matéria-prima.
-  - Se lançado como "Receita de Cliente", inflaria o faturamento fiscal do MEI, aproximando o usuário do teto ilegalmente.
-  - Se não for registrado, o Caixa Operacional da empresa ficaria negativo.
+#### Incongruência 11: Aporte de Capital PF $\rightarrow$ PJ e Conservação Exata de Caixa
+- **O Problema:** O empreendedor coloca R$ 2.000 do bolso pessoal para capital de giro da empresa comprar matéria-prima.
 - **A Solução Canônica:**
-  - Suporte ao tipo de transferência interna **Aporte de Capital (`transfer_kind = 'capital_injection'`)**:
-    - Débito na conta pessoal $\rightarrow$ Crédito no caixa do negócio.
-    - **Fiscal:** 0% de faturamento (não conta para DRE nem para Teto MEI).
-    - **Financeiro:** Alimenta o Caixa Operacional da empresa para compras e pagamentos.
+  - Aporte registrado via `create_internal_transfer_pair` com `transfer_kind = 'capital_injection'`.
+  - **DRE e Fiscal:** 0% de faturamento (não conta para DRE nem para Teto MEI).
+  - **Caixa Derivado PJ:** +R$ 2.000.
+  - **Safe-to-Spend Pessoal (Home):**
+    - Em conta única compartilhada, o Safe-to-Spend pessoal deduz **estritamente `max(0, derivedBusinessCashCents)`** (dinheiro físico real que pertence à operação da empresa).
+    - **NUNCA** deduz metas intangíveis como `targetWorkingCapitalCents`, impedindo dedução de dinheiro que não existe.
 
 ---
 
 #### Incongruência 12: Importação e Conciliação de Fatura Mista de Cartão de Crédito
-- **O Problema:** Ao importar um arquivo OFX de fatura de cartão de crédito pessoal, há compras domésticas (mercado, farmácia) misturadas com compras da empresa (hospedagem de site, ferramentas, correios).
+- **O Problema:** Ao importar um arquivo OFX/CSV de fatura de cartão de crédito pessoal, há compras domésticas misturadas com compras da empresa.
 - **A Solução Canônica:**
-  - No fluxo de conciliação e edição de transações importadas, cada linha possui o seletor simplificado de contexto:
-    - Botão toggle rápido `Pessoal` / `Negócio`.
-    - Ao marcar `Negócio`, a linha é carimbada com `scope = 'business'`, e entra automaticamente na fila do **Card Reimbursement** para quitação com 1 clique pela empresa.
+  - No modal de conciliação de fatura de cartão, cada linha dispõe de toggle rápido `Pessoal` / `Negócio`.
+  - Ao marcar `Negócio`, a linha é carimbada com `scope = 'business'` e entra automaticamente na fila do **Card Reimbursement** para quitação com 1 clique pela empresa.
 
 ---
 
@@ -276,7 +283,7 @@ flowchart TD
 
 | Perfil | Quem é? | Como paga imposto? | O que cadastrar no Axir? |
 |---|---|---|---|
-| **MEI (Microempreendedor Individual)** | Pequenos prestadores de serviços e comerciantes com faturamento até o teto anual. | Guia **DAS fixa mensal** (aprox. R$ 75 a R$ 85/mês, reajustada pelo salário mínimo). | **Regime:** MEI.<br/>**Alíquota %:** Deixe `0%` (o imposto é fixo, não percentual).<br/>**Ano de Abertura:** Para cálculo proporcional do teto. |
+| **MEI (Microempreendedor Individual)** | Pequenos prestadores de serviços e comerciantes com faturamento até o teto anual. | Guia **DAS fixa mensal** (vigente 2026: **R$ 82,05 a R$ 87,05/mês**, conforme atividade). | **Regime:** MEI.<br/>**Alíquota %:** Deixe `0%` (o imposto é fixo, não percentual).<br/>**Ano de Abertura:** Para cálculo proporcional do teto. |
 | **Autônomo / Profissional Liberal** | Médicos, advogados, dentistas, psicólogos, designers e consultores sem CNPJ. | **Carnê-Leão mensal** pela tabela progressiva do IRPF (até 27,5%) sobre o lucro. | **Regime:** Autônomo.<br/>**Alíquota %:** Alíquota média estimada (ex.: 15% ou 27,5%).<br/>**Escudo Fiscal:** Despesas com consultório e materiais reduzem o imposto. |
 | **Microempresa (Simples Nacional - ME)** | Empresas com CNPJ de maior porte ou atividades não permitidas no MEI. | **Guia DAS calculada como %** sobre cada nota fiscal emitida (conforme Anexo I, III, IV ou V). | **Regime:** Simples ME.<br/>**Alíquota %:** Alíquota efetiva da sua empresa (ex.: 6% ou 15,5%, obtida com seu contador). |
 
@@ -284,17 +291,15 @@ flowchart TD
 
 ### 4.3 Matriz de Transparência Inegociável: "O que o Modo Negócio AFETA vs. O que ele NÃO AFETA"
 
-Para garantir conforto psicológico absoluto ao usuário, o aplicativo exibe em sua interface a matriz de clareza:
-
 ```
 +---------------------------------------------------------------------------------------------------+
 | MATRIZ DE TRANSPARÊNCIA AXIR: CONFORTO E SEGURANÇA TOTAL                                         |
 +---------------------------------------------------------------------------------------------------+
 | O QUE O MODO NEGÓCIO AFETA:                                                                       |
 | 1. Gera o DRE Gerencial da sua empresa (Receitas, Custos, Pró-Labore e Lucro Líquido).            |
-| 2. Acompanha o termômetro do teto anual do MEI com margem de segurança.                          |
-| 3. Permite identificar compras da empresa no seu cartão de crédito pessoal e reembolsá-las.        |
-| 4. Cria abas e filtros exclusivos em /transacoes e /relatorios para auditar seu negócio.          |
+| 2. Acompanha o termômetro do teto anual do MEI com margem de segurança e projeção.                |
+| 3. Permite identificar compras da empresa no seu cartão pessoal e reembolsá-las fatura a fatura.  |
+| 4. Cria abas e chips exclusivos em /transacoes e /relatorios para auditar seu negócio.            |
 | 5. Emite o Dossiê Contábil A4 para facilitar sua declaração de faturamento ou envio ao contador.  |
 +---------------------------------------------------------------------------------------------------+
 | O QUE O MODO NEGÓCIO NÃO AFETA (SUA VIDA PESSOAL ESTÁ BLINDADA):                                  |
@@ -310,7 +315,7 @@ Para garantir conforto psicológico absoluto ao usuário, o aplicativo exibe em 
 
 ## 5. ESPECIFICAÇÃO COMPLETA DAS MEMÓRIAS DE CÁLCULO (`CalculationBreakdown`)
 
-Em conformidade com o padrão visual do Axir, todos os cartões de inteligência de `/negocio` e `/relatorios` possuem um acionador discreto de **Memória de Cálculo** (ícone `HelpCircle` ou botão *"Ver memória de cálculo"*), abrindo uma folha explicativa com a fórmula matemática e os valores reais utilizados no período.
+Todos os cartões de inteligência de `/negocio` e `/relatorios` possuem acionador discreto de **Memória de Cálculo** (ícone `HelpCircle` ou botão *"Ver memória de cálculo"*).
 
 ---
 
@@ -318,174 +323,84 @@ Em conformidade com o padrão visual do Axir, todos os cartões de inteligência
 
 #### Equação Canônica:
 $$\begin{aligned}
-\text{Receita Bruta} &= \sum \text{Receitas Externas PJ} \\
+\text{Receita Bruta} &= \sum \text{Receitas Externas PJ (Faturamento Bruto)} \\
 \text{Receita Líquida} &= \text{Receita Bruta} - \text{Deduções / Devoluções} \\
 \text{Margem de Contribuição} &= \text{Receita Líquida} - \text{Custos Variáveis} \\
 \text{Lucro Operacional (EBITDA)} &= \text{Margem de Contribuição} - \text{Despesas Fixas} \\
 \text{Lucro Líquido Retido} &= \text{Lucro Operacional} - \text{Pró-Labore Retirado}
 \end{aligned}$$
 
-#### Modal / Popover da Memória de Cálculo:
-- **Passo 1 (Faturamento Bruto):** Soma de todas as transações com `scope = 'business'` e `type = 'income'`, excluindo transferências internas (`is_internal_transfer = false`).
-- **Passo 2 (Custos e Despesas Operacionais):** Soma de todas as saídas operacionais e fornecedores com `scope = 'business'`.
-- **Passo 3 (Lucro Operacional):** Quanto a operação do negócio gerou antes de remunerar os sócios.
-- **Passo 4 (Pró-Labore / Distribuição):** Total de transferências pareadas `transfer_kind = 'pro_labore'` transferidas para a pessoa física.
-- **Passo 5 (Resultado Líquido Retido):** Saldo remanescente que fortalece o caixa do negócio para reinvestimento.
-
 ---
 
 ### 5.2 Termômetro do Teto do MEI (`mei-ceiling-card`)
 
-#### Equação Canônica:
-$$\text{Teto Vigente} = \begin{cases}
+#### Escalonamento Legal da LC nº 238/2026:
+$$\text{Teto Anual Base} = \begin{cases}
 \text{R\$\,81.000,00} & \text{ano } 2026 \\
-\text{R\$\,110.000,00} & \text{ano } 2027 \text{ (LC nº 238/2026)} \\
-\text{R\$\,140.000,00} & \text{ano } 2028 \text{ (LC nº 238/2026)}
+\text{R\$\,110.000,00} & \text{ano } 2027 \text{ (condicionado à LOA conforme Art. 3º)} \\
+\text{R\$\,140.000,00} & \text{ano } 2028 \text{ (condicionado à LOA conforme Art. 3º)}
 \end{cases}$$
 
-$$\text{Teto Aplicável no Ano de Abertura} = \frac{\text{Teto Vigente}}{12} \times (12 - \text{Mês Abertura} + 1)$$
+$$\text{Teto Aplicável} = \begin{cases}
+\frac{\text{Teto Base}}{12} \times \max(1, 12 - \text{Mês Abertura} + 1) & \text{se } \text{Ano Abertura} == \text{Ano Vigente} \\
+\text{Teto Base} & \text{se } \text{Ano Abertura} < \text{Ano Vigente}
+\end{cases}$$
 
-$$\text{Saldo Restante} = \text{Teto Aplicável} - \sum \text{Faturamento Acumulado no Ano Fiscal}$$
+$$\text{Meses Ativos Decorridos} = \begin{cases}
+\max(1, \text{Mês Vigente} - \text{Mês Abertura} + 1) & \text{se } \text{Ano Abertura} == \text{Ano Vigente} \\
+\max(1, \text{Mês Vigente}) & \text{se } \text{Ano Abertura} < \text{Ano Vigente}
+\end{cases}$$
 
-$$\text{Projeção de Faturamento Anual} = \frac{\sum \text{Faturamento Acumulado}}{\text{Meses Decorridos}} \times \text{Meses Ativos no Ano}$$
-
-#### Zonas do Semáforo Legal:
-1. **Verde ($\le 80\%$ do teto):** Operação confortável.
-2. **Amarelo ($80\% < \text{faturamento} \le 100\%$):** Proximidade do limite.
-3. **Laranja ($100\% < \text{faturamento} \le 120\%$):** Tolerância legal de +20%. Desenquadramento como Microempresa no ano seguinte, com pagamento de DAS complementar.
-4. **Vermelho ($> 120\%$ do teto):** Desenquadramento retroativo obrigatório a 1º de janeiro.
+$$\text{Projeção de Faturamento Anual} = \frac{\sum \text{Faturamento Acumulado}}{\text{Meses Ativos Decorridos}} \times \text{Meses Ativos no Ano}$$
 
 ---
 
-### 5.3 Ponto de Equilíbrio Operacional vs. Ponto de Equilíbrio Digno (`break-even-card`)
+### 5.3 Ponto de Equilíbrio Operacional vs. Total Digno (`break-even-card`)
 
-O Axir introduz a distinção financeira fundamental entre o ponto em que a empresa "não quebra" e o ponto em que ela "sustenta a família com dignidade":
-
-#### Equações:
+#### Equações & Fallback Matemático:
 1. **Margem de Contribuição Percentual ($MC\%$):**
    $$MC\% = \frac{\text{Receita Líquida} - \text{Custos Variáveis}}{\text{Receita Líquida}}$$
 
-2. **Ponto de Equilíbrio Operacional ($PE_{op}$):**
-   $$PE_{op} = \frac{\text{Despesas Fixas Operacionais}}{MC\%}$$
-   *Interpretação:* Faturamento mínimo para pagar aluguel, sistemas e fornecedores fixos, sem sobrar nada para o sócio.
+2. **Ponto de Equilíbrio Ponderado por Margem ($MC\% > 5\%$ e $\text{Receita Líquida} > 0$):**
+   $$PE_{op} = \frac{\text{Despesas Fixas}}{MC\%}, \quad PE_{total} = \frac{\text{Despesas Fixas} + \text{Pró-Labore Desejado}}{MC\%}$$
 
-3. **Ponto de Equilíbrio Digno / Total ($PE_{total}$):**
-   $$PE_{total} = \frac{\text{Despesas Fixas Operacionais} + \text{Pró-Labore Necessário da Família}}{MC\%}$$
-   *Interpretação:* Faturamento necessário para cobrir os custos fixos da empresa E pagar o pró-labore que cobre as despesas básicas da casa.
+3. **Fallback Aditivo Blindado ($\text{Receita Líquida} \le 0$ ou $MC\% \le 5\%$):**
+   $$PE_{total} = \text{Despesas Fixas} + \text{Custos Variáveis} + \text{Impostos} + \text{Pró-Labore Desejado}$$
+   *Justificativa clara exibida na UI:* *"Como a receita do período é incipiente ou a margem percentual é baixa/negativa, o ponto de equilíbrio foi apurado pelo método aditivo direto dos custos e pró-labore necessários."*
 
 ---
 
 ### 5.4 Escudo Fiscal do Autônomo (`tax-shield-card`)
-
-Para autônomos que tributam pelo Carnê-Leão (Livro Caixa):
-
-#### Equação Canônica:
-$$\text{Economia Tributária Real} = \sum \text{Despesas Operacionais Dedutíveis Escrituradas} \times \text{Alíquota Marginal do IRPF (ex.: 27,5\%)}$$
-
-#### Memória de Cálculo Exibida:
-*"Você escriturou R$ 3.200,00 de despesas operacionais no Livro Caixa (aluguel de sala, internet e materiais). Na faixa de 27,5% do IRPF, essas despesas reduziram sua base de cálculo e geraram uma economia real de imposto de R$ 880,00 neste período."*
+$$\text{Economia Tributária Real} = \sum \text{Despesas Dedutíveis (Livro Caixa)} \times \text{Alíquota Marginal do IRPF (27,5\%)}$$
 
 ---
 
 ### 5.5 Caixa Operacional Derivado do Negócio
-
-Diferença entre Lucro Contábil (DRE) e Dinheiro Físico no Caixa:
-
-#### Equação Canônica:
 $$\begin{aligned}
-\text{Caixa Derivado} = &\text{ Saldo Inicial da Empresa} \\
-&+ \text{Aportes PF}\rightarrow\text{PJ} \\
-&+ \text{Receitas PJ Efetivamente Compensadas} \\
-&- \text{Despesas PJ Pagas em Conta Corrente} \\
-&- \text{Pró-Labores Transferidos para a PF} \\
-&- \text{Reembolsos Pagos à PF por Compras no Cartão}
+\text{Caixa Derivado PJ} = &\text{ openingBalanceCents} \\
+&+ \sum \text{Aportes de Capital (PF }\rightarrow\text{ PJ)} \\
+&+ \sum (\text{Receita Bruta PJ} - \text{Retenções na Fonte}) \text{ [à vista/compensadas]} \\
+&- \sum \text{Despesas PJ Pagas em Conta/PIX/Débito} \\
+&- \sum \text{Pró-Labores Transferidos (PJ }\rightarrow\text{ PF)} \\
+&- \sum \text{Reembolsos Pagos à PF por Compras em Cartão PF}
 \end{aligned}$$
 
 ---
 
-### 5.6 Conciliação de Compras PJ no Cartão Pessoal (`card-reimbursement`)
+## 6. TABELA DE VERDADES CONTÁBEIS (VITEST INVARIANTS SSOT)
 
-#### Equação Canônica:
-$$\text{Reembolso Pendente} = \sum \text{Despesas PJ pagas com Cartão PF} - \sum \text{Transferências Pareadas com } \texttt{transfer\_kind = 'card\_reimbursement'}$$
+Esta matriz é o contrato inegociável verificado nos testes unitários da Fase 1 (`src/domain/business/`):
 
----
-
-## 6. PLANO DE REFINAMENTO E IMPLEMENTAÇÃO: EIXOS 1 E 2
-
-Com o `<ViewScopeSwitcher />` do shell devidamente eliminado, a experiência do usuário divide-se de forma limpa nos eixos abaixo:
-
-```mermaid
-flowchart TD
-    subgraph E1["Eixo 1: Extrato de Transações (/transacoes)"]
-        F1["Aba 'Negócio' no TransactionFilterBar<br/>(condicional a businessModeEnabled)"]
-        F2["Chips Rápidos: Dedutíveis | A Reembolsar | Transferências"]
-        F3["Badges Semânticos de Escopo nas Linhas"]
-    end
-
-    subgraph E2["Eixo 2: Relatórios (/relatorios)"]
-        R1["Seletor de Esfera: Consolidado | Pessoal | Negócio"]
-        R2["Agregação 'Esferas (PF vs PJ)' no card de Despesas"]
-        R3["DRE do Negócio vinculada ao período"]
-        R4["Dossiê Executivo A4 com seção MEI"]
-    end
-
-    subgraph E3["Eixo 3: Telas Dedicadas & Wizard"]
-        H1["Home Consolidada limpa e sem dupla contagem"]
-        H2["Wizard com contexto 2 níveis e peso travado em 1.0 para PJ"]
-        H3["Área /negocio com Guia Didático e Memória de Cálculo"]
-    end
-```
-
----
-
-### 6.1 Eixo 1 — Extrato de Transações (`/transacoes`)
-
-1. **Aba "Negócio" na barra de abas (`Tabs` de `TransactionFilterBar`):**
-   - No array `FILTER_TAB_ITEMS`, adicionar condicionalmente:
-     ```tsx
-     ...(isBusinessModeEnabled
-       ? [{ value: "business", label: "Negócio", icon: <Briefcase className="size-4" aria-hidden="true" /> }]
-       : [])
-     ```
-   - Ao selecionar a aba *"Negócio"*, o feed de transações filtra instantaneamente por `scope === 'business'`.
-   - Mantém `fullWidth={false}` e rolagem horizontal suave no mobile (`overflow-x-auto no-scrollbar scroll-smooth`), em estrita conformidade com a **Regra 9 do `AGENTS.md`**.
-2. **Chips Rápidos de Subfiltro (quando na aba Negócio):**
-   - `Todos do Negócio` (padrão)
-   - `Dedutíveis (Livro Caixa)`
-   - `A Reembolsar (Cartão PF)`
-   - `Pró-Labore & Aportes`
-3. **Busca Textual Refinada:**
-   - Adicionar parser em `use-transaction-list.ts` para que buscas por `"pj"`, `"negocio"` ou `"dedutivel"` filtrem os lançamentos sem exigir abertura de modais complexos.
-
----
-
-### 6.2 Eixo 2 — Relatórios Financeiros (`/relatorios`)
-
-1. **Seletor de Esfera no Topo da Aba "Finanças & DRE":**
-   - Quando `businessModeEnabled === true`, a aba de finanças disponibiliza um controle de escopo elegante para o período selecionado:
-     - **Consolidado:** Soma receitas e despesas reais de ambos os lados, neutralizando transferências internas.
-     - **Pessoal:** Exibe a DRE Pessoal do indivíduo (incluindo o Pró-Labore recebido da PJ).
-     - **Negócio (PJ):** Exibe a DRE Gerencial da empresa do período selecionado (Faturamento Bruto, Custos Operacionais, Pró-Labore retirado e Lucro Líquido).
-2. **Agregação "Esferas (PF vs PJ)" no Detalhamento de Despesas:**
-   - Em `FinancialExpensesBreakdownCard`, adicionar a opção **"Esferas"** ao lado de *"Categorias"*, *"Formas de Pgto"*, *"Dias da Semana"* e *"Encargos"*.
-   - Exibe a proporção em reais e percentual entre Gastos Pessoais e Gastos do Negócio para o mês/ano.
-3. **Dossiê Executivo A4 / Impressão (`FinancialCloseReportModal`):**
-   - No documento impresso gerado no fechamento mensal, adicionar seção opcional de **Apuração MEI / Simples Nacional**, contendo o faturamento bruto acumulado do ano e a margem de segurança do teto.
-
----
-
-### 6.3 Eixo 3 — Blindagens no Wizard, Orçamentos e Paridade Contábil
-
-1. **Trava de Peso Contábil no Wizard:**
-   - No `LaunchWizard` (Passo 2 / Detalhes), quando o contexto selecionado for `Negócio`:
-     - O campo `report_weight` é fixado internamente em `1.0`.
-     - O slider/seletor de peso é ocultado, evitando confusão para o usuário leigo.
-2. **Split PF/PJ Atômico (Despesas Compartilhadas):**
-   - Se o usuário precisar dividir uma despesa (ex.: internet de R$ 200), a UI disponibiliza a ação rápida *"Dividir entre Pessoal e Negócio"*, gerando 2 lançamentos atômicos de R$ 100 com peso 1.0 cada, sem fraudar a escrituração.
-3. **Blindagem do Orçamento Pessoal:**
-   - Em `use-budgets-page.ts`, despesas com `scope === 'business'` são excluídas do consumo dos orçamentos da família, mesmo quando a categoria for compartilhada.
-4. **Vínculo Bidirecional de Transferências (`transfer_group_id`):**
-   - Ao editar o valor ou excluir um lado da transferência interna no extrato, o sistema sincroniza ou solicita confirmação para o outro lado, impedindo que um pró-labore fique "órfão".
+| Cenário de Lançamento | Escopo | Tipo / Meio | Faturamento DRE | Caixa Derivado PJ | Saldo Real Home | Safe-to-Spend Pessoal (c/ Caixa PJ prévio) | Faturamento Fiscal / Teto MEI |
+|---|---|---|---|---|---|---|---|
+| **Venda à Vista Cliente** | `business` | Receita PIX (R$ 5.000) | +R$ 5.000 | +R$ 5.000 | +R$ 5.000 | Neutro (Reserva PJ protege) | +R$ 5.000 |
+| **Serviço Autônomo c/ IRRF** | `business` | Receita Bruta R$ 4.000 (Retido R$ 600) | +R$ 4.000 | +R$ 3.400 | +R$ 3.400 | Neutro (Reserva PJ protege) | N/A p/ MEI (+R$ 4.000 Carnê-Leão) |
+| **Compra Estoque à Vista** | `business` | Despesa Débito (R$ 1.200) | -R$ 1.200 | -R$ 1.200 | -R$ 1.200 | Neutro | 0 |
+| **Compra PJ no Cartão PF** | `business` | Despesa Cartão (R$ 600) | -R$ 600 | **0 (Não sai de caixa)** | **0 (Sai na fatura)** | -R$ 600 (Fatura aberta) | 0 |
+| **Reembolso PJ $\rightarrow$ PF** | `internal` | Transferência `card_reimbursement` (R$ 600) | **0 (Neutro)** | -R$ 600 | **0 (Neutralizado)** | +R$ 600 (Compensa fatura) | 0 |
+| **Retirada de Pró-Labore** | `internal` | Transferência `pro_labore` (R$ 3.000) | -R$ 3.000 (Dedução) | -R$ 3.000 | **0 (Neutralizado)** | +R$ 3.000 (Renda PF livre) | 0 |
+| **Aporte Capital PF $\rightarrow$ PJ** | `internal` | Transferência `capital_injection` (R$ 2.000) | **0 (Neutro)** | +R$ 2.000 | **0 (Neutralizado)** | -R$ 2.000 (Saiu da PF) | **0 (Isento)** |
+| **Despesa Mista Split (R$ 200)** | `split` | Débito/PIX: 50% PF (R$ 100) + 50% PJ (R$ 100) | -R$ 100 | -R$ 100 | -R$ 200 | -R$ 100 (PF) | 0 |
 
 ---
 
@@ -498,37 +413,44 @@ flowchart LR
     F3 --> BV2["Backlog v2: Funcionalidades Futuras"]
 ```
 
-### Fase 1: Schema, Contratos de Dados & SSOT Contábil
-- **Objetivo:** Estabelecer funções puras imutáveis em `src/domain/business/` com 100% de cobertura de testes matemáticos em centavos inteiros.
+### Fase 1: Schema, Contratos de Dados & SSOT Contábil (CONCLUÍDO)
+- **Status:** 100% Implementado & Verificado em Testes
+- **Objetivo:** Estabelecer a migration `0149` e as funções puras imutáveis em `src/domain/business/` com 100% de cobertura de testes matemáticos em centavos inteiros.
 - **Entregáveis:**
-  - `src/domain/business/mei-rules.ts`: Cálculo dinâmico do teto MEI (2026/2027/2028), pro-rata de abertura e zonas de tolerância (+20%).
-  - `src/domain/business/break-even-calculator.ts`: Ponto de equilíbrio operacional vs. com pró-labore.
-  - `src/domain/business/split-expense.ts`: Divisão atômica de lançamentos mistos PF/PJ com peso 1.0.
-  - `src/domain/business/tax-calculator.ts`: Tratamento de retenções na fonte (valor bruto x líquido).
-  - Testes unitários colocalizados (`*.test.ts`) para cada função pura.
+  - [x] `supabase/migrations/20260101000149_business_tax_withheld.sql`: Coluna `tax_withheld` em `incomes` e atualização de RPC.
+  - [x] `src/domain/business/mei-rules.ts`: Cálculo dinâmico do teto MEI (2026/2027/2028), pro-rata com clamp de abertura e zonas de tolerância (+20%).
+  - [x] `src/domain/business/break-even.ts`: Ponto de equilíbrio operacional vs. com pró-labore e fallback aditivo justificado.
+  - [x] `src/domain/business/split-expense.ts`: Divisão atômica de lançamentos mistos PF/PJ com peso 1.0.
+  - [x] `src/domain/business/derived-cash.ts`: Cálculo canônico do Caixa Derivado PJ (com `openingBalanceCents`).
+  - [x] Atualização de `src/domain/cash/cash-ledger.ts`: Abate de `tax_withheld` do saldo bancário real e suporte a dedução de Caixa Derivado PJ no Safe-to-Spend.
+  - [x] Testes unitários colocalizados (`*.test.ts`) para cada função pura cobrindo toda a Tabela de Verdades Contábeis (`tabela-verdades-contabeis.test.ts` — 8 cenários).
 
-### Fase 2: Blindagens Transversais & Wizard
+### Fase 2: Blindagens Transversais & Wizard (CONCLUÍDO)
+- **Status:** 100% Implementado & Verificado em Testes
 - **Objetivo:** Isolar completamente a vida pessoal da vida do negócio nos módulos existentes.
 - **Entregáveis:**
-  - `src/features/transactions/wizard/`: Trava de `report_weight = 1.0` para PJ, ocultação do slider e ação de Split PF/PJ.
-  - `src/features/transactions/services/transfer-sync.ts`: Integridade atômica com `transfer_group_id`.
-  - `src/features/budgets/components/use-budgets-page.ts`: Filtro estrito de `scope === 'personal'`.
-  - `src/domain/financial-context/`: Proteção da meta de Reserva de Emergência (base estrita pessoal).
-  - Blindagem de Opt-Out (`businessModeEnabled === false`).
+  - [x] `src/features/transactions/wizard/`: Trava de `report_weight = 1.0` para PJ, ocultação do slider, campo de retenção na fonte e ação de Split PF/PJ (50/50, 70/30).
+  - [x] `src/features/transactions/components/use-expense-detail-actions.ts` & `use-income-detail-actions.ts`: Tratamento amigável de erro `42501` em mutação de transferências pareadas.
+  - [x] `src/features/budgets/components/use-budgets-page.ts`: Filtro estrito de `scope === 'personal'`.
+  - [x] `src/state/selectors/use-user-financial-context.ts`: Filtro estrito de `scope === 'personal'` para custo de vida, taxa de poupança e termômetro de reserva de emergência.
+  - [x] `src/state/queries/use-business-mode.ts`: Alerta de confirmação para recorrências PJ ativas no Opt-Out do Modo Negócio.
 
-### Fase 3: UX de Extrato, Relatórios, Didática & Memórias de Cálculo
+### Fase 3: UX de Extrato, Relatórios, Didática & Memórias de Cálculo (CONCLUÍDO)
+- **Status:** 100% Implementado & Verificado em Testes
 - **Objetivo:** Entregar a camada visual fluida, acessível e autoexplicativa.
 - **Entregáveis:**
-  - `src/features/transactions/components/list/transaction-filter-bar.tsx`: Aba "Negócio" contextual.
-  - `src/features/business/components/educational-guide-modal.tsx`: Diálogo didático "Qual é o meu perfil?".
-  - `src/features/business/components/calculation-breakdown-popover.tsx`: Memória de cálculo universal para os cartões de `/negocio`.
-  - `src/features/reports/`: Seletor de esferas (Consolidado/Pessoal/PJ) e agregação no card de despesas.
-  - `src/features/reports/components/financial-close-report-modal.tsx`: Seção contábil no Dossiê A4.
+  - [x] `src/features/transactions/components/list/transaction-filter-bar.tsx`: Aba "Negócio" contextual com Chips Rápidos (`Todos`, `Dedutíveis`, `A Reembolsar`, `Transferências`) no Feed.
+  - [x] `src/features/cards/components/`: Toggle rápido `Pessoal` / `Negócio` por linha e botões de lote (`Tudo PJ` / `Tudo PF`) na importação de fatura de cartão.
+  - [x] `src/features/business/components/educational-guide-modal.tsx`: Diálogo didático "Qual é o meu perfil?" com quiz interativo em 3 passos e guia comparativo de enquadramentos fiscais.
+  - [x] `src/domain/calculation-memory/builders/business-breakdown.ts`: Memória de cálculo universal para o Caixa Real PJ (`buildDerivedCashBreakdown`), conectada via `CalculationMemoryModal` na Home de Negócios.
+  - [x] `src/features/reports/components/tabs/financial-period-toolbar.tsx`: Seletor de esferas contábeis (`Consolidado`, `Pessoal`, `Negócio`) no Extrato & DRE.
+  - [x] `src/features/reports/components/financial-close/FinancialBusinessDreSection.tsx` & `financial-close-report-modal.tsx`: DRE Gerencial do Negócio no Relatório Executivo A4 de Fechamento.
 
-### Backlog v2 (Pós-Blindagem)
-- **Extrator de Notas/Comprovantes com IA:** Extração automática de retenções e dedutibilidade com Gemini.
-- **Alerta de Vencimento de DAS no Carrossel:** Notificação mensal entre os dias 15 e 20.
-- **Radar de Projeção Linear de Desenquadramento:** Alerta de tendência de estouro no segundo semestre.
+### Backlog v2 (Fora de Escopo / Não Implementar)
+> **Decisão de Produto:** Conforme alinhamento e diretriz do usuário, o escopo encerra-se com a entrega integral das Fases 1, 2 e 3. As funcionalidades abaixo permanecem catalogadas apenas como registro histórico e não serão implementadas:
+- **Extrator de Notas/Comprovantes com IA:** Extração automática de retenções e dedutibilidade com Gemini (Não implementado).
+- **Alerta de Vencimento de DAS no Carrossel da Home:** (Não implementado).
+- **Radar de Projeção Linear Proativo no Carrossel da Home:** (Não implementado).
 
 ---
 
@@ -537,14 +459,13 @@ flowchart LR
 | Requisito / Invariante | Arquivos Envolvidos | Critério de Aceite Canônico |
 |---|---|---|
 | **Zero Switcher Global** | `src/components/layout/page-shell.tsx` | Eliminado sem resíduos. ViewScope global não interfere no shell. |
-| **Aba Negócio no Extrato** | `src/features/transactions/components/list/transaction-filter-bar.tsx` | Aparece somente se `businessModeEnabled === true`. Filtra em tempo real sem duplicar scroll. |
+| **Aba Negócio & Chips no Extrato** | `src/features/transactions/components/list/transaction-filter-bar.tsx` | Aparece somente se `businessModeEnabled = true`. Chips contextuais filtram sem busca mágica. |
 | **Trava de Pesos PJ** | `src/features/transactions/wizard/step-details.tsx` | Oculta peso para lançamentos PJ e força `report_weight = 1.0`. |
 | **Split PF/PJ Atômico** | `src/domain/business/split-expense.ts`, wizard | Divide conta mista em duas linhas nominais de peso 1.0. |
-| **Teto MEI Pro-Rata & Dinâmico** | `src/domain/business/mei-rules.ts` | Respeita teto proporcional por mês de abertura e anos 2026/2027/2028. |
-| **Zona de Tolerância +20%** | `src/features/business/components/mei-ceiling-card.tsx` | Exibe aviso diferenciado para excesso $\le 20\%$ vs. desenquadramento $> 20\%$. |
-| **Memória de Cálculo Didática** | `src/features/business/components/calculation-breakdown-popover.tsx` | Permite inspecionar a fórmula e os valores de cada KPI com 1 clique. |
-| **Guia "Qual é o meu perfil?"** | `src/features/business/components/educational-guide-modal.tsx` | Diálogo acessível sem jargões para orientar MEI, Autônomo e Simples. |
-| **Relatórios Segmentados** | `src/features/reports/pages/reports-page.tsx`, `financial-tab.tsx` | Alterna visão Consolidada, Pessoal e PJ para DRE e detalhamento. |
+| **Teto MEI Pro-Rata & Dinâmico** | `src/domain/business/mei-rules.ts` | Respeita teto proporcional no ano de abertura (clamp $\ge 1$) e teto 2026/2027/2028. |
+| **Caixa Derivado PJ SSOT** | `src/domain/business/derived-cash.ts` | Baseado em `openingBalanceCents`, faturamento líquido e desembolsos reais de conta. |
+| **Safe-to-Spend com Caixa PJ** | `src/domain/cash/cash-ledger.ts` | Deduz estritamente `max(0, derivedBusinessCashCents)` em conta compartilhada. |
+| **Retenção na Fonte (IRRF/ISS)** | Migration 0149, `cash-ledger.ts`, DRE | Abate retenção do caixa físico sem diminuir faturamento fiscal. |
 | **Blindagem de Orçamentos** | `src/features/budgets/components/use-budgets-page.ts` | Gastos PJ não estouram orçamentos domésticos da família. |
-| **Blindagem de Reserva** | `src/domain/financial-context/` | Custo de vida da família exclui despesas PJ no termômetro de reserva. |
+| **Blindagem de Reserva & Contexto** | `src/state/selectors/use-user-financial-context.ts` | Custo de vida da família exclui despesas PJ no termômetro de reserva. |
 | **Qualidade & Governança** | Vitest + TypeScript + ESLint | 100% de testes passando, 0 erros no typecheck e linter, conformidade total com `AGENTS.md`. |

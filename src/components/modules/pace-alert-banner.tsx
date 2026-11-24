@@ -80,7 +80,7 @@ export function PaceAlertBanner({
     <section
       aria-label="Atenção ao ritmo de gastos"
       className={cn(
-        "relative group w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border p-3.5 sm:p-4 transition-all shadow-xs",
+        "relative group w-full h-full min-h-[104px] sm:min-h-[84px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border p-3.5 sm:p-4 transition-all shadow-xs",
         isDeficit
           ? "border-critical/40 bg-critical/5 text-foreground"
           : "border-warning/40 bg-warning/5 text-foreground",
@@ -119,7 +119,7 @@ export function PaceAlertBanner({
               />
             ) : null}
           </div>
-          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 sm:line-clamp-1 break-words">
+          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 break-words">
             Você utilizou {Math.round(spentPercent)}% da {baseLabel} ({Math.round(elapsedPercent)}% do mês).
             {dailyCents !== null && dailyCents > 0 ? (
               <>

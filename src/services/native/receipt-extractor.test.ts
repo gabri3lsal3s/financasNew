@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  PdfPasswordProtectedError,
   extractReceiptTextFromFile,
   extractTextFromPdfArrayBuffer,
+  renderScannedPdfPageToBlob,
 } from "./receipt-extractor";
 
 const mockIsNativePlatform = vi.fn<() => boolean>();
@@ -55,6 +57,17 @@ describe("receipt-extractor (Pipeline Unificado PDF Digital & Escaneado)", () =>
       value: (callback: BlobCallback) => {
         callback(new Blob(["rendered-png-page"], { type: "image/png" }));
       },
+    });
+
+    Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
+      configurable: true,
+      writable: true,
+      value: vi.fn(() => ({
+        save: vi.fn(),
+        restore: vi.fn(),
+        clearRect: vi.fn(),
+        putImageData: vi.fn(),
+      })),
     });
   });
 
@@ -217,5 +230,51 @@ describe("receipt-extractor (Pipeline Unificado PDF Digital & Escaneado)", () =>
 
     const extracted = extractTextFromPdfArrayBuffer(combined.buffer);
     expect(extracted).toBe("");
+  });
+
+  it("renderScannedPdfPageToBlob passa explicitamente canvasContext 2D para renderização fiel do PDF.js", async () => {
+    const destroyMock = vi.fn().mockResolvedValue(undefined);
+    const cleanupDocMock = vi.fn().mockResolvedValue(undefined);
+    const cleanupPageMock = vi.fn().mockReturnValue(true);
+    const renderMock = vi.fn(() => ({ promise: Promise.resolve() }));
+
+    mockUnpdfGetDocumentProxy.mockResolvedValueOnce({
+      numPages: 1,
+      getPage: vi.fn().mockResolvedValue({
+        getViewport: vi.fn(({ scale }: { scale: number }) => ({
+          width: 800 * scale,
+          height: 1000 * scale,
+        })),
+        render: renderMock,
+        cleanup: cleanupPageMock,
+      }),
+      cleanup: cleanupDocMock,
+      loadingTask: { destroy: destroyMock },
+    });
+
+    const dummyBuffer = new ArrayBuffer(64);
+    const blob = await renderScannedPdfPageToBlob(dummyBuffer, 1);
+
+    expect(blob).not.toBeNull();
+    expect(renderMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        canvasContext: expect.anything(),
+        viewport: expect.anything(),
+      }),
+    );
+  });
+
+  it("lança PdfPasswordProtectedError quando o PDF requisitar senha", async () => {
+    const passwordErr = new Error("Password required");
+    passwordErr.name = "PasswordException";
+    mockUnpdfExtractText.mockRejectedValueOnce(passwordErr);
+
+    const protectedPdf = new File(["%PDF-1.4 encrypted"], "fatura-protegida.pdf", {
+      type: "application/pdf",
+    });
+
+    await expect(extractReceiptTextFromFile(protectedPdf)).rejects.toThrow(
+      PdfPasswordProtectedError,
+    );
   });
 });

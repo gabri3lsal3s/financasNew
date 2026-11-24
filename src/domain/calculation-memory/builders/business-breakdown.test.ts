@@ -3,6 +3,7 @@ import { calculateBusinessBreakEven, calculateBusinessDre, calculateMeiAnnualLim
 import {
   buildBreakEvenBreakdown,
   buildBusinessDreBreakdown,
+  buildDerivedCashBreakdown,
   buildMeiCeilingBreakdown,
   buildTaxShieldBreakdown,
 } from "./business-breakdown";
@@ -48,6 +49,21 @@ describe("business-breakdown (Memória de Cálculo PJ)", () => {
       targetProLaboreCents: 200_000,
     });
     expect(beMem.id).toBe("business-break-even");
-    expect(beMem.result.rawValue).toBe(307_590);
+    expect(beMem.result.rawValue).toBe(300_000);
+
+    const cashMem = buildDerivedCashBreakdown({
+      openingBalanceCents: 50_000,
+      capitalInjectionsCents: 20_000,
+      grossRevenueCents: 300_000,
+      taxWithheldCents: 15_000,
+      netRevenueReceivedCents: 285_000,
+      cashExpensesCents: 100_000,
+      proLaboreWithdrawnCents: 150_000,
+      cardReimbursementsPaidCents: 25_000,
+      derivedCashBalanceCents: 80_000,
+    });
+    expect(cashMem.id).toBe("business-derived-cash");
+    expect(cashMem.result.rawValue).toBe(80_000);
+    expect(cashMem.steps).toHaveLength(6);
   });
 });

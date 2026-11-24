@@ -1,5 +1,16 @@
 
 /**
+ * Taxonomia canônica das 6 naturezas de lançamento no extrato/fatura.
+ */
+export type StatementTransactionNature =
+  | "purchase" // Compra regular no cartão (débito)
+  | "fee_or_tax" // Encargo cobrado (IOF, anuidade, juros, multa, tarifa)
+  | "invoice_payment" // Quitação da fatura anterior pelo titular (crédito)
+  | "refund" // Estorno de compra cancelada (crédito)
+  | "subcard_header" // Cabeçalho institucional ou de cartão adicional (ruído)
+  | "fx_detail"; // Detalhamento de câmbio / cotação de compra internacional
+
+/**
  * Representação normalizada de uma transação extraída do extrato/fatura.
  */
 export interface StatementTransaction {
@@ -9,8 +20,12 @@ export interface StatementTransaction {
   index: number;
   /** Índice ordinal para desambiguação de compras repetidas no mesmo dia (0-based). */
   occurrenceIndex: number;
-  /** Data ISO da transação (YYYY-MM-DD). */
+  /** Data ISO da transação (YYYY-MM-DD), clampada para >= 2026-01-01 para persistência. */
   date: string;
+  /** Data original extraída do extrato (mesmo que anterior a 2026-01-01). */
+  originalDate?: string;
+  /** Natureza canônica da transação. */
+  nature?: StatementTransactionNature;
   /** Descrição bruta original do extrato. */
   rawDescription: string;
   /** Descrição limpa (sem ruídos de adquirentes ou sufixos geográficos). */
@@ -76,6 +91,18 @@ export interface ReconciliationItem {
   isInternalDuplicate?: boolean;
   /** Motivo ou detalhe descritivo de duplicidade detectada. */
   duplicateReason?: string;
+  /** Esfera fiscal atribuída na importação (PF vs PJ). */
+  scope?: "personal" | "business";
+  /** Se a despesa do negócio é dedutível para impostos. */
+  isTaxDeductible?: boolean;
+  /** Natureza canônica da transação. */
+  nature?: StatementTransactionNature;
+  /** Ação sugerida de conciliação para 1 clique na interface. */
+  suggestedAction?:
+    | "link_and_adjust_amount"
+    | "import_and_project_series"
+    | "import_single"
+    | "link_existing";
 }
 
 /**
@@ -101,6 +128,7 @@ export interface ExistingExpenseForReconciliation {
   installmentsTotal: number | null;
   statementHash?: string | null;
   chargeKind?: import("@/types").ChargeKind | null;
+  scope?: "personal" | "business";
 }
 
 /**
@@ -183,6 +211,18 @@ export interface BankTransactionItem {
   isInternalDuplicate?: boolean;
   /** Motivo ou detalhe descritivo de duplicidade detectada. */
   duplicateReason?: string;
+  /** Esfera fiscal atribuída na importação (PF vs PJ). */
+  scope?: "personal" | "business";
+  /** Se a despesa do negócio é dedutível para impostos. */
+  isTaxDeductible?: boolean;
+  /** Natureza canônica da transação. */
+  nature?: StatementTransactionNature;
+  /** Ação sugerida de conciliação para 1 clique na interface. */
+  suggestedAction?:
+    | "link_and_adjust_amount"
+    | "import_and_project_series"
+    | "import_single"
+    | "link_existing";
 }
 
 /**

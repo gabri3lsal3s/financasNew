@@ -122,6 +122,8 @@ export function useLaunchWizardState({
       recurring: false,
       recurrenceEndDate: "",
       splitEnabled: false,
+      splitPFPJEnabled: false,
+      taxWithheldCents: 0,
     }));
   };
 
@@ -137,6 +139,7 @@ export function useLaunchWizardState({
         isFamily: false,
         tripId: null,
         splitEnabled: false,
+        splitPFPJEnabled: false,
       }));
     }
   };
@@ -155,10 +158,37 @@ export function useLaunchWizardState({
         scope: nextScope,
         categoryId: keepCat ? prev.categoryId : "",
         ...(nextScope === "business"
-          ? { isFamily: false, tripId: null, splitEnabled: false }
-          : { isTaxDeductible: false }),
+          ? { isFamily: false, tripId: null, splitEnabled: false, splitPFPJEnabled: false }
+          : { isTaxDeductible: false, taxWithheldCents: 0 }),
       };
     });
+  };
+
+  const handleTaxWithheldChange = (cents: number) => {
+    set("taxWithheldCents", Math.max(0, cents));
+  };
+
+  const handleSplitPFPJToggle = (enabled: boolean) => {
+    setState((prev) => ({
+      ...prev,
+      splitPFPJEnabled: enabled,
+      splitPFPJBusinessPercent: prev.splitPFPJBusinessPercent ?? 50,
+      ...(enabled
+        ? {
+            isFamily: false,
+            tripId: null,
+            splitEnabled: false,
+            scope: "personal",
+          }
+        : {}),
+    }));
+  };
+
+  const handleSplitPFPJBusinessPercentChange = (percent: number) => {
+    setState((prev) => ({
+      ...prev,
+      splitPFPJBusinessPercent: Math.max(1, Math.min(99, percent)),
+    }));
   };
 
   const switchToQuick = () => {
@@ -200,6 +230,9 @@ export function useLaunchWizardState({
     handleTypeChange,
     handleCategorySelect,
     handleScopeChange,
+    handleTaxWithheldChange,
+    handleSplitPFPJToggle,
+    handleSplitPFPJBusinessPercentChange,
     applyHabitual,
     switchToQuick,
     switchToGuided,

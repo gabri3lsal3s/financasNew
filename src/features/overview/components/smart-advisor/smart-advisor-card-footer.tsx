@@ -69,7 +69,7 @@ export function SmartAdvisorCardFooter({
               sensoryIntent={false}
               onClick={onMarkTxOneOff}
               disabled={isSubmitting}
-              className="gap-1.5 text-xs h-8 cursor-pointer"
+              className="gap-1.5 text-xs h-8 cursor-pointer shrink-0"
             >
               <Check className="size-3.5" aria-hidden="true" />
               <span>{insight.primaryAction?.label ?? "Sim, foi pontual"}</span>
@@ -80,10 +80,9 @@ export function SmartAdvisorCardFooter({
               sensoryIntent="action"
               onClick={onDismiss}
               disabled={isSubmitting}
-              className="gap-1.5 text-xs h-8 text-muted-foreground hover:text-foreground cursor-pointer"
+              className="text-xs h-8 text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
             >
-              <X className="size-3.5" aria-hidden="true" />
-              <span>{insight.secondaryAction?.label ?? "Faz parte da rotina"}</span>
+              <span>{insight.secondaryAction?.label ?? "Manter na rotina"}</span>
             </Button>
           </>
         ) : insight.category === "calibration" ? (
@@ -94,7 +93,7 @@ export function SmartAdvisorCardFooter({
               sensoryIntent={hasExternalConfirmRecurrence ? "success" : false}
               onClick={onConfirmRecurrence}
               disabled={isSubmitting}
-              className="gap-1.5 text-xs h-8 cursor-pointer"
+              className="gap-1.5 text-xs h-8 cursor-pointer shrink-0"
             >
               <Check className="size-3.5" aria-hidden="true" />
               <span>Sim, monitorar</span>
@@ -109,9 +108,8 @@ export function SmartAdvisorCardFooter({
                 variant="ghost"
                 sensoryIntent="action"
                 disabled={isSubmitting}
-                className="gap-1.5 text-xs h-8 text-muted-foreground hover:text-foreground cursor-pointer"
+                className="text-xs h-8 text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
               >
-                <X className="size-3.5" aria-hidden="true" />
                 <span>Não, foi pontual</span>
               </Button>
             </QualifiedDismissPopover>

@@ -2,6 +2,8 @@ import { type Dispatch, type SetStateAction } from "react";
 import { SegmentedControl } from "@/components/ui";
 import { DatePicker } from "@/components/ui/date-picker";
 import { MonthPicker, YearPicker } from "@/components/modules";
+import { useSafeViewScope } from "@/hooks/use-safe-business-scope";
+import type { ViewScope } from "@/types";
 import type { PeriodMode } from "./financial-tab";
 
 export interface FinancialPeriodToolbarProps {
@@ -23,6 +25,12 @@ const PERIOD_OPTIONS: readonly { value: PeriodMode; label: string }[] = [
   { value: "custom", label: "Personalizado" },
 ];
 
+const SPHERE_OPTIONS: readonly { value: ViewScope; label: string }[] = [
+  { value: "all", label: "Consolidado" },
+  { value: "personal", label: "Pessoal" },
+  { value: "business", label: "Negócio" },
+];
+
 /** Seletor de data e alternador de periodicidade (Mensal / Anual / Personalizado) da aba Finanças. */
 export function FinancialPeriodToolbar({
   mode,
@@ -36,6 +44,8 @@ export function FinancialPeriodToolbar({
   customEnd,
   setCustomEnd,
 }: FinancialPeriodToolbarProps) {
+  const { viewScope, setViewScope, isBusinessModeEnabled } = useSafeViewScope();
+
   return (
     <div className="flex flex-col gap-4">
       {mode === "month" ? (
@@ -67,13 +77,24 @@ export function FinancialPeriodToolbar({
           Acompanhe o fluxo de caixa, DRE pessoal e taxas de poupança da competência.
         </p>
 
-        <SegmentedControl
-          value={mode}
-          onChange={(val) => setMode(val as PeriodMode)}
-          options={PERIOD_OPTIONS}
-          ariaLabel="Periodicidade do relatório"
-          className="self-start sm:self-auto"
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          {isBusinessModeEnabled && (
+            <SegmentedControl
+              value={viewScope}
+              onChange={(val) => setViewScope(val as ViewScope)}
+              options={SPHERE_OPTIONS}
+              ariaLabel="Esfera contábil do relatório"
+            />
+          )}
+
+          <SegmentedControl
+            value={mode}
+            onChange={(val) => setMode(val as PeriodMode)}
+            options={PERIOD_OPTIONS}
+            ariaLabel="Periodicidade do relatório"
+            className="self-start sm:self-auto"
+          />
+        </div>
       </div>
     </div>
   );

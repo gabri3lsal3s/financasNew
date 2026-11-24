@@ -33,7 +33,7 @@ export function SubscriptionPastDueBanner({
       role="alert"
       aria-label="Pagamento da assinatura pendente"
       className={cn(
-        "relative w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border border-critical/30 bg-critical/5 p-3.5 sm:p-4 shadow-xs transition-all",
+        "relative w-full h-full min-h-[104px] sm:min-h-[84px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border border-critical/30 bg-critical/5 p-3.5 sm:p-4 shadow-xs transition-all",
         className,
       )}
     >
@@ -50,7 +50,7 @@ export function SubscriptionPastDueBanner({
               Crítico
             </Badge>
           </div>
-          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 sm:line-clamp-1 break-words">
+          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 break-words">
             Regularize a forma de pagamento para manter os recursos Pro ativos sem interrupção.
           </p>
         </div>

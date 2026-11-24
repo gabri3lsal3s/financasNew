@@ -64,7 +64,7 @@ export function HouseholdAlertBanner({
       role="region"
       aria-label={isSettlement ? "Alerta de Acerto Familiar" : "Alerta de Teto Familiar"}
       className={cn(
-        "relative w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border p-3.5 sm:p-4 shadow-xs transition-all",
+        "relative w-full h-full min-h-[104px] sm:min-h-[84px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border p-3.5 sm:p-4 shadow-xs transition-all",
         containerBorderBg,
         className,
       )}
@@ -91,7 +91,7 @@ export function HouseholdAlertBanner({
             </Badge>
           </div>
 
-          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 sm:line-clamp-1 break-words">
+          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 break-words">
             {isSettlement ? (
               isCurrentUserPayer ? (
                 <>

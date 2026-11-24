@@ -1,4 +1,4 @@
-import { Copy, Plus } from "lucide-react";
+import { Briefcase, Copy, Plus } from "lucide-react";
 import { Alert, Button, Tabs } from "@/components/ui";
 import { triggerSensory } from "@/services/sensory";
 
@@ -15,6 +15,8 @@ export interface StatementReconcileToolbarProps {
   onOpenAddManual: () => void;
   onToggleAll: (selected: boolean) => void;
   onUncheckDuplicates?: () => void;
+  isBusinessModeEnabled?: boolean;
+  onSetScopeAll?: (scope: "personal" | "business") => void;
 }
 
 export function StatementReconcileToolbar({
@@ -28,6 +30,8 @@ export function StatementReconcileToolbar({
   onOpenAddManual,
   onToggleAll,
   onUncheckDuplicates,
+  isBusinessModeEnabled = false,
+  onSetScopeAll,
 }: StatementReconcileToolbarProps) {
   const tabsList = [
     { value: "all", label: "Todos", content: null },
@@ -126,6 +130,33 @@ export function StatementReconcileToolbar({
                 <Plus className="size-3.5" aria-hidden="true" />
                 Adicionar linha
               </Button>
+            ) : null}
+            {isBusinessModeEnabled && onSetScopeAll ? (
+              <div className="flex items-center gap-1 border-l border-border/80 pl-1.5 ml-0.5">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  disabled={isPending}
+                  className="h-7 px-2 text-[11px] font-semibold text-portfolio hover:bg-portfolio/10 cursor-pointer"
+                  onClick={() => onSetScopeAll("business")}
+                  title="Marcar todas as despesas da fatura como Meu Negócio (PJ)"
+                >
+                  <Briefcase className="size-3 mr-1" aria-hidden="true" />
+                  Tudo PJ
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  disabled={isPending}
+                  className="h-7 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground cursor-pointer"
+                  onClick={() => onSetScopeAll("personal")}
+                  title="Marcar todas as despesas da fatura como Pessoal (PF)"
+                >
+                  Tudo PF
+                </Button>
+              </div>
             ) : null}
             <Button
               type="button"

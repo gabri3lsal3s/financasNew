@@ -85,6 +85,9 @@ export function TransactionListPage() {
         searchQuery={tx.searchQuery}
         onSearchChange={tx.setSearchQuery}
         structuredFilterBadges={tx.structuredFilterBadges}
+        isBusinessModeEnabled={tx.isBusinessModeEnabled}
+        businessSubFilter={tx.businessSubFilter}
+        onBusinessSubFilterChange={tx.setBusinessSubFilter}
       />
 
       {tx.error ? (

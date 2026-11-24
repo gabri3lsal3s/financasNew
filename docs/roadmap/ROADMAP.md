@@ -1,5 +1,23 @@
 # ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.18.0 (Blindagem Contábil, Didática ao Usuário e UX do Modo Negócio — MEI / Autônomo / Simples ME)** consolida a execução integral das Fases 1, 2 e 3 do plano canônico de refinamento contábil e matemático do Modo Negócio (`PLANO_REFINAMENTO_E_BLINDAGEM_MODO_NEGOCIO.md`) (2026-11-24):
+> - **Fase 1 — SSOT Contábil, Schema & Funções Puras:**
+>   - Migration `20260101000149_business_tax_withheld.sql` adicionando coluna `tax_withheld` em `incomes` e atualização do RPC `create_income_installments`;
+>   - Motores puros em `src/domain/business/`: Caixa Operacional Derivado PJ (`derived-cash.ts` com suporte a `openingBalanceCents`), Teto MEI dinâmico com pro-rata no ano de abertura (`mesAtual - mesAbertura + 1` com clamp >= 1 e escalonamento 2026/2027/2028 em `mei-rules.ts`), Ponto de Equilíbrio Operacional (`break-even.ts`), Split PF/PJ atômico (`split-expense.ts`) com conservação exata de centavos e Tabela de Verdades Contábeis (`tabela-verdades-contabeis.test.ts` — 8 cenários canônicos);
+>   - Conservação de caixa pessoal na Home (`cash-ledger.ts`): abatimento de retenções na fonte (`tax_withheld`) do saldo bancário real e dedução de `Math.max(0, derivedBusinessCashCents)` do Safe-to-Spend em conta bancária única compartilhada, blindando o capital de giro corporativo.
+> - **Fase 2 — Blindagens Transversais & Wizard de Lançamentos:**
+>   - Wizard: fixação estrita de `report_weight = 1.0` para despesas e receitas de negócio/divididas (ocultando o controle fracionário e prevenindo distorção de caixa), campo de imposto retido na fonte com preview líquido em tempo real e ação de Split PF/PJ com divisões 50/50 e 70/30;
+>   - Isolamento total de orçamentos (`use-budgets-page.ts`) e reserva de emergência/taxa de poupança (`use-user-financial-context.ts`) filtrando estritamente despesas pessoais (`scope === 'personal'`);
+>   - Tratamento amigável de erro `42501` em transferências pareadas protegidas por trigger.
+> - **Fase 3 — UX de Extrato, Conciliação de Faturas, Didática & Relatórios Executivos:**
+>   - Extrato: aba contextual "Negócio" com chips de filtro rápido (`Todos`, `Dedutíveis`, `A Reembolsar`, `Transferências`) visível apenas quando o modo está ativo;
+>   - Reconciliação de faturas de cartão: toggle instantâneo por linha `[PF / PJ]` e botões de lote `[Tudo PJ / Tudo PF]` em faturas massivas particionadas;
+>   - Didática e autodescoberta: `EducationalGuideModal` com quiz interativo em 3 passos para enquadramento (MEI vs Autônomo vs Simples ME), orientações de separação patrimonial e dedutibilidade;
+>   - Memória de cálculo universal: `buildDerivedCashBreakdown` conectado ao KPI do Caixa Real PJ na rota `/negocio`;
+>   - Relatórios e fechamento contábil: seletor de esfera contábil (`Consolidado`, `Pessoal`, `Negócio`) na toolbar de relatórios e emissão da DRE Gerencial do Negócio no relatório executivo A4 (`FinancialBusinessDreSection.tsx` e `FinancialCloseReportModal.tsx`);
+>   - Backlog v2: marcado como fora de escopo por alinhamento do usuário.
+> - **Verificação Completa:** 100% dos testes aprovados (`vitest run src/domain/business/`, `features/business/`, `reports/`, `cards/statement-import-dialog`), `npm run typecheck` com 0 erros e `npm run lint` com 0 erros (zero emojis/unicode decorativos).
+
 > **v3.17.2 (Arquitetura Visual Dual de E-mails Transacionais Editorial Light — Teal Petróleo vs Ouro Âmbar PRO + Carta de Co-Criação PRO)** revisa e implanta em produção 100% dos fluxos de e-mail do aplicativo (Supabase Auth SMTP + Edge Functions Resend API) sob a identidade oficial do Design System v2.0 do Axir (2026-11-23):
 > - **Base Comum Editorial Light-First:** eliminação completa do fundo escuro legado (`#0B0F19` / `#111827`) e de qualquer menção residual a `"Áxis Finance"` / `"AXIR FINANCE"`, adotando canvas `#F4F7F9` (`--background`), card `#FFFFFF` (`--surface`), tipografia `#142531` (`--foreground` Azul Petróleo Profundo) e `#475569` (`--muted-foreground`), com valores monetários e datas em `IBM Plex Mono`.
 > - **Identidade Dual por Estágio do Usuário (`themeVariant: "teal" | "pro"`):**

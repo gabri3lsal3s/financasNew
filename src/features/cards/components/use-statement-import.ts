@@ -27,6 +27,7 @@ import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import { getActiveUserId } from "@/services/user-storage";
 import {
+  useBusinessMode,
   useCardExpenses,
   useCategories,
   useImportStatementExpenses,
@@ -361,6 +362,8 @@ export function useStatementImport({
     content: string | ArrayBuffer,
     fileNameOrType: string,
     fileSha256?: string | null,
+    spatialTransactions?: import("@/domain/reconciliation").StatementTransaction[],
+    checksumGate?: import("@/domain/reconciliation").ChecksumGateResult,
   ) => {
     setError(null);
     loadedInputRef.current = { content, fileNameOrType, fileSha256 };
@@ -382,6 +385,8 @@ export function useStatementImport({
         userId: resolvedUserId,
         isReadOnlyMode,
         aiFallbackEnabled: aiExtractionEnabled,
+        spatialTransactions,
+        checksumGate,
       });
 
       if (result.transactions.length === 0 && result.rows.length === 0) {
@@ -467,7 +472,10 @@ export function useStatementImport({
       }
 
       const primaryFile = files[0]!;
-      const loaded = await readStatementFileContent(primaryFile);
+      const loaded = await readStatementFileContent(primaryFile, {
+        cardId: card.id,
+        competenceMonth: activeCompetenceMonth,
+      });
 
       if (loaded.kind === "pdf_scanned") {
         const { renderScannedPdfPageToBlob } = await import(
@@ -528,7 +536,13 @@ export function useStatementImport({
       }
 
       if (loaded.kind === "pdf_text") {
-        await handleProcessInput(loaded.text, loaded.fileName, loaded.sha256);
+        await handleProcessInput(
+          loaded.text,
+          loaded.fileName,
+          loaded.sha256,
+          loaded.spatialTransactions,
+          loaded.checksumGate,
+        );
         return;
       }
 
@@ -729,6 +743,34 @@ export function useStatementImport({
     ]);
   };
 
+  const { isBusinessModeEnabled } = useBusinessMode();
+
+  const handleToggleScope = (id: string) => {
+    manuallyEditedIdsRef.current.add(id);
+    setReconciledItems((prev) =>
+      prev.map((it) => {
+        if (it.transaction.id !== id) return it;
+        const current = it.scope ?? (card.scope === "business" ? "business" : "personal");
+        const next = current === "business" ? "personal" : "business";
+        return {
+          ...it,
+          scope: next,
+          isTaxDeductible: next === "business" ? it.isTaxDeductible : false,
+        };
+      }),
+    );
+  };
+
+  const handleSetScopeAll = (scope: "personal" | "business") => {
+    setReconciledItems((prev) =>
+      prev.map((it) => ({
+        ...it,
+        scope,
+        isTaxDeductible: scope === "business" ? it.isTaxDeductible : false,
+      })),
+    );
+  };
+
   const handleUncheckDuplicates = () => {
     setReconciledItems((prev) =>
       prev.map((it) =>
@@ -805,6 +847,9 @@ export function useStatementImport({
     handleRemoveItem,
     handleAddManualItem,
     handleUncheckDuplicates,
+    isBusinessModeEnabled,
+    handleToggleScope,
+    handleSetScopeAll,
     handleConfirmImport,
   };
 }

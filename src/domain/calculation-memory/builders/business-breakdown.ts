@@ -9,6 +9,7 @@ import type { BusinessDreResult } from "@/domain/business/dre-calculator";
 import type { TaxShieldResult } from "@/domain/business/tax-shield";
 import type { MeiAnnualLimitResult } from "@/domain/business/mei-limit";
 import type { BusinessBreakEvenResult } from "@/domain/business/break-even";
+import type { DerivedBusinessCashComponents } from "@/domain/business/derived-cash";
 import { enrichBreakdown } from "../formatters";
 import type { BreakdownStep, CalculationBreakdown } from "../types";
 
@@ -191,45 +192,66 @@ export function buildBreakEvenBreakdown(
     periodLabel?: string;
   },
 ): CalculationBreakdown {
-  const steps: BreakdownStep[] = [
-    {
-      label: "Custos Operacionais do Mês",
-      operator: "+",
-      rawValue: options.operationalCostsCents,
-      unit: "currency",
-      tone: "default",
-    },
-    {
-      label: "Provisão Fiscal Estimada",
-      operator: "+",
-      rawValue: options.estimatedTaxCents,
-      unit: "currency",
-      tone: "default",
-    },
-    {
-      label: "Meta Mensal de Pró-Labore",
-      operator: "+",
-      rawValue: options.targetProLaboreCents,
-      unit: "currency",
-      tone: "default",
-    },
-    {
-      label: "Receita Bruta Alcançada",
-      operator: "=",
-      rawValue: be.grossRevenueCents,
-      unit: "currency",
-      tone: be.isReached ? "positive" : "muted",
-      emphasis: "subtotal",
-    },
-  ];
+  const isMargin = be.calculationMethod === "contribution_margin";
+
+  const steps: BreakdownStep[] = isMargin
+    ? [
+        {
+          label: "Custos Operacionais Necessários",
+          operator: "+",
+          rawValue: options.operationalCostsCents,
+          unit: "currency",
+          tone: "default",
+        },
+        {
+          label: "Meta Mensal de Pró-Labore",
+          operator: "+",
+          rawValue: options.targetProLaboreCents,
+          unit: "currency",
+          tone: "default",
+        },
+        {
+          label: "Margem de Contribuição Efetiva",
+          operator: "/",
+          rawValue: Number((be.contributionMarginRatio * 100).toFixed(1)),
+          unit: "percent",
+          hint: "Margem líquida após deduzir impostos proporcionais da receita",
+          tone: "positive",
+        },
+      ]
+    : [
+        {
+          label: "Custos Operacionais do Mês",
+          operator: "+",
+          rawValue: options.operationalCostsCents,
+          unit: "currency",
+          tone: "default",
+        },
+        {
+          label: "Provisão Fiscal Estimada",
+          operator: "+",
+          rawValue: options.estimatedTaxCents,
+          unit: "currency",
+          tone: "default",
+        },
+        {
+          label: "Meta Mensal de Pró-Labore",
+          operator: "+",
+          rawValue: options.targetProLaboreCents,
+          unit: "currency",
+          tone: "default",
+        },
+      ];
 
   return enrichBreakdown({
     id: "business-break-even",
     title: "Ponto de Equilíbrio Mensal",
     description:
-      "Faturamento mínimo necessário no mês para pagar operação, tributos e sua retirada pessoal planejada.",
+      "Faturamento mínimo necessário no mês para cobrir a operação, tributos e sua retirada pessoal planejada.",
     periodLabel: options.periodLabel ?? "Mês Atual",
-    formulaExpression: "Ponto de Equilíbrio = Custos Operacionais + Provisão Fiscal + Meta Pró-Labore",
+    formulaExpression: isMargin
+      ? "Ponto de Equilíbrio = (Custos + Pró-Labore) / Margem de Contribuição"
+      : "Ponto de Equilíbrio = Custos Operacionais + Provisão Fiscal + Meta Pró-Labore",
     unit: "currency",
     steps,
     result: {
@@ -241,5 +263,87 @@ export function buildBreakEvenBreakdown(
         ? `Ponto de equilíbrio atingido (${formatPercent(be.progressPct, 1)}).`
         : `Faltam ${formatPercent(Math.max(0, 100 - be.progressPct), 1)} da meta.`,
     },
+    notes: [be.explanation],
+  });
+}
+
+export function buildDerivedCashBreakdown(
+  components: DerivedBusinessCashComponents,
+  periodLabel = "Posição Atual",
+): CalculationBreakdown {
+  const steps: BreakdownStep[] = [
+    {
+      label: "Saldo Inicial do Negócio",
+      operator: "+",
+      rawValue: components.openingBalanceCents,
+      unit: "currency",
+      hint: "Saldo inicial informado na configuração do perfil do negócio",
+      tone: "default",
+    },
+    {
+      label: "Aportes de Capital (PF para PJ)",
+      operator: "+",
+      rawValue: components.capitalInjectionsCents,
+      unit: "currency",
+      hint: "Dinheiro pessoal injetado para capital de giro (não infla receita de vendas)",
+      tone: "positive",
+    },
+    {
+      label: "Receita Líquida Recebida",
+      operator: "+",
+      rawValue: components.netRevenueReceivedCents,
+      unit: "currency",
+      hint: components.taxWithheldCents > 0
+        ? `Receita bruta de vendas menos impostos retidos na fonte (IRRF/ISS)`
+        : "Entradas operacionais do negócio recebidas no período",
+      tone: "positive",
+    },
+    {
+      label: "Despesas Operacionais Pagas em Conta/Pix/Débito",
+      operator: "-",
+      rawValue: components.cashExpensesCents,
+      unit: "currency",
+      hint: "Compras no cartão de crédito não saem aqui (saem no reembolso da fatura)",
+      tone: "negative",
+    },
+    {
+      label: "Retiradas de Pró-Labore (PJ para PF)",
+      operator: "-",
+      rawValue: components.proLaboreWithdrawnCents,
+      unit: "currency",
+      hint: "Transferências internas de remuneração do titular",
+      tone: "muted",
+    },
+    {
+      label: "Reembolsos de Cartão PF Efetivados",
+      operator: "-",
+      rawValue: components.cardReimbursementsPaidCents,
+      unit: "currency",
+      hint: "Pagamento do negócio para ressarcir despesas operacionais pagas no cartão pessoal",
+      tone: "negative",
+    },
+  ];
+
+  return enrichBreakdown({
+    id: "business-derived-cash",
+    title: "Caixa Operacional Derivado do Negócio",
+    description:
+      "Apurado automaticamente pelo fluxo financeiro do negócio sem exigir conta bancária PJ separada.",
+    periodLabel,
+    formulaExpression:
+      "Caixa = Saldo Inicial + Aportes + Receitas Líquidas - Despesas Conta/Pix - Pró-Labore - Reembolsos",
+    unit: "currency",
+    steps,
+    result: {
+      label: "Caixa Operacional Disponível",
+      rawValue: components.derivedCashBalanceCents,
+      unit: "currency",
+      tone: components.derivedCashBalanceCents >= 0 ? "portfolio" : "negative",
+      hint: "Saldo financeiro real pertencente à operação do negócio",
+    },
+    notes: [
+      "Compras operacionais feitas em cartão de crédito PF só saem do caixa no momento do Reembolso.",
+      "Em contas bancárias compartilhadas, este valor é protegido e abatido do seu Safe-to-Spend pessoal.",
+    ],
   });
 }

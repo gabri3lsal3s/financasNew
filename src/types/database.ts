@@ -510,6 +510,7 @@ export interface Database {
           p_installments: unknown;
           p_is_family?: boolean;
           p_scope?: string | null;
+          p_tax_withheld?: number;
         };
         Returns: string;
       };

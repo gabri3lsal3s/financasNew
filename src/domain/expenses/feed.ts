@@ -1,7 +1,9 @@
 import type { Expense, Income } from "@/types";
 import { numberToCents } from "@/domain/money";
 
-export type FeedFilter = "all" | "incomes" | "expenses" | "installments" | "recurring";
+export type FeedFilter = "all" | "incomes" | "expenses" | "installments" | "recurring" | "business";
+
+export type BusinessSubFilter = "all" | "deductible" | "reimbursement" | "transfers";
 
 /** Escopo de visão do extrato (Fase 3 — Tarefa 3.3). */
 export type VisionScope = "all" | "personal" | "family";
@@ -61,6 +63,7 @@ export function buildUnifiedFeedItems(
   expenses: readonly Expense[],
   incomes: readonly Income[],
   filter: FeedFilter = "all",
+  businessSubFilter: BusinessSubFilter = "all",
 ): TransactionFeedItem[] {
   const items: TransactionFeedItem[] = [];
 
@@ -71,6 +74,22 @@ export function buildUnifiedFeedItems(
 
       if (filter === "recurring" && !isRecurring) continue;
       if (filter === "installments" && !isInstallment) continue;
+
+      if (filter === "business") {
+        const isBiz = exp.scope === "business" || Boolean(exp.is_internal_transfer);
+        if (!isBiz) continue;
+
+        if (businessSubFilter === "deductible" && !exp.is_tax_deductible) continue;
+        if (
+          businessSubFilter === "reimbursement" &&
+          !(
+            (exp.scope === "business" && (exp.payment_method === "credit_card" || exp.payment_method === "other")) ||
+            exp.transfer_kind === "card_reimbursement"
+          )
+        )
+          continue;
+        if (businessSubFilter === "transfers" && !exp.is_internal_transfer) continue;
+      }
 
       const amountCents = numberToCents(exp.value);
       const weightedCents = numberToCents(exp.value * exp.report_weight);
@@ -99,6 +118,19 @@ export function buildUnifiedFeedItems(
     for (const inc of incomes) {
       const isRecurring = Boolean(inc.recurrence_id);
       if (filter === "recurring" && !isRecurring) continue;
+
+      if (filter === "business") {
+        const isBiz = inc.scope === "business" || Boolean(inc.is_internal_transfer);
+        if (!isBiz) continue;
+
+        if (businessSubFilter === "deductible") continue;
+        if (
+          businessSubFilter === "reimbursement" &&
+          inc.transfer_kind !== "card_reimbursement"
+        )
+          continue;
+        if (businessSubFilter === "transfers" && !inc.is_internal_transfer) continue;
+      }
 
       const amountCents = numberToCents(inc.value);
       const weightedCents = numberToCents(inc.value * inc.report_weight);

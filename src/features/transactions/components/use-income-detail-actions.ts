@@ -119,6 +119,10 @@ export function useIncomeDetailActions({
 
   const handleSaveEdit = async (payload: IncomeEditSavePayload) => {
     if (!income) return;
+    if (isInternalTransfer) {
+      setError("Transferências pareadas entre PF e PJ não podem ser alteradas isoladamente. Para ajustar o valor ou a data, exclua o par e realize uma nova transferência.");
+      return;
+    }
     setError(null);
     const resolvedFamilyId = payload.is_family ? (myFamilyData?.family?.id ?? income.family_id ?? null) : null;
     if (isGrouped) {

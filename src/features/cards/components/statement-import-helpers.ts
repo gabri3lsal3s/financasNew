@@ -23,12 +23,22 @@ import {
   detectStatementMetadata,
   type CardContextForMetadata,
   type DetectedStatementMetadata,
+  parseSpatialPdfDocument,
+  type ChecksumGateResult,
 } from "@/domain/reconciliation";
 import {
   computeTextSha256,
   extractStatementPdfRowsWithAi,
 } from "@/services/ai-assistant";
 import { computeFileSha256 } from "@/services/receipt-resolution";
+import {
+  getCachedColumnMapping,
+  setCachedColumnMapping,
+} from "@/services/statement-mapping-cache";
+import {
+  isPdfPasswordProtectedError,
+  PdfPasswordProtectedError,
+} from "@/services/native/receipt-extractor";
 import type { Expense } from "@/types";
 import type { AiStatementPdfRow } from "../../../../supabase/functions/_shared/ai-schemas";
 import type { StatementImportProgress } from "./statement-reconcile-step";
@@ -81,21 +91,50 @@ export interface StatementItemPatch {
 }
 
 export type LoadedStatementSource =
-  | { kind: "pdf_text"; text: string; buffer: ArrayBuffer; fileName: string; sha256: string | null }
+  | {
+      kind: "pdf_text";
+      text: string;
+      buffer: ArrayBuffer;
+      fileName: string;
+      sha256: string | null;
+      spatialTransactions?: StatementTransaction[];
+      checksumGate?: ChecksumGateResult;
+    }
   | { kind: "pdf_scanned"; buffer: ArrayBuffer; fileName: string; sha256: string | null }
   | { kind: "spreadsheet"; buffer: ArrayBuffer; fileName: string }
   | { kind: "binary_or_text"; content: ArrayBuffer | string; fileName: string };
 
-export async function readStatementFileContent(file: File): Promise<LoadedStatementSource> {
+export interface ReadStatementFileOptions {
+  password?: string;
+  cardId?: string;
+  competenceMonth?: string;
+}
+
+export async function readStatementFileContent(
+  file: File,
+  options?: ReadStatementFileOptions,
+): Promise<LoadedStatementSource> {
   const lowerName = file.name.toLowerCase();
   if (lowerName.endsWith(".pdf") || file.type === "application/pdf") {
     const [buffer, sha256] = await Promise.all([
       file.arrayBuffer(),
       computeFileSha256(file),
     ]);
-    const { extractText } = await import("unpdf");
-    const { text } = await extractText(buffer.slice(0));
-    const fullText = Array.isArray(text) ? text.join("\n") : (text ?? "");
+
+    let fullText = "";
+    try {
+      const { extractText, getDocumentProxy } = await import("unpdf");
+      const data = options?.password
+        ? await getDocumentProxy(new Uint8Array(buffer.slice(0)), { password: options.password })
+        : new Uint8Array(buffer.slice(0));
+      const result = await extractText(data, { mergePages: true });
+      fullText = typeof result.text === "string" ? result.text : Array.isArray(result.text) ? (result.text as string[]).join("\n") : "";
+    } catch (err: unknown) {
+      if (isPdfPasswordProtectedError(err)) {
+        throw new PdfPasswordProtectedError();
+      }
+    }
+
     if (!fullText.trim()) {
       return {
         kind: "pdf_scanned",
@@ -104,12 +143,41 @@ export async function readStatementFileContent(file: File): Promise<LoadedStatem
         sha256,
       };
     }
+
+    // Tenta reconstrução espacial (X, Y) com as 4 barreiras se parâmetros forem fornecidos
+    let spatialTransactions: StatementTransaction[] | undefined;
+    let checksumGate: ChecksumGateResult | undefined;
+
+    if (options?.cardId && options?.competenceMonth) {
+      try {
+        const spatialResult = await parseSpatialPdfDocument(buffer, {
+          cardId: options.cardId,
+          competenceMonth: options.competenceMonth,
+          password: options.password,
+        });
+        if (spatialResult.transactions.length > 0) {
+          spatialTransactions = spatialResult.transactions;
+          checksumGate = spatialResult.checksumGate;
+          if (spatialResult.reconstructedText) {
+            fullText = spatialResult.reconstructedText;
+          }
+        }
+      } catch (err: unknown) {
+        if (isPdfPasswordProtectedError(err)) {
+          throw new PdfPasswordProtectedError();
+        }
+        // Fallback gracioso para texto digital padrão caso o parser espacial encontre erro
+      }
+    }
+
     return {
       kind: "pdf_text",
       text: fullText,
       buffer,
       fileName: file.name,
       sha256,
+      spatialTransactions,
+      checksumGate,
     };
   }
 
@@ -251,8 +319,10 @@ export async function executeChunkedStatementImport(params: {
 }): Promise<{ totalInserted: number; totalSkipped: number }> {
   const isBusinessCard = params.cardScope === "business";
   const payload: ChunkedImportExpenseInput[] = params.items.map((it) => {
-    const isDeductible = isBusinessCard
-      ? inferBusinessTaxDeductibility({ description: it.transaction.cleanDescription }).isDeductible
+    const itemScope = it.scope ?? (isBusinessCard ? "business" : "personal");
+    const isBiz = itemScope === "business";
+    const isDeductible = isBiz
+      ? (it.isTaxDeductible ?? inferBusinessTaxDeductibility({ description: it.transaction.cleanDescription }).isDeductible)
       : false;
 
     return {
@@ -265,8 +335,8 @@ export async function executeChunkedStatementImport(params: {
       report_weight: 1.0,
       statement_hash: it.transaction.statementHash,
       charge_kind: it.transaction.inferredChargeKind ?? "regular",
-      scope: isBusinessCard ? "business" : "personal",
-      ...(isBusinessCard && isDeductible ? { is_tax_deductible: true } : {}),
+      scope: itemScope,
+      ...(isBiz && isDeductible ? { is_tax_deductible: true } : {}),
     };
   });
 
@@ -431,6 +501,8 @@ export interface ParseStatementWithFallbackParams {
   userId?: string | null;
   isReadOnlyMode?: boolean;
   aiFallbackEnabled?: boolean;
+  spatialTransactions?: StatementTransaction[];
+  checksumGate?: ChecksumGateResult;
 }
 
 export interface ParsedStatementWithFallbackResult {
@@ -445,20 +517,53 @@ export interface ParsedStatementWithFallbackResult {
 
 /**
  * Interpreta extratos/faturas priorizando sempre custo zero de IA:
- * 1) Planilhas (.xlsx/.xls/.html), OFX e CSV/TSV resolvem 100% localmente;
- * 2) PDFs digitais e textos colados rodam parser determinístico + auditoria de cobertura;
- * 3) Somente se o parser local falhar ou perder linhas (PDF multi-coluna / colagem desestruturada),
+ * 1) Transações espaciais pré-extraídas (X,Y) com 4 barreiras anti-ruído (0 IA);
+ * 2) Planilhas (.xlsx/.xls/.html), OFX e CSV/TSV com cache declarativo de colunas (0 IA);
+ * 3) Parser determinístico local para texto digital e colagem;
+ * 4) Somente se o parser local falhar ou perder linhas (PDF multi-coluna / colagem desestruturada),
  *    envia apenas o texto cirurgicamente pré-processado (60%-85% menor) ao modo `statement_pdf_rows`.
  */
 export async function parseStatementWithPdfAiFallback(
   params: ParseStatementWithFallbackParams,
 ): Promise<ParsedStatementWithFallbackResult> {
+  // 0. Prioridade Máxima: Reconstrução Espacial (X, Y) com as 4 barreiras já concluída
+  if (params.spatialTransactions && params.spatialTransactions.length > 0) {
+    const rawText = typeof params.content === "string" ? params.content : "";
+    const detectedMeta = detectStatementMetadata({
+      rawText,
+      transactions: params.spatialTransactions,
+      activeCompetenceMonth: params.competenceMonth,
+      card: params.card,
+      printedTotalCents: params.checksumGate?.officialTotalCents ?? null,
+    });
+    return {
+      transactions: params.spatialTransactions,
+      rows: [],
+      mapping: {
+        dateColIndex: 0,
+        descriptionColIndex: 1,
+        amountColIndex: 2,
+        hasHeader: false,
+        startRowIndex: 0,
+      },
+      isOfx: false,
+      usedAiFallback: false,
+      printedTotalCents: params.checksumGate?.officialTotalCents ?? null,
+      detectedMeta,
+    };
+  }
+
   const lowerName = params.fileNameOrType.trim().toLowerCase();
 
-  // 1. Planilhas Excel (.xlsx, .xls) e tabelas HTML exportadas por bancos — 0 tokens de IA
+  // 1. Planilhas Excel (.xlsx, .xls) e tabelas HTML com cache declarativo de colunas — 0 tokens de IA
   if (isSpreadsheetOrHtmlFileName(lowerName)) {
     const sheetRows = await parseSpreadsheetOrHtmlToRows(params.content);
-    const mapping = sniffColumnMapping(sheetRows);
+    const headerCells = sheetRows[0]?.cells ?? [];
+    let mapping = getCachedColumnMapping(headerCells, sheetRows);
+    if (!mapping) {
+      mapping = sniffColumnMapping(sheetRows);
+      setCachedColumnMapping(headerCells, mapping);
+    }
     const transactions = buildTransactionsFromRows(sheetRows, mapping, {
       cardId: params.cardId,
       competenceMonth: params.competenceMonth,
@@ -508,14 +613,30 @@ export async function parseStatementWithPdfAiFallback(
 
   const structuredTabular = isStructuredTabularFileName(params.fileNameOrType, params.content);
   if (structuredTabular) {
+    const headerCells = deterministic.rows[0]?.cells ?? [];
+    let mapping = getCachedColumnMapping(headerCells, deterministic.rows);
+    if (!mapping) {
+      mapping = deterministic.mapping;
+      setCachedColumnMapping(headerCells, mapping);
+    }
+    const transactions =
+      mapping !== deterministic.mapping
+        ? buildTransactionsFromRows(deterministic.rows, mapping, {
+            cardId: params.cardId,
+            competenceMonth: params.competenceMonth,
+          })
+        : deterministic.transactions;
+
     const detectedMeta = detectStatementMetadata({
       rawText: textContent,
-      transactions: deterministic.transactions,
+      transactions,
       activeCompetenceMonth: params.competenceMonth,
       card: params.card,
     });
     return {
       ...deterministic,
+      transactions,
+      mapping,
       usedAiFallback: false,
       printedTotalCents: null,
       detectedMeta,

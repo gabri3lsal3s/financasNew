@@ -163,4 +163,24 @@ describe("BusinessPage (/negocio)", () => {
     expect(screen.getByText("Projeto cliente X")).toBeInTheDocument();
     expect(screen.getByText("Insumos operacionais")).toBeInTheDocument();
   });
+
+  it("permite abrir o Guia do Empreendedor a partir do cabeçalho", async () => {
+    const user = userEvent.setup();
+    mockIsBusinessModeEnabled = true;
+
+    render(
+      <MemoryRouter>
+        <BusinessPage />
+      </MemoryRouter>,
+    );
+
+    const guideBtn = screen.getByRole("button", { name: /Guia do Negócio/i });
+    expect(guideBtn).toBeInTheDocument();
+    await user.click(guideBtn);
+
+    expect(await screen.findByText(/Guia do Empreendedor & Enquadramento/i)).toBeInTheDocument();
+    expect(screen.getByText(/Descobrir Perfil/i)).toBeInTheDocument();
+    expect(screen.getByText(/PF × PJ na Prática/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Despesas Dedutíveis/i).length).toBeGreaterThan(0);
+  });
 });

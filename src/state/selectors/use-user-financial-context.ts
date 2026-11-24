@@ -40,6 +40,7 @@ import type {
   Recurrence,
   UserDividendEvent,
   UserPreferences,
+  ViewScope,
 } from "@/types";
 
 function getOptionalStateHook<TResult>(
@@ -75,6 +76,8 @@ export interface UseUserFinancialContextOptions {
   committedObligationsCents?: number;
   safeToSpendCents?: number;
   positionRows?: readonly OverviewPortfolioPositionLike[];
+  /** Escopo para apuração do contexto financeiro pessoal/familiar (default 'personal' para blindar Reserva de Emergência). */
+  scopeOverride?: ViewScope;
 }
 
 export interface UseUserFinancialContextResult {
@@ -166,14 +169,6 @@ export function useUserFinancialContext(
     rows: [] as OverviewPortfolioPositionLike[],
     isLoading: false,
   }));
-  const useViewScopeSafe = getOptionalStateHook("useViewScope", () => ({
-    viewScope: "all" as const,
-    effectiveViewScope: "all" as const,
-    setViewScope: () => undefined,
-    isBusinessModeEnabled: false,
-  }));
-  const { effectiveViewScope } = useViewScopeSafe();
-
   const m0IncomesQ = useIncomesSafe(month, { enabled: queryEnabled });
   const m1IncomesQ = useIncomesSafe(m1, { enabled: queryEnabled });
   const m2IncomesQ = useIncomesSafe(m2, { enabled: queryEnabled });
@@ -213,38 +208,42 @@ export function useUserFinancialContext(
     [],
   );
 
+  // Contexto financeiro pessoal da família (Reserva de Emergência, taxa de poupança e custo de vida)
+  // deve SEMPRE filtrar por 'personal' por padrão para não contaminar o orçamento doméstico com compras PJ.
+  const targetScope: ViewScope = options.scopeOverride ?? "personal";
+
   const m0Incomes = useMemo(
-    () => filterIncomesByViewScope(m0IncomesQ?.data ?? EMPTY_INCOMES, effectiveViewScope, { mode: "dre" }),
-    [m0IncomesQ?.data, effectiveViewScope],
+    () => filterIncomesByViewScope(m0IncomesQ?.data ?? EMPTY_INCOMES, targetScope, { mode: "dre" }),
+    [m0IncomesQ?.data, targetScope],
   );
   const m1Incomes = useMemo(
-    () => filterIncomesByViewScope(m1IncomesQ?.data ?? EMPTY_INCOMES, effectiveViewScope, { mode: "dre" }),
-    [m1IncomesQ?.data, effectiveViewScope],
+    () => filterIncomesByViewScope(m1IncomesQ?.data ?? EMPTY_INCOMES, targetScope, { mode: "dre" }),
+    [m1IncomesQ?.data, targetScope],
   );
   const m2Incomes = useMemo(
-    () => filterIncomesByViewScope(m2IncomesQ?.data ?? EMPTY_INCOMES, effectiveViewScope, { mode: "dre" }),
-    [m2IncomesQ?.data, effectiveViewScope],
+    () => filterIncomesByViewScope(m2IncomesQ?.data ?? EMPTY_INCOMES, targetScope, { mode: "dre" }),
+    [m2IncomesQ?.data, targetScope],
   );
   const m3Incomes = useMemo(
-    () => filterIncomesByViewScope(m3IncomesQ?.data ?? EMPTY_INCOMES, effectiveViewScope, { mode: "dre" }),
-    [m3IncomesQ?.data, effectiveViewScope],
+    () => filterIncomesByViewScope(m3IncomesQ?.data ?? EMPTY_INCOMES, targetScope, { mode: "dre" }),
+    [m3IncomesQ?.data, targetScope],
   );
 
   const m0Expenses = useMemo(
-    () => filterExpensesByViewScope(m0ExpensesQ?.data ?? EMPTY_EXPENSES, effectiveViewScope, { mode: "dre" }),
-    [m0ExpensesQ?.data, effectiveViewScope],
+    () => filterExpensesByViewScope(m0ExpensesQ?.data ?? EMPTY_EXPENSES, targetScope, { mode: "dre" }),
+    [m0ExpensesQ?.data, targetScope],
   );
   const m1Expenses = useMemo(
-    () => filterExpensesByViewScope(m1ExpensesQ?.data ?? EMPTY_EXPENSES, effectiveViewScope, { mode: "dre" }),
-    [m1ExpensesQ?.data, effectiveViewScope],
+    () => filterExpensesByViewScope(m1ExpensesQ?.data ?? EMPTY_EXPENSES, targetScope, { mode: "dre" }),
+    [m1ExpensesQ?.data, targetScope],
   );
   const m2Expenses = useMemo(
-    () => filterExpensesByViewScope(m2ExpensesQ?.data ?? EMPTY_EXPENSES, effectiveViewScope, { mode: "dre" }),
-    [m2ExpensesQ?.data, effectiveViewScope],
+    () => filterExpensesByViewScope(m2ExpensesQ?.data ?? EMPTY_EXPENSES, targetScope, { mode: "dre" }),
+    [m2ExpensesQ?.data, targetScope],
   );
   const m3Expenses = useMemo(
-    () => filterExpensesByViewScope(m3ExpensesQ?.data ?? EMPTY_EXPENSES, effectiveViewScope, { mode: "dre" }),
-    [m3ExpensesQ?.data, effectiveViewScope],
+    () => filterExpensesByViewScope(m3ExpensesQ?.data ?? EMPTY_EXPENSES, targetScope, { mode: "dre" }),
+    [m3ExpensesQ?.data, targetScope],
   );
 
   const budgets = useMemo(() => budgetsQ?.data ?? EMPTY_BUDGETS, [budgetsQ?.data]);

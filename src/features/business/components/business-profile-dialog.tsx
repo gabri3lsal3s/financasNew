@@ -1,4 +1,5 @@
 import { useId, useState } from "react";
+import { Sparkles } from "lucide-react";
 import {
   Button,
   FormField,
@@ -24,6 +25,7 @@ export interface BusinessProfileDialogProps {
   profile: BusinessProfileSettings | null | undefined;
   isSaving?: boolean;
   onSave: (nextProfile: BusinessProfileSettings) => Promise<void>;
+  onOpenGuide?: () => void;
 }
 
 const PROFILE_KIND_OPTIONS: Array<{ value: BusinessProfileKind; label: string }> = [
@@ -39,6 +41,7 @@ export function BusinessProfileDialog({
   profile,
   isSaving = false,
   onSave,
+  onOpenGuide,
 }: BusinessProfileDialogProps) {
   const formId = useId();
 
@@ -58,6 +61,9 @@ export function BusinessProfileDialog({
   const [annualCeilingCents, setAnnualCeilingCents] = useState(
     profile?.annualCeilingCents ?? DEFAULT_MEI_ANNUAL_CEILING_CENTS,
   );
+  const [openingBalanceCents, setOpeningBalanceCents] = useState(
+    profile?.openingBalanceCents ?? 0,
+  );
 
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {
@@ -69,6 +75,7 @@ export function BusinessProfileDialog({
       setTaxProvisionRatePct(profile?.taxProvisionRatePct ?? DEFAULT_TAX_PROVISION_RATE_PCT);
       setTargetProLaboreCents(profile?.targetProLaboreCents ?? 0);
       setAnnualCeilingCents(profile?.annualCeilingCents ?? DEFAULT_MEI_ANNUAL_CEILING_CENTS);
+      setOpeningBalanceCents(profile?.openingBalanceCents ?? 0);
     }
   }
 
@@ -83,6 +90,7 @@ export function BusinessProfileDialog({
       targetProLaboreCents,
       annualCeilingCents:
         profileKind === "mei" ? annualCeilingCents : profile?.annualCeilingCents,
+      openingBalanceCents,
       onboardingCompleted: true,
     };
     await onSave(payload);
@@ -121,7 +129,7 @@ export function BusinessProfileDialog({
       }
     >
       <form id={formId} onSubmit={handleSubmit} className="flex flex-col gap-3.5 pt-2">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+        <div className="flex flex-col gap-1.5">
           <FormField label="Enquadramento" htmlFor={`${formId}-kind`}>
             <Select
               id={`${formId}-kind`}
@@ -131,13 +139,41 @@ export function BusinessProfileDialog({
               ariaLabel="Enquadramento do negócio"
             />
           </FormField>
+          {onOpenGuide ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className="gap-1.5 text-xs text-portfolio hover:text-portfolio/80 p-0 h-auto self-start"
+              onClick={onOpenGuide}
+            >
+              <Sparkles className="size-3" aria-hidden="true" />
+              <span>Não sabe qual escolher? Faça o teste do perfil</span>
+            </Button>
+          ) : null}
+        </div>
 
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <FormField label="Nome fantasia / negócio" optional htmlFor={`${formId}-name`}>
             <Input
               id={`${formId}-name`}
               value={businessName}
               onChange={(event) => setBusinessName(event.target.value)}
               placeholder="Ex.: Consultório, Studio..."
+            />
+          </FormField>
+
+          <FormField
+            label="Saldo Inicial do Negócio (Caixa PJ)"
+            optional
+            htmlFor={`${formId}-opening-balance`}
+            helperText="Saldo inicial do caixa da empresa sem afetar checkpoints bancários."
+          >
+            <MoneyInput
+              id={`${formId}-opening-balance`}
+              cents={openingBalanceCents}
+              onCentsChange={setOpeningBalanceCents}
+              aria-label="Saldo inicial do caixa do negócio"
             />
           </FormField>
 

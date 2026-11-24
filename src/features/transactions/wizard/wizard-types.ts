@@ -51,6 +51,12 @@ export interface LaunchState {
   scope?: TransactionScope;
   /** Despesa dedutível para cálculo de escudo fiscal no Modo Negócio. */
   isTaxDeductible?: boolean;
+  /** Valor retido na fonte (IRRF/ISS) em centavos para receitas PJ/Autônomo. */
+  taxWithheldCents?: number;
+  /** Se o usuário ativou a divisão de uso misto (Split PF/PJ). */
+  splitPFPJEnabled?: boolean;
+  /** Percentual atribuído ao negócio no Split PF/PJ (1 a 99, default 50). */
+  splitPFPJBusinessPercent?: number;
 }
 
 export const WIZARD_STEPS = ["Valor", "Categoria", "Detalhes", "Revisão"] as const;

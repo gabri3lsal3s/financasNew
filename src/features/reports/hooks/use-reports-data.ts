@@ -225,5 +225,6 @@ export function useReportsData(params: UseReportsDataParams) {
     usdRate: investments.usdRate,
     fxMetadata: investments.fxMetadata,
     transactions: investments.transactions,
+    businessDreForExcel,
   };
 }

@@ -248,7 +248,7 @@ export function SmartAdvisorCard({
         role="region"
         aria-label="Assistente Proativo de Insights"
         className={cn(
-          "relative group w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs transition-all motion-reduce:transition-none",
+          "relative group w-full h-full min-h-[104px] sm:min-h-[84px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs transition-all motion-reduce:transition-none",
           className,
         )}
       >
@@ -281,7 +281,10 @@ export function SmartAdvisorCard({
                 />
               ) : null}
             </div>
-            <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 sm:line-clamp-1 break-words">
+            <p
+              className="text-xs text-muted-foreground leading-relaxed line-clamp-2 break-words"
+              title={activeInsight.description}
+            >
               {activeInsight.description}
             </p>
           </div>

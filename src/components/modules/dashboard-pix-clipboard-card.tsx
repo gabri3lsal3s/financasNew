@@ -51,7 +51,7 @@ export function DashboardPixClipboardCard({
     <div
       role="region"
       aria-label="Sugestão de Pix detectado"
-      className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 w-full min-h-[72px] p-3.5 sm:p-4 rounded-2xl border border-positive/30 bg-surface shadow-xs transition-all ring-1 ring-positive/10"
+      className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 w-full min-h-[84px] p-3.5 sm:p-4 rounded-2xl border border-positive/30 bg-surface shadow-xs transition-all ring-1 ring-positive/10"
     >
       <div className="flex items-center gap-3 min-w-0 pr-6 sm:pr-0">
         <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-positive/20 bg-positive/10 text-positive-strong">
@@ -64,7 +64,7 @@ export function DashboardPixClipboardCard({
               PIX DETECTADO
             </Badge>
           </div>
-          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 sm:line-clamp-1 break-words">
+          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 break-words">
             {hasAmount ? (
               <>
                 <MoneyText cents={candidate.valueCents} tone="default" className="font-semibold" />{" "}

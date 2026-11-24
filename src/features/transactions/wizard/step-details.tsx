@@ -25,6 +25,9 @@ export interface StepDetailsProps {
   isBusinessModeEnabled?: boolean;
   onScopeChange?: (scope: TransactionScope) => void;
   onTaxDeductibleChange?: (deductible: boolean) => void;
+  onTaxWithheldChange?: (cents: number) => void;
+  onSplitPFPJToggle?: (enabled: boolean) => void;
+  onSplitPFPJBusinessPercentChange?: (percent: number) => void;
   onReportWeightChange: (weight: number) => void;
   onReportCustomAmountChange: (cents: number) => void;
   onSplitToggle?: (enabled: boolean) => void;
@@ -54,6 +57,7 @@ export function StepDetails(props: StepDetailsProps) {
     state, onDateChange, onPaymentMethodChange, onCardChange, onChargeKindChange, onInstallmentsChange,
     onReceiveTypeChange, onDescriptionChange, onFamilyChange, isFamilyModeEnabled = false,
     isBusinessModeEnabled = false, onScopeChange, onTaxDeductibleChange,
+    onTaxWithheldChange, onSplitPFPJToggle, onSplitPFPJBusinessPercentChange,
     onReportWeightChange, onReportCustomAmountChange, onSplitToggle, onSplitPeopleCountChange,
     onDebtToggle, onDebtTypeChange, onDebtAmountChange, onDebtDueDateChange,
     onRecurringToggle, onRecurrenceFrequencyChange, onRecurrenceEndModeChange,
@@ -63,8 +67,10 @@ export function StepDetails(props: StepDetailsProps) {
   } = props;
 
   const isExpense = state.type === "expense";
-  const showReportWeight = !state.splitEnabled;
-  const showLinkedDebt = isExpense && !state.recurring && !state.splitEnabled;
+  const isBusiness = (state.scope ?? "personal") === "business";
+  const isSplitPFPJ = Boolean(state.splitPFPJEnabled);
+  const showReportWeight = !state.splitEnabled && !isBusiness && !isSplitPFPJ;
+  const showLinkedDebt = isExpense && !state.recurring && !state.splitEnabled && !isBusiness && !isSplitPFPJ;
   const hasAdvancedData =
     (showReportWeight && (!isPresetWeight(state.reportWeight) || effectiveReportWeight(state) < 1)) ||
     (showLinkedDebt && state.debtEnabled);
@@ -118,6 +124,9 @@ export function StepDetails(props: StepDetailsProps) {
         activeTripMemberName={activeTripMemberName}
         onScopeChange={onScopeChange}
         onTaxDeductibleChange={onTaxDeductibleChange}
+        onTaxWithheldChange={onTaxWithheldChange}
+        onSplitPFPJToggle={onSplitPFPJToggle}
+        onSplitPFPJBusinessPercentChange={onSplitPFPJBusinessPercentChange}
         onFamilyChange={onFamilyChange}
         onTripChange={onTripChange}
         onSplitToggle={onSplitToggle}

@@ -33,6 +33,20 @@ function isZipArchive(bytes: Uint8Array): boolean {
   );
 }
 
+/**
+ * Detecta se o arquivo é um arquivo binário OLE2/CFBF (Excel 97-2003 .xls no formato BIFF8).
+ * Magic bytes canônicos: 0xD0, 0xCF, 0x11, 0xE0.
+ */
+export function isBiff8Excel(bytes: Uint8Array): boolean {
+  return (
+    bytes.length >= 4 &&
+    bytes[0] === 0xd0 &&
+    bytes[1] === 0xcf &&
+    bytes[2] === 0x11 &&
+    bytes[3] === 0xe0
+  );
+}
+
 function parseZipCentralDirectory(bytes: Uint8Array): ZipCentralEntry[] {
   const minEocdSize = 22;
   if (bytes.length < minEocdSize) return [];
@@ -373,6 +387,11 @@ export async function parseSpreadsheetOrHtmlToRows(
 ): Promise<RawParsedRow[]> {
   if (typeof input !== "string") {
     const bytes = new Uint8Array(input);
+    if (isBiff8Excel(bytes)) {
+      throw new Error(
+        "Planilhas no formato binário legado (.xls / Excel 97-2003) não são suportadas diretamente. Exporte ou salve o arquivo como .xlsx ou .csv para importar.",
+      );
+    }
     if (isZipArchive(bytes)) {
       const entries = parseZipCentralDirectory(bytes);
       const sharedEntry = entries.find(

@@ -219,6 +219,9 @@ function StatementImportContent({
             onRemoveItem={state.handleRemoveItem}
             onAddManualItem={state.handleAddManualItem}
             onUncheckDuplicates={state.handleUncheckDuplicates}
+            isBusinessModeEnabled={state.isBusinessModeEnabled}
+            onToggleScope={state.handleToggleScope}
+            onSetScopeAll={state.handleSetScopeAll}
             onBack={handleBackFromReconcile}
             onConfirm={() => void state.handleConfirmImport()}
             isPending={state.isPending}

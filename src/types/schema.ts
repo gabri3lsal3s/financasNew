@@ -66,6 +66,9 @@ export type BusinessProfileSettings = {
   monthlyDasCents?: number;
   taxProvisionRatePct?: number;
   targetProLaboreCents?: number;
+  openingBalanceCents?: number;
+  openingDate?: string | null;
+  meiSubcategory?: "general" | "trucker";
   onboardingCompleted?: boolean;
 };
 
@@ -648,6 +651,8 @@ export type Income = {
   transfer_pair_id?: string | null;
   /** Natureza da transferência interna ('pro_labore' | 'capital_injection' | 'card_reimbursement'). */
   transfer_kind?: InternalTransferKind | null;
+  /** Valor retido na fonte (IRRF / ISS) para autônomos e Simples Nacional (Fase 1/v2.1). */
+  tax_withheld?: number;
   created_at: string;
 };
 

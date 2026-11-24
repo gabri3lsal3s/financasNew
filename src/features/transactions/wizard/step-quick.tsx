@@ -29,6 +29,9 @@ export interface StepQuickProps {
   onToggleShowAllCategories?: () => void;
   onScopeChange?: (scope: TransactionScope) => void;
   onTaxDeductibleChange?: (deductible: boolean) => void;
+  onTaxWithheldChange?: (cents: number) => void;
+  onSplitPFPJToggle?: (enabled: boolean) => void;
+  onSplitPFPJBusinessPercentChange?: (percent: number) => void;
   onSplitToggle?: (enabled: boolean) => void;
   onSplitPeopleCountChange?: (count: number) => void;
   onSplitDebtModeChange?: (mode: "single_total" | "per_installment") => void;
@@ -66,7 +69,8 @@ export function StepQuick(props: StepQuickProps) {
     state, onTypeChange, onValueChange, onCategoryChange, onPaymentMethodChange,
     onCardChange, onInstallmentsChange, isCategoryUnconfirmed = false, onReceiveTypeChange,
     onDescriptionChange, onFamilyChange, isFamilyModeEnabled = false, isBusinessModeEnabled = false,
-    showAllCategories = false, onToggleShowAllCategories, onScopeChange, onTaxDeductibleChange, onSplitToggle,
+    showAllCategories = false, onToggleShowAllCategories, onScopeChange, onTaxDeductibleChange,
+    onTaxWithheldChange, onSplitPFPJToggle, onSplitPFPJBusinessPercentChange, onSplitToggle,
     onSplitPeopleCountChange, onSplitDebtModeChange, activeTrips, onTripChange,
     activeTripMemberName, onSwitchToGuided, categories, categoriesLoading = false,
     predictionEntries, habits, onApplyHabitual, cards, cardsLoading = false, receiptMeta, onSubmit,
@@ -271,6 +275,9 @@ export function StepQuick(props: StepQuickProps) {
           activeTripMemberName={activeTripMemberName}
           onScopeChange={onScopeChange}
           onTaxDeductibleChange={onTaxDeductibleChange}
+          onTaxWithheldChange={onTaxWithheldChange}
+          onSplitPFPJToggle={onSplitPFPJToggle}
+          onSplitPFPJBusinessPercentChange={onSplitPFPJBusinessPercentChange}
           onFamilyChange={onFamilyChange}
           onTripChange={onTripChange}
           onSplitToggle={onSplitToggle}

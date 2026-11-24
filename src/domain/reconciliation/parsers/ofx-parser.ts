@@ -1,6 +1,10 @@
 import type { StatementTransaction } from "../types";
 import { inferChargeKindFromDescription } from "@/domain/cards/charges";
-import { cleanDescription, isPaymentOrSettlement } from "../clean";
+import {
+  classifyTransactionNature,
+  cleanDescription,
+  isPaymentOrSettlement,
+} from "../clean";
 import { extractInstallmentInfo } from "../installments";
 import { generateStatementHash } from "../hash";
 
@@ -93,44 +97,54 @@ export function parseOfxToTransactions(
     // Em extratos de cartão de crédito no padrão OFX:
     // Valores negativos (< 0) costumam representar compras/débitos.
     // Valores positivos (> 0) costumam representar pagamentos ou estornos.
-    let isRefund = false;
-    let isPayment = false;
-
-    if (isPaymentOrSettlement(combinedDesc)) {
-      isPayment = true;
-    } else if (isCreditType) {
-      isRefund = true;
-    } else if (isDebitType) {
-      isRefund = false;
-    } else {
-      isRefund = numAmt > 0 && !isPaymentOrSettlement(combinedDesc);
-      isPayment = isPaymentOrSettlement(combinedDesc);
-    }
+    const isCredit = isCreditType || (!isDebitType && numAmt > 0);
+    const isPayment = isPaymentOrSettlement(combinedDesc, isCredit);
+    const isRefund = isCredit && !isPayment;
 
     const amountCents = Math.round(Math.abs(numAmt) * 100);
 
     const cleanDesc = cleanDescription(combinedDesc);
-    const installment = extractInstallmentInfo(combinedDesc);
+    const installment = extractInstallmentInfo(combinedDesc, date);
 
-    // Chave para contagem de repetições no mesmo dia
-    const occKey = `${date}|${amountCents}|${cleanDesc.toLowerCase()}`;
+    // Clamping de datas anteriores a 2026-01-01 preservando a data original no hash
+    const APP_START_DATE = "2026-01-01";
+    let effectiveDate = date;
+    let originalDate: string | undefined;
+    if (date < APP_START_DATE) {
+      originalDate = date;
+      effectiveDate = APP_START_DATE;
+    }
+
+    const hashDate = originalDate || effectiveDate;
+    const occKey = `${hashDate}|${amountCents}|${cleanDesc.toLowerCase()}`;
     const occIndex = occurrenceCounter.get(occKey) ?? 0;
     occurrenceCounter.set(occKey, occIndex + 1);
 
     const statementHash = generateStatementHash({
       cardId: params.cardId,
       competenceMonth: params.competenceMonth,
-      date,
+      date: hashDate,
       amountCents,
       cleanDescription: cleanDesc,
       occurrenceIndex: occIndex,
+    });
+
+    const inferredChargeKind = inferChargeKindFromDescription(combinedDesc);
+    const nature = classifyTransactionNature({
+      rawDescription: combinedDesc,
+      isCredit,
+      isPayment,
+      isRefund,
+      hasChargeKind: inferredChargeKind != null && inferredChargeKind !== "regular",
     });
 
     transactions.push({
       id: `stmt-${index}`,
       index: index++,
       occurrenceIndex: occIndex,
-      date,
+      date: effectiveDate,
+      originalDate,
+      nature,
       rawDescription: combinedDesc,
       cleanDescription: cleanDesc,
       amountCents,
@@ -139,7 +153,7 @@ export function parseOfxToTransactions(
       installment,
       statementHash,
       fitid,
-      inferredChargeKind: inferChargeKindFromDescription(combinedDesc),
+      inferredChargeKind,
     });
   }
 

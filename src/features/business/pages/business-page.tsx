@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import {
   ArrowLeftRight,
+  BookOpen,
   Briefcase,
   Plus,
   Settings2,
@@ -61,6 +62,7 @@ import { BreakEvenCard } from "../components/break-even-card";
 import { BusinessDreCard } from "../components/business-dre-card";
 import { BusinessOnboardingEmptyView } from "../components/business-onboarding-empty-view";
 import { BusinessProfileDialog } from "../components/business-profile-dialog";
+import { EducationalGuideModal } from "../components/educational-guide-modal";
 import { InternalTransferDialog } from "../components/internal-transfer-dialog";
 import { MeiCeilingCard } from "../components/mei-ceiling-card";
 import { TaxShieldCard } from "../components/tax-shield-card";
@@ -71,6 +73,7 @@ type CashflowFeedItem =
 
 /** Página Meu Negócio (MEI / Autônomo) — gestão separada da esfera PJ em `/negocio`. */
 export function BusinessPage() {
+  const [onboardingGuideOpen, setOnboardingGuideOpen] = useState(false);
   const {
     isBusinessModeEnabled,
     businessProfile,
@@ -80,7 +83,10 @@ export function BusinessPage() {
     isPending: isBusinessUpdating,
   } = useBusinessMode();
 
-  const handleActivateBusinessMode = async (profileKind: BusinessProfileKind) => {
+  const handleActivateBusinessMode = async (
+    profileKind: BusinessProfileKind,
+    suggestedSettings?: Partial<BusinessProfileSettings>,
+  ) => {
     const defaultProfile: BusinessProfileSettings = {
       profileKind,
       monthlyDasCents: DEFAULT_MEI_MONTHLY_DAS_CENTS,
@@ -88,6 +94,7 @@ export function BusinessPage() {
       targetProLaboreCents: 0,
       annualCeilingCents: DEFAULT_MEI_ANNUAL_CEILING_CENTS,
       onboardingCompleted: true,
+      ...suggestedSettings,
     };
     await toggleBusinessMode(true);
     await updateBusinessProfile(defaultProfile);
@@ -112,6 +119,14 @@ export function BusinessPage() {
         <BusinessOnboardingEmptyView
           isPending={isBusinessUpdating}
           onActivate={handleActivateBusinessMode}
+          onOpenGuide={() => setOnboardingGuideOpen(true)}
+        />
+        <EducationalGuideModal
+          open={onboardingGuideOpen}
+          onOpenChange={setOnboardingGuideOpen}
+          onSelectProfile={async (kind, suggestedSettings) => {
+            await handleActivateBusinessMode(kind, suggestedSettings);
+          }}
         />
       </div>
     );
@@ -142,6 +157,7 @@ function BusinessDashboardContent({
   const [transferOpen, setTransferOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [checkpointOpen, setCheckpointOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [selectedIncome, setSelectedIncome] = useState<Income | null>(null);
 
@@ -289,6 +305,16 @@ function BusinessDashboardContent({
         }
         actions={
           <>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setGuideOpen(true)}
+            >
+              <BookOpen className="size-4" aria-hidden="true" />
+              <span>Guia do Negócio</span>
+            </Button>
             <Button
               type="button"
               variant="outline"
@@ -487,6 +513,19 @@ function BusinessDashboardContent({
         profile={effectiveProfile}
         isSaving={isUpdatingProfile}
         onSave={onUpdateProfile}
+        onOpenGuide={() => setGuideOpen(true)}
+      />
+
+      <EducationalGuideModal
+        open={guideOpen}
+        onOpenChange={setGuideOpen}
+        onSelectProfile={async (kind, suggestedSettings) => {
+          await onUpdateProfile({
+            ...effectiveProfile,
+            profileKind: kind,
+            ...suggestedSettings,
+          });
+        }}
       />
 
       <CashCheckpointDialog

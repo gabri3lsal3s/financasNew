@@ -123,6 +123,7 @@ O Axir opera em um ecossistema unificado composto por três pilares sob a mesma 
     │   ├── debts/                 #   Dívidas (status, quitação integrada)
     │   ├── budgets/               #   Orçamentos (limites, realocação)
     │   ├── reports/               #   Relatórios
+    │   ├── business/              #   Modo Negócio (/negocio — DRE PJ, teto MEI, ponto de equilíbrio, pró-labore)
     │   ├── insights/              #   Insights, projeção e corte
     │   ├── trips/                 #   Modo Viagem (/viagens, /viagens/:id - grupos temporários & ledger)
     │   ├── reminders/             #   Lembretes (central de notificações)
@@ -133,6 +134,7 @@ O Axir opera em um ecossistema unificado composto por três pilares sob a mesma 
     │   └── tools/                 #   Simuladores abertos client-side (/ferramentas/*)
     │
     ├── domain/                    # ⭐ MOTORES DE CÁLCULO PUROS (testáveis, sem deps)
+    │   ├── business/              #   teto MEI dinâmico, caixa derivado PJ, ponto de equilíbrio, split PF/PJ, benefício fiscal
     │   ├── pix/                   #   gerador EMV QRCPS-MPM BACEN, CRC16, chave Pix e QR Code
     │   ├── notifications/         #   parsers puros de notificações, comprovantes bancários, pix-clipboard, pix-text-parser, merchant-memory
     │   ├── finance/               #   rateio de despesas em centavos e políticas de sobra (split-math.ts)

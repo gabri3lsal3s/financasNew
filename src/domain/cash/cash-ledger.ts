@@ -67,6 +67,7 @@ export interface CalculateCashBalanceParams {
     description?: string | null;
     created_at?: string | null;
     source_ref?: string | null;
+    tax_withheld?: number | null;
   }[];
   expenses?: readonly {
     id?: string;
@@ -131,7 +132,11 @@ export function resolveCashFlowEvents(params: CalculateCashBalanceParams): CashL
     // Rendas automáticas de estorno [REFUND] são contrapartidas contábeis;
     // não devem duplicar no caixa se o estorno já estiver nos pagamentos do cartão.
     if (inc.source_ref?.startsWith("[REFUND]")) continue;
-    const amountCents = numberToCents(inc.value);
+    // Desconta retenções tributárias na fonte (IRRF / ISS de autônomo e Simples),
+    // refletindo estritamente a entrada física de caixa na conta corrente.
+    const rawCents = numberToCents(inc.value);
+    const taxWithheldCents = inc.tax_withheld ? numberToCents(inc.tax_withheld) : 0;
+    const amountCents = Math.max(0, rawCents - taxWithheldCents);
     if (amountCents <= 0) continue;
     events.push({
       id: inc.id ?? `inc-${inc.date}-${amountCents}`,
@@ -317,6 +322,12 @@ export interface SafeToSpendParams {
   payablePendingCents: number;
   receivablePendingCents?: number;
   essentialBudgetsRemainingCents?: number;
+  /**
+   * Saldo operacional do negócio (Caixa Derivado PJ) em conta bancária única/compartilhada.
+   * Quando positivo, é estritamente deduzido do Safe-to-Spend pessoal para evitar
+   * que dinheiro da empresa apareça como disponível para lazer ou gastos da família.
+   */
+  derivedBusinessCashCents?: number;
 }
 
 export interface SafeToSpendResult {
@@ -330,11 +341,13 @@ export interface SafeToSpendResult {
   receivablePendingCents: number;
   /** Orçamentos de categorias essenciais ainda não consumidos. */
   essentialBudgetsRemainingCents: number;
-  /** Total de obrigações comprometidas (faturas + dívidas a pagar). */
+  /** Caixa operacional da empresa reservado na conta compartilhada. */
+  derivedBusinessCashCents?: number;
+  /** Total de obrigações comprometidas (faturas + dívidas a pagar + reserva de caixa PJ). */
   committedObligationsCents: number;
   /**
    * Saldo Livre Real conservador:
-   *   Saldo Real − Faturas Abertas − Dívidas a Pagar.
+   *   Saldo Real − Faturas Abertas − Dívidas a Pagar − Caixa PJ em conta única.
    */
   safeToSpendCents: number;
   /**
@@ -350,7 +363,8 @@ export interface SafeToSpendResult {
 }
 
 /**
- * Calcula o Saldo Livre Real (Safe-to-Spend) descontando compromissos já contratados.
+ * Calcula o Saldo Livre Real (Safe-to-Spend) descontando compromissos já contratados
+ * e garantindo a conservação exata de caixa (isolando o caixa da empresa em conta única).
  */
 export function calculateSafeToSpend(params: SafeToSpendParams): SafeToSpendResult {
   const {
@@ -359,9 +373,15 @@ export function calculateSafeToSpend(params: SafeToSpendParams): SafeToSpendResu
     payablePendingCents,
     receivablePendingCents = 0,
     essentialBudgetsRemainingCents = 0,
+    derivedBusinessCashCents = 0,
   } = params;
 
-  const committedObligationsCents = Math.max(0, openInvoicesCents) + Math.max(0, payablePendingCents);
+  const businessCashReservationCents = Math.max(0, derivedBusinessCashCents);
+  const committedObligationsCents =
+    Math.max(0, openInvoicesCents) +
+    Math.max(0, payablePendingCents) +
+    businessCashReservationCents;
+
   const safeToSpendCents = realCashBalanceCents - committedObligationsCents;
   const safeToSpendWithBudgetsCents = safeToSpendCents - Math.max(0, essentialBudgetsRemainingCents);
   const safeToSpendWithReceivablesCents = safeToSpendCents + Math.max(0, receivablePendingCents);
@@ -372,6 +392,7 @@ export function calculateSafeToSpend(params: SafeToSpendParams): SafeToSpendResu
     payablePendingCents: Math.max(0, payablePendingCents),
     receivablePendingCents: Math.max(0, receivablePendingCents),
     essentialBudgetsRemainingCents: Math.max(0, essentialBudgetsRemainingCents),
+    derivedBusinessCashCents: businessCashReservationCents,
     committedObligationsCents,
     safeToSpendCents,
     safeToSpendWithBudgetsCents,

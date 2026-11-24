@@ -122,6 +122,9 @@ export function LaunchWizardGuidedSteps({
           isBusinessModeEnabled={isBusinessActive}
           onScopeChange={onScopeChange}
           onTaxDeductibleChange={(d) => set("isTaxDeductible", d)}
+          onTaxWithheldChange={(c) => set("taxWithheldCents", c)}
+          onSplitPFPJToggle={(e) => set("splitPFPJEnabled", e)}
+          onSplitPFPJBusinessPercentChange={(p) => set("splitPFPJBusinessPercent", p)}
           descriptionSuggestions={descriptionSuggestions}
           onReportWeightChange={(w) => {
             set("reportWeight", w);

@@ -186,6 +186,39 @@ describe("FinancialCloseReportModal (F42)", () => {
     expect(screen.getAllByText("94%")[0]).toBeInTheDocument();
     expect(screen.getAllByText("(60,0%)")[0]).toBeInTheDocument();
   });
+
+  it("renderiza a seção do DRE do Negócio (PJ) quando businessDre for fornecido", () => {
+    const mockBusinessDre = {
+      periodLabel: "Agosto de 2026",
+      profileLabel: "MEI",
+      grossRevenueBRL: 8000,
+      operationalCostsBRL: 1500,
+      operationalProfitBRL: 6500,
+      fiscalTaxesPaidBRL: 75.9,
+      proLaboreWithdrawnBRL: 3000,
+      retainedEarningsBRL: 3424.1,
+      marginPct: 42.8,
+    };
+
+    render(
+      <FinancialCloseReportModal
+        open={true}
+        onOpenChange={vi.fn()}
+        periodLabel="Agosto de 2026"
+        dre={mockDRE}
+        categories={mockCategories}
+        paymentMethods={mockPaymentMethods}
+        expenseCount={10}
+        incomeCount={2}
+        businessDre={mockBusinessDre}
+      />,
+    );
+
+    expect(screen.getByText(/DRE do Negócio — Esfera PJ \(MEI\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Faturamento Bruto da Operação/i)).toBeInTheDocument();
+    expect(screen.getByText(/Custos Operacionais e Despesas do Negócio/i)).toBeInTheDocument();
+    expect(screen.getByText(/Lucro Retido no Caixa do Negócio/i)).toBeInTheDocument();
+  });
 });
 
 

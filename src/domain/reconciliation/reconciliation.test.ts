@@ -466,22 +466,30 @@ Encargos e Tarifas: R$ 0,00
       expect(score).toBe(100); // 50 (valor) + 25 (data) + 25 (texto)
     });
 
-    it("retorna score 0 se o valor em centavos for diferente", () => {
-      const stmt: StatementTransaction = {
+    it("aplica tolerância de microdiscrepância para 1 centavo (teto 79) e retorna 0 para diferença > 5 centavos", () => {
+      const stmt1Cent: StatementTransaction = {
         id: "stmt-1",
         index: 0,
         occurrenceIndex: 0,
         date: "2026-08-15",
         rawDescription: "Supermercado Dia",
         cleanDescription: "Supermercado Dia",
-        amountCents: 15001, // 1 centavo de diferença
+        amountCents: 15001, // 1 centavo de diferença em relação a 15000
         isRefund: false,
         isPayment: false,
         statementHash: "hash-1",
       };
 
-      const score = calculateMatchScore(stmt, existing[0]!);
-      expect(score).toBe(0);
+      const score1Cent = calculateMatchScore(stmt1Cent, existing[0]!);
+      // Com tolerância fuzzy de centavos: valor(30) + data(35) + texto(15) = 80 -> limitado pelo teto a 79
+      expect(score1Cent).toBe(79);
+
+      const stmtBigDiff: StatementTransaction = {
+        ...stmt1Cent,
+        amountCents: 16000, // Diferença superior a 5 centavos
+      };
+      const scoreBigDiff = calculateMatchScore(stmtBigDiff, existing[0]!);
+      expect(scoreBigDiff).toBe(0);
     });
 
     it("aplica bônus semântico de 15 pontos quando charge_kind não-regular coincide", () => {
@@ -968,6 +976,118 @@ OFXHEADER:100
       expect(parsed.transactions).toHaveLength(2);
       expect(parsed.transactions[0]?.date).toBe("2026-12-22");
       expect(parsed.transactions[1]?.date).toBe("2027-01-03");
+    });
+
+    it("aplica tolerância a centavos e trava absoluta (diffCents > 0 nunca é exact_match)", () => {
+      // Caso Real do Usuário: Livros R$ 110,79 (banco) vs Amazon R$ 110,80 (extrato)
+      const stmt: StatementTransaction = {
+        id: "stmt-amzn",
+        index: 0,
+        occurrenceIndex: 0,
+        date: "2026-04-10",
+        rawDescription: "AMAZON.COM.BR",
+        cleanDescription: "Amazon",
+        amountCents: 11080, // R$ 110,80
+        isRefund: false,
+        isPayment: false,
+        statementHash: "hash-amzn",
+      };
+
+      const existingExpense: ExistingExpenseForReconciliation = {
+        id: "exp-livros",
+        date: "2026-04-10",
+        description: "Livros",
+        valueCents: 11079, // R$ 110,79 (diferença de 1 centavo)
+        categoryId: "cat-livros",
+        installmentNumber: null,
+        installmentsTotal: null,
+      };
+
+      const score = calculateMatchScore(stmt, existingExpense, {
+        predictedCategoryId: "cat-livros", // Bônus semântico de categoria
+      });
+
+      // Score com 1 centavo: 30(valor) + 35(data) + 10(categoria) = 75 pontos
+      expect(score).toBe(75);
+      expect(score).toBeLessThanOrEqual(79); // Trava estrita
+
+      const reconciled = reconcileStatementTransactions({
+        statementTransactions: [stmt],
+        existingExpenses: [existingExpense],
+        history: [{ description: "Amazon", categoryId: "cat-livros" }],
+        defaultCategoryId: "cat-default",
+      });
+
+      // Deve ser classificado como probable_match (não exact_match)
+      expect(reconciled.items[0]?.status).toBe("probable_match");
+      expect(reconciled.items[0]?.matchedExpenseId).toBe("exp-livros");
+      expect(reconciled.items[0]?.suggestedAction).toBe("link_and_adjust_amount");
+    });
+
+    it("isola estritamente os escopos fiscal PF e PJ no scorer", () => {
+      const stmt: StatementTransaction = {
+        id: "stmt-pf",
+        index: 0,
+        occurrenceIndex: 0,
+        date: "2026-05-20",
+        rawDescription: "Restaurante",
+        cleanDescription: "Restaurante",
+        amountCents: 8500,
+        isRefund: false,
+        isPayment: false,
+        statementHash: "hash-pf",
+      };
+
+      const existingBusinessExpense: ExistingExpenseForReconciliation = {
+        id: "exp-pj",
+        date: "2026-05-20",
+        description: "Restaurante",
+        valueCents: 8500,
+        categoryId: "cat-refeicao",
+        installmentNumber: null,
+        installmentsTotal: null,
+        scope: "business",
+      };
+
+      // Tentativa de match contra cartão pessoal (cardScope: "personal")
+      const score = calculateMatchScore(stmt, existingBusinessExpense, {
+        cardScope: "personal",
+      });
+      expect(score).toBe(0);
+    });
+
+    it("aplica clamping de datas < 2026-01-01 preservando a data original no statementHash", () => {
+      const parsed = parseStatementInput(
+        "Data;Descrição;Valor\n28/12/2025;Restaurante Fim de Ano;150,00\n29/12/2025;Mercado Virada;80,00",
+        "fatura-dez-2025.csv",
+        { cardId: "card-1", competenceMonth: "2026-01" },
+      );
+
+      expect(parsed.transactions).toHaveLength(2);
+
+      // Data de banco clampada para atender a constraint CHECK (date >= '2026-01-01')
+      expect(parsed.transactions[0]?.date).toBe("2026-01-01");
+      expect(parsed.transactions[0]?.originalDate).toBe("2025-12-28");
+
+      expect(parsed.transactions[1]?.date).toBe("2026-01-01");
+      expect(parsed.transactions[1]?.originalDate).toBe("2025-12-29");
+
+      // Hashes não colidem porque foram gerados com a data original distinta
+      expect(parsed.transactions[0]?.statementHash).not.toBe(parsed.transactions[1]?.statementHash);
+    });
+
+    it("protege contra falso positivo de parcelas quando a descrição contém data (ex.: COMPRA 04/11)", () => {
+      // Compra com data 04/11 que coincide com a data da transação 2026-11-04
+      const instWithDate = extractInstallmentInfo("COMPRA 04/11 LOJA XYZ", "2026-11-04");
+      expect(instWithDate).toBeUndefined();
+
+      // Compra com marcador temporal explícito
+      const instWithPrefix = extractInstallmentInfo("MERCADO DIA EM 02/08");
+      expect(instWithPrefix).toBeUndefined();
+
+      // Parcela real continua sendo extraída com precisão
+      const realInst = extractInstallmentInfo("MAGALU PARC 04/10", "2026-11-04");
+      expect(realInst).toEqual({ current: 4, total: 10 });
     });
   });
 });

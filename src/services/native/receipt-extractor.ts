@@ -118,6 +118,24 @@ function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob | null> {
   });
 }
 
+export class PdfPasswordProtectedError extends Error {
+  readonly code = "PDF_PASSWORD_PROTECTED";
+  constructor(message = "O arquivo PDF está protegido por senha.") {
+    super(message);
+    this.name = "PdfPasswordProtectedError";
+  }
+}
+
+export function isPdfPasswordProtectedError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const e = err as { name?: string; message?: string };
+  return (
+    e.name === "PasswordException" ||
+    e.name === "PdfPasswordProtectedError" ||
+    (typeof e.message === "string" && /password/i.test(e.message))
+  );
+}
+
 /**
  * Renderiza a primeira página de um PDF escaneado em PNG Blob via `unpdf` (`getDocumentProxy` + `<canvas>`),
  * com fallback automático para `extractImages` quando necessário.
@@ -132,7 +150,7 @@ export async function renderScannedPdfPageToBlob(
 
   const unpdf = await import("unpdf");
 
-  // Estratégia 1: renderização fiel da página solicitada em <canvas>
+  // Estratégia 1: renderização fiel da página solicitada em <canvas> com canvasContext 2D
   try {
     const pdf = await unpdf.getDocumentProxy(new Uint8Array(buffer.slice(0)));
     try {
@@ -148,8 +166,21 @@ export async function renderScannedPdfPageToBlob(
       const canvas = document.createElement("canvas");
       canvas.width = Math.max(1, Math.round(viewport.width));
       canvas.height = Math.max(1, Math.round(viewport.height));
+      const context = canvas.getContext("2d");
+      if (!context) return null;
 
-      await page.render({ canvas, viewport }).promise;
+      // PDF.js v4+/v6+ exige canvasContext explicitamente para chamar ctx.save() sem TypeError
+      await (
+        (page.render as unknown as (params: {
+          canvasContext: CanvasRenderingContext2D;
+          canvas?: HTMLCanvasElement | null;
+          viewport: unknown;
+        }) => { promise: Promise<unknown> })
+      )({
+        canvasContext: context,
+        canvas,
+        viewport,
+      }).promise;
       page.cleanup();
       const renderedBlob = await canvasToPngBlob(canvas);
       if (renderedBlob && renderedBlob.size > 0) {
@@ -163,7 +194,10 @@ export async function renderScannedPdfPageToBlob(
         // Ignora erro ao liberar recursos do documento PDF
       }
     }
-  } catch {
+  } catch (err: unknown) {
+    if (isPdfPasswordProtectedError(err)) {
+      throw new PdfPasswordProtectedError();
+    }
     // Segue para fallback de extração direta de imagens embutidas
   }
 
@@ -246,7 +280,10 @@ async function extractPdfTextUnified(
     digitalText = Array.isArray(result.text)
       ? result.text.join("\n").trim()
       : String(result.text ?? "").trim();
-  } catch {
+  } catch (err: unknown) {
+    if (isPdfPasswordProtectedError(err)) {
+      throw new PdfPasswordProtectedError();
+    }
     digitalText = "";
   }
 

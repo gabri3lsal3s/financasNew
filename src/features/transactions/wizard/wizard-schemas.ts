@@ -36,6 +36,10 @@ export function effectiveReportWeight(state: LaunchState): number {
   if (state.type === "expense" && state.splitEnabled) {
     return 1;
   }
+  // No Modo Negócio ou em divisão mista (Split PF/PJ), o peso é sempre 1.0 (não distorce DRE nem fiscalidade)
+  if ((state.scope ?? "personal") === "business" || state.splitPFPJEnabled) {
+    return 1;
+  }
   if (isPresetWeight(state.reportWeight)) return state.reportWeight;
   if (state.valueCents <= 0) return 1;
   const ratio = state.reportCustomAmountCents / state.valueCents;
@@ -79,6 +83,9 @@ const baseDetailsShape = {
   splitDebtMode: z.enum(["single_total", "per_installment"]).default("single_total").optional(),
   scope: z.enum(["personal", "business"]).default("personal").optional(),
   isTaxDeductible: z.boolean().default(false).optional(),
+  taxWithheldCents: moneyCentsSchema({ allowZero: true }).optional(),
+  splitPFPJEnabled: z.boolean().default(false).optional(),
+  splitPFPJBusinessPercent: z.number().min(1).max(99).default(50).optional(),
 };
 
 interface DetailsRefinementInput {
@@ -94,9 +101,19 @@ interface DetailsRefinementInput {
   reportWeight: number;
   reportCustomAmountCents: number;
   valueCents: number;
+  taxWithheldCents?: number;
+  splitPFPJEnabled?: boolean;
+  splitPFPJBusinessPercent?: number;
 }
 
 function validateDetailsRefinements(data: DetailsRefinementInput, ctx: z.RefinementCtx): void {
+  if (data.taxWithheldCents && data.taxWithheldCents > data.valueCents) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["taxWithheldCents"],
+      message: "O valor retido na fonte não pode ser maior que o valor bruto da receita.",
+    });
+  }
   if (data.type === "expense" && data.paymentMethod === "credit_card" && (!data.cardId || data.cardId.trim() === "")) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,

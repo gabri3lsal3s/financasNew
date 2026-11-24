@@ -24,6 +24,7 @@
 | D10 | Lançamento rápido | **Tela cheia guiada** (wizard 4 passos) + **atalho global** + defaults inteligentes | Respeita a escolha de fluxo guiado mantendo a fricção mínima |
 | ~~D11~~ | ~~Storage de arquivos~~ | ~~**Cloudflare R2** atrás de abstração própria (`src/services/storage`), upload via presigned URLs~~ | ~~A UI nunca conhece a implementação; anexos (comprovantes, avatar) ficam fora do fluxo financeiro core~~ — **REMOVIDO DO ESCOPO** (decisão do usuário, 2026-08-15): nenhuma tela usa upload e anexos não participam do fluxo financeiro core; o primitivo `Dropzone` permanece para uso futuro |
 | D12 | Parcelamento | **Cliente calcula** (`domain/money`, centavos) **+ servidor valida invariantes** (soma = original, 1–60, datas) | Lógica de divisão única em TS; SQL só valida — sem duplicação |
+| D13 | Modo Negócio (MEI / Autônomo) | **Opt-In Total + Área Dedicada (`/negocio`) + SSOT Contábil Puro** | Zero atrito para usuário comum (sem switcher global); Home Consolidada; Extrato com aba contextual e chips; DRE no Dossiê A4; dedução de Caixa PJ no Safe-to-Spend em conta bancária única compartilhada; respeito estrito aos Princípios da Entidade e Competência |
 
 ---
 

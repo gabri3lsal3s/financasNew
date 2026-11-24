@@ -39,6 +39,9 @@ export function defaultLaunchState(
     chargeKind: overrides?.chargeKind ?? "regular",
     scope: overrides?.scope ?? "personal",
     isTaxDeductible: overrides?.isTaxDeductible ?? false,
+    taxWithheldCents: overrides?.taxWithheldCents ?? 0,
+    splitPFPJEnabled: overrides?.splitPFPJEnabled ?? false,
+    splitPFPJBusinessPercent: overrides?.splitPFPJBusinessPercent ?? 50,
   };
   return overrides ? { ...base, ...overrides } : base;
 }

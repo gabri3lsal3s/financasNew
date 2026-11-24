@@ -216,6 +216,10 @@ export function useExpenseDetailActions({
 
   const handleSaveEdit = async (payload: ExpenseEditSavePayload) => {
     if (!expense) return;
+    if (isInternalTransfer) {
+      setError("Transferências pareadas entre PF e PJ não podem ser alteradas isoladamente. Para ajustar o valor ou a data, exclua o par e realize uma nova transferência.");
+      return;
+    }
     setError(null);
     const resolvedFamilyId = payload.is_family ? (myFamilyData?.family?.id ?? null) : null;
     if (isGrouped) {

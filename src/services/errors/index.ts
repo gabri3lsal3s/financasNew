@@ -209,6 +209,9 @@ export function classifyError(error: unknown): ClassifiedError {
     code.includes("permission_denied") ||
     /row-level security|insufficient privilege|permissão negada|acesso negado/i.test(message)
   ) {
+    if (/transferência pareada/i.test(message)) {
+      return { kind: "validation", message: sanitizeString(message), raw: error };
+    }
     const isCustomPtBr = /acesso negado|permissão/i.test(message);
     const cleanMsg = isCustomPtBr && !containsTechnicalLeak(message) ? sanitizeString(message) : MESSAGES.permission;
     return {

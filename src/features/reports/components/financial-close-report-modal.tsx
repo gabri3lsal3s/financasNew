@@ -12,6 +12,7 @@ import {
   type DreSections,
   type ReportReadinessResult,
 } from "@/domain/reports";
+import type { ExcelBusinessDreData } from "@/services/excel-export";
 import type {
   FinancialDREData,
   FinancialReportCategoryItem,
@@ -23,6 +24,7 @@ import { FinancialCloseSummary } from "./financial-close/FinancialCloseSummary";
 import { FinancialDreTable } from "./financial-close/FinancialDreTable";
 import { FinancialCompositionTables } from "./financial-close/FinancialCompositionTables";
 import { FinancialHouseholdSection } from "./financial-close/FinancialPaidInvoicesSection";
+import { FinancialBusinessDreSection } from "./financial-close/FinancialBusinessDreSection";
 
 export type {
   FinancialDREData,
@@ -47,6 +49,7 @@ export interface FinancialCloseReportModalProps {
   showWeightedNote?: boolean;
   householdSummary?: FinancialReportHouseholdSummary | null;
   readiness?: ReportReadinessResult<DreSections>;
+  businessDre?: ExcelBusinessDreData | null;
 }
 
 /**
@@ -74,6 +77,7 @@ export function FinancialCloseReportModal({
   showWeightedNote = false,
   householdSummary = null,
   readiness: propReadiness,
+  businessDre = null,
 }: FinancialCloseReportModalProps) {
   const effectiveGrossIncomeBruto = dre.grossIncomeBrutoCents ?? dre.grossIncomeCents;
   const effectiveTotalExpensesBruto = dre.totalExpensesBrutoCents ?? dre.totalExpensesCents;
@@ -181,6 +185,10 @@ export function FinancialCloseReportModal({
             effectiveGrossSavingsRatePct={effectiveGrossSavingsRatePct}
             hasBrutoRef={hasBrutoRef}
           />
+
+          {businessDre && (businessDre.grossRevenueBRL > 0 || businessDre.operationalCostsBRL > 0) && (
+            <FinancialBusinessDreSection businessDre={businessDre} />
+          )}
 
           {hasPage2 ? (
             <>

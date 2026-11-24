@@ -1,6 +1,7 @@
 import {
   buildUnifiedFeedItems,
   groupFeedByDay,
+  type BusinessSubFilter,
   type DailyFeedGroup,
   type FeedFilter,
   type TransactionFeedItem,
@@ -27,6 +28,7 @@ export function resolveInitialFeedFilter(paramFilter: string | null): FeedFilter
   if (paramFilter === "expenses" || paramFilter === "despesas") return "expenses";
   if (paramFilter === "installments" || paramFilter === "parceladas") return "installments";
   if (paramFilter === "recurring" || paramFilter === "recorrentes") return "recurring";
+  if (paramFilter === "business" || paramFilter === "negocio" || paramFilter === "pj") return "business";
   return "all";
 }
 
@@ -61,6 +63,7 @@ export function computePagedFeed(params: {
   expenses: readonly Expense[];
   incomes: readonly Income[];
   filter: FeedFilter;
+  businessSubFilter?: BusinessSubFilter;
   searchQuery: string;
   categoryById: Map<string, Category>;
   cardById?: Map<string, string>;
@@ -80,6 +83,7 @@ export function computePagedFeed(params: {
     expenses,
     incomes,
     filter,
+    businessSubFilter = "all",
     searchQuery,
     categoryById,
     cardById,
@@ -89,7 +93,7 @@ export function computePagedFeed(params: {
     highlightId,
     visibleCount,
   } = params;
-  const feedItems = buildUnifiedFeedItems(expenses, incomes, filter);
+  const feedItems = buildUnifiedFeedItems(expenses, incomes, filter, businessSubFilter);
   const trimmed = searchQuery.trim();
   const q = trimmed.toLowerCase();
 

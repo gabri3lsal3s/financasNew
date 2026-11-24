@@ -1264,7 +1264,7 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
           },
         },
         secondaryAction: {
-          label: "Não, faz parte da rotina",
+          label: "Manter na rotina",
           kind: "dismiss",
         },
         metadata: {

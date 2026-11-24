@@ -216,6 +216,7 @@ export function ReportsModalsHost({ weightsEnabled, state, data }: ReportsModals
             showWeightedNote={weightsEnabled}
             householdSummary={data.householdSummary}
             readiness={dreReadiness}
+            businessDre={data.businessDreForExcel}
           />
         </Suspense>
       )}

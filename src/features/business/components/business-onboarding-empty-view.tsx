@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Briefcase, Building2, Check, ShieldCheck, Stethoscope } from "lucide-react";
+import { Briefcase, Building2, Check, ShieldCheck, Sparkles, Stethoscope } from "lucide-react";
 import { Button, Card, CardContent } from "@/components/ui";
 import { BUSINESS_PROFILE_LABELS } from "@/lib/labels";
 import { cn } from "@/lib/utils";
@@ -9,6 +9,7 @@ import type { BusinessProfileKind } from "@/types";
 export interface BusinessOnboardingEmptyViewProps {
   isPending?: boolean;
   onActivate: (profileKind: BusinessProfileKind) => Promise<void>;
+  onOpenGuide?: () => void;
 }
 
 const PROFILE_OPTIONS: Array<{
@@ -41,6 +42,7 @@ const PROFILE_OPTIONS: Array<{
 export function BusinessOnboardingEmptyView({
   isPending = false,
   onActivate,
+  onOpenGuide,
 }: BusinessOnboardingEmptyViewProps) {
   const [selectedKind, setSelectedKind] = useState<BusinessProfileKind>("mei");
 
@@ -113,9 +115,23 @@ export function BusinessOnboardingEmptyView({
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-border/80 pt-4">
-          <p className="text-xs text-muted-foreground">
-            Você pode ajustar o enquadramento, guia DAS ou desativar o módulo a qualquer momento.
-          </p>
+          <div className="flex flex-col gap-1">
+            <p className="text-xs text-muted-foreground">
+              Você pode ajustar o enquadramento, guia DAS ou desativar o módulo a qualquer momento.
+            </p>
+            {onOpenGuide ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                className="gap-1.5 text-xs text-portfolio hover:text-portfolio/80 p-0 h-auto self-start"
+                onClick={onOpenGuide}
+              >
+                <Sparkles className="size-3.5" aria-hidden="true" />
+                <span>Dúvidas sobre seu perfil? Faça o teste guiado</span>
+              </Button>
+            ) : null}
+          </div>
           <Button
             type="button"
             disabled={isPending}

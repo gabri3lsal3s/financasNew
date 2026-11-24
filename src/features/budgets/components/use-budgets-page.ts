@@ -8,7 +8,6 @@ import {
 } from "@/domain/business";
 import { numberToCents, sumWeightedCents } from "@/domain/money";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
-import { useSafeViewScope } from "@/hooks/use-safe-business-scope";
 import { currentMonth } from "@/lib/date";
 import {
   useAllCategories,
@@ -108,25 +107,24 @@ export function useBudgetsPage() {
     [cashBalance, positionRows, goalSharesQuery.data],
   );
 
-  const { effectiveViewScope } = useSafeViewScope();
+  // Orçamentos e limites de gastos são estritamente pessoais da casa/família.
+  // Gastos da empresa são geridos por DRE e Margem em /negocio e nunca estouram as metas domésticas.
   const categories = useMemo(() => {
     const raw = expenseCategories.data ?? [];
-    if (effectiveViewScope === "all") return raw;
-    return filterCategoriesForScope(raw, effectiveViewScope, false);
-  }, [expenseCategories.data, effectiveViewScope]);
+    return filterCategoriesForScope(raw, "personal", false);
+  }, [expenseCategories.data]);
   const scopedExpenses = useMemo(
-    () => filterExpensesByViewScope(expensesQuery.data ?? [], effectiveViewScope, { mode: "dre" }),
-    [expensesQuery.data, effectiveViewScope],
+    () => filterExpensesByViewScope(expensesQuery.data ?? [], "personal", { mode: "dre" }),
+    [expensesQuery.data],
   );
   const scopedIncomes = useMemo(
-    () => filterIncomesByViewScope(incomesQuery.data ?? [], effectiveViewScope, { mode: "dre" }),
-    [incomesQuery.data, effectiveViewScope],
+    () => filterIncomesByViewScope(incomesQuery.data ?? [], "personal", { mode: "dre" }),
+    [incomesQuery.data],
   );
   const scopedIncomeCategories = useMemo(() => {
     const raw = incomeCategories.data ?? [];
-    if (effectiveViewScope === "all") return raw;
-    return filterCategoriesForScope(raw, effectiveViewScope, false);
-  }, [incomeCategories.data, effectiveViewScope]);
+    return filterCategoriesForScope(raw, "personal", false);
+  }, [incomeCategories.data]);
   const allCategories = allCategoriesQuery.data ?? [];
   const siblings = allCategories.filter(
     (c) =>

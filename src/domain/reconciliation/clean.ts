@@ -31,6 +31,42 @@ const PREFIX_REGEX = new RegExp(`^(${ADQUIRER_NAMES.join("|")})\\s*\\*\\s*`, "i"
 const CITY_SUFFIX_REGEX =
   /\s*-\s*(BR|SAO PAULO|RIO DE JANEIRO|CURITIBA|BELO HORIZONTE|PORTO ALEGRE|RECIFE|SALVADOR|FORTALEZA|BRASILIA|GOIANIA|CAMPINAS|BRASIL)\b.*$/i;
 
+/**
+ * 1. UNCONDITIONAL_INVOICE_PAYMENT_PATTERNS
+ * Termos inequívocos de liquidação/pagamento de fatura pelo titular.
+ * Acionados independentemente do sinal da transação.
+ */
+export const UNCONDITIONAL_INVOICE_PAYMENT_PATTERNS: RegExp[] = [
+  /\bpag(?:amento)?\s+(?:de\s+)?nominais\b/i,
+  /\bpagto\s+tit(?:ulo)?\s+nominal\b/i,
+  /\bpag(?:amento)?\s*(?:de\s+|da\s+)?fatura\b/i,
+  /\bpgto\s*fatura\b/i,
+  /\bpagamento\s+efetuado\b/i,
+  /\bpagamento\s+recebido\b/i,
+  /\bdeb(?:ito)?\s+aut(?:omatico)?\s+cart[aã]o\b/i,
+  /\bdebito\s+automatico\s+fatura\b/i,
+  /\bpg\s+fatura\b/i,
+  /\bpgto\s+cartao\b/i,
+  /\bpagamento\s+cartao\b/i,
+  /\bsaldo\s+anterior\b/i,
+  /\btotal\s+da\s+fatura\b/i,
+];
+
+/**
+ * 2. CREDIT_ONLY_SETTLEMENT_PATTERNS
+ * Termos ambíguos de liquidação/compensação que só caracterizam quitação de fatura
+ * quando acompanhados de crédito (isCredit === true / sinal positivo de entrada).
+ * Se forem débitos regulares (isCredit === false), tratam-se de boletos pagos no cartão (compra/purchase).
+ */
+export const CREDIT_ONLY_SETTLEMENT_PATTERNS: RegExp[] = [
+  /\bficha\s+de\s+compensa[çc][aã]o\b/i,
+  /\bpgto\s+ficha\s+compensa[çc][aã]o\b/i,
+  /\bliquida[çc][aã]o\s+de\s+t[ií]tulo\b/i,
+  /\bpagamento\s+de\s+t[ií]tulo\b/i,
+  /\bpagto\s+t[ií]tulo\b/i,
+  /\bpagamento\s+de\s+cobran[çc]a\b/i,
+];
+
 const PAYMENT_KEYWORDS = [
   "pagamento de fatura",
   "pagto fatura",
@@ -40,6 +76,10 @@ const PAYMENT_KEYWORDS = [
   "pagamento em conta",
   "saldo anterior",
   "total da fatura",
+  "pagamento de nominais",
+  "pagto tit nominal",
+  "deb aut cartao",
+  "debito automatico fatura",
 ];
 
 const BANK_OPERATION_PREFIX_REGEX =
@@ -244,12 +284,69 @@ export function inferReceiveTypeFromDescription(raw: string): string {
 }
 
 /**
+ * Determina se a linha representa pagamento de fatura do titular.
+ * - Padrões incondicionais são sempre pagamento de fatura (ex.: "PAGAMENTO DE NOMINAIS", "PGTO FATURA").
+ * - Padrões de liquidação ambíguos só são pagamento se isCredit for true (ficha de compensação com crédito).
+ * - Boletos pagos no cartão (débito, ex.: PAGTO TITULO ENEL, RECARGAPAY*CONTA) permanecem como compras normais.
+ */
+export function isInvoicePayment(raw: string, isCredit = false): boolean {
+  if (!raw) return false;
+  const trimmed = raw.trim();
+  if (UNCONDITIONAL_INVOICE_PAYMENT_PATTERNS.some((re) => re.test(trimmed))) {
+    return true;
+  }
+  if (isCredit && CREDIT_ONLY_SETTLEMENT_PATTERNS.some((re) => re.test(trimmed))) {
+    return true;
+  }
+  return false;
+}
+
+/**
  * Identifica se a linha representa um pagamento de fatura ou ajuste contábil
  * que não deve ser importado como despesa de compra regular.
  */
-export function isPaymentOrSettlement(raw: string): boolean {
+export function isPaymentOrSettlement(raw: string, isCredit = false): boolean {
+  if (!raw) return false;
+  if (isInvoicePayment(raw, isCredit)) {
+    return true;
+  }
   const lower = raw.trim().toLowerCase();
   return PAYMENT_KEYWORDS.some((kw) => lower.includes(kw)) || isCreditCardPayment(raw);
+}
+
+const SUBCARD_HEADER_REGEX =
+  /^(?:cart[aã]o\s+(?:adicional|titular|final\s+\d{4})|final\s+\d{4}\s*-\s*[a-z\s]+|lan[çc]amentos\s+do\s+cart[aã]o)\b/i;
+
+export function isSubcardHeader(text: string): boolean {
+  if (!text) return false;
+  return SUBCARD_HEADER_REGEX.test(text.trim());
+}
+
+const FX_DETAIL_REGEX =
+  /\b(?:cota[çc][aã]o\s+(?:do\s+d[oó]lar|usd)|taxa\s+de\s+convers[aã]o|valor\s+em\s+d[oó]lar|d[oó]lar\s*:\s*r?\$?\s*\d+[.,]\d+|convers[aã]o\s+de\s+moeda)\b/i;
+
+export function isFxDetail(text: string): boolean {
+  if (!text) return false;
+  return FX_DETAIL_REGEX.test(text.trim());
+}
+
+/**
+ * Atribui uma das 6 naturezas canônicas a um lançamento de fatura.
+ */
+export function classifyTransactionNature(params: {
+  rawDescription: string;
+  isCredit: boolean;
+  isPayment: boolean;
+  isRefund: boolean;
+  hasChargeKind?: boolean;
+}): import("./types").StatementTransactionNature {
+  const { rawDescription, isPayment, isRefund, hasChargeKind } = params;
+  if (isPayment) return "invoice_payment";
+  if (isRefund) return "refund";
+  if (hasChargeKind) return "fee_or_tax";
+  if (isSubcardHeader(rawDescription)) return "subcard_header";
+  if (isFxDetail(rawDescription)) return "fx_detail";
+  return "purchase";
 }
 
 const STATEMENT_SUMMARY_OR_NOISE_KEYWORDS = [
