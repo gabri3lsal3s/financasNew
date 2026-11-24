@@ -12,6 +12,7 @@ import { monthLabel } from "@/lib/date";
 import { formatCentsAsBRL } from "@/services/masks";
 import { BudgetAdjustDialog } from "./budget-adjust-dialog";
 import { CategoryFormDialog } from "./category-form-dialog";
+import { CategoryKitsModal } from "./category-kits-modal";
 import { IncomeGoalDialog } from "./income-goal-dialog";
 import { LimitDialog } from "./limit-dialog";
 import type { useBudgetsPage } from "./use-budgets-page";
@@ -71,6 +72,10 @@ export function BudgetsDialogs({ state }: BudgetsDialogsProps) {
     adjustOpen,
     setAdjustOpen,
     adjustCategories,
+    kitsModalOpen,
+    setKitsModalOpen,
+    initialKitId,
+    allCategories,
   } = state;
 
   return (
@@ -227,6 +232,13 @@ export function BudgetsDialogs({ state }: BudgetsDialogsProps) {
         onOpenChange={setAdjustOpen}
         month={month}
         categories={adjustCategories}
+      />
+
+      <CategoryKitsModal
+        open={kitsModalOpen}
+        onOpenChange={setKitsModalOpen}
+        existingCategories={allCategories}
+        initialKitId={initialKitId}
       />
     </>
   );

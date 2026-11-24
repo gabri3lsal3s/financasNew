@@ -1,16 +1,16 @@
 {
-  "version": "3.17.1",
-  "versionCode": 106,
-  "releaseDate": "2026-11-23T14:21:18Z",
-  "minSupportedVersion": "3.17.1",
+  "version": "3.22.0",
+  "versionCode": 107,
+  "releaseDate": "2026-11-24T12:00:00Z",
+  "minSupportedVersion": "3.22.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
   "sha256": "1a5bb765cb03775752d652f669646896883a0d516e1a13e7c75c81267f50f36c",
   "fileSizeBytes": 13314396,
   "changelog": [
-    "Axir v3.17.1 (Build 106): Hardening Forense Pos-Auditoria em SQL, Edge Functions, Dominio, PDFs Executivos e UI",
-    "Banco, Crons e Edge Functions (0142/0143): constraints e validacoes defensivas em asset_prices e user_dividend_events, lock idempotente in_flight e timeouts 5s no push-dispatcher, fila serializada de user_preferences e paginacao resiliente",
-    "Motor de Dominio, SWR e Snapshots: precisao de cotacoes < 0.01 (8 casas), conversao USD em proventos anuais e Bola de Neve, hasMarketOpenedToday e isencao de RF/Tesouro/Caixa no StaleQuoteGuard e store externo useSyncExternalStore no SWR",
-    "Relatorios A4, PDFs e UI: window.print sincrono com flushSync (Safari/iOS), headers bimoeda em tabelas de custodia, alinhamento de P&L Pagina 1/2, moeda nativa no dialogo de exclusao e Skeleton/ErrorState em preferencias",
-    "Qualidade e Testes: 224 suites de dominio (3193 testes), 190 suites de infra/estado/seguranca (1688 testes), 221 suites de componentes/features (1551 testes) e 8 testes E2E Playwright aprovados"
+    "Axir v3.22.0 (Build 107): Motor Espacial de Faturas, Reconciliação Inteligente e Curadoria por IA",
+    "Motor Espacial (X, Y) com 4 Barreiras Anti-Ruído: suporte nativo a faturas digitais densas de cartão com divisão bimodal e checksum gate estrito",
+    "Inteligência de Parcelamentos: detecção automática dos 4 estados de séries (K/N), equivalência temporal e projeção transacional ancorada na competência ativa",
+    "Reconciliação e UI/UX Inline: staging area simplificada com edição inline, resumo financeiro adaptativo, microdiscrepâncias em 1 clique e zero modais aninhados",
+    "Micro-IA Deduplicada e Curador por ID: categorização inteligente assíncrona com privacidade total (zero valores/datas para IA) e descarte de subtotais espúrios"
   ]
 }

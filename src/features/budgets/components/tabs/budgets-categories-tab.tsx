@@ -1,4 +1,4 @@
-import { Plus, Sparkles } from "lucide-react";
+import { Boxes, Plus } from "lucide-react";
 import { Alert, Button, EmptyState } from "@/components/ui";
 import { CategoryIcon } from "@/components/modules";
 import { triggerSensory } from "@/services/sensory";
@@ -6,24 +6,34 @@ import type { Category } from "@/types";
 
 export interface BudgetsCategoriesTabProps {
   allCategories: Category[];
-  onSeedCategories: () => void;
-  isSeeding: boolean;
-  isSeedError: boolean;
-  seedFeedback: string | null;
+  onSeedCategories?: () => void;
+  isSeeding?: boolean;
+  isSeedError?: boolean;
+  seedFeedback?: string | null;
   onOpenCreateCategory: () => void;
   onEditCategory: (category: Category) => void;
+  onOpenKitsModal?: () => void;
 }
 
 export function BudgetsCategoriesTab({
   allCategories,
   onSeedCategories,
-  isSeeding,
-  isSeedError,
+  isSeeding = false,
+  isSeedError = false,
   seedFeedback,
   onOpenCreateCategory,
   onEditCategory,
+  onOpenKitsModal,
 }: BudgetsCategoriesTabProps) {
   const userCategories = allCategories.filter((c) => !c.is_reserved);
+
+  const handleKitsClick = () => {
+    if (onOpenKitsModal) {
+      onOpenKitsModal();
+    } else if (onSeedCategories) {
+      onSeedCategories();
+    }
+  };
 
   return (
     <div className="flex flex-col gap-5 sm:gap-6">
@@ -35,13 +45,13 @@ export function BudgetsCategoriesTab({
           <Button
             size="sm"
             variant="outline"
-            onClick={onSeedCategories}
+            onClick={handleKitsClick}
             disabled={isSeeding}
             className="gap-1.5"
-            title="Carrega ou completa as 11 categorias padrão brasileiras sem duplicar as existentes"
+            title="Explorar e instalar kits temáticos de categorias (Essencial, Negócio PJ, Família, Veículos)"
           >
-            <Sparkles className="size-4" aria-hidden="true" />
-            <span>{isSeeding ? "Carregando..." : "Restaurar padrões"}</span>
+            <Boxes className="size-4" aria-hidden="true" />
+            <span>Kits de categorias</span>
           </Button>
           <Button size="sm" onClick={onOpenCreateCategory} className="gap-1.5">
             <Plus className="size-4" aria-hidden="true" />
@@ -58,18 +68,18 @@ export function BudgetsCategoriesTab({
 
       {userCategories.length === 0 ? (
         <EmptyState
-          icon={<Sparkles className="size-6" aria-hidden="true" />}
-          title="Nenhuma categoria pronta encontrada"
-          description="Sua conta ainda não possui categorias de receitas e despesas. Carregue o catálogo pré-pronto oficial com as 11 categorias brasileiras para começar imediatamente."
+          icon={<Boxes className="size-6" aria-hidden="true" />}
+          title="Nenhuma categoria encontrada"
+          description="Sua conta ainda não possui categorias ativas de receitas e despesas. Explore os kits temáticos prontos (Essencial, Negócio PJ, Família) para começar imediatamente."
           action={
             <Button
               size="sm"
-              onClick={onSeedCategories}
+              onClick={handleKitsClick}
               disabled={isSeeding}
               className="gap-1.5"
             >
-              <Sparkles className="size-4" aria-hidden="true" />
-              <span>{isSeeding ? "Carregando..." : "Carregar categorias pré-prontas"}</span>
+              <Boxes className="size-4" aria-hidden="true" />
+              <span>Explorar Kits de Categorias</span>
             </Button>
           }
         />

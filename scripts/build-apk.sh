@@ -169,11 +169,11 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Hardening Forense Pos-Auditoria em SQL, Edge Functions, Dominio, PDFs Executivos e UI",
-    "Banco, Crons e Edge Functions (0142/0143): constraints e validacoes defensivas em asset_prices e user_dividend_events, lock idempotente in_flight e timeouts 5s no push-dispatcher, fila serializada de user_preferences e paginacao resiliente",
-    "Motor de Dominio, SWR e Snapshots: precisao de cotacoes < 0.01 (8 casas), conversao USD em proventos anuais e Bola de Neve, hasMarketOpenedToday e isencao de RF/Tesouro/Caixa no StaleQuoteGuard e store externo useSyncExternalStore no SWR",
-    "Relatorios A4, PDFs e UI: window.print sincrono com flushSync (Safari/iOS), headers bimoeda em tabelas de custodia, alinhamento de P&L Pagina 1/2, moeda nativa no dialogo de exclusao e Skeleton/ErrorState em preferencias",
-    "Qualidade e Testes: 224 suites de dominio (3193 testes), 190 suites de infra/estado/seguranca (1688 testes), 221 suites de componentes/features (1551 testes) e 8 testes E2E Playwright aprovados"
+    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Motor Espacial de Faturas, Reconciliação Inteligente e Curadoria por IA",
+    "Motor Espacial (X, Y) com 4 Barreiras Anti-Ruído: suporte nativo a faturas digitais densas de cartão com divisão bimodal e checksum gate estrito",
+    "Inteligência de Parcelamentos: detecção automática dos 4 estados de séries (K/N), equivalência temporal e projeção transacional ancorada na competência ativa",
+    "Reconciliação e UI/UX Inline: staging area simplificada com edição inline, resumo financeiro adaptativo, microdiscrepâncias em 1 clique e zero modais aninhados",
+    "Micro-IA Deduplicada e Curador por ID: categorização inteligente assíncrona com privacidade total (zero valores/datas para IA) e descarte de subtotais espúrios"
   ]
 }
 EOF

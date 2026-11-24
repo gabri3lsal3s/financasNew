@@ -20,6 +20,8 @@ export { useBudgetsPage } from "./use-budgets-page";
 export type { BudgetsTabKey } from "./use-budgets-page";
 export { CategoryFormDialog } from "./category-form-dialog";
 export type { CategoryFormDialogProps } from "./category-form-dialog";
+export { CategoryKitsModal } from "./category-kits-modal";
+export type { CategoryKitsModalProps } from "./category-kits-modal";
 export { DeleteCategoryDialog } from "./delete-category-dialog";
 export type { DeleteCategoryDialogProps } from "./delete-category-dialog";
 export { CATEGORY_ICON_LABELS, CATEGORY_ICON_OPTIONS } from "./category-icon-labels";

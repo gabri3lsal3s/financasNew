@@ -104,6 +104,29 @@ describe("Builders de Memória de Cálculo: Cash", () => {
       expect(normalizeSpaces(breakdown.result.formattedValue ?? "")).toBe("R$ 4.000,00");
       expect(breakdown.formulaExpression).toBe("Saldo em Conta + Recebíveis Previstos − Obrigações do Ciclo");
     });
+
+    it("deduz a Reserva de Caixa Meu Negócio (PJ) como passo explícito na memória de cálculo quando houver caixa PJ", () => {
+      const breakdown = buildSafeToSpendBreakdown({
+        realCashBalanceCents: 500000, // R$ 5.000 em conta compartilhada
+        openInvoicesCents: 100000,    // R$ 1.000
+        payablePendingCents: 50000,   // R$ 500
+        derivedBusinessCashCents: 150000, // R$ 1.500 reservados para a PJ
+        committedObligationsCents: 300000, // R$ 3.000 (1000 + 500 + 1500)
+        safeToSpendCents: 200000,          // R$ 2.000 (5000 - 3000)
+        includeReceivablesInTotal: false,
+      });
+
+      // Passos: Saldo em Contas, Obrigações do Ciclo (1500) e Reserva Caixa PJ (1500)
+      expect(breakdown.steps).toHaveLength(3);
+      expect(breakdown.steps[0]?.rawValue).toBe(500000);
+      expect(breakdown.steps[1]?.rawValue).toBe(150000); // 1000 + 500
+      expect(breakdown.steps[2]?.label).toBe("Reserva Caixa Meu Negócio (PJ)");
+      expect(breakdown.steps[2]?.rawValue).toBe(150000);
+      expect(breakdown.steps[2]?.operator).toBe("-");
+
+      expect(breakdown.result.rawValue).toBe(200000);
+      expect(breakdown.formulaExpression).toContain("Reserva Caixa PJ");
+    });
   });
 
   describe("buildCashGapBreakdown", () => {

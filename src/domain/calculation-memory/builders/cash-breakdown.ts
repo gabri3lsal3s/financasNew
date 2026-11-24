@@ -124,6 +124,8 @@ export interface SafeToSpendBreakdownParams {
   openInvoicesCents: number;
   payablePendingCents: number;
   receivablePendingCents?: number;
+  /** Caixa operacional da empresa retido na conta compartilhada (proteção anti-vazamento). */
+  derivedBusinessCashCents?: number;
   safeToSpendCents: number;
   safeToSpendWithReceivablesCents?: number;
   /** Se true, calcula a variante otimista que incorpora recebíveis no total final. */
@@ -141,6 +143,7 @@ export function buildSafeToSpendBreakdown(params: SafeToSpendBreakdownParams): C
     openInvoicesCents,
     payablePendingCents,
     receivablePendingCents = 0,
+    derivedBusinessCashCents = 0,
     safeToSpendCents,
     safeToSpendWithReceivablesCents,
     includeReceivablesInTotal = false,
@@ -148,6 +151,8 @@ export function buildSafeToSpendBreakdown(params: SafeToSpendBreakdownParams): C
 
   const hasReceivables = receivablePendingCents > 0;
   const isOptimistic = includeReceivablesInTotal && hasReceivables;
+  const businessCashReservation = Math.max(0, derivedBusinessCashCents);
+  const cycleObligationsCents = committedObligationsCents - businessCashReservation;
 
   const steps: BreakdownStep[] = [
     {
@@ -180,7 +185,7 @@ export function buildSafeToSpendBreakdown(params: SafeToSpendBreakdownParams): C
   steps.push({
     label: "Faturas e Contas a Pagar (Ciclo)",
     operator: "-",
-    rawValue: committedObligationsCents,
+    rawValue: cycleObligationsCents,
     hint: `Faturas de cartão (${openInvoicesCents > 0 ? "abertas" : "zeradas"}) + boletos e compromissos (${payablePendingCents > 0 ? "pendentes" : "zerados"})`,
     tone: "negative",
     actionLink: {
@@ -188,6 +193,20 @@ export function buildSafeToSpendBreakdown(params: SafeToSpendBreakdownParams): C
       label: "Ver faturas",
     },
   });
+
+  if (businessCashReservation > 0) {
+    steps.push({
+      label: "Reserva Caixa Meu Negócio (PJ)",
+      operator: "-",
+      rawValue: businessCashReservation,
+      hint: "Saldo operacional da empresa retido na conta compartilhada para custear a operação (blindado contra gastos pessoais)",
+      tone: "negative",
+      actionLink: {
+        to: "/negocio",
+        label: "Ver caixa PJ",
+      },
+    });
+  }
 
   const finalValue = isOptimistic
     ? (safeToSpendWithReceivablesCents ?? safeToSpendCents + receivablePendingCents)
@@ -202,8 +221,12 @@ export function buildSafeToSpendBreakdown(params: SafeToSpendBreakdownParams): C
       "Quantia verdadeiramente disponível para gastar ou investir sem comprometer as contas e faturas contratadas do ciclo.",
     periodLabel: "Ciclo Mensal Corrente",
     formulaExpression: isOptimistic
-      ? "Saldo em Conta + Recebíveis Previstos − Obrigações do Ciclo"
-      : "Saldo em Conta − Obrigações do Ciclo",
+      ? businessCashReservation > 0
+        ? "Saldo em Conta + Recebíveis Previstos − Obrigações do Ciclo − Reserva Caixa PJ"
+        : "Saldo em Conta + Recebíveis Previstos − Obrigações do Ciclo"
+      : businessCashReservation > 0
+        ? "Saldo em Conta − Obrigações do Ciclo − Reserva Caixa PJ"
+        : "Saldo em Conta − Obrigações do Ciclo",
     unit: "currency",
     steps,
     result: {

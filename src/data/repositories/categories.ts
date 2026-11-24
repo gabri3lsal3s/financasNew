@@ -2,7 +2,12 @@ import { getSupabase } from "@/data/client";
 import { currentUserId } from "@/data/session";
 import { resolveQuery } from "@/data/query";
 import { deleteCategoryMigrate } from "@/data/rpc";
-import { CANONICAL_DEFAULT_CATEGORIES, RESERVED_CHARGES_CATEGORY_NAME } from "@/domain/budgets";
+import {
+  CANONICAL_DEFAULT_CATEGORIES,
+  RESERVED_CHARGES_CATEGORY_NAME,
+  isKitItemInstalled,
+  type CategoryKitItem,
+} from "@/domain/budgets";
 import { AppError, classifyError } from "@/services/errors";
 import type { Category, CategoryScope, CategoryType, DbUpdate } from "@/types";
 
@@ -158,6 +163,63 @@ export async function seedDefaultCategories(): Promise<number> {
   }
 
   return (data ?? []).length;
+}
+
+/**
+ * Instala itens de um Kit de Categorias em lote de forma idempotente.
+ * Compara os itens com as categorias já existentes do usuário (por nome e tipo)
+ * e insere apenas as ausentes, evitando qualquer duplicação.
+ */
+export async function installCategoryKitItems(
+  items: readonly CategoryKitItem[],
+  customUserId?: string,
+): Promise<Category[]> {
+  if (items.length === 0) return [];
+
+  const supabase = getSupabase();
+  const userId = customUserId ?? (await currentUserId());
+
+  // Busca as categorias existentes para evitar duplicações
+  const { data: existing, error: fetchError } = await supabase
+    .from("categories")
+    .select("name, type")
+    .eq("user_id", userId);
+
+  if (fetchError) {
+    const classified = classifyError(fetchError);
+    throw new AppError(classified.kind, classified.message, fetchError);
+  }
+
+  const existingList = (existing ?? []) as Array<{ name: string; type: string }>;
+  const missingItems = items.filter((item) => !isKitItemInstalled(item, existingList));
+
+  if (missingItems.length === 0) {
+    return [];
+  }
+
+  const rows = missingItems.map((item) => ({
+    user_id: userId,
+    type: item.type,
+    name: item.name.trim(),
+    icon: item.icon,
+    color: item.color,
+    is_reserved: false,
+    is_active: true,
+    is_family: false,
+    scope: "personal" as CategoryScope,
+  }));
+
+  const { data: inserted, error: insertError } = await supabase
+    .from("categories")
+    .insert(rows)
+    .select();
+
+  if (insertError) {
+    const classified = classifyError(insertError);
+    throw new AppError(classified.kind, classified.message, insertError);
+  }
+
+  return (inserted ?? []).map((row) => mapCategory(row as Category));
 }
 
 /**

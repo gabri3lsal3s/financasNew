@@ -1,5 +1,7 @@
 import { numberToCents } from "@/domain/money";
 
+export * from "./kits";
+
 /**
  * Orçamentos e metas de renda — ESPECIFICAÇÃO §3.5.2 / §3.5.3.
  *
@@ -32,6 +34,9 @@ export const CANONICAL_DEFAULT_CATEGORIES: readonly DefaultCategorySeed[] = [
   { name: "Transporte", type: "expense", icon: "transporte", color: "#3B82F6" },
   { name: "Saúde", type: "expense", icon: "saude", color: "#EF4444" },
   { name: "Educação", type: "expense", icon: "educacao", color: "#2A9D8F" },
+  { name: "Manutenção do Lar", type: "expense", icon: "moradia", color: "#8B5CF6" },
+  { name: "Animais de Estimação (Pets)", type: "expense", icon: "pets", color: "#EC4899" },
+  { name: "Impostos e Tributos", type: "expense", icon: "impostos", color: "#EF4444" },
   // Despesas de Estilo de Vida (Desejos 30% / Radar de Assinaturas)
   { name: "Lazer", type: "expense", icon: "lazer", color: "#EC4899" },
   { name: "Compras", type: "expense", icon: "compras", color: "#06B6D4" },
@@ -40,6 +45,7 @@ export const CANONICAL_DEFAULT_CATEGORIES: readonly DefaultCategorySeed[] = [
   { name: RESERVED_CHARGES_CATEGORY_NAME, type: "expense", icon: "taxas", color: "#64748B", is_reserved: true },
   // Receitas
   { name: "Salário", type: "income", icon: "salario", color: "#10B981" },
+  { name: "Serviços e Renda Extra", type: "income", icon: "salario", color: "#10B981" },
   { name: "Investimentos", type: "income", icon: "investimentos", color: "#3B82F6" },
   { name: "Outras Rendas", type: "income", icon: "salario", color: "#8B5CF6" },
 ] as const;
@@ -86,6 +92,16 @@ const CATEGORY_RULES: Record<string, CategoryRule> = {
   tarifas: { icon: "taxas", color: "#64748B", limitPercent: 5 },
   encargo: { icon: "taxas", color: "#64748B", limitPercent: 5 },
   encargos: { icon: "taxas", color: "#64748B", limitPercent: 5 },
+  pets: { icon: "pets", color: "#EC4899", limitPercent: 5 },
+  pet: { icon: "pets", color: "#EC4899", limitPercent: 5 },
+  veterinario: { icon: "pets", color: "#EC4899", limitPercent: 5 },
+  manutencao: { icon: "moradia", color: "#8B5CF6", limitPercent: 8 },
+  impostos: { icon: "impostos", color: "#EF4444", limitPercent: 10 },
+  imposto: { icon: "impostos", color: "#EF4444", limitPercent: 10 },
+  tributos: { icon: "tributos", color: "#EF4444", limitPercent: 10 },
+  tributo: { icon: "tributos", color: "#EF4444", limitPercent: 10 },
+  servicos: { icon: "salario", color: "#10B981", limitPercent: 10 },
+  servico: { icon: "salario", color: "#10B981", limitPercent: 10 },
 };
 
 /** Remove acentos ("Alimentação" → "alimentacao") para casar com as regras. */

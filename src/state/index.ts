@@ -64,6 +64,7 @@ export {
   useUpdateCategory,
   useDeleteCategory,
   useSeedDefaultCategories,
+  useInstallCategoryKit,
 } from "./mutations/use-category-mutations";
 export { useFeedback, useFeedbackEntries, useSetFeedback } from "./queries/use-insight-feedback";
 export {

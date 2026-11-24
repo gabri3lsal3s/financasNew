@@ -429,7 +429,7 @@ flowchart LR
 - **Status:** 100% Implementado & Verificado em Testes
 - **Objetivo:** Isolar completamente a vida pessoal da vida do negócio nos módulos existentes.
 - **Entregáveis:**
-  - [x] `src/features/transactions/wizard/`: Trava de `report_weight = 1.0` para PJ, ocultação do slider, campo de retenção na fonte e ação de Split PF/PJ (50/50, 70/30).
+  - [x] `src/features/transactions/wizard/`: Trava de `report_weight = 1.0` para PJ, ocultação do slider, campo de retenção na fonte e ação de Split PF/PJ com presets rápidos (50/50, 70/30, 30/70, 80/20) e proporção personalizada total (1% a 99% via NumberStepper, atalhos de ajuste fino ±5%/±10% e conversão direta por cota em reais).
   - [x] `src/features/transactions/components/use-expense-detail-actions.ts` & `use-income-detail-actions.ts`: Tratamento amigável de erro `42501` em mutação de transferências pareadas.
   - [x] `src/features/budgets/components/use-budgets-page.ts`: Filtro estrito de `scope === 'personal'`.
   - [x] `src/state/selectors/use-user-financial-context.ts`: Filtro estrito de `scope === 'personal'` para custo de vida, taxa de poupança e termômetro de reserva de emergência.

@@ -834,5 +834,36 @@ describe("ExpenseDetailDialog", () => {
 
       stateMocks.myPublicShares = [];
     });
+
+    it("renderiza Transferência Interna (PF/PJ) como categoria e o badge informativo quando is_internal_transfer for true", () => {
+      const pairedExpense: Expense = {
+        id: "exp-paired-1",
+        user_id: "u1",
+        value: 100,
+        base_amount: 100,
+        report_weight: 1,
+        date: "2026-08-05",
+        bill_competence: null,
+        category_id: "cat1",
+        payment_method: "pix",
+        card_id: null,
+        description: "Aporte de Capital",
+        scope: "personal",
+        is_internal_transfer: true,
+        transfer_pair_id: "pair-1",
+        transfer_kind: "capital_injection",
+        installment_number: 1,
+        installments_total: 1,
+        installment_group_id: null,
+        created_at: "2026-08-05T10:00:00Z",
+      };
+
+      render(<ExpenseDetailDialog expense={pairedExpense} open={true} onOpenChange={vi.fn()} />);
+
+      expect(screen.getByText("Transferência Interna (PF/PJ)")).toBeInTheDocument();
+      expect(screen.getByText("Aporte de Capital (PF para PJ)")).toBeInTheDocument();
+      expect(screen.getByText(/Saída de Aporte: capital próprio deduzido do caixa pessoal/)).toBeInTheDocument();
+      expect(screen.getByText("Excluir transferência pareada")).toBeInTheDocument();
+    });
   });
 });

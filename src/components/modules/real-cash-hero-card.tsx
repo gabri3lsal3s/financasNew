@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Landmark, Scale, ShieldCheck, ArrowDownRight, ArrowUpRight, ChevronRight } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Briefcase, ChevronRight, Landmark, Scale, ShieldCheck, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/ui/money-text";
 import { Badge } from "@/components/ui/badge";
@@ -62,6 +62,7 @@ export function RealCashHeroCard({ realCashData, className, onCalibrate }: RealC
       openInvoicesCents: safeToSpend.openInvoicesCents,
       payablePendingCents: safeToSpend.payablePendingCents,
       receivablePendingCents: safeToSpend.receivablePendingCents,
+      derivedBusinessCashCents: safeToSpend.derivedBusinessCashCents,
       safeToSpendCents: safeToSpend.safeToSpendCents,
       safeToSpendWithReceivablesCents: safeToSpend.safeToSpendWithReceivablesCents,
       includeReceivablesInTotal: false, // Modo conservador prudencial condizente com a métrica do card
@@ -105,21 +106,47 @@ export function RealCashHeroCard({ realCashData, className, onCalibrate }: RealC
         </div>
 
         {/* Valor Principal em Destaque com Auto-Fit para 7+ e 8+ dígitos */}
-        <div className="flex items-baseline gap-2 pt-0.5 min-w-0 overflow-x-auto no-scrollbar">
-          <MoneyText
-            cents={cashBalance.currentBalanceCents}
-            tone={cashBalance.currentBalanceCents >= 0 ? "default" : "negative"}
-            variant="hero"
-            animated
-            className={cn(
-              "font-bold tracking-tight whitespace-nowrap",
-              Math.abs(cashBalance.currentBalanceCents) >= 100_000_000
-                ? "text-xl sm:text-2xl"
-                : Math.abs(cashBalance.currentBalanceCents) >= 10_000_000
-                  ? "text-2xl sm:text-3xl"
-                  : "text-2xl sm:text-3xl",
-            )}
-          />
+        <div className="flex flex-col gap-1.5 pt-0.5 min-w-0">
+          <div className="flex items-baseline gap-2 min-w-0 overflow-x-auto no-scrollbar">
+            <MoneyText
+              cents={cashBalance.currentBalanceCents}
+              tone={cashBalance.currentBalanceCents >= 0 ? "default" : "negative"}
+              variant="hero"
+              animated
+              className={cn(
+                "font-bold tracking-tight whitespace-nowrap",
+                Math.abs(cashBalance.currentBalanceCents) >= 100_000_000
+                  ? "text-xl sm:text-2xl"
+                  : Math.abs(cashBalance.currentBalanceCents) >= 10_000_000
+                    ? "text-2xl sm:text-3xl"
+                    : "text-2xl sm:text-3xl",
+              )}
+            />
+          </div>
+
+          {realCashData.businessCashBreakdown?.hasBusinessCash && (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground pt-0.5">
+              <div className="flex items-center gap-1.5 font-medium text-foreground">
+                <User className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                <span>Pessoal:</span>
+                <MoneyText
+                  cents={realCashData.businessCashBreakdown.personalCashCents}
+                  tone="default"
+                  className="font-medium text-foreground tabular-nums"
+                />
+              </div>
+              <span className="text-border" aria-hidden="true">·</span>
+              <div className="flex items-center gap-1.5 font-medium text-portfolio">
+                <Briefcase className="size-3.5 text-portfolio" aria-hidden="true" />
+                <span>Meu Negócio:</span>
+                <MoneyText
+                  cents={realCashData.businessCashBreakdown.businessCashCents}
+                  tone="default"
+                  className="font-medium text-portfolio tabular-nums"
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Linha de Projeção Safe-to-Spend */}

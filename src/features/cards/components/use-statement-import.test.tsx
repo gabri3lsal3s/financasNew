@@ -255,6 +255,7 @@ describe("Etapa 4 — Micro-IA Semântica Deduplicada (useStatementImport)", () 
           installment_number: 1,
           installments_total: 1,
           installment_group_id: null,
+          created_at: "2026-08-10T12:00:00Z",
         },
       ];
 

@@ -1,5 +1,6 @@
 import {
   AlertCircle,
+  ArrowLeftRight,
   Car,
   Coins,
   CreditCard,
@@ -57,6 +58,7 @@ export const CATEGORY_ICON_MAP: Record<string, LucideIcon> = {
   emprestimo: Coins,
   justica: Scale,
   cartao: CreditCard,
+  transferencia: ArrowLeftRight,
 };
 
 /** Opções para os formulários de seleção de ícone (mesmo map, sem duplicação). */

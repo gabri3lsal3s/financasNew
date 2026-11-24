@@ -140,6 +140,7 @@ export function BudgetsPage() {
               content: (
                 <BudgetsCategoriesTab
                   allCategories={b.allCategories}
+                  onOpenKitsModal={() => b.handleOpenKitsModal()}
                   onSeedCategories={() => void b.handleSeedCategories()}
                   isSeeding={b.isSeeding}
                   isSeedError={b.isSeedError}

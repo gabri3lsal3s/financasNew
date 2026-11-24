@@ -166,4 +166,21 @@ describe("RealCashHeroCard", () => {
       }),
     ).toBeInTheDocument();
   });
+
+  it("renderiza a decomposição Pessoal vs Meu Negócio quando houver atividade empresarial (Melhoria 2)", () => {
+    const withBusinessData: UseRealCashBalanceResult = {
+      ...mockRealCashData,
+      businessCashBreakdown: {
+        personalCashCents: 442000,
+        businessCashCents: 100000,
+        hasBusinessCash: true,
+      },
+    };
+
+    render(<RealCashHeroCard realCashData={withBusinessData} />);
+    expect(screen.getByText("Pessoal:")).toBeInTheDocument();
+    expect(screen.getByText("Meu Negócio:")).toBeInTheDocument();
+    expect(screen.getByText(/4\.420,00/)).toBeInTheDocument();
+    expect(screen.getByText(/1\.000,00/)).toBeInTheDocument();
+  });
 });

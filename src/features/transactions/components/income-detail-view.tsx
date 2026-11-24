@@ -1,4 +1,4 @@
-import { Sparkles } from "lucide-react";
+import { ArrowLeftRight, Sparkles } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger, Badge } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon } from "@/components/modules/category-icon";
@@ -54,7 +54,13 @@ export function IncomeDetailView({
         <div className="flex items-center justify-between gap-2">
           <dt className="text-xs text-muted-foreground">Categoria</dt>
           <dd className="flex items-center gap-1.5 font-medium text-foreground text-xs">
-            {currentCategory ? (
+            {income.is_internal_transfer ? (
+              <>
+                <ArrowLeftRight className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                <span>Transferência Interna (PF/PJ)</span>
+                <Badge variant="muted" size="xs">Não fiscal</Badge>
+              </>
+            ) : currentCategory ? (
               <>
                 <CategoryIcon icon={currentCategory.icon} color={currentCategory.color} className="size-3.5" />
                 <span>{currentCategory.name}</span>
@@ -98,19 +104,28 @@ export function IncomeDetailView({
         ) : null}
 
         {income.is_internal_transfer ? (
-          <div className="flex flex-col gap-1 border-t border-border/80 pt-2">
+          <div className="flex flex-col gap-1.5 border-t border-border/80 pt-2">
             <div className="flex items-center justify-between gap-2">
               <dt className="text-xs text-muted-foreground">Movimentação</dt>
               <dd className="font-medium text-foreground text-xs">
-                <Badge variant="muted" size="xs">
+                <Badge variant="portfolio" size="xs">
                   {income.transfer_kind && income.transfer_kind in INTERNAL_TRANSFER_KIND_LABELS
                     ? INTERNAL_TRANSFER_KIND_LABELS[income.transfer_kind as InternalTransferKind]
                     : "Transferência Interna"}
                 </Badge>
               </dd>
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              Transferência interna pareada PF/PJ — somente leitura (exclua o par para corrigir).
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              {income.transfer_kind === "capital_injection"
+                ? "Aporte de Capital: recurso próprio transferido do seu bolso pessoal para aumentar o capital de giro da empresa. Não é faturamento comercial nem gera tributação no MEI/Simples."
+                : income.transfer_kind === "pro_labore"
+                  ? "Retirada de Pró-Labore: remuneração do fundador transferida do caixa da empresa para a sua conta pessoal."
+                  : income.transfer_kind === "card_reimbursement"
+                    ? "Reembolso de Despesas: devolução da empresa ao seu caixa pessoal de gastos que você antecipou pelo negócio."
+                    : "Transferência patrimonial interna pareada entre caixas PF e PJ (sem efeito fiscal/DRE)."}
+            </p>
+            <p className="text-[11px] text-muted-foreground/80">
+              Transferência pareada atômica — somente leitura. Ao excluir a transferência, a ação é desfeita e o dinheiro volta automaticamente ao caixa de origem.
             </p>
           </div>
         ) : isReadOnly ? (

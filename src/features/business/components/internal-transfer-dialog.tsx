@@ -1,5 +1,5 @@
 import { useId, useState } from "react";
-import { ArrowRight, Briefcase, User } from "lucide-react";
+import { ArrowRight, Briefcase, ShieldCheck, User } from "lucide-react";
 import {
   Alert,
   Button,
@@ -10,6 +10,7 @@ import {
   ModalFooter,
   MoneyInput,
   Select,
+  Switch,
 } from "@/components/ui";
 import { todayISO } from "@/domain/debts";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
@@ -57,6 +58,7 @@ export function InternalTransferDialog({
   const [amountCents, setAmountCents] = useState<number>(defaultAmountCents);
   const [date, setDate] = useState<string>(defaultDate ?? todayISO());
   const [description, setDescription] = useState<string>(defaultDescription);
+  const [affectRealCash, setAffectRealCash] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   const [prevKey, setPrevKey] = useState(
@@ -180,6 +182,14 @@ export function InternalTransferDialog({
             />
           </FormField>
 
+          <p className="text-[11px] text-muted-foreground -mt-1 leading-relaxed">
+            {kind === "capital_injection"
+              ? "Aporte de Capital: transfere recursos próprios para aumentar o capital de giro da empresa. Não conta como faturamento nem gera tributos no MEI/Simples."
+              : kind === "pro_labore"
+                ? "Retirada de Pró-Labore: remuneração do fundador transferida do caixa operacional da empresa para o seu bolso pessoal."
+                : "Reembolso de Despesas: devolução da empresa ao seu bolso pessoal por compras do negócio que você pagou com recursos próprios."}
+          </p>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <FormField label="Valor" htmlFor={`${formId}-amount`}>
               <MoneyInput
@@ -209,6 +219,23 @@ export function InternalTransferDialog({
               }
             />
           </FormField>
+
+          <div className="rounded-xl border border-border/80 bg-surface-raised p-3">
+            <Switch
+              id={`${formId}-affect-cash`}
+              checked={affectRealCash}
+              onCheckedChange={setAffectRealCash}
+              label="Movimentar saldo do caixa"
+              description="Debita a conta de origem e credita a de destino. Se excluída futuramente, o dinheiro é estornado."
+            />
+          </div>
+
+          <div className="flex items-start gap-2 rounded-lg bg-surface-raised/50 p-2.5 text-[11px] text-muted-foreground border border-border/60">
+            <ShieldCheck className="size-3.5 text-positive-strong shrink-0 mt-0.5" aria-hidden="true" />
+            <span>
+              Movimentação pareada atômica: as pernas de saída e entrada são gravadas simultaneamente. Ao excluir a transferência em qualquer tela, o saldo volta automaticamente para a conta de origem.
+            </span>
+          </div>
         </form>
       </Modal>
       {upgradeModal}

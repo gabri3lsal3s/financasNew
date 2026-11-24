@@ -3,7 +3,7 @@
 > **Documento Canônico de Arquitetura e Engenharia de Produto**  
 > **Versão:** 3.2 (Inteligência de Parcelamentos + Ajustes Cirúrgicos Finais)  
 > **Data:** 24 de Novembro de 2026  
-> **Status:** Pronto para Execução — Somente Planejamento (Zero Implementação nesta etapa)  
+> **Status:** CONCLUÍDO E HOMOLOGADO (Versão do App: v3.22.0 / Build 107)  
 > **Escopo:** Módulo de Cartões de Crédito, Motor de Conciliação (`src/domain/reconciliation`), Interface de Importação (`src/features/cards/components/statement-import-*`), Serviços Nativos (`src/services/native/receipt-extractor.ts`), Micro-IA (`src/services/ai-assistant/**`, `supabase/functions/ai-financial-assistant/**`), Memória Semântica (`src/services/merchant-learning/**`) e Persistência Supabase RPC (`import_statement_expenses`).
 
 ---
@@ -240,65 +240,65 @@ Em `src/domain/reconciliation/installments.ts`:
 ## 6. PLANO DE TESTES (VITEST) E QUALITY GATES POR ETAPA
 
 ### Etapa 1 — Blindagem Contábil, Scoring e Parcelas
-- [ ] `clean.test.ts`:
+- [x] `clean.test.ts`:
   - `isPaymentOrSettlement`: `"PAGTO TIT NOMINAL"`, `"PAGAMENTO DE NOMINAIS"` $\rightarrow$ `isPayment = true`.
   - Preserva boletos no cartão: `"PAGTO TITULO ENEL"` com débito $\rightarrow$ `isPayment = false`.
-- [ ] `installments.test.ts`:
+- [x] `installments.test.ts`:
   - Extrai `01/10`, `PARC 02/12`, `02 DE 10`, `3x`.
   - Protege datas: `COMPRA 04/11` com transação em novembro não é confundido com parcela `4/11`.
   - Suporta edição manual do total `N` inline.
-- [ ] `scorer.test.ts`:
+- [x] `scorer.test.ts`:
   - Caso Livros R$ 110,79 vs Amazon R$ 110,80 $\rightarrow$ `probable_match` (score 75).
   - Trava de centavos: $\Delta\text{Cents} > 0 \rightarrow$ nunca `exact_match`.
   - Equivalência temporal plena (+35 pts) entre fatura com data original (`15/08/2026`, `04/10`) e parcela cadastrada com data vigente (`15/11/2026`, `04/10`).
   - Arredondamento de parcela (`R$ 100 / 3`) conciliável via sugestão.
-- [ ] `parsers/index.test.ts`:
+- [x] `parsers/index.test.ts`:
   - Parcela `06/10` em `2026-04` com data original `10/11/2025` clampada para `2026-01-01` sem colisão de hash.
-- [ ] `receipt-extractor.test.ts`:
+- [x] `receipt-extractor.test.ts`:
   - `renderScannedPdfPageToBlob` passa `canvasContext` e renderiza com sucesso.
 
 ### Etapa 2 — Motor Espacial e Detecção de Série
-- [ ] `parsers/spatial-pdf-parser.test.ts`:
+- [x] `parsers/spatial-pdf-parser.test.ts`:
   - PDF 2 colunas com gutter entre $0.42$ e $0.58$ só particiona se ambas as metades tiverem Data + Valor.
   - Máquina de Estados: corta leitura no código de barras e descarta tabela de simulação.
   - Checksum Gate: validação de soma contra total impresso.
-- [ ] `parsers/spreadsheet-parser.test.ts`:
+- [x] `parsers/spreadsheet-parser.test.ts`:
   - Guarda BIFF8 em arquivo `.xls` binário emite erro amigável.
-- [ ] `series-detector.test.ts`:
+- [x] `series-detector.test.ts`:
   - Estado 1: `1/10` inédita gera ação de projeção `1/10..10/10` com hash apenas na `1/10`.
   - Estado 2: `2/10` sem série sinaliza ausência da 1ª e projeta apenas para frente (`2/10..10/10`).
   - Estado 4: `2/10` quando `3/10..10/10` já existem $\rightarrow$ zero duplicação das futuras.
 
 ### Etapa 3 — UI/UX e Interações
-- [ ] `statement-import-dialog.test.tsx`:
+- [x] `statement-import-dialog.test.tsx`:
   - Modal em `size="2xl"` (`max-w-5xl`).
   - CSV de alta confiança pula direto para conferência.
   - Cancelar modal não despacha nenhuma mutação parcial ao banco.
-- [ ] `statement-reconcile-rows.test.tsx`:
+- [x] `statement-reconcile-rows.test.tsx`:
   - Edição inline e Adicionar Linha inline (sem `StatementItemFormDialog`, sem `autoFocus`).
   - Pill de categoria com popover sob demanda.
   - Ação "Vincular e Ajustar Valor" acumula em `pendingLinkAdjustments`.
 
 ### Etapa 4 — Micro-IA Semântica
-- [ ] `use-statement-import.test.ts`:
+- [x] `use-statement-import.test.ts`:
   - Background categoriza apenas `unmatched_new`.
   - Campos editados manualmente (`dirtyFields`) são preservados.
   - Re-scoring incremental atualiza itens pós-IA.
   - Memória semântica só grava após confirmação do usuário.
 
 ### Etapa 5 — Curador por ID e Resgate OCR
-- [ ] `line-curator.test.ts`:
+- [x] `line-curator.test.ts`:
   - Curadoria `{ keep, ignore }` aprovando Checksum Gate sem alucinação de dados.
-- [ ] `ai-assistant.test.ts`:
+- [x] `ai-assistant.test.ts`:
   - Modo `line_curator` devidamente integrado e fallback OCR validado por schema Zod.
 
 ---
 
 ## 7. DEFINITION OF DONE (CRITÉRIOS DE ACEITAÇÃO GLOBAIS)
 
-1. **Governança Estrita (`AGENTS.md`):** Modal `size="2xl"`, zero modais aninhados, zero emojis, haptics centralizados e sem auto-focus no mobile.
-2. **Inteligência de Parcelamentos Operacional:** Classificação nos 4 Estados, equivalência temporal no scorer, suporte a datas originais de 2025 clampadas e bloqueio absoluto de duplicações futuras.
-3. **Exatidão Contábil:** Nominais e quitações de fatura nunca viram despesa; boletos pagos no cartão são preservados.
-4. **Resolução de Microdiscrepâncias:** Tolerância de centavos tratada com precisão via `probable_match` e resolvida em 1 clique.
-5. **Custo Zero Predominante:** 90%+ das faturas processadas localmente pelo motor espacial determinístico.
-6. **Zero Erros no Console:** Eliminação definitiva do `TypeError` de canvas e de colisões de portais Radix UI.
+1. [x] **Governança Estrita (`AGENTS.md`):** Modal `size="2xl"`, zero modais aninhados, zero emojis, haptics centralizados e sem auto-focus no mobile.
+2. [x] **Inteligência de Parcelamentos Operacional:** Classificação nos 4 Estados, equivalência temporal no scorer, suporte a datas originais de 2025 clampadas e bloqueio absoluto de duplicações futuras.
+3. [x] **Exatidão Contábil:** Nominais e quitações de fatura nunca viram despesa; boletos pagos no cartão são preservados.
+4. [x] **Resolução de Microdiscrepâncias:** Tolerância de centavos tratada com precisão via `probable_match` e resolvida em 1 clique.
+5. [x] **Custo Zero Predominante:** 90%+ das faturas processadas localmente pelo motor espacial determinístico.
+6. [x] **Zero Erros no Console:** Eliminação definitiva do `TypeError` de canvas e de colisões de portais Radix UI.

@@ -261,4 +261,20 @@ describe("IncomeDetailDialog", () => {
     });
     mockMyFamily = null;
   });
+
+  it("renderiza Transferência Interna (PF/PJ) como categoria e o badge informativo quando is_internal_transfer for true", () => {
+    const pairedIncome = baseIncome({
+      is_internal_transfer: true,
+      transfer_pair_id: "pair-1",
+      transfer_kind: "capital_injection",
+      scope: "business",
+    });
+
+    render(<IncomeDetailDialog income={pairedIncome} open={true} onOpenChange={vi.fn()} />);
+
+    expect(screen.getByText("Transferência Interna (PF/PJ)")).toBeInTheDocument();
+    expect(screen.getByText("Aporte de Capital (PF para PJ)")).toBeInTheDocument();
+    expect(screen.getByText(/Não é faturamento comercial nem gera tributação/)).toBeInTheDocument();
+    expect(screen.getByText("Excluir transferência pareada")).toBeInTheDocument();
+  });
 });

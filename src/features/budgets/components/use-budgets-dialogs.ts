@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useCreateDeepLink } from "@/hooks";
+import type { CategoryKitId } from "@/domain/budgets";
 import type { Category, PublicShare } from "@/types";
 
 export function useBudgetsDialogs(isReadOnlyMode: boolean) {
@@ -19,6 +20,8 @@ export function useBudgetsDialogs(isReadOnlyMode: boolean) {
   const [reallocateError, setReallocateError] = useState<string | null>(null);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [upgradeContext, setUpgradeContext] = useState<string | undefined>();
+  const [kitsModalOpen, setKitsModalOpen] = useState(false);
+  const [initialKitId, setInitialKitId] = useState<CategoryKitId | undefined>(undefined);
 
   const guardWrite = (context: string, action: () => void) => {
     if (isReadOnlyMode) {
@@ -105,6 +108,14 @@ export function useBudgetsDialogs(isReadOnlyMode: boolean) {
       guardWrite("Gerenciar Aportes da Meta", () => setManageContributionsShare(share)),
     handleOpenComposition: (share: PublicShare) =>
       guardWrite("Configurar Composição da Meta", () => setCompositionShare(share)),
+    kitsModalOpen,
+    setKitsModalOpen,
+    initialKitId,
+    setInitialKitId,
+    handleOpenKitsModal: (kitId?: CategoryKitId) => {
+      setInitialKitId(kitId);
+      setKitsModalOpen(true);
+    },
     handleShareGoal: (cat: Category) =>
       guardWrite("Compartilhar Meta", () => setSharingGoalFor(cat)),
   };

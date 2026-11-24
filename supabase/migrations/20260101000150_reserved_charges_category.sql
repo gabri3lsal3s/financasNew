@@ -247,7 +247,7 @@ begin
     action,
     entity_type,
     entity_id,
-    metadata
+    payload
   ) values (
     v_user_id,
     'pay_card_bill_with_charges',

@@ -118,9 +118,12 @@ describe("Budgets Tabs Component Modularization", () => {
     const onSeedCategories = vi.fn();
     const onOpenCreateCategory = vi.fn();
 
+    const onOpenKitsModal = vi.fn();
+
     render(
       <BudgetsCategoriesTab
         allCategories={[mockCategory]}
+        onOpenKitsModal={onOpenKitsModal}
         onSeedCategories={onSeedCategories}
         isSeeding={false}
         isSeedError={false}
@@ -131,11 +134,11 @@ describe("Budgets Tabs Component Modularization", () => {
     );
 
     expect(screen.getByText("Alimentação")).toBeInTheDocument();
-    expect(screen.getByText("Restaurar padrões")).toBeInTheDocument();
+    expect(screen.getByText("Kits de categorias")).toBeInTheDocument();
 
     const user = userEvent.setup();
-    const seedBtn = screen.getByRole("button", { name: /Restaurar padrões/i });
-    await user.click(seedBtn);
-    expect(onSeedCategories).toHaveBeenCalled();
+    const kitsBtn = screen.getByRole("button", { name: /Kits de categorias/i });
+    await user.click(kitsBtn);
+    expect(onOpenKitsModal).toHaveBeenCalled();
   });
 });

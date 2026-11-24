@@ -109,4 +109,19 @@ describe("InternalTransferDialog", () => {
     fireEvent.click(submitBtn);
     expect(mutateAsyncMock).not.toHaveBeenCalled();
   });
+
+  it("exibe explicação didática da finalidade e o switch de movimentação de caixa (Melhoria 3)", () => {
+    render(
+      <InternalTransferDialog
+        open
+        onOpenChange={vi.fn()}
+        defaultKind="capital_injection"
+        defaultAmountCents={100000}
+      />,
+    );
+
+    expect(screen.getByText(/Aporte de Capital: transfere recursos próprios/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Movimentar saldo do caixa")).toBeInTheDocument();
+    expect(screen.getByText(/Movimentação pareada atômica/)).toBeInTheDocument();
+  });
 });

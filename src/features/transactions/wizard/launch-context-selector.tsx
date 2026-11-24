@@ -1,5 +1,6 @@
-import { Briefcase, HandCoins, Plane, Scale, User, Users } from "lucide-react";
-import { Chip, MoneyInput, Select, Switch } from "@/components/ui";
+import { useState } from "react";
+import { Briefcase, HandCoins, Plane, Scale, SlidersHorizontal, User, Users } from "lucide-react";
+import { Badge, Button, Chip, MoneyInput, NumberStepper, Select, Switch } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { splitMixedExpenseByPercent } from "@/domain/business";
 import { formatCentsAsBRL } from "@/services/masks";
@@ -101,6 +102,10 @@ export function LaunchContextSelector({
   };
 
   const businessPercent = state.splitPFPJBusinessPercent ?? 50;
+  const isStandardPreset = [50, 70, 30, 80].includes(businessPercent);
+  const [isCustomMode, setIsCustomMode] = useState<boolean>(!isStandardPreset);
+  const showCustomControls = isCustomMode || !isStandardPreset;
+
   const splitPFPJResult = isSplitPFPJSelected
     ? splitMixedExpenseByPercent({
         totalCents: state.valueCents,
@@ -177,25 +182,155 @@ export function LaunchContextSelector({
             </p>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-medium text-foreground">Distribuição da despesa</span>
-            <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-medium text-foreground">Distribuição da despesa</span>
+              <span className="text-[10px] text-muted-foreground font-mono">
+                {100 - businessPercent}% PF / {businessPercent}% PJ
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Distribuição da despesa">
               {[
                 { label: "50% / 50%", val: 50 },
                 { label: "70% PJ / 30% PF", val: 70 },
                 { label: "30% PJ / 70% PF", val: 30 },
                 { label: "80% PJ / 20% PF", val: 80 },
-              ].map((preset) => (
-                <Chip
-                  key={preset.val}
-                  selected={businessPercent === preset.val}
-                  onClick={() => onSplitPFPJBusinessPercentChange?.(preset.val)}
-                  className="text-[11px] h-7 px-2.5"
-                >
-                  {preset.label}
-                </Chip>
-              ))}
+              ].map((preset) => {
+                const isSelected = !showCustomControls && businessPercent === preset.val;
+                return (
+                  <Chip
+                    key={preset.val}
+                    role="radio"
+                    aria-checked={isSelected}
+                    selected={isSelected}
+                    sensoryIntent="selection"
+                    onClick={() => {
+                      setIsCustomMode(false);
+                      onSplitPFPJBusinessPercentChange?.(preset.val);
+                    }}
+                    className="text-[11px] h-7 px-2.5"
+                  >
+                    {preset.label}
+                  </Chip>
+                );
+              })}
+
+              <Chip
+                role="radio"
+                aria-checked={showCustomControls}
+                selected={showCustomControls}
+                sensoryIntent="selection"
+                onClick={() => setIsCustomMode(true)}
+                icon={<SlidersHorizontal className="size-3" aria-hidden="true" />}
+                className={showCustomControls ? "border-portfolio/50 bg-portfolio/10 text-portfolio font-semibold text-[11px] h-7 px-2.5" : "text-[11px] h-7 px-2.5"}
+              >
+                Personalizado
+              </Chip>
             </div>
+
+            {showCustomControls ? (
+              <div className="flex flex-col gap-3 rounded-lg border border-border/80 bg-surface p-3 transition-all shadow-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <SlidersHorizontal className="size-3.5 text-portfolio" aria-hidden="true" />
+                    <span className="text-xs font-semibold text-foreground">
+                      Proporção Personalizada
+                    </span>
+                  </div>
+                  <Badge size="xs" variant="portfolio" className="font-mono">
+                    {businessPercent}% PJ · {100 - businessPercent}% PF
+                  </Badge>
+                </div>
+
+                {/* Barra visual proporcional */}
+                <div className="flex flex-col gap-1">
+                  <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-surface-subtle border border-border/60">
+                    <div
+                      className="bg-muted-foreground/35 transition-all duration-200"
+                      style={{ width: `${100 - businessPercent}%` }}
+                      title={`Pessoal (PF): ${100 - businessPercent}%`}
+                    />
+                    <div
+                      className="bg-portfolio transition-all duration-200"
+                      style={{ width: `${businessPercent}%` }}
+                      title={`Negócio (PJ): ${businessPercent}%`}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono">
+                    <span>PF: {100 - businessPercent}%</span>
+                    <span className="text-portfolio font-medium">PJ: {businessPercent}%</span>
+                  </div>
+                </div>
+
+                {/* Ajuste fino por Stepper e atalhos delta */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-0.5">
+                  <div className="flex items-center justify-between sm:justify-start gap-2.5">
+                    <span className="text-xs font-medium text-foreground shrink-0">Fatia do negócio:</span>
+                    <NumberStepper
+                      editable
+                      value={businessPercent}
+                      min={1}
+                      max={99}
+                      step={5}
+                      onValueChange={(val) => {
+                        const clamped = Math.max(1, Math.min(99, Math.round(val)));
+                        onSplitPFPJBusinessPercentChange?.(clamped);
+                      }}
+                      ariaLabel="Fatia percentual do negócio"
+                      decreaseLabel="Diminuir parcela PJ em 5%"
+                      increaseLabel="Aumentar parcela PJ em 5%"
+                      className="w-36 sm:w-40"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-end gap-1">
+                    {[-10, -5, +5, +10].map((delta) => (
+                      <Button
+                        key={delta}
+                        type="button"
+                        variant="outline"
+                        size="xs"
+                        onClick={() => {
+                          const next = Math.max(1, Math.min(99, businessPercent + delta));
+                          onSplitPFPJBusinessPercentChange?.(next);
+                        }}
+                        className="h-7 px-2 font-mono shrink-0"
+                      >
+                        {delta > 0 ? `+${delta}%` : `${delta}%`}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Ajuste opcional por valor em reais se total > 0 */}
+                {state.valueCents > 0 ? (
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-border/60 pt-2.5">
+                    <div className="flex flex-col">
+                      <span className="text-[11px] font-medium text-foreground">Definir cota em reais (PJ)</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        Calcula a porcentagem automaticamente com base no total ({formatCentsAsBRL(state.valueCents)})
+                      </span>
+                    </div>
+                    <div className="w-full sm:w-36">
+                      <MoneyInput
+                        id="wizard-split-custom-business-cents"
+                        cents={splitPFPJResult.businessCents}
+                        onCentsChange={(cents) => {
+                          if (state.valueCents <= 0) return;
+                          const clamped = Math.max(0, Math.min(state.valueCents, cents));
+                          const computedPct = Math.max(1, Math.min(99, Math.round((clamped / state.valueCents) * 100)));
+                          onSplitPFPJBusinessPercentChange?.(computedPct);
+                        }}
+                        size="sm"
+                        className="h-8 text-xs font-mono"
+                        placeholder="R$ 0,00"
+                        aria-label="Cota do negócio em reais"
+                      />
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

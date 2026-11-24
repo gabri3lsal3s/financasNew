@@ -21,6 +21,11 @@ vi.mock("@/state", async (importOriginal) => {
       mutateAsync: vi.fn().mockResolvedValue({}),
       isPending: false,
     }),
+    useInstallCategoryKit: () => ({
+      mutate: vi.fn(),
+      mutateAsync: vi.fn().mockResolvedValue([]),
+      isPending: false,
+    }),
   };
 });
 
@@ -122,7 +127,8 @@ describe("WelcomeModal — Acolhimento e Escolha de Partida (§3.1)", () => {
     expect(hasSeenWelcomeModal()).toBe(true);
     expect(mockUpdateCustomSettingsMutate).toHaveBeenCalledWith({
       initialGoal: "ocr",
-      familyModeEnabled: true,
+      familyModeEnabled: false,
+      businessModeEnabled: false,
     });
     expect(mockNavigate).toHaveBeenCalledWith("/transacoes?novo=transacao");
   });
@@ -159,6 +165,7 @@ describe("WelcomeModal — Acolhimento e Escolha de Partida (§3.1)", () => {
     expect(mockUpdateCustomSettingsMutate).toHaveBeenCalledWith({
       initialGoal: "family",
       familyModeEnabled: true,
+      businessModeEnabled: false,
     });
     expect(mockNavigate).toHaveBeenCalledWith("/familia");
   });

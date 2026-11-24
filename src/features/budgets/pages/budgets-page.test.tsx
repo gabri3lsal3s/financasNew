@@ -72,6 +72,7 @@ vi.mock("@/state", () => ({
   useUpdateCategory: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeleteCategory: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSeedDefaultCategories: () => ({ mutateAsync: vi.fn(), isPending: false, isError: false }),
+  useInstallCategoryKit: () => ({ mutateAsync: vi.fn(), isPending: false, isError: false }),
   useExpenses: () => ({
     data: mockExpenses,
     isLoading: false,
@@ -317,11 +318,11 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
     renderBudgetsPage();
     await user.click(screen.getByRole("tab", { name: "Categorias" }));
 
-    expect(screen.getByText("Nenhuma categoria pronta encontrada")).toBeInTheDocument();
+    expect(screen.getByText("Nenhuma categoria encontrada")).toBeInTheDocument();
     expect(
-      screen.getByText(/Sua conta ainda não possui categorias de receitas e despesas./),
+      screen.getByText(/Sua conta ainda não possui categorias ativas de receitas e despesas/),
     ).toBeInTheDocument();
-    const seedBtn = screen.getByRole("button", { name: "Carregar categorias pré-prontas" });
+    const seedBtn = screen.getByRole("button", { name: /Explorar Kits de Categorias/i });
     expect(seedBtn).toBeInTheDocument();
   });
 

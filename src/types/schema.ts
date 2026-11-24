@@ -458,7 +458,7 @@ export type PortfolioRiskPolicySettings = {
   benchmarkOverlapCeilingPct?: number;
 };
 
-export type OnboardingGoalId = "cards" | "ocr" | "debts" | "family" | "investments";
+export type OnboardingGoalId = "cards" | "ocr" | "debts" | "family" | "investments" | "business";
 
 export type PortfolioAlertDismissalEntry = {
   dismissedUntil: number;

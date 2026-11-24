@@ -2,9 +2,11 @@ import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-q
 import {
   createCategory,
   deleteCategory,
+  installCategoryKitItems,
   seedDefaultCategories,
   updateCategory,
 } from "@/data/repositories/categories";
+import type { CategoryKitItem } from "@/domain/budgets";
 import { categoriesKey } from "@/state/queries/use-categories";
 import { expensesKey } from "@/state/queries/use-expenses";
 import { incomesKey } from "@/state/queries/use-incomes";
@@ -58,6 +60,14 @@ export function useSeedDefaultCategories() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => seedDefaultCategories(),
+    onSuccess: () => invalidateFinance(queryClient),
+  });
+}
+
+export function useInstallCategoryKit() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (items: readonly CategoryKitItem[]) => installCategoryKitItems(items),
     onSuccess: () => invalidateFinance(queryClient),
   });
 }

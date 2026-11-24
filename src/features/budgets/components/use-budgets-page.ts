@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { budgetLimitsByCategory, realizedByCategoryMap } from "@/domain/budgets";
+import { budgetLimitsByCategory, realizedByCategoryMap, type CategoryKitId } from "@/domain/budgets";
 import {
   filterCategoriesForScope,
   filterExpensesByViewScope,
@@ -37,6 +37,7 @@ export function useBudgetsPage() {
   const targetType = searchParams.get("type");
   const paramTab = searchParams.get("tab");
   const paramAba = searchParams.get("aba");
+  const paramKit = searchParams.get("kit");
 
   const [month, setMonth] = useState(currentMonth());
   const [pickedTab, setPickedTab] = useState<BudgetsTabKey>("limits");
@@ -48,7 +49,7 @@ export function useBudgetsPage() {
   const tab: BudgetsTabKey =
     targetType === "income" || paramTab === "goals" || paramAba === "metas"
       ? "goals"
-      : targetType === "category" || paramTab === "categories" || paramAba === "categorias"
+      : targetType === "category" || paramTab === "categories" || paramAba === "categorias" || Boolean(paramKit)
         ? "categories"
         : paramTab === "limits" || paramAba === "limites" || Boolean(targetCategory)
           ? "limits"

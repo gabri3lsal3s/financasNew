@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { todayISO } from "@/domain/debts";
 import {
+  calculateDerivedBusinessCashFromTransactions,
   filterCardsByViewScope,
   filterDebtsByViewScope,
   filterExpensesByViewScope,
@@ -26,10 +27,17 @@ import { useCreditCards } from "./use-credit-cards";
 import { useDebts } from "./use-debts";
 import { usePortfolioContributions } from "./use-portfolio";
 
+export interface BusinessCashBreakdownResult {
+  personalCashCents: number;
+  businessCashCents: number;
+  hasBusinessCash: boolean;
+}
+
 export interface UseRealCashBalanceResult {
   cashBalance: RealCashBalanceResult;
   safeToSpend: SafeToSpendResult;
   cycleBreakdown: CycleObligationsBreakdown;
+  businessCashBreakdown?: BusinessCashBreakdownResult | null;
   activeScope?: ViewScope;
   isLoading: boolean;
   error: unknown;
@@ -159,18 +167,61 @@ export function useRealCashBalance(
     referenceDate,
   ]);
 
+  const businessCashDerived = useMemo(() => {
+    return calculateDerivedBusinessCashFromTransactions({
+      incomes: incomesQuery.data ?? [],
+      expenses: expensesQuery.data ?? [],
+    });
+  }, [incomesQuery.data, expensesQuery.data]);
+
+  const hasBusinessActivity = useMemo(() => {
+    return (
+      businessCashDerived.capitalInjectionsCents > 0 ||
+      businessCashDerived.grossRevenueCents > 0 ||
+      businessCashDerived.cashExpensesCents > 0 ||
+      businessCashDerived.proLaboreWithdrawnCents > 0 ||
+      businessCashDerived.cardReimbursementsPaidCents > 0 ||
+      activeScope === "business"
+    );
+  }, [businessCashDerived, activeScope]);
+
+  const businessCashBreakdown: BusinessCashBreakdownResult | null = useMemo(() => {
+    if (!hasBusinessActivity) return null;
+    const businessCashCents = businessCashDerived.derivedCashBalanceCents;
+    const personalCashCents =
+      activeScope === "business"
+        ? 0
+        : cashBalance.currentBalanceCents - Math.max(0, businessCashCents);
+    return {
+      personalCashCents,
+      businessCashCents,
+      hasBusinessCash: true,
+    };
+  }, [hasBusinessActivity, businessCashDerived.derivedCashBalanceCents, activeScope, cashBalance.currentBalanceCents]);
+
   const safeToSpend = useMemo(() => {
+    // Se o escopo for consolidado ("all") ou pessoal ("personal"), deduzimos estritamente o Caixa Reservado da PJ
+    // para evitar que dinheiro da empresa apareça como disponível para gastos pessoais livres (Melhoria 4: Blindagem Dinâmica).
+    const derivedBusinessCashCents =
+      activeScope !== "business" && hasBusinessActivity
+        ? Math.max(0, businessCashDerived.derivedCashBalanceCents)
+        : 0;
+
     return calculateSafeToSpend({
       realCashBalanceCents: cashBalance.currentBalanceCents,
       openInvoicesCents: cycleBreakdown.openInvoicesCents,
       payablePendingCents: cycleBreakdown.payableDebtsCents,
       receivablePendingCents: cycleBreakdown.receivablePendingCents,
+      derivedBusinessCashCents,
     });
   }, [
     cashBalance.currentBalanceCents,
     cycleBreakdown.openInvoicesCents,
     cycleBreakdown.payableDebtsCents,
     cycleBreakdown.receivablePendingCents,
+    activeScope,
+    hasBusinessActivity,
+    businessCashDerived.derivedCashBalanceCents,
   ]);
 
   const refetch = async () => {
@@ -190,6 +241,7 @@ export function useRealCashBalance(
     cashBalance,
     safeToSpend,
     cycleBreakdown,
+    businessCashBreakdown,
     activeScope,
     isLoading,
     error,
