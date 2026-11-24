@@ -325,9 +325,10 @@ function BusinessDashboardContent({
                 size="sm"
                 className="gap-1.5"
                 onClick={() => setGuideOpen(true)}
+                title="Abrir guia do negócio"
               >
-                <BookOpen className="size-4" aria-hidden="true" />
-                <span>Guia do Negócio</span>
+                <BookOpen className="size-3.5" aria-hidden="true" />
+                <span>Guia</span>
               </Button>
             )}
             <Button

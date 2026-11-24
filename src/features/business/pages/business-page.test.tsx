@@ -179,7 +179,7 @@ describe("BusinessPage (/negocio)", () => {
       </MemoryRouter>,
     );
 
-    const guideBtn = screen.getByRole("button", { name: /Guia do Negócio/i });
+    const guideBtn = screen.getByRole("button", { name: /^Guia$/i });
     expect(guideBtn).toBeInTheDocument();
     await user.click(guideBtn);
 
