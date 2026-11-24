@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import { BrandLogo } from "@/components/layout";
 import {
-  Badge,
   Button,
   EmptyState,
   Skeleton,
