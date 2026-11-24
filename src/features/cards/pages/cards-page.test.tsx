@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CardsPage } from "./cards-page";
@@ -686,6 +686,19 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
     expect(screen.getByRole("alert")).toBeInTheDocument();
     expect(screen.getByText("Alerta de Limite Comprometido")).toBeInTheDocument();
     expect(screen.getByText(/supera o limite disponível/i)).toBeInTheDocument();
+  });
+
+  it("renderiza o botão de Guia metodológico e abre o modal ao clicar", async () => {
+    const user = userEvent.setup();
+    renderCardsPage();
+
+    const guiaButton = screen.getByRole("button", { name: /guia/i });
+    expect(guiaButton).toBeInTheDocument();
+
+    await user.click(guiaButton);
+    await waitFor(() => {
+      expect(screen.getByText("Guia de Lançamentos & Gestão de Cartões")).toBeInTheDocument();
+    });
   });
 });
 

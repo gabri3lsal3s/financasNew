@@ -19,11 +19,9 @@ import {
   Button,
   Card,
   CardContent,
-  Modal,
-  ModalFooter,
-  Tabs,
   type TabItem,
 } from "@/components/ui";
+import { InteractivePlaybookModal } from "@/components/modules/playbooks";
 import {
   DEFAULT_MEI_ANNUAL_CEILING_CENTS,
   DEFAULT_MEI_MONTHLY_DAS_CENTS,
@@ -606,30 +604,14 @@ export function EducationalGuideModal({
   ];
 
   return (
-    <Modal
+    <InteractivePlaybookModal
       open={open}
       onOpenChange={onOpenChange}
+      moduleKey="business"
       title="Guia do Empreendedor & Enquadramento"
       description="Descubra seu perfil ideal e entenda as regras fiscais sem complicação contábil."
-      size="xl"
-      footer={
-        <ModalFooter borderless>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Fechar
-          </Button>
-        </ModalFooter>
-      }
-    >
-      <div className="flex flex-col gap-4">
-        <Tabs
-          value={activeTab}
-          onValueChange={setActiveTab}
-          items={tabItems}
-          variant="underline"
-          fullWidth={false}
-          ariaLabel="Navegação do guia educativo do negócio"
-        />
-      </div>
-    </Modal>
+      tabs={tabItems}
+      defaultTab={activeTab}
+    />
   );
 }

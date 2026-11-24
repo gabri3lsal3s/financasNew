@@ -22,6 +22,7 @@ import {
   Skeleton,
 } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
+import { useVisualCustomization } from "@/hooks/use-visual-customization";
 import {
   CashCheckpointDialog,
   KpiCard,
@@ -169,6 +170,7 @@ function BusinessDashboardContent({
   const [profileOpen, setProfileOpen] = useState(false);
   const [checkpointOpen, setCheckpointOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
+  const { isPlaybookVisible } = useVisualCustomization();
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [selectedIncome, setSelectedIncome] = useState<Income | null>(null);
 
@@ -316,16 +318,18 @@ function BusinessDashboardContent({
         }
         actions={
           <>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => setGuideOpen(true)}
-            >
-              <BookOpen className="size-4" aria-hidden="true" />
-              <span>Guia do Negócio</span>
-            </Button>
+            {isPlaybookVisible("business") && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => setGuideOpen(true)}
+              >
+                <BookOpen className="size-4" aria-hidden="true" />
+                <span>Guia do Negócio</span>
+              </Button>
+            )}
             <Button
               type="button"
               variant="outline"
