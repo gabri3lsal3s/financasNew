@@ -70,6 +70,27 @@ describe("CardInvoicePrintView (fatura do cartão)", () => {
     expect(screen.getByText("Pagamento")).toBeInTheDocument();
   });
 
+  it("exibe encargos e tarifas financeiras em tabela segregada", () => {
+    render(
+      <CardInvoicePrintView
+        {...baseProps}
+        charges={[
+          {
+            date: "2026-08-10",
+            description: "Juros de atraso",
+            categoryName: "Tarifas e Encargos",
+            valueCents: 4500,
+            reportValueCents: 4500,
+            installments: "—",
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByText("Encargos e tarifas financeiras")).toBeInTheDocument();
+    expect(screen.getByText("Juros de atraso")).toBeInTheDocument();
+    expect(screen.getByText("Tarifas e Encargos")).toBeInTheDocument();
+  });
+
   it("mostra estado vazio sem gastos e sem seção de pagamentos", () => {
     render(<CardInvoicePrintView {...baseProps} expenses={[]} payments={[]} />);
 

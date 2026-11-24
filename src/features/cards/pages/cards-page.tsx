@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/services/errors";
 import {
   CardInvoiceExpensesFeed,
+  CardInvoiceChargesFeed,
   CardInvoicePaymentsFeed,
   CardsEmptyState,
   CardsPageModals,
@@ -166,12 +167,19 @@ export function CardsPage() {
 
           <CardInvoiceExpensesFeed
             monthLabelStr={monthLabel(state.effectiveMonth)}
-            competenceExpenses={state.competenceExpenses}
+            competenceExpenses={state.consumptionExpenses}
             installments={state.installments}
             regular={state.regular}
             selectedCard={state.selectedCard}
             onOpenImport={state.handleOpenImport}
             onOpenPrint={() => state.setPrintOpen(true)}
+            renderInvoiceRow={renderInvoiceRow}
+          />
+
+          <CardInvoiceChargesFeed
+            charges={state.charges}
+            selectedCard={state.selectedCard}
+            onOpenCharge={state.handleOpenCharge}
             renderInvoiceRow={renderInvoiceRow}
           />
 
@@ -213,6 +221,7 @@ export function CardsPage() {
         printOpen={state.printOpen}
         onPrintOpenChange={state.setPrintOpen}
         printExpenseRows={state.printExpenseRows}
+        printChargeRows={state.printChargeRows}
         printPaymentRows={state.printPaymentRows}
         upgradeOpen={state.upgradeOpen}
         onUpgradeOpenChange={state.setUpgradeOpen}

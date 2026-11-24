@@ -9,8 +9,8 @@ import {
   ModalFooter,
   MoneyInput,
   Select,
-  Skeleton,
 } from "@/components/ui";
+import { RESERVED_CHARGES_CATEGORY_NAME } from "@/domain/budgets";
 import { toISODate } from "@/domain/money";
 import { formatCentsAsCurrency } from "@/services/masks/money";
 import { monthLabel } from "@/lib/date";
@@ -18,7 +18,7 @@ import { CHARGE_KIND_LABELS } from "@/lib/labels";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
-import { useCategories, useCreateExpense, useUpdateCustomSettings, useUserPreferences } from "@/state";
+import { useCategories, useCreateExpense } from "@/state";
 import type { ChargeKind } from "@/types";
 
 export interface CardChargeDialogProps {
@@ -46,30 +46,26 @@ function CardChargeContent({
   const [cents, setCents] = useState(0);
   const [date, setDate] = useState(() => toISODate(new Date()));
   const [description, setDescription] = useState("");
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const expenseCategories = useCategories("expense");
-  const { data: preferences } = useUserPreferences();
-  const updateCustomSettings = useUpdateCustomSettings();
   const createExpense = useCreateExpense();
   const pending = createExpense.isPending;
 
   const categories = useMemo(() => expenseCategories.data ?? [], [expenseCategories.data]);
 
-  const defaultCategoryId = useMemo(() => {
+  const effectiveCategoryId = useMemo(() => {
     if (categories.length === 0) return "";
-    const prefId = preferences?.custom_settings?.preferredChargeCategoryId;
-    if (prefId && categories.some((c) => c.id === prefId)) {
-      return prefId;
-    }
-    const match = categories.find((c) =>
-      /juros|tarifa|banc|cart|finan/i.test(c.name),
-    );
+    // 1. Categoria reservada de sistema prioritária
+    const reserved = categories.find((c) => c.is_reserved && c.name === RESERVED_CHARGES_CATEGORY_NAME);
+    if (reserved) return reserved.id;
+    // 2. Qualquer categoria correspondente por nome
+    const byName = categories.find((c) => c.name.toLowerCase().includes("tarifas e encargos"));
+    if (byName) return byName.id;
+    // 3. Fallback semântico
+    const match = categories.find((c) => /juros|tarifa|banc|cart|finan/i.test(c.name));
     return match ? match.id : (categories[0]?.id ?? "");
-  }, [categories, preferences?.custom_settings?.preferredChargeCategoryId]);
-
-  const effectiveCategoryId = selectedCategoryId ?? defaultCategoryId;
+  }, [categories]);
 
   const handleSubmit = async () => {
     setError(null);
@@ -80,7 +76,7 @@ function CardChargeContent({
     }
     if (!effectiveCategoryId) {
       triggerSensory("error");
-      setError("Selecione uma categoria de despesa.");
+      setError("Categoria de encargos indisponível no momento.");
       return;
     }
 
@@ -101,10 +97,6 @@ function CardChargeContent({
         ],
         chargeKind,
       });
-
-      void updateCustomSettings
-        .mutateAsync({ preferredChargeCategoryId: effectiveCategoryId })
-        .catch(() => {});
 
       triggerSensory("success");
       pushToast({
@@ -189,21 +181,6 @@ function CardChargeContent({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          <FormField label="Categoria" htmlFor="charge-category">
-            {expenseCategories.isLoading ? (
-              <Skeleton className="h-10 w-full" />
-            ) : (
-              <Select
-                id="charge-category"
-                value={effectiveCategoryId}
-                onValueChange={(val) => setSelectedCategoryId(val)}
-                options={categories.map((c) => ({ value: c.id, label: c.name }))}
-                placeholder="Selecione categoria"
-                ariaLabel="Categoria do encargo"
-              />
-            )}
-          </FormField>
-
           <FormField label="Data do lançamento" htmlFor="charge-date">
             <DatePicker
               id="charge-date"
@@ -212,16 +189,16 @@ function CardChargeContent({
               ariaLabel="Data do encargo"
             />
           </FormField>
-        </div>
 
-        <FormField label="Descrição" htmlFor="charge-description" optional>
-          <Input
-            id="charge-description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder={CHARGE_KIND_LABELS[chargeKind]}
-          />
-        </FormField>
+          <FormField label="Descrição" htmlFor="charge-description" optional>
+            <Input
+              id="charge-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder={CHARGE_KIND_LABELS[chargeKind]}
+            />
+          </FormField>
+        </div>
       </form>
     </Modal>
   );

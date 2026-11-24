@@ -368,9 +368,25 @@ describe("partitionInvoiceExpenses (fatura separada — parceladas × à vista)"
   });
 
   it("lista vazia → grupos vazios", () => {
-    const { installments, regular } = partitionInvoiceExpenses([]);
+    const { installments, regular, charges } = partitionInvoiceExpenses([]);
     expect(installments).toEqual([]);
     expect(regular).toEqual([]);
+    expect(charges).toEqual([]);
+  });
+
+  it("segrega expressamente encargos (charge_kind !== 'regular') das compras de consumo", () => {
+    const { installments, regular, charges } = partitionInvoiceExpenses([
+      { date: "2026-08-01", installments_total: 1, charge_kind: "regular" },
+      { date: "2026-08-05", installments_total: 3, charge_kind: null },
+      { date: "2026-08-10", installments_total: 1, charge_kind: "interest" },
+      { date: "2026-08-12", installments_total: 1, charge_kind: "fine" },
+      { date: "2026-08-15", installments_total: 1, charge_kind: "tax" },
+      { date: "2026-08-18", installments_total: 1, charge_kind: "bank_fee" },
+    ]);
+
+    expect(installments.map((e) => e.date)).toEqual(["2026-08-05"]);
+    expect(regular.map((e) => e.date)).toEqual(["2026-08-01"]);
+    expect(charges.map((e) => e.date)).toEqual(["2026-08-18", "2026-08-15", "2026-08-12", "2026-08-10"]);
   });
 });
 

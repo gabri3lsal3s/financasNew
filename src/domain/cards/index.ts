@@ -193,28 +193,44 @@ export function buildCompetenceSummaries(
 }
 
 export interface InvoiceExpensePartition<T> {
-  /** Parceladas (installments_total > 1) — compras herdadas de faturamentos anteriores. */
+  /** Parceladas (installments_total > 1 && charge_kind === 'regular') — compras herdadas de faturamentos anteriores. */
   installments: T[];
-  /** À vista (1 parcela) — gastos do próprio mês da fatura. */
+  /** À vista de consumo (1 parcela && charge_kind === 'regular') — gastos do próprio mês da fatura. */
   regular: T[];
+  /** Encargos e tarifas financeiras (charge_kind !== 'regular') — juros, multas, IOF e taxas. */
+  charges: T[];
 }
 
-/** Mínimo necessário para particionar a fatura (data + total de parcelas). */
-type InvoiceExpensePartitionInput = { date: string; installments_total: number };
+/** Mínimo necessário para particionar a fatura (data + total de parcelas + tipo de encargo opcional). */
+type InvoiceExpensePartitionInput = {
+  date: string;
+  installments_total: number;
+  charge_kind?: string | null;
+};
 
 /**
- * Particiona as despesas da fatura em **parceladas × à vista**, cada grupo
- * ORDENADO por data decrescente (mais recentes primeiro — ordem natural de
- * extrato, igual à atual). Permite separar os gastos herdados de meses
- * anteriores (parcelas) dos gastos do próprio mês (à vista). Motor puro.
+ * Particiona as despesas da fatura em **três blocos segregados**:
+ * 1. Parceladas (compras herdadas de consumo)
+ * 2. À vista (compras do mês de consumo)
+ * 3. Encargos (juros, multas, IOF e tarifas bancárias)
+ *
+ * Cada grupo é ORDENADO por data decrescente (mais recentes primeiro — ordem
+ * natural de extrato). Encargos são expressamente segregados das compras de consumo.
+ * Motor puro.
  */
 export function partitionInvoiceExpenses<T extends InvoiceExpensePartitionInput>(
   expenses: readonly T[],
 ): InvoiceExpensePartition<T> {
   const byDateDesc = (a: T, b: T) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
-  const installments = expenses.filter((e) => e.installments_total > 1).sort(byDateDesc);
-  const regular = expenses.filter((e) => e.installments_total <= 1).sort(byDateDesc);
-  return { installments, regular };
+  const isCharge = (e: T) => Boolean(e.charge_kind && e.charge_kind !== "regular");
+
+  const charges = expenses.filter(isCharge).sort(byDateDesc);
+  const consumption = expenses.filter((e) => !isCharge(e));
+
+  const installments = consumption.filter((e) => e.installments_total > 1).sort(byDateDesc);
+  const regular = consumption.filter((e) => e.installments_total <= 1).sort(byDateDesc);
+
+  return { installments, regular, charges };
 }
 
 /**

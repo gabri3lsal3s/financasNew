@@ -60,6 +60,7 @@ export interface CardsPageModalsProps {
   printOpen: boolean;
   onPrintOpenChange: (open: boolean) => void;
   printExpenseRows: CardInvoiceExpenseRow[];
+  printChargeRows?: CardInvoiceExpenseRow[];
   printPaymentRows: CardInvoicePaymentRow[];
   upgradeOpen: boolean;
   onUpgradeOpenChange: (open: boolean) => void;
@@ -101,6 +102,7 @@ export function CardsPageModals({
   printOpen,
   onPrintOpenChange,
   printExpenseRows,
+  printChargeRows,
   printPaymentRows,
   upgradeOpen,
   onUpgradeOpenChange,
@@ -259,6 +261,7 @@ export function CardsPageModals({
             saldoAbertoCents={summary.saldoBrutoCents}
             saldoPonderadoCents={summary.saldoPonderadoCents}
             expenses={printExpenseRows}
+            charges={printChargeRows}
             payments={printPaymentRows}
             accountHolder={accountHolder}
           />

@@ -65,7 +65,7 @@ describe("Card Invoice Feeds", () => {
       />
     );
 
-    expect(screen.getByText(/Despesas · Agosto de 2026/i)).toBeInTheDocument();
+    expect(screen.getByText(/Compras · Agosto de 2026/i)).toBeInTheDocument();
     expect(screen.getByText("Sem despesas nesta fatura")).toBeInTheDocument();
 
     const user = userEvent.setup();

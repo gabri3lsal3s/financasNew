@@ -20,7 +20,10 @@ export interface DefaultCategorySeed {
   type: "expense" | "income";
   icon: string;
   color: string;
+  is_reserved?: boolean;
 }
+
+export const RESERVED_CHARGES_CATEGORY_NAME = "Tarifas e Encargos";
 
 export const CANONICAL_DEFAULT_CATEGORIES: readonly DefaultCategorySeed[] = [
   // Despesas Essenciais (Necessidades 50%)
@@ -33,6 +36,8 @@ export const CANONICAL_DEFAULT_CATEGORIES: readonly DefaultCategorySeed[] = [
   { name: "Lazer", type: "expense", icon: "lazer", color: "#EC4899" },
   { name: "Compras", type: "expense", icon: "compras", color: "#06B6D4" },
   { name: "Assinaturas", type: "expense", icon: "assinaturas", color: "#6366F1" },
+  // Despesas Financeiras e Encargos (Reservada de Sistema)
+  { name: RESERVED_CHARGES_CATEGORY_NAME, type: "expense", icon: "taxas", color: "#64748B", is_reserved: true },
   // Receitas
   { name: "Salário", type: "income", icon: "salario", color: "#10B981" },
   { name: "Investimentos", type: "income", icon: "investimentos", color: "#3B82F6" },
@@ -77,6 +82,10 @@ const CATEGORY_RULES: Record<string, CategoryRule> = {
   internet: { icon: "internet", color: "#6366F1", limitPercent: 5 },
   energia: { icon: "energia", color: "#FACC15", limitPercent: 8 },
   agua: { icon: "agua", color: "#38BDF8", limitPercent: 5 },
+  tarifa: { icon: "taxas", color: "#64748B", limitPercent: 5 },
+  tarifas: { icon: "taxas", color: "#64748B", limitPercent: 5 },
+  encargo: { icon: "taxas", color: "#64748B", limitPercent: 5 },
+  encargos: { icon: "taxas", color: "#64748B", limitPercent: 5 },
 };
 
 /** Remove acentos ("Alimentação" → "alimentacao") para casar com as regras. */

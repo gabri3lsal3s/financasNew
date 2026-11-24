@@ -2,7 +2,7 @@ import { getSupabase } from "@/data/client";
 import { currentUserId } from "@/data/session";
 import { resolveQuery } from "@/data/query";
 import { deleteCategoryMigrate } from "@/data/rpc";
-import { CANONICAL_DEFAULT_CATEGORIES } from "@/domain/budgets";
+import { CANONICAL_DEFAULT_CATEGORIES, RESERVED_CHARGES_CATEGORY_NAME } from "@/domain/budgets";
 import { AppError, classifyError } from "@/services/errors";
 import type { Category, CategoryScope, CategoryType, DbUpdate } from "@/types";
 
@@ -143,7 +143,7 @@ export async function seedDefaultCategories(): Promise<number> {
     name: seed.name,
     icon: seed.icon,
     color: seed.color,
-    is_reserved: false,
+    is_reserved: seed.is_reserved ?? false,
     is_active: true,
   }));
 
@@ -158,6 +158,59 @@ export async function seedDefaultCategories(): Promise<number> {
   }
 
   return (data ?? []).length;
+}
+
+/**
+ * Garante a existência da categoria reservada de sistema 'Tarifas e Encargos'
+ * para o usuário informado. Retorna o ID da categoria (criando-a de forma
+ * idempotente se ainda não existir).
+ */
+export async function ensureReservedChargesCategory(userId: string): Promise<string> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("categories")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("type", "expense")
+    .eq("name", RESERVED_CHARGES_CATEGORY_NAME)
+    .maybeSingle();
+
+  if (!error && data?.id) {
+    return data.id;
+  }
+
+  const { data: created, error: insertError } = await supabase
+    .from("categories")
+    .insert({
+      user_id: userId,
+      type: "expense",
+      name: RESERVED_CHARGES_CATEGORY_NAME,
+      icon: "taxas",
+      color: "#64748B",
+      is_reserved: true,
+      is_active: true,
+    })
+    .select("id")
+    .maybeSingle();
+
+  if (insertError) {
+    // Tratamento de corrida/concorrência idempotente
+    const { data: retry } = await supabase
+      .from("categories")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("type", "expense")
+      .eq("name", RESERVED_CHARGES_CATEGORY_NAME)
+      .maybeSingle();
+
+    if (retry?.id) return retry.id;
+    const classified = classifyError(insertError);
+    throw new AppError(classified.kind, classified.message, insertError);
+  }
+
+  if (created?.id) return created.id;
+
+  throw new AppError("unknown", "Falha ao provisionar categoria reservada de encargos.", null);
 }
 
 /**
@@ -180,11 +233,15 @@ export async function ensureDefaultCategories(userId: string): Promise<boolean> 
     throw new AppError(classified.kind, classified.message, error);
   }
 
+  let seeded = false;
   if ((count ?? 0) === 0) {
     await seedDefaultCategories();
-    return true;
+    seeded = true;
+  } else {
+    // Garante a presença da categoria reservada de encargos mesmo para usuários existentes
+    await ensureReservedChargesCategory(userId).catch(() => {});
   }
 
-  return false;
+  return seeded;
 }
 

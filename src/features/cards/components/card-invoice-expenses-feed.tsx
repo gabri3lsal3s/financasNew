@@ -25,11 +25,11 @@ export function CardInvoiceExpensesFeed({
   renderInvoiceRow,
 }: CardInvoiceExpensesFeedProps) {
   return (
-    <section aria-label={`Despesas da fatura de ${monthLabelStr}`} className="flex flex-col gap-4 sm:gap-5">
+    <section aria-label={`Compras da fatura de ${monthLabelStr}`} className="flex flex-col gap-4 sm:gap-5">
       <div className="flex flex-col gap-2.5 pb-1 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Despesas · {monthLabelStr}
+            Compras · {monthLabelStr}
           </h2>
           <span className="text-xs text-muted-foreground font-mono sm:hidden">
             {competenceExpenses.length} {competenceExpenses.length === 1 ? "item" : "itens"}

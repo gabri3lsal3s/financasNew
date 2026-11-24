@@ -11,8 +11,8 @@ import {
   MoneyInput,
   MoneyText,
   Select,
-  Skeleton,
 } from "@/components/ui";
+import { RESERVED_CHARGES_CATEGORY_NAME } from "@/domain/budgets";
 import { toISODate } from "@/domain/money";
 import { monthLabel } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
@@ -22,8 +22,6 @@ import {
   useCreateCardPayment,
   useCreateRefund,
   usePayCardBillWithCharges,
-  useUpdateCustomSettings,
-  useUserPreferences,
   type CardBillChargeItem,
 } from "@/state";
 import { BillRefinanceDialog } from "./bill-refinance-dialog";
@@ -66,28 +64,23 @@ function PaymentDialogContent({
   const [taxCents, setTaxCents] = useState(0);
   const [feeCents, setFeeCents] = useState(0);
   const [chargeCompetenceMode, setChargeCompetenceMode] = useState<"current" | "next">("current");
-  const [selectedChargeCategoryId, setSelectedChargeCategoryId] = useState<string | null>(null);
 
   const totalChargesCents = interestCents + fineCents + taxCents + feeCents;
 
   const expenseCategories = useCategories("expense");
-  const { data: preferences } = useUserPreferences();
-  const updateCustomSettings = useUpdateCustomSettings();
   const categories = useMemo(() => expenseCategories.data ?? [], [expenseCategories.data]);
 
   const defaultChargeCategoryId = useMemo(() => {
     if (categories.length === 0) return "";
-    const prefId = preferences?.custom_settings?.preferredChargeCategoryId;
-    if (prefId && categories.some((c) => c.id === prefId)) {
-      return prefId;
-    }
-    const match = categories.find((c) =>
-      /juros|tarifa|banc|cart|finan/i.test(c.name),
-    );
+    const reserved = categories.find((c) => c.is_reserved && c.name === RESERVED_CHARGES_CATEGORY_NAME);
+    if (reserved) return reserved.id;
+    const byName = categories.find((c) => c.name.toLowerCase().includes("tarifas e encargos"));
+    if (byName) return byName.id;
+    const match = categories.find((c) => /juros|tarifa|banc|cart|finan/i.test(c.name));
     return match ? match.id : (categories[0]?.id ?? "");
-  }, [categories, preferences?.custom_settings?.preferredChargeCategoryId]);
+  }, [categories]);
 
-  const effectiveChargeCategoryId = selectedChargeCategoryId ?? defaultChargeCategoryId;
+  const effectiveChargeCategoryId = defaultChargeCategoryId;
 
   const isZeroOrPaid = !isRefund && openBalanceCents <= 0;
   const createPayment = useCreateCardPayment();
@@ -161,9 +154,7 @@ function PaymentDialogContent({
           paymentDate: date,
           note: note.trim() || null,
         });
-        void updateCustomSettings
-          .mutateAsync({ preferredChargeCategoryId: effectiveChargeCategoryId })
-          .catch(() => {});
+        triggerSensory("success");
         onOpenChange(false);
         return;
       }
@@ -324,7 +315,7 @@ function PaymentDialogContent({
 
                 {totalChargesCents > 0 ? (
                   <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-border/60">
+                    <div className="pt-2 border-t border-border/60">
                       <FormField label="Destino dos encargos" htmlFor="charge-competence-mode">
                         <Select
                           id="charge-competence-mode"
@@ -336,21 +327,6 @@ function PaymentDialogContent({
                           ]}
                           ariaLabel="Destino dos encargos"
                         />
-                      </FormField>
-
-                      <FormField label="Categoria dos encargos" htmlFor="charge-category">
-                        {expenseCategories.isLoading ? (
-                          <Skeleton className="h-10 w-full" />
-                        ) : (
-                          <Select
-                            id="charge-category"
-                            value={effectiveChargeCategoryId}
-                            onValueChange={(val) => setSelectedChargeCategoryId(val)}
-                            options={categories.map((c) => ({ value: c.id, label: c.name }))}
-                            placeholder="Selecione categoria"
-                            ariaLabel="Categoria dos encargos"
-                          />
-                        )}
                       </FormField>
                     </div>
 

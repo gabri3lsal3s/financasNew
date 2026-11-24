@@ -401,13 +401,13 @@ describe("incomeGoalStatus (§3.5.3 — metas de renda)", () => {
 });
 
 describe("CANONICAL_DEFAULT_CATEGORIES (§4.1 / §4.4 — catálogo canônico)", () => {
-  it("possui exatamente 11 categorias de partida padronizadas", () => {
-    expect(CANONICAL_DEFAULT_CATEGORIES).toHaveLength(11);
+  it("possui exatamente 12 categorias de partida padronizadas (9 despesas e 3 receitas)", () => {
+    expect(CANONICAL_DEFAULT_CATEGORIES).toHaveLength(12);
 
     const expenses = CANONICAL_DEFAULT_CATEGORIES.filter((c) => c.type === "expense");
     const incomes = CANONICAL_DEFAULT_CATEGORIES.filter((c) => c.type === "income");
 
-    expect(expenses).toHaveLength(8);
+    expect(expenses).toHaveLength(9);
     expect(incomes).toHaveLength(3);
   });
 
@@ -422,7 +422,7 @@ describe("CANONICAL_DEFAULT_CATEGORIES (§4.1 / §4.4 — catálogo canônico)",
     }
   });
 
-  it("casa perfeitamente todas as 8 despesas com o motor de sugestão inteligente (suggestCategory)", () => {
+  it("casa perfeitamente todas as 9 despesas com o motor de sugestão inteligente (suggestCategory)", () => {
     const expenseCategories = CANONICAL_DEFAULT_CATEGORIES.filter((c) => c.type === "expense");
 
     for (const cat of expenseCategories) {
@@ -433,7 +433,7 @@ describe("CANONICAL_DEFAULT_CATEGORIES (§4.1 / §4.4 — catálogo canônico)",
     }
   });
 
-  it("contém as categorias essenciais e as rendas canônicas esperadas", () => {
+  it("contém as categorias essenciais, encargos de sistema e as rendas canônicas esperadas", () => {
     const names = CANONICAL_DEFAULT_CATEGORIES.map((c) => c.name);
     expect(names).toContain("Alimentação");
     expect(names).toContain("Moradia");
@@ -443,8 +443,12 @@ describe("CANONICAL_DEFAULT_CATEGORIES (§4.1 / §4.4 — catálogo canônico)",
     expect(names).toContain("Lazer");
     expect(names).toContain("Compras");
     expect(names).toContain("Assinaturas");
+    expect(names).toContain("Tarifas e Encargos");
     expect(names).toContain("Salário");
     expect(names).toContain("Investimentos");
     expect(names).toContain("Outras Rendas");
+
+    const chargesCat = CANONICAL_DEFAULT_CATEGORIES.find((c) => c.name === "Tarifas e Encargos");
+    expect(chargesCat?.is_reserved).toBe(true);
   });
 });

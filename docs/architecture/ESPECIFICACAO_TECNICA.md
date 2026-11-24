@@ -300,7 +300,11 @@ Diretrizes canônicas para autenticação, controle de credenciais, gestão de s
 - **Status da fatura e quitação bancária:** o status (`open`, `closed`, `overdue`, `near_due`) e o saldo aberto a pagar ao banco são calculados com base no **saldo bruto nominal (`saldoBrutoCents`)**, garantindo que a fatura só seja considerada quitada perante o banco após o pagamento integral da obrigação.
 - **Detalhamento e edição pela fatura:** a tela de cartões permite clicar em qualquer despesa da fatura para abrir seu diálogo de detalhes, edição completa (categoria, valor, data, forma) e alteração/transição de competência da fatura (`bill_competence`) ou exclusão.
 - **Fallback de descrição:** quando um lançamento não possuir descrição textual, o sistema exibe o nome de sua respectiva categoria como título principal (nunca textos genéricos como "despesa sem descrição").
-- Fatura consolida: despesas do período (com peso aplicado, `base_amount` preservado para auditoria), pagamentos e estornos.
+- **Segregação de Compras, Encargos e Estornos na Fatura:** a fatura é particionada em três blocos autônomos via `partitionInvoiceExpenses`:
+  1. **Compras de Consumo:** compras parceladas (herdadas) e compras à vista (`charge_kind = 'regular'`).
+  2. **Encargos e Tarifas Financeiras:** juros de atraso/rotativo, multas contratuais, IOF e tarifas bancárias (`charge_kind IN ('interest', 'fine', 'tax', 'bank_fee')`). Não exigem escolha manual de categoria e são associados à categoria reservada de sistema **"Tarifas e Encargos"** (`is_reserved = true`, bloqueada contra exclusão acidental), não poluindo limites de orçamentos de consumo cotidiano.
+  3. **Pagamentos e Estornos:** amortizações bancárias e créditos de estorno (`card_payments`).
+- Fatura consolida: despesas do período (com peso aplicado, `base_amount` preservado para auditoria), encargos, pagamentos e estornos.
 - **Estorno** = pagamento com valor negativo OU nota iniciando em `[REFUND]`; sem competência explícita, resolvida pela data do pagamento.
 - **Estorno gera renda automática** (RPC `create_refund`, D1): cria receita na categoria reservada **"Estorno"**, vinculada por nota `[REFUND]{id da renda}` — somente-leitura (§3.1); valor no relatório limitado a 0–valor do estorno.
 - Pagamento de fatura: CRUD com competência; total pago abate o previsto.

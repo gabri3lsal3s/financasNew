@@ -38,8 +38,10 @@ export interface CardInvoicePrintViewProps {
   saldoAbertoCents: number;
   /** Saldo aberto com peso de relatório aplicado (diferente do bruto quando há pesos). */
   saldoPonderadoCents: number;
-  /** Apenas os gastos lançados no cartão da competência. */
+  /** Apenas os gastos de consumo lançados no cartão da competência. */
   expenses: CardInvoiceExpenseRow[];
+  /** Encargos e tarifas bancárias da fatura (segregados das compras). */
+  charges?: CardInvoiceExpenseRow[];
   payments?: CardInvoicePaymentRow[];
   appName?: string;
   accountHolder?: string;
@@ -61,6 +63,7 @@ export function CardInvoicePrintView({
   saldoAbertoCents,
   saldoPonderadoCents,
   expenses,
+  charges = [],
   payments = [],
   appName = "Axir",
   accountHolder,
@@ -207,7 +210,53 @@ export function CardInvoicePrintView({
           )}
         </section>
 
-        {/* 4. Pagamentos e estornos da competência */}
+        {/* 4. Encargos e tarifas financeiras da competência */}
+        {charges.length > 0 ? (
+          <section aria-label="Encargos e tarifas" className="flex flex-col gap-2 mt-3.5 print:mt-3.5 break-inside-avoid">
+            <div className="flex items-center gap-1.5 pb-0.5">
+              <Landmark className="size-3.5 text-muted-foreground" aria-hidden="true" />
+              <h2 className="text-[10px] font-bold uppercase tracking-wider text-foreground">
+                Encargos e tarifas financeiras
+              </h2>
+            </div>
+            <div className="w-full min-w-0 rounded-lg border border-border/80 bg-surface shadow-xs overflow-x-auto no-scrollbar scroll-smooth print:overflow-visible">
+              <table className="w-full min-w-[540px] sm:min-w-full print:min-w-0 print:w-full table-fixed border-collapse text-xs">
+                <colgroup>
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "38%" }} />
+                  <col style={{ width: "25%" }} />
+                  <col style={{ width: "25%" }} />
+                </colgroup>
+                <thead>
+                  <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider text-left">
+                    <th className="py-2 pl-2.5 pr-3 whitespace-nowrap">Data</th>
+                    <th className="py-2 pl-3 pr-3.5">Descrição</th>
+                    <th className="py-2 px-2">Categoria</th>
+                    <th className="py-2 px-2.5 text-right whitespace-nowrap">Valor (R$)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/60">
+                  {charges.map((charge, index) => (
+                    <tr key={`${charge.date}-${charge.description}-${index}`} className="break-inside-avoid even:bg-muted/20 print:even:bg-muted/20">
+                      <td className="py-1.5 pl-2.5 pr-3 tabular-nums font-mono text-muted-foreground whitespace-nowrap">{formatDateBR(charge.date)}</td>
+                      <td className="py-1.5 pl-3 pr-3.5 font-bold text-foreground align-middle">
+                        <div className="break-words whitespace-normal leading-tight line-clamp-2">{charge.description}</div>
+                      </td>
+                      <td className="py-1.5 px-2 text-[11px] text-muted-foreground align-middle">
+                        <div className="break-words whitespace-normal leading-tight line-clamp-2">{charge.categoryName}</div>
+                      </td>
+                      <td className="py-1.5 px-2.5 text-right tabular-nums font-mono whitespace-nowrap">
+                        <MoneyText cents={charge.valueCents} tone="negative" hideCurrency />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ) : null}
+
+        {/* 5. Pagamentos e estornos da competência */}
         {payments.length > 0 ? (
           <section aria-label="Pagamentos e estornos" className="flex flex-col gap-2 mt-3.5 print:mt-3.5 break-inside-avoid">
             <div className="flex items-center gap-1.5 pb-0.5">

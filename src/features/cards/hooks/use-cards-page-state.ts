@@ -129,9 +129,13 @@ export function useCardsPageState() {
     });
   }, [isBusinessModeEnabled, selectedCard, effectiveMonth, competenceExpenses, incomesQuery.data]);
 
-  const { installments, regular } = useMemo(
+  const { installments, regular, charges } = useMemo(
     () => partitionInvoiceExpenses(competenceExpenses),
     [competenceExpenses],
+  );
+  const consumptionExpenses = useMemo(
+    () => [...installments, ...regular],
+    [installments, regular],
   );
 
   const usedLimitMap = useMemo(
@@ -221,9 +225,11 @@ export function useCardsPageState() {
     summary,
     previousUnpaidSummaries,
     competenceExpenses,
+    consumptionExpenses,
     competencePayments,
     installments,
     regular,
+    charges,
     usedLimitMap,
     categoryById,
     invStatus: getMonthStatus(effectiveMonth),
@@ -233,7 +239,8 @@ export function useCardsPageState() {
     selectCard,
     handleFormOpenChange,
     handleCardDeleted,
-    printExpenseRows: buildInvoiceExpenseRows(competenceExpenses, categoryById),
+    printExpenseRows: buildInvoiceExpenseRows(consumptionExpenses, categoryById),
+    printChargeRows: buildInvoiceExpenseRows(charges, categoryById),
     printPaymentRows: buildPrintPaymentRows(competencePayments),
     mixedCardSplit,
     ...actions,
