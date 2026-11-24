@@ -19,6 +19,7 @@ import {
   sanitizeBatchDescriptionForAi,
   stripJsonMarkdownFences,
   validateCategorizeBatchOutput,
+  validateLineCuratorOutput,
 } from "../../supabase/functions/_shared/ai-schemas";
 
 const VALID_SHA = "a".repeat(64);
@@ -616,6 +617,42 @@ describe("ai-schemas (Trava 3 Hard Caps, Trava 5 Whitelist & Ajuste #3 BRT)", ()
     if (parsedInvalid.success) {
       expect(parsedInvalid.data.inferredScope).toBeNull();
       expect(parsedInvalid.data.isTaxDeductible).toBeNull();
+    }
+  });
+
+  it("13. valida requisição e saída do line_curator (zero alucinação de IDs e fail-safe)", () => {
+    // 1. Requisição válida
+    const validReq = AiAssistantRequestSchema.safeParse({
+      mode: "line_curator",
+      sha256: VALID_SHA,
+      lines: [
+        { id: 0, text: "10/08 COMPRA A R$ 100,00" },
+        { id: 1, text: "12/08 TOTAL R$ 100,00" },
+      ],
+      targetTotalCents: 10000,
+    });
+    expect(validReq.success).toBe(true);
+
+    // 2. Validação de saída: descarta IDs fora da whitelist de entrada e preserva IDs esquecidos
+    const validIds = new Set([0, 1, 2]);
+    const validation = validateLineCuratorOutput(
+      {
+        keep: [0, 999], // 999 é alucinado
+        ignore: [1],
+        reasons: { "1": "Total da fatura" },
+      },
+      validIds,
+    );
+
+    expect(validation.success).toBe(true);
+    if (validation.success) {
+      // 999 foi descartado
+      expect(validation.data.keep).not.toContain(999);
+      expect(validation.data.keep).toContain(0);
+      expect(validation.data.ignore).toEqual([1]);
+      // ID 2 foi esquecido pelo LLM -> fail-safe adicionou ao keep
+      expect(validation.data.keep).toContain(2);
+      expect(validation.data.reasons?.["1"]).toBe("Total da fatura");
     }
   });
 });

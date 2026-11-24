@@ -98,7 +98,7 @@ export interface ReconciliationItem {
   /** Natureza canônica da transação. */
   nature?: StatementTransactionNature;
   /** Análise dos 4 estados da série de parcelamento se for compra parcelada. */
-  seriesAnalysis?: import("./series-detector").InstallmentSeriesAnalysis;
+  seriesAnalysis?: import("./series-detector").InstallmentSeriesAnalysis | null;
   /** Se o usuário optou por projetar parcelas futuras K+1..N para esta compra. */
   projectSeries?: boolean;
   /** Se o item foi vinculado a uma despesa existente com ajuste de valor pendente. */
@@ -119,6 +119,7 @@ export interface PendingLinkAdjustment {
   newValueCents: number;
   statementHash: string;
   description: string;
+  differenceCents?: number;
 }
 
 /**

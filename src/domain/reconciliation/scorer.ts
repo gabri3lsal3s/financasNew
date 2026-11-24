@@ -10,7 +10,7 @@ import type {
 
 export interface MatchScoreOptions {
   predictedCategoryId?: string;
-  cardScope?: "personal" | "business";
+  cardScope?: "personal" | "business" | "mixed";
 }
 
 function hasTemporalEquivalenceForInstallments(
@@ -77,7 +77,12 @@ export function calculateMatchScore(
   options?: MatchScoreOptions,
 ): number {
   // 0. Isolamento Estrito de Escopo (PF vs PJ)
-  if (options?.cardScope && existing.scope && options.cardScope !== existing.scope) {
+  if (
+    options?.cardScope &&
+    options.cardScope !== "mixed" &&
+    existing.scope &&
+    options.cardScope !== existing.scope
+  ) {
     return 0;
   }
 
@@ -236,7 +241,7 @@ export function reconcileStatementTransactions(params: {
   existingExpenses: ExistingExpenseForReconciliation[];
   history: CategoryPredictionSource[];
   defaultCategoryId: string;
-  cardScope?: "personal" | "business";
+  cardScope?: "personal" | "business" | "mixed";
 }): ReconciliationResult {
   const { statementTransactions, existingExpenses, history, defaultCategoryId, cardScope } =
     params;

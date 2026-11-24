@@ -19,6 +19,7 @@ export const AI_CACHE_TTL_DAYS: Record<AiMode, number> = {
   single_receipt: 30,
   statement_pdf_rows: 30,
   categorize_batch: 14,
+  line_curator: 7,
 };
 
 /**
@@ -45,7 +46,7 @@ export function isAiCacheEntryFresh(
   return nowMs - createdMs <= ttlMs;
 }
 
-export type AiMode = "single_receipt" | "statement_pdf_rows" | "categorize_batch";
+export type AiMode = "single_receipt" | "statement_pdf_rows" | "categorize_batch" | "line_curator";
 export type AiQuotaBucket = "receipt_calls" | "batch_calls";
 export type AiPlanGroup = "trial" | "pro";
 
@@ -493,10 +494,26 @@ export const AiCategorizeBatchRequestSchema = z.object({
     .max(MAX_AI_CATEGORIZE_CATEGORIES),
 });
 
+export const MAX_AI_LINE_CURATOR_LINES = 500;
+export const MAX_AI_LINE_CURATOR_TEXT_CHARS = 300;
+
+export const AiLineCuratorLineSchema = z.object({
+  id: z.number().int(),
+  text: z.string().trim().min(1).max(MAX_AI_LINE_CURATOR_TEXT_CHARS),
+});
+
+export const AiLineCuratorRequestSchema = z.object({
+  mode: z.literal("line_curator"),
+  sha256: Sha256HexSchema,
+  lines: z.array(AiLineCuratorLineSchema).min(1).max(MAX_AI_LINE_CURATOR_LINES),
+  targetTotalCents: z.number().int().min(1).optional(),
+});
+
 export const AiAssistantRequestSchema = z.discriminatedUnion("mode", [
   AiSingleReceiptRequestSchema,
   AiStatementPdfRowsRequestSchema,
   AiCategorizeBatchRequestSchema,
+  AiLineCuratorRequestSchema,
 ]);
 
 export type AiAssistantRequest = z.infer<typeof AiAssistantRequestSchema>;
@@ -955,6 +972,52 @@ export function validateCategorizeBatchOutput(
   return { success: true, data: parsed.data };
 }
 
+export const AiLineCuratorOutputSchema = z.object({
+  keep: z.array(z.number().int()),
+  ignore: z.array(z.number().int()),
+  reasons: z.record(z.string(), z.string()).optional(),
+});
+
+export type AiLineCuratorOutput = z.infer<typeof AiLineCuratorOutputSchema>;
+
+/**
+ * Valida rigorosamente a resposta do curador por ID contra os IDs de entrada:
+ * - Descarta IDs inexistentes no payload original (zero alucinação);
+ * - Deduplica IDs mantidos e ignorados;
+ * - Preserva IDs não classificados em keep (fail-safe defensivo).
+ */
+export function validateLineCuratorOutput(
+  raw: unknown,
+  validIds: ReadonlySet<number>,
+): { success: true; data: AiLineCuratorOutput } | { success: false; error: string } {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return { success: false, error: "invalid_line_curator_output_not_object" };
+  }
+  const parsed = AiLineCuratorOutputSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { success: false, error: "invalid_line_curator_schema" };
+  }
+
+  const keep = Array.from(new Set(parsed.data.keep.filter((id) => validIds.has(id))));
+  const ignore = Array.from(new Set(parsed.data.ignore.filter((id) => validIds.has(id))));
+
+  // Se algum ID válido foi omitido pela IA, mantém no keep por segurança contábil
+  for (const id of validIds) {
+    if (!keep.includes(id) && !ignore.includes(id)) {
+      keep.push(id);
+    }
+  }
+
+  return {
+    success: true,
+    data: {
+      keep,
+      ignore,
+      reasons: parsed.data.reasons,
+    },
+  };
+}
+
 export type AiAssistantResponseBody =
   | {
       ok: true;
@@ -976,6 +1039,13 @@ export type AiAssistantResponseBody =
       cached: boolean;
       source: "cache_remote" | "ai_text";
       data: AiCategorizeBatchOutput;
+    }
+  | {
+      ok: true;
+      mode: "line_curator";
+      cached: boolean;
+      source: "cache_remote" | "ai_text";
+      data: AiLineCuratorOutput;
     }
   | {
       ok: false;

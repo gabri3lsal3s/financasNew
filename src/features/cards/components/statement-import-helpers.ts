@@ -26,9 +26,12 @@ import {
   type DetectedStatementMetadata,
   parseSpatialPdfDocument,
   type ChecksumGateResult,
+  buildCandidateCuratorLines,
+  curateLinesWithClientValidation,
 } from "@/domain/reconciliation";
 import {
   computeTextSha256,
+  curateStatementLinesWithAi,
   extractStatementPdfRowsWithAi,
   sanitizeBatchDescriptionForAi,
 } from "@/services/ai-assistant";
@@ -317,7 +320,7 @@ export interface ChunkedImportExpenseInput {
   installments_total: number;
   installment_number: number;
   report_weight: number;
-  statement_hash: string;
+  statement_hash?: string;
   charge_kind?: string;
   scope?: "personal" | "business";
   is_tax_deductible?: boolean;
@@ -549,16 +552,56 @@ export async function parseStatementWithPdfAiFallback(
 ): Promise<ParsedStatementWithFallbackResult> {
   // 0. Prioridade Máxima: Reconstrução Espacial (X, Y) com as 4 barreiras já concluída
   if (params.spatialTransactions && params.spatialTransactions.length > 0) {
+    let activeTransactions = params.spatialTransactions;
+    let activeChecksumGate = params.checksumGate;
+    let usedCurator = false;
+
+    // Se o Checksum Gate reprovou a soma e temos o total oficial impresso, aciona o line_curator
+    const canRunCurator =
+      params.checksumGate &&
+      !params.checksumGate.passed &&
+      params.checksumGate.officialTotalCents !== null &&
+      params.aiFallbackEnabled !== false &&
+      !params.isReadOnlyMode &&
+      (typeof navigator === "undefined" || navigator.onLine !== false);
+
+    if (canRunCurator && params.checksumGate?.officialTotalCents) {
+      try {
+        const candidateLines = buildCandidateCuratorLines(params.spatialTransactions);
+        const curatorRes = await curateStatementLinesWithAi({
+          sha256: params.fileSha256 ? `${params.fileSha256}:curator` : undefined,
+          lines: candidateLines.map((l) => ({ id: l.id, text: l.text })),
+          targetTotalCents: params.checksumGate.officialTotalCents,
+          userId: params.userId,
+          isReadOnlyMode: params.isReadOnlyMode,
+          featureEnabled: params.aiFallbackEnabled,
+        });
+
+        if (curatorRes.ok) {
+          const curated = curateLinesWithClientValidation({
+            candidateLines,
+            officialTotalCents: params.checksumGate.officialTotalCents,
+            curatorOutput: curatorRes.data,
+          });
+          activeTransactions = curated.keptTransactions;
+          activeChecksumGate = curated.checksumGate;
+          usedCurator = true;
+        }
+      } catch {
+        // Degrada silenciosamente mantendo transações espaciais originais
+      }
+    }
+
     const rawText = typeof params.content === "string" ? params.content : "";
     const detectedMeta = detectStatementMetadata({
       rawText,
-      transactions: params.spatialTransactions,
+      transactions: activeTransactions,
       activeCompetenceMonth: params.competenceMonth,
       card: params.card,
-      printedTotalCents: params.checksumGate?.officialTotalCents ?? null,
+      printedTotalCents: activeChecksumGate?.officialTotalCents ?? null,
     });
     return {
-      transactions: params.spatialTransactions,
+      transactions: activeTransactions,
       rows: [],
       mapping: {
         dateColIndex: 0,
@@ -568,8 +611,8 @@ export async function parseStatementWithPdfAiFallback(
         startRowIndex: 0,
       },
       isOfx: false,
-      usedAiFallback: false,
-      printedTotalCents: params.checksumGate?.officialTotalCents ?? null,
+      usedAiFallback: usedCurator,
+      printedTotalCents: activeChecksumGate?.officialTotalCents ?? null,
       detectedMeta,
       isCacheHit: true,
       mappingConfidence: 100,

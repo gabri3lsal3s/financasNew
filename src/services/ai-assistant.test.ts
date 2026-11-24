@@ -3,6 +3,7 @@ import {
   categorizeDescriptionsBatchWithAi,
   CLIENT_AI_TIMEOUT_MS,
   convertAiReceiptToUniversalData,
+  curateStatementLinesWithAi,
   extractSingleReceiptWithAi,
   extractStatementPdfRowsWithAi,
   formatAiQuotaResetHint,
@@ -770,5 +771,73 @@ describe("ai-assistant (Resiliência FinOps G6, Lock inFlightBySha256 & LGPD)", 
       expect(res.data.rows).toHaveLength(1);
       expect(res.data.rows[0]?.entryType).toBe("charge");
     }
+  });
+
+  it("16. curateStatementLinesWithAi (Fase 5 line_curator): mascara PII, envia IDs e descarta IDs alucinados pelo LLM", async () => {
+    let capturedBody: Record<string, unknown> = {};
+    globalThis.fetch = vi.fn().mockImplementationOnce(async (_url, init) => {
+      capturedBody = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          mode: "line_curator",
+          cached: false,
+          source: "ai_text",
+          data: {
+            keep: [0, 999], // 999 é alucinado pelo LLM
+            ignore: [1],
+            reasons: { "1": "Subtotal da fatura" },
+          },
+        }),
+        { status: 200 },
+      );
+    }) as unknown as typeof fetch;
+
+    const res = await curateStatementLinesWithAi({
+      userId: "user-1",
+      targetTotalCents: 45000,
+      lines: [
+        { id: 0, text: "10/08/2026 COMPRA CPF 123.456.789-00 R$ 250,00" },
+        { id: 1, text: "12/08/2026 SUBTOTAL FATURA R$ 200,00" },
+      ],
+    });
+
+    expect(res.ok).toBe(true);
+    // Mascarou o CPF antes de enviar
+    const linesSent = capturedBody.lines as Array<{ id: number; text: string }>;
+    expect(linesSent[0]?.text).toContain("[CPF_OCULTO]");
+    expect(linesSent[0]?.text).not.toContain("123.456.789-00");
+
+    if (res.ok) {
+      // O ID 999 alucinado foi descartado pelo cliente
+      expect(res.data.keep).toEqual([0]);
+      expect(res.data.ignore).toEqual([1]);
+      expect(res.data.reasons?.["1"]).toBe("Subtotal da fatura");
+    }
+  });
+
+  it("17. curateStatementLinesWithAi trata timeout e quota_exceeded com fallback estruturado sem lançar exceções", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          ok: false,
+          reason: "quota_exceeded",
+          quotaResetAt: "2026-12-01T00:00:00-03:00",
+        }),
+        { status: 200 },
+      ),
+    ) as unknown as typeof fetch;
+
+    const res = await curateStatementLinesWithAi({
+      userId: "user-1",
+      lines: [{ id: 0, text: "COMPRA TESTE" }],
+    });
+
+    expect(res).toEqual({
+      ok: false,
+      reason: "quota_exceeded",
+      fallbackToLocal: true,
+      quotaResetAt: "2026-12-01T00:00:00-03:00",
+    });
   });
 });

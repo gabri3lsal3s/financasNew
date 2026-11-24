@@ -1027,6 +1027,7 @@ export function useStatementImport({
         originalValueCents: matchedCents,
         differenceCents: diffCents,
         statementHash: target.transaction.statementHash,
+        description: target.transaction.cleanDescription,
       });
       return next;
     });

@@ -57,7 +57,7 @@ export function detectInstallmentSeriesState(params: {
   transaction: StatementTransaction;
   competenceMonth: string;
   existingExpenses: ExistingExpenseForReconciliation[];
-  cardScope?: "personal" | "business";
+  cardScope?: "personal" | "business" | "mixed";
 }): InstallmentSeriesAnalysis | null {
   const { transaction, existingExpenses, cardScope } = params;
   const inst = transaction.installment;
@@ -69,10 +69,11 @@ export function detectInstallmentSeriesState(params: {
   const K = inst.current;
   const N = inst.total;
 
-  // Filtra despesas compatíveis com o escopo do cartão se fornecido
-  const scopedExpenses = cardScope
-    ? existingExpenses.filter((e) => !e.scope || e.scope === cardScope)
-    : existingExpenses;
+  // Filtra despesas compatíveis com o escopo do cartão se fornecido (mixed aceita ambos)
+  const scopedExpenses =
+    cardScope && cardScope !== "mixed"
+      ? existingExpenses.filter((e) => !e.scope || e.scope === cardScope)
+      : existingExpenses;
 
   // 1. Verifica se a parcela K já existe no banco
   let currentAlreadyExists = false;

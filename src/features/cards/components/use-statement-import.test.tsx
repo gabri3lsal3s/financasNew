@@ -166,12 +166,18 @@ describe("Etapa 4 — Micro-IA Semântica Deduplicada (useStatementImport)", () 
 
   describe("4.3 Preservação Absoluta de dirtyFields", () => {
     it("não sobrescreve nome, categoria ou seleção de linhas que foram editadas manualmente pelo usuário", async () => {
-      let resolveAiCall: (value: any) => void;
-      const aiPromise = new Promise((resolve) => {
+      let resolveAiCall: (
+        value: Awaited<ReturnType<typeof aiAssistantService.categorizeDescriptionsBatchWithAi>>,
+      ) => void = () => {};
+      const aiPromise = new Promise<
+        Awaited<ReturnType<typeof aiAssistantService.categorizeDescriptionsBatchWithAi>>
+      >((resolve) => {
         resolveAiCall = resolve;
       });
 
-      categorizeAiSpy = vi.spyOn(aiAssistantService, "categorizeDescriptionsBatchWithAi").mockImplementation(() => aiPromise as any);
+      categorizeAiSpy = vi
+        .spyOn(aiAssistantService, "categorizeDescriptionsBatchWithAi")
+        .mockReturnValue(aiPromise);
 
       const { result } = renderHook(() =>
         useStatementImport({
@@ -237,15 +243,19 @@ describe("Etapa 4 — Micro-IA Semântica Deduplicada (useStatementImport)", () 
           id: "exp-livros-existente",
           card_id: mockCard.id,
           user_id: mockCard.user_id,
+          payment_method: "credit_card",
           description: "Livros",
           value: 110.79,
+          base_amount: 110.79,
+          report_weight: 1.0,
           date: "2026-08-10",
           bill_competence: "2026-08",
           category_id: "cat-books",
           charge_kind: "regular",
-          installment_number: null,
-          installments_total: null,
-        } as any,
+          installment_number: 1,
+          installments_total: 1,
+          installment_group_id: null,
+        },
       ];
 
       categorizeAiSpy = vi.spyOn(aiAssistantService, "categorizeDescriptionsBatchWithAi").mockResolvedValue({

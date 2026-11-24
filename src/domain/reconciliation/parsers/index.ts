@@ -19,6 +19,7 @@ export * from "./ofx-parser";
 export * from "./text-parser";
 export * from "./spreadsheet-parser";
 export * from "./spatial-pdf-parser";
+export * from "./line-curator";
 
 function hasExplicitYearToken(rawDate: string): boolean {
   const t = rawDate.trim();
