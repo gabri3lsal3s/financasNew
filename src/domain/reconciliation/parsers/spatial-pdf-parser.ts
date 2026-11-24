@@ -478,6 +478,23 @@ export async function parseSpatialPdfDocument(
   },
 ): Promise<SpatialPdfResult> {
   const unpdf = await import("unpdf");
+  if (typeof unpdf.getDocumentProxy !== "function") {
+    return {
+      transactions: [],
+      reconstructedText: "",
+      lines: [],
+      checksumGate: {
+        passed: false,
+        extractedTotalCents: 0,
+        officialTotalCents: null,
+        diffCents: 0,
+        candidateLines: [],
+      },
+      totalPages: 0,
+      usedTwoColumnMode: false,
+    };
+  }
+
   const options: Record<string, unknown> = {};
   if (params.password) {
     options.password = params.password;

@@ -82,6 +82,7 @@ const mockExtractStatementPdfRowsWithAi = vi.fn().mockResolvedValue({
 
 vi.mock("unpdf", () => ({
   extractText: (...args: unknown[]) => mockUnpdfExtractText(...args),
+  getDocumentProxy: vi.fn(),
 }));
 
 vi.mock("@/services/ai-assistant", async (importOriginal) => {

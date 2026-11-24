@@ -123,11 +123,12 @@ export async function readStatementFileContent(
 
     let fullText = "";
     try {
-      const { extractText, getDocumentProxy } = await import("unpdf");
-      const data = options?.password
-        ? await getDocumentProxy(new Uint8Array(buffer.slice(0)), { password: options.password })
-        : new Uint8Array(buffer.slice(0));
-      const result = await extractText(data, { mergePages: true });
+      const unpdf = await import("unpdf");
+      const data =
+        options?.password && typeof unpdf.getDocumentProxy === "function"
+          ? await unpdf.getDocumentProxy(new Uint8Array(buffer.slice(0)), { password: options.password })
+          : new Uint8Array(buffer.slice(0));
+      const result = await unpdf.extractText(data, { mergePages: true });
       fullText = typeof result.text === "string" ? result.text : Array.isArray(result.text) ? (result.text as string[]).join("\n") : "";
     } catch (err: unknown) {
       if (isPdfPasswordProtectedError(err)) {
