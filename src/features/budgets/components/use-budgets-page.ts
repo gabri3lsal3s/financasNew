@@ -167,6 +167,27 @@ export function useBudgetsPage() {
     }
   }, [matchedTargetCategory, searchParams, permission.isReadOnlyMode, setSearchParams, setLimitFor]);
 
+  useEffect(() => {
+    if (paramKit && !permission.isReadOnlyMode) {
+      const validKits: CategoryKitId[] = ["essential", "business", "family", "vehicle"];
+      const targetKit = validKits.includes(paramKit as CategoryKitId)
+        ? (paramKit as CategoryKitId)
+        : undefined;
+      const timer = setTimeout(() => {
+        dialogs.handleOpenKitsModal(targetKit);
+        setSearchParams(
+          (prev) => {
+            const next = new URLSearchParams(prev);
+            next.delete("kit");
+            return next;
+          },
+          { replace: true },
+        );
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [paramKit, permission.isReadOnlyMode, setSearchParams, dialogs]);
+
   const limitsByCategory = budgetLimitsByCategory(budgetsQuery.data ?? []);
   const limitsDerived = deriveBudgetsLimitsData({
     categories,

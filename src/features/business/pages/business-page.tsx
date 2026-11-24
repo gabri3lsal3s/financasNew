@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router";
 import {
   ArrowLeftRight,
   BookOpen,
+  Boxes,
   Briefcase,
   Plus,
   Settings2,
@@ -39,6 +41,7 @@ import {
   filterExpensesByViewScope,
   filterIncomesByViewScope,
 } from "@/domain/business";
+import { CATEGORY_KIT_BUSINESS } from "@/domain/budgets";
 import { todayISO } from "@/domain/debts";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { currentMonth, monthLabel } from "@/lib/date";
@@ -51,6 +54,7 @@ import {
   useExpenses,
   useIncomes,
   useIncomesByRange,
+  useInstallCategoryKit,
   useRealCashBalance,
 } from "@/state";
 import { ExpenseDetailDialog } from "@/features/transactions/components/expense-detail-dialog";
@@ -74,6 +78,7 @@ type CashflowFeedItem =
 /** Página Meu Negócio (MEI / Autônomo) — gestão separada da esfera PJ em `/negocio`. */
 export function BusinessPage() {
   const [onboardingGuideOpen, setOnboardingGuideOpen] = useState(false);
+  const installCategoryKit = useInstallCategoryKit();
   const {
     isBusinessModeEnabled,
     businessProfile,
@@ -98,6 +103,11 @@ export function BusinessPage() {
     };
     await toggleBusinessMode(true);
     await updateBusinessProfile(defaultProfile);
+    try {
+      await installCategoryKit.mutateAsync(CATEGORY_KIT_BUSINESS.items.slice(0, 3));
+    } catch {
+      // Falha silenciosa de instalação de categorias de negócio não bloqueia ativação
+    }
   };
 
   if (isPrefsLoading) {
@@ -152,6 +162,7 @@ function BusinessDashboardContent({
   isUpdatingProfile,
   onUpdateProfile,
 }: BusinessDashboardContentProps) {
+  const navigate = useNavigate();
   const [month, setMonth] = useState(currentMonth());
   const [wizardOpen, setWizardOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
@@ -468,14 +479,25 @@ function BusinessDashboardContent({
                     title="Sem movimentações PJ neste mês"
                     description="Registre uma venda, serviço, despesa do negócio ou transferência PF/PJ."
                     action={
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => guardAction(() => setWizardOpen(true), "Novo Lançamento PJ")}
-                      >
-                        <Plus className="size-4" aria-hidden="true" />
-                        <span>Novo lançamento PJ</span>
-                      </Button>
+                      <div className="flex flex-col sm:flex-row items-center gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => guardAction(() => setWizardOpen(true), "Novo Lançamento PJ")}
+                        >
+                          <Plus className="size-4" aria-hidden="true" />
+                          <span>Novo lançamento PJ</span>
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate("/orcamentos?tab=categories&kit=business")}
+                        >
+                          <Boxes className="size-4" aria-hidden="true" />
+                          <span>Categorias de negócio</span>
+                        </Button>
+                      </div>
                     }
                   />
                 </div>

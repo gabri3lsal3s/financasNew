@@ -1,5 +1,14 @@
 # ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.22.0 (Catálogo de Kits de Categorias & Aposentadoria da Restauração Monolítica)** (2026-11-24):
+> - **Aposentadoria da Restauração Monolítica:** remoção completa do botão cego e destrutivo "Restaurar categorias padrões" em `/orcamentos` (`BudgetsCategoriesTab`), substituindo-o pelo botão "Kits de categorias";
+> - **Catálogo Canônico de Kits (`src/domain/budgets/kits.ts`):** definição pura e testada dos kits `Kit Essencial (Padrão)` (prateleira de recuperação com 15 categorias padrão sem poluição de categorias reservadas de sistema), `Kit Negócio` (7 categorias operacionais para MEI/PJ/Autônomo), `Kit Família & Casa` (7 categorias para o lar e dependentes) e `Kit Veículo & Transporte` (5 categorias de mobilidade);
+> - **Separação Canônica entre Fluxo Operacional e Carteira de Investimentos:** exclusão deliberada de categorias de dividendos, proventos de FIIs e custódia dos kits operacionais diários, concentrando a gestão de patrimônio exclusivamente no subsistema `/investimentos` e prevenindo distorções no fluxo de caixa;
+> - **Instalação Seletiva e Idempotente:** `installCategoryKitItems` no repositório de categorias, reconciliando e inserindo em lote sem duplicatas, com mutação TanStack Query `useInstallCategoryKit`;
+> - **Modal Responsivo `CategoryKitsModal`:** abas fluidas para cada kit, visualização de status (`Já adicionada` vs `+ Adicionar`), instalação avulsa por clique ou em lote por kit, com feedback tátil/sonoro e total aderência às regras visuais do DESIGN_SYSTEM;
+> - **Onboarding Calmo & Ativação de Modos Sem Sobrecarga:** adição da opção "Modo Negócio" ao modal de boas-vindas (`welcome-modal`), provisionamento silencioso das categorias essenciais correspondentes ao objetivo escolhido e atalho direto no EmptyState de `/negocio` via suporte canônico ao parâmetro `?kit=business`.
+
+
 > **v3.18.0 (Blindagem Contábil, Didática ao Usuário e UX do Modo Negócio — MEI / Autônomo / Simples ME)** consolida a execução integral das Fases 1, 2 e 3 do plano canônico de refinamento contábil e matemático do Modo Negócio (`PLANO_REFINAMENTO_E_BLINDAGEM_MODO_NEGOCIO.md`) (2026-11-24):
 > - **Fase 1 — SSOT Contábil, Schema & Funções Puras:**
 >   - Migration `20260101000149_business_tax_withheld.sql` adicionando coluna `tax_withheld` em `incomes` e atualização do RPC `create_income_installments`;

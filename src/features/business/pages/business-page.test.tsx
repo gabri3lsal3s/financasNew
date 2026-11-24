@@ -7,6 +7,7 @@ import { BusinessPage } from "./business-page";
 let mockIsBusinessModeEnabled = false;
 const mockToggleBusinessMode = vi.fn().mockResolvedValue(undefined);
 const mockUpdateBusinessProfile = vi.fn().mockResolvedValue(undefined);
+const mockInstallCategoryKit = vi.fn().mockResolvedValue([]);
 
 vi.mock("@/hooks/use-mutation-guard", () => ({
   useMutationGuard: () => ({
@@ -118,6 +119,10 @@ vi.mock("@/state", () => ({
   }),
   useCreateCashCheckpoint: () => ({
     mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useInstallCategoryKit: () => ({
+    mutateAsync: mockInstallCategoryKit,
     isPending: false,
   }),
 }));
