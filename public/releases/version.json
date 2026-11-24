@@ -1,13 +1,13 @@
 {
   "version": "3.22.0",
-  "versionCode": 107,
-  "releaseDate": "2026-11-24T12:00:00Z",
+  "versionCode": 108,
+  "releaseDate": "2026-11-24T13:40:27Z",
   "minSupportedVersion": "3.22.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "1a5bb765cb03775752d652f669646896883a0d516e1a13e7c75c81267f50f36c",
-  "fileSizeBytes": 13314396,
+  "sha256": "f90ba1a66a14715750081e6ed3ca2b101ebfc56cb93b7535994db06550c7e11e",
+  "fileSizeBytes": 13439679,
   "changelog": [
-    "Axir v3.22.0 (Build 107): Motor Espacial de Faturas, Reconciliação Inteligente e Curadoria por IA",
+    "Axir v3.22.0 (Build 108): Motor Espacial de Faturas, Reconciliação Inteligente e Curadoria por IA",
     "Motor Espacial (X, Y) com 4 Barreiras Anti-Ruído: suporte nativo a faturas digitais densas de cartão com divisão bimodal e checksum gate estrito",
     "Inteligência de Parcelamentos: detecção automática dos 4 estados de séries (K/N), equivalência temporal e projeção transacional ancorada na competência ativa",
     "Reconciliação e UI/UX Inline: staging area simplificada com edição inline, resumo financeiro adaptativo, microdiscrepâncias em 1 clique e zero modais aninhados",
