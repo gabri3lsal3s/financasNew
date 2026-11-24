@@ -7,6 +7,7 @@ import {
 } from "@/domain/notifications";
 import {
   buildTransactionsFromRows,
+  calculateMatchScore,
   chunkArray,
   detectInstallmentSeriesState,
   projectFutureInstallments,
@@ -17,6 +18,7 @@ import {
   type PendingLinkAdjustment,
   type RawParsedRow,
   type ReconciliationItem,
+  type StatementTransaction,
   type DetectedStatementMetadata,
 } from "@/domain/reconciliation";
 import { categorizeDescriptionsBatchWithAi } from "@/services/ai-assistant";
@@ -24,8 +26,6 @@ import { getErrorMessage } from "@/services/errors";
 import {
   autoLearnExpenseCategory,
   getMerchantLearningMemory,
-  recordBatchAiMerchantTeachings,
-  type BatchAiMerchantTeachingItem,
 } from "@/services/merchant-learning";
 import {
   isPdfPasswordProtectedError,
@@ -58,6 +58,7 @@ import {
   parseStatementWithPdfAiFallback,
   readStatementFileContent,
   runStatementReconciliation,
+  sanitizeDescriptionForStatementMicroAi,
   type ChunkedImportExpenseInput,
   type LoadedStatementSource,
   type StatementItemPatch,
@@ -110,12 +111,23 @@ export function useStatementImport({
 
   const reconcileRunIdRef = useRef(0);
   const manuallyEditedIdsRef = useRef<Set<string>>(new Set());
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const reconciledItemsRef = useRef<ReconciliationItem[]>([]);
+  const unmatchedAppExpensesRef = useRef<ExistingExpenseForReconciliation[]>([]);
   const loadedInputRef = useRef<{
     content: string | ArrayBuffer;
     fileNameOrType: string;
     fileSha256?: string | null;
     visionBlobs?: readonly { blob: Blob; sha256?: string | null }[];
   } | null>(null);
+
+  useEffect(() => {
+    reconciledItemsRef.current = reconciledItems;
+  }, [reconciledItems]);
+
+  useEffect(() => {
+    unmatchedAppExpensesRef.current = unmatchedAppExpenses;
+  }, [unmatchedAppExpenses]);
 
   const [prevCompetenceMonth, setPrevCompetenceMonth] = useState(competenceMonth);
   if (prevCompetenceMonth !== competenceMonth) {
@@ -126,6 +138,7 @@ export function useStatementImport({
   useEffect(() => {
     return () => {
       reconcileRunIdRef.current += 1;
+      abortControllerRef.current?.abort();
     };
   }, []);
 
@@ -155,6 +168,10 @@ export function useStatementImport({
     },
   ) => {
     const runId = ++reconcileRunIdRef.current;
+    abortControllerRef.current?.abort();
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
     manuallyEditedIdsRef.current.clear();
     setPendingLinkAdjustments(new Map());
 
@@ -271,6 +288,8 @@ export function useStatementImport({
       return item;
     });
 
+    reconciledItemsRef.current = preResolvedItems;
+    unmatchedAppExpensesRef.current = reconciliation.unmatchedExistingExpenses;
     setReconciledItems(preResolvedItems);
     setUnmatchedAppExpenses(reconciliation.unmatchedExistingExpenses);
     setStep("reconcile");
@@ -293,110 +312,171 @@ export function useStatementImport({
 
     const batches = chunkArray(prioritizedUnknowns, MAX_AI_CATEGORIZE_BATCH_ITEMS);
 
-    // Camada 4 silenciosa em background (Balde 2: categorize_batch)
+    // Camada 4 silenciosa em background (Micro-IA: categorize_batch deduplicada)
     void (async () => {
       const allowedIds = new Set(categories.map((c) => c.id));
       const suggestionByNormalizedKey = new Map<
         string,
         { friendlyName: string; categoryId: string }
       >();
-      const collectedAiTeachings: BatchAiMerchantTeachingItem[] = [];
 
       try {
         for (const batch of batches) {
-          if (reconcileRunIdRef.current !== runId) return;
+          if (reconcileRunIdRef.current !== runId || abortController.signal.aborted) return;
+
+          // Mapeia itens válidos com sanitização estrita (zero PII, zero valores, zero datas, máx 80 chars)
+          const sanitizedBatch = batch
+            .map(([key, entry]) => ({
+              key,
+              originalCleanText: entry.cleanText,
+              sanitizedText: sanitizeDescriptionForStatementMicroAi(entry.cleanText),
+            }))
+            .filter((item) => item.sanitizedText.length > 0);
+
+          if (sanitizedBatch.length === 0) continue;
 
           const aiResult = await categorizeDescriptionsBatchWithAi({
-            descriptions: batch.map(([, entry]) => entry.cleanText),
+            descriptions: sanitizedBatch.map((s) => s.sanitizedText),
             categories: categories.map((c) => ({ id: c.id, name: c.name })),
             userId: resolvedUserId,
             isReadOnlyMode,
             featureEnabled: aiExtractionEnabled,
+            signal: abortController.signal,
           });
 
-          if (!aiResult.ok || reconcileRunIdRef.current !== runId) {
+          if (!aiResult.ok || reconcileRunIdRef.current !== runId || abortController.signal.aborted) {
             break;
           }
 
           for (const entry of aiResult.data.items) {
-            const sourceTuple = batch[entry.index];
+            const sourceTuple = sanitizedBatch[entry.index];
             if (!sourceTuple) continue;
 
-            const hasRichMetadata =
-              Boolean(entry.canonicalMerchant) ||
-              Boolean(entry.serviceSegment) ||
-              Boolean(entry.cutTier) ||
-              typeof entry.isSubscription === "boolean" ||
-              Boolean(entry.semanticTags?.length);
-
-            if (hasRichMetadata || (entry.categoryId && allowedIds.has(entry.categoryId))) {
-              collectedAiTeachings.push({
-                rawDescription: sourceTuple[1].cleanText,
-                friendlyName: entry.canonicalMerchant || entry.friendlyName,
-                canonicalMerchant: entry.canonicalMerchant,
-                categoryId:
-                  entry.categoryId && allowedIds.has(entry.categoryId) ? entry.categoryId : null,
-                serviceSegment: entry.serviceSegment,
-                cutTier: entry.cutTier,
-                isSubscription: entry.isSubscription,
-                semanticTags: entry.semanticTags,
-              });
-            }
-
             if (entry.categoryId && allowedIds.has(entry.categoryId)) {
-              suggestionByNormalizedKey.set(sourceTuple[0], {
-                friendlyName: entry.canonicalMerchant || entry.friendlyName,
+              suggestionByNormalizedKey.set(sourceTuple.key, {
+                friendlyName:
+                  entry.canonicalMerchant || entry.friendlyName || sourceTuple.originalCleanText,
                 categoryId: entry.categoryId,
               });
             }
           }
         }
 
-        if (collectedAiTeachings.length > 0 && typeof recordBatchAiMerchantTeachings === "function") {
-          recordBatchAiMerchantTeachings(collectedAiTeachings);
-        }
-
-        if (suggestionByNormalizedKey.size === 0 || reconcileRunIdRef.current !== runId) {
+        if (
+          suggestionByNormalizedKey.size === 0 ||
+          reconcileRunIdRef.current !== runId ||
+          abortController.signal.aborted
+        ) {
           return;
         }
 
-        const learnedMerchantKeys = new Set<string>();
-        for (const item of preResolvedItems) {
-          if (manuallyEditedIdsRef.current.has(item.transaction.id)) continue;
-          const suggestion = suggestionByNormalizedKey.get(
-            item.transaction.cleanDescription.trim().toLowerCase(),
-          );
-          if (!suggestion) continue;
-          const merchantKey = suggestion.friendlyName.trim().toLowerCase();
-          if (!merchantKey || learnedMerchantKeys.has(merchantKey)) continue;
-          learnedMerchantKeys.add(merchantKey);
-          autoLearnExpenseCategory(
-            suggestion.friendlyName,
-            suggestion.categoryId,
-            undefined,
-            item.transaction.rawDescription,
-          );
-        }
+        // Re-scoring incremental pós-IA + Hidratação protegendo dirtyFields
+        let currentUnmatched = [...unmatchedAppExpensesRef.current];
+        let hadAnyPromotion = false;
 
-        setReconciledItems((prev) =>
-          prev.map((it) => {
-            if (manuallyEditedIdsRef.current.has(it.transaction.id)) return it;
-            const suggestion = suggestionByNormalizedKey.get(
-              it.transaction.cleanDescription.trim().toLowerCase(),
-            );
-            if (!suggestion) return it;
+        const updatedItems = reconciledItemsRef.current.map((it) => {
+          // Preserva estritamente itens tocados pelo usuário ou que não são unmatched_new
+          if (manuallyEditedIdsRef.current.has(it.transaction.id) || it.status !== "unmatched_new") {
+            return it;
+          }
 
+          const cleanTrimmed = it.transaction.cleanDescription.trim().toLowerCase();
+          const rawTrimmed = it.transaction.rawDescription.trim().toLowerCase();
+          const suggestion =
+            suggestionByNormalizedKey.get(cleanTrimmed) ||
+            suggestionByNormalizedKey.get(rawTrimmed);
+
+          if (!suggestion) return it;
+
+          const updatedTx: StatementTransaction = {
+            ...it.transaction,
+            cleanDescription: suggestion.friendlyName || it.transaction.cleanDescription,
+          };
+
+          let bestMatch: ExistingExpenseForReconciliation | null = null;
+          let bestScore = -1;
+
+          for (const existing of currentUnmatched) {
+            if (existing.statementHash && existing.statementHash === updatedTx.statementHash) {
+              bestMatch = existing;
+              bestScore = 100;
+              break;
+            }
+
+            const score = calculateMatchScore(updatedTx, existing, {
+              predictedCategoryId: suggestion.categoryId,
+              cardScope: card.scope,
+            });
+
+            if (score > bestScore) {
+              bestScore = score;
+              bestMatch = existing;
+            }
+          }
+
+          // 1. Promoção a Match Exato (score >= 75 E valor idêntico)
+          if (bestMatch && bestScore >= 75 && bestMatch.valueCents === updatedTx.amountCents) {
+            hadAnyPromotion = true;
+            currentUnmatched = currentUnmatched.filter((e) => e.id !== bestMatch!.id);
             return {
               ...it,
-              suggestedCategoryId: suggestion.categoryId,
-              selectedCategoryId: suggestion.categoryId,
-              transaction: {
-                ...it.transaction,
-                cleanDescription: suggestion.friendlyName || it.transaction.cleanDescription,
-              },
+              status: "exact_match" as const,
+              score: bestScore,
+              matchedExpenseId: bestMatch.id,
+              matchedExpenseDescription: bestMatch.description,
+              matchedExpenseDate: bestMatch.date,
+              matchedExpenseValueCents: bestMatch.valueCents,
+              suggestedCategoryId: bestMatch.categoryId,
+              selectedCategoryId: bestMatch.categoryId,
+              selected: false,
+              suggestedAction: "link_existing" as const,
+              transaction: updatedTx,
             };
-          }),
-        );
+          }
+
+          // 2. Promoção a Match Provável (score >= 40)
+          if (bestMatch && bestScore >= 40) {
+            hadAnyPromotion = true;
+            currentUnmatched = currentUnmatched.filter((e) => e.id !== bestMatch!.id);
+            const isCentDiff = bestMatch.valueCents !== updatedTx.amountCents;
+            return {
+              ...it,
+              status: "probable_match" as const,
+              score: bestScore,
+              matchedExpenseId: bestMatch.id,
+              matchedExpenseDescription: bestMatch.description,
+              matchedExpenseDate: bestMatch.date,
+              matchedExpenseValueCents: bestMatch.valueCents,
+              suggestedCategoryId: bestMatch.categoryId,
+              selectedCategoryId: bestMatch.categoryId,
+              selected: false,
+              suggestedAction: isCentDiff
+                ? ("link_and_adjust_amount" as const)
+                : ("link_existing" as const),
+              transaction: updatedTx,
+            };
+          }
+
+          // Sem match suficiente: mantém unmatched_new com nova categoria sugerida e nome limpo
+          return {
+            ...it,
+            suggestedCategoryId: suggestion.categoryId,
+            selectedCategoryId: suggestion.categoryId,
+            transaction: updatedTx,
+          };
+        });
+
+        if (reconcileRunIdRef.current !== runId || abortController.signal.aborted) {
+          return;
+        }
+
+        reconciledItemsRef.current = updatedItems;
+        setReconciledItems(updatedItems);
+
+        if (hadAnyPromotion) {
+          unmatchedAppExpensesRef.current = currentUnmatched;
+          setUnmatchedAppExpenses(currentUnmatched);
+        }
       } catch {
         // Degrada silenciosamente mantendo categoria fallback
       }
@@ -779,12 +859,16 @@ export function useStatementImport({
   };
 
   const handleToggleItem = (id: string) => {
+    manuallyEditedIdsRef.current.add(id);
     setReconciledItems((prev) =>
       prev.map((it) => (it.transaction.id === id ? { ...it, selected: !it.selected } : it)),
     );
   };
 
   const handleToggleAll = (selected: boolean) => {
+    for (const it of reconciledItems) {
+      manuallyEditedIdsRef.current.add(it.transaction.id);
+    }
     setReconciledItems((prev) => prev.map((it) => ({ ...it, selected })));
   };
 
@@ -906,6 +990,7 @@ export function useStatementImport({
   };
 
   const handleToggleProjectSeries = (id: string) => {
+    manuallyEditedIdsRef.current.add(id);
     setReconciledItems((prev) =>
       prev.map((it) =>
         it.transaction.id === id ? { ...it, projectSeries: !(it.projectSeries ?? true) } : it,
@@ -914,6 +999,7 @@ export function useStatementImport({
   };
 
   const handleLinkAndAdjust = (id: string) => {
+    manuallyEditedIdsRef.current.add(id);
     const target = reconciledItems.find((it) => it.transaction.id === id);
     if (!target || !target.matchedExpenseId) return;
 
@@ -949,6 +1035,7 @@ export function useStatementImport({
   };
 
   const handleCreateRefund = async (item: ReconciliationItem) => {
+    manuallyEditedIdsRef.current.add(item.transaction.id);
     try {
       await createRefundMutation.mutateAsync({
         cardId: card.id,
@@ -1106,6 +1193,18 @@ export function useStatementImport({
       // 4. Salva cache declarativo de colunas se houver cabeçalhos
       if (columnMapping && parsedRows.length > 0 && parsedRows[0]?.cells?.length) {
         setCachedColumnMapping(parsedRows[0].cells, columnMapping);
+      }
+
+      // 5. Precedência Humana: grava em merchant-learning apenas o que foi confirmado pelo usuário
+      for (const it of toImport) {
+        if (it.selectedCategoryId) {
+          autoLearnExpenseCategory(
+            it.transaction.cleanDescription,
+            it.selectedCategoryId,
+            undefined,
+            it.transaction.rawDescription,
+          );
+        }
       }
 
       triggerSensory("success");

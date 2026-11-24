@@ -58,6 +58,7 @@ export interface AiClientBaseGuards {
   userId?: string | null;
   isReadOnlyMode?: boolean;
   featureEnabled?: boolean;
+  signal?: AbortSignal;
 }
 
 export interface ExtractSingleReceiptAiParams extends AiClientBaseGuards {
@@ -404,7 +405,12 @@ type RawHttpAiResult =
 async function invokeAiAssistantHttp(
   requestPayload: Record<string, unknown>,
   timeoutMs = CLIENT_AI_TIMEOUT_MS,
+  externalSignal?: AbortSignal,
 ): Promise<RawHttpAiResult> {
+  if (externalSignal?.aborted) {
+    return { ok: false, reason: "upstream_unavailable", fallbackToLocal: true };
+  }
+
   let envUrl: string;
   let anonKey: string;
   let accessToken: string | undefined;
@@ -423,6 +429,8 @@ async function invokeAiAssistantHttp(
   }
 
   const controller = new AbortController();
+  const onExternalAbort = () => controller.abort();
+  externalSignal?.addEventListener("abort", onExternalAbort, { once: true });
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
@@ -486,12 +494,16 @@ async function invokeAiAssistantHttp(
       data: body.data,
     };
   } catch (err) {
+    if (externalSignal?.aborted) {
+      return { ok: false, reason: "upstream_unavailable", fallbackToLocal: true };
+    }
     if (isAbortError(err, controller.signal.aborted)) {
       return { ok: false, reason: "timeout", fallbackToLocal: true };
     }
     return { ok: false, reason: "upstream_unavailable", fallbackToLocal: true };
   } finally {
     clearTimeout(timeoutId);
+    externalSignal?.removeEventListener("abort", onExternalAbort);
   }
 }
 
@@ -657,6 +669,7 @@ export async function categorizeDescriptionsBatchWithAi(
         categories: cleanCategories,
       },
       CLIENT_AI_BATCH_TIMEOUT_MS,
+      params.signal,
     );
 
     if (!httpRes.ok) {
@@ -848,3 +861,6 @@ export function formatAiQuotaResetHint(quotaResetAt?: string): string {
     return quotaResetAt.slice(0, 10);
   }
 }
+
+export { maskSensitivePiiForAi, sanitizeBatchDescriptionForAi };
+

@@ -30,6 +30,7 @@ import {
 import {
   computeTextSha256,
   extractStatementPdfRowsWithAi,
+  sanitizeBatchDescriptionForAi,
 } from "@/services/ai-assistant";
 import { computeFileSha256 } from "@/services/receipt-resolution";
 import {
@@ -45,6 +46,22 @@ import type { AiStatementPdfRow } from "../../../../supabase/functions/_shared/a
 import type { StatementImportProgress } from "./statement-reconcile-step";
 
 export const MAX_STATEMENT_VISION_PAGES_OR_IMAGES = 3;
+
+/**
+ * Sanitiza descrições para a Micro-IA com blindagem estrita de privacidade e anti-injeção:
+ * - Remove quebras de linha e caracteres de controle
+ * - Mascara PII sensível (CPFs, agência/conta)
+ * - Remove valores monetários (R$, BRL) e datas
+ * - Remove delimitadores de injeção (<, >, {, }, [, ], \)
+ * - Trunca em 80 caracteres estritos e normaliza espaços
+ */
+export function sanitizeDescriptionForStatementMicroAi(rawDescription: string): string {
+  if (!rawDescription) return "";
+  const singleLine = rawDescription.replace(/[\r\n\t\0]+/g, " ");
+  const cleaned = sanitizeBatchDescriptionForAi(singleLine);
+  const injectionFree = cleaned.replace(/[<>{}\\]+/g, " ");
+  return injectionFree.replace(/\s+/g, " ").trim().slice(0, 80);
+}
 
 const RASTER_STATEMENT_EXTENSIONS = [
   ".png",

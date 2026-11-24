@@ -612,13 +612,10 @@ describe("StatementImportDialog", () => {
 
       await waitFor(() => {
         expect(mockCategorizeDescriptionsBatchWithAi).toHaveBeenCalledTimes(1);
-        expect(autoLearnSpy).toHaveBeenCalledWith(
-          "Loja XPTZ Tech",
-          "cat-2",
-          undefined,
-          expect.stringContaining("LOJA XPTZ 9981"),
-        );
       });
+
+      // Precedência Humana: antes da confirmação de importação, a memória ainda não foi persistida
+      expect(autoLearnSpy).not.toHaveBeenCalled();
 
       // Verifica que o payload passado à função de lote contém apenas descrições e whitelist
       const callArgs = mockCategorizeDescriptionsBatchWithAi.mock.calls[0]?.[0] as {
@@ -635,6 +632,14 @@ describe("StatementImportDialog", () => {
       // Importação usa a categoria Tecnologia (cat-2) aplicada silenciosamente
       const importBtn = await screen.findByRole("button", { name: /Importar 1 Lançamento/i });
       await user.click(importBtn);
+
+      // Precedência Humana: aprendizado persistido após o clique de confirmação do usuário
+      expect(autoLearnSpy).toHaveBeenCalledWith(
+        "Loja XPTZ Tech",
+        "cat-2",
+        undefined,
+        expect.stringContaining("LOJA XPTZ 9981"),
+      );
 
       expect(mutateAsyncMock).toHaveBeenCalledWith({
         cardId: "card-test",
