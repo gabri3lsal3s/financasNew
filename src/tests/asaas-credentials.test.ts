@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { getAsaasApiKey, getAsaasBaseUrl } from "../../supabase/functions/_shared/asaas.ts";
+import {
+  assertAsaasEnvironmentMatch,
+  getAsaasApiKey,
+  getAsaasBaseUrl,
+} from "../../supabase/functions/_shared/asaas.ts";
 import { timingSafeEqualString } from "../../supabase/functions/_shared/http.ts";
 
 describe("Credenciais e Configuração Asaas (Edge Functions)", () => {
@@ -71,6 +75,26 @@ describe("Credenciais e Configuração Asaas (Edge Functions)", () => {
       const invalid = "whsec_wrong_token";
       const isValid = await timingSafeEqualString(invalid, secret);
       expect(isValid).toBe(false);
+    });
+  });
+
+  describe("assertAsaasEnvironmentMatch", () => {
+    it("rejeita chave sandbox ($aact_hmlg_) configurada com URL de produção", () => {
+      expect(() =>
+        assertAsaasEnvironmentMatch("$aact_hmlg_sample_123", "https://api.asaas.com/v3"),
+      ).toThrowError(/Incompatibilidade de segurança/);
+    });
+
+    it("rejeita chave produção ($aact_prod_) configurada com URL de sandbox", () => {
+      expect(() =>
+        assertAsaasEnvironmentMatch("$aact_prod_sample_123", "https://api-sandbox.asaas.com/v3"),
+      ).toThrowError(/Incompatibilidade de segurança/);
+    });
+
+    it("aceita chave produção ($aact_prod_) com URL de produção", () => {
+      expect(() =>
+        assertAsaasEnvironmentMatch("$aact_prod_sample_123", "https://api.asaas.com/v3"),
+      ).not.toThrow();
     });
   });
 });

@@ -286,18 +286,28 @@ async function asaasFetch<T>(endpoint: string, options: RequestInit = {}): Promi
   const headers = new Headers(options.headers || {});
   headers.set("access_token", apiKey);
   headers.set("Content-Type", "application/json");
+  headers.set("User-Agent", "AxirApp/3.29 (https://axir.com.br)");
 
   const response = await fetch(`${baseUrl}${endpoint}`, {
     ...options,
     headers,
   });
 
-  const data = await response.json();
+  const rawText = await response.text();
+  let data: Record<string, unknown> = {};
+  if (rawText) {
+    try {
+      data = JSON.parse(rawText) as Record<string, unknown>;
+    } catch {
+      data = { message: rawText.slice(0, 300) };
+    }
+  }
 
   if (!response.ok) {
+    const errors = data?.errors as Array<{ description?: string }> | undefined;
     const errorMsg =
-      data?.errors?.[0]?.description ||
-      data?.message ||
+      errors?.[0]?.description ||
+      (typeof data?.message === "string" ? data.message : undefined) ||
       `Erro Asaas (${response.status}): ${response.statusText}`;
     const err = new Error(errorMsg) as Error & { status?: number };
     err.status = response.status;

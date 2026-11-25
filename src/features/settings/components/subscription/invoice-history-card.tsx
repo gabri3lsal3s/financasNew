@@ -18,8 +18,52 @@ export interface InvoiceHistoryCardProps {
   subscription: SubscriptionStatus;
 }
 
+function formatAsaasInvoiceStatus(status: string): {
+  label: string;
+  variant: "positive" | "warning" | "critical" | "muted";
+} {
+  const normalized = (status || "").toUpperCase();
+  if (["RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"].includes(normalized)) {
+    return { label: "Pago", variant: "positive" };
+  }
+  if (normalized === "PENDING") {
+    return { label: "Pendente", variant: "warning" };
+  }
+  if (normalized === "OVERDUE") {
+    return { label: "Vencida", variant: "critical" };
+  }
+  if (normalized === "AWAITING_RISK_ANALYSIS") {
+    return { label: "Em análise", variant: "warning" };
+  }
+  if (normalized === "REFUNDED") {
+    return { label: "Estornado", variant: "critical" };
+  }
+  if (["REFUND_REQUESTED", "REFUND_IN_PROGRESS"].includes(normalized)) {
+    return { label: "Estorno em andamento", variant: "warning" };
+  }
+  if (
+    [
+      "CHARGEBACK_REQUESTED",
+      "CHARGEBACK_DISPUTE",
+      "AWAITING_CHARGEBACK_REVERSAL",
+    ].includes(normalized)
+  ) {
+    return { label: "Contestação", variant: "critical" };
+  }
+  return { label: "Em processamento", variant: "muted" };
+}
+
+function formatAsaasBillingType(billingType: string): string {
+  const normalized = (billingType || "").toUpperCase();
+  if (normalized === "PIX") return "Pix";
+  if (normalized === "CREDIT_CARD") return "Cartão de Crédito";
+  if (normalized === "BOLETO") return "Boleto";
+  return "Cobrança";
+}
+
 export function InvoiceHistoryCard({ subscription }: InvoiceHistoryCardProps) {
   const { data: invoices, isLoading } = useInvoices(subscription.isPro);
+  const isPastDue = subscription.status === "past_due";
 
   const planName =
     subscription.plan === "annual" ? "Plano Pro Anual (12 meses)" : "Plano Pro Mensal";
@@ -51,7 +95,7 @@ export function InvoiceHistoryCard({ subscription }: InvoiceHistoryCardProps) {
                 <div className="space-y-0.5 min-w-0">
                   <span className="text-xs font-semibold text-foreground">{planName}</span>
                   <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
-                    <span>Cobrança ativa</span>
+                    <span>{isPastDue ? "Pendência de cobrança" : "Cobrança ativa"}</span>
                     <span aria-hidden="true">|</span>
                     <span>Gateway Asaas</span>
                     {renewDate ? (
@@ -63,9 +107,19 @@ export function InvoiceHistoryCard({ subscription }: InvoiceHistoryCardProps) {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <Badge variant="positive" size="xs">
-                    Em dia
-                  </Badge>
+                  {isPastDue ? (
+                    <Badge variant="critical" size="xs">
+                      Pagamento pendente
+                    </Badge>
+                  ) : subscription.cancelAtPeriodEnd ? (
+                    <Badge variant="warning" size="xs">
+                      Cancelamento agendado
+                    </Badge>
+                  ) : (
+                    <Badge variant="positive" size="xs">
+                      Em dia
+                    </Badge>
+                  )}
                   <span className="text-xs font-semibold text-foreground whitespace-nowrap">
                     <MoneyText cents={planPriceCents} variant="caption" tone="default" />
                     <span>{planSuffix}</span>
@@ -106,10 +160,7 @@ export function InvoiceHistoryCard({ subscription }: InvoiceHistoryCardProps) {
                           })
                         : inv.dueDate;
 
-                    const isReceived = ["RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"].includes(
-                      inv.status,
-                    );
-                    const isRefunded = inv.status === "REFUNDED";
+                    const statusInfo = formatAsaasInvoiceStatus(inv.status);
 
                     return (
                       <div
@@ -119,15 +170,12 @@ export function InvoiceHistoryCard({ subscription }: InvoiceHistoryCardProps) {
                         <div className="space-y-0.5 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-medium text-foreground">{dateFormatted}</span>
-                            <Badge
-                              variant={isReceived ? "positive" : isRefunded ? "critical" : "muted"}
-                              size="xs"
-                            >
-                              {isReceived ? "Pago" : isRefunded ? "Estornado" : inv.status}
+                            <Badge variant={statusInfo.variant} size="xs">
+                              {statusInfo.label}
                             </Badge>
                           </div>
                           <span className="text-[11px] text-muted-foreground block">
-                            {inv.billingType === "PIX" ? "Pix" : "Cartão de Crédito"}
+                            {formatAsaasBillingType(inv.billingType)}
                             {inv.description ? ` — ${inv.description}` : ""}
                           </span>
                         </div>

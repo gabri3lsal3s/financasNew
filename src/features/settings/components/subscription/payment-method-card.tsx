@@ -1,4 +1,4 @@
-import { CreditCard } from "lucide-react";
+import { CreditCard, QrCode } from "lucide-react";
 import {
   Badge,
   Button,
@@ -22,35 +22,55 @@ export function PaymentMethodCard({
   onOpenUpdateCard,
   onCancelScheduledPlanChange,
 }: PaymentMethodCardProps) {
+  const usesCreditCard = Boolean(subscription.hasCardRegistered || subscription.hasAutoRenew);
+
   return (
     <>
-      {(subscription.isPro || subscription.hasAutoRenew) ? (
+      {(subscription.isPro || usesCreditCard) ? (
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <CreditCard className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+              {usesCreditCard ? (
+                <CreditCard className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+              ) : (
+                <QrCode className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+              )}
               <span>Forma de Pagamento</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="space-y-0.5 min-w-0">
-              <p className="text-xs font-semibold text-foreground">
-                Cartão de Crédito Recorrente
-              </p>
-              <p className="text-[11px] text-muted-foreground">
-                Cobrança processada com segurança pelo gateway Asaas.
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onOpenUpdateCard}
-              className="gap-2 shrink-0 self-start sm:self-auto"
-            >
-              <CreditCard className="size-3.5" aria-hidden="true" />
-              <span>Alterar Cartão</span>
-            </Button>
+            {usesCreditCard ? (
+              <>
+                <div className="space-y-0.5 min-w-0">
+                  <p className="text-xs font-semibold text-foreground">
+                    Cartão de Crédito Recorrente
+                    {subscription.cardLast4 ? ` (final ${subscription.cardLast4})` : ""}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Cobrança processada com segurança pelo gateway Asaas.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onOpenUpdateCard}
+                  className="gap-2 shrink-0 self-start sm:self-auto"
+                >
+                  <CreditCard className="size-3.5" aria-hidden="true" />
+                  <span>Alterar Cartão</span>
+                </Button>
+              </>
+            ) : (
+              <div className="space-y-0.5 min-w-0">
+                <p className="text-xs font-semibold text-foreground">
+                  Pagamento via PIX (Anual)
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  Assinatura paga à vista via PIX pelo gateway Asaas, sem cobrança automática no cartão.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       ) : null}

@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  AlertTriangle,
   BookOpen,
   Calendar,
   CheckCircle2,
@@ -53,8 +54,18 @@ export interface CurrentPlanHeroCardProps {
 }
 
 export function CurrentPlanHeroCard({ subscription, onUpgrade }: CurrentPlanHeroCardProps) {
-  const { isTrial, isPro, trialDaysRemaining, trialEndsAt, currentPeriodEnd, plan, hasAutoRenew } =
-    subscription;
+  const {
+    isTrial,
+    isPro,
+    status,
+    cardLast4,
+    trialDaysRemaining,
+    trialEndsAt,
+    currentPeriodEnd,
+    plan,
+    hasAutoRenew,
+  } = subscription;
+  const isPastDue = status === "past_due";
 
   return (
     <Card>
@@ -99,12 +110,16 @@ export function CurrentPlanHeroCard({ subscription, onUpgrade }: CurrentPlanHero
         ) : hasAutoRenew ? (
           <div className="space-y-4">
             <div className="flex items-center gap-2 flex-wrap">
-              <CheckCircle2 className="size-5 text-positive-strong shrink-0" aria-hidden="true" />
+              {isPastDue ? (
+                <AlertTriangle className="size-5 text-critical-strong shrink-0" aria-hidden="true" />
+              ) : (
+                <CheckCircle2 className="size-5 text-positive-strong shrink-0" aria-hidden="true" />
+              )}
               <span className="text-sm font-semibold text-foreground">
                 Plano {plan === "annual" ? "Pro Anual" : "Pro Mensal"}
               </span>
-              <Badge variant="positive" size="sm">
-                Cobrança Automática Ativa
+              <Badge variant={isPastDue ? "critical" : "positive"} size="sm">
+                {isPastDue ? "Pagamento Pendente" : "Cobrança Automática Ativa"}
               </Badge>
             </div>
 
@@ -112,21 +127,23 @@ export function CurrentPlanHeroCard({ subscription, onUpgrade }: CurrentPlanHero
               <InfoRow
                 icon={Calendar}
                 label={isTrial ? "Primeira cobrança" : "Próxima renovação"}
-                value={formatLongDateBR(trialEndsAt || currentPeriodEnd)}
+                value={formatLongDateBR(isTrial ? trialEndsAt : currentPeriodEnd)}
               />
               <InfoRow
                 icon={ShieldCheck}
                 label="Status"
                 value={
-                  isTrial && trialDaysRemaining !== null
-                    ? `Degustação ativa (${trialDaysRemaining}d restantes)`
-                    : "Assinatura ativa"
+                  isPastDue
+                    ? "Pendência de pagamento"
+                    : isTrial && trialDaysRemaining !== null
+                      ? `Degustação ativa (${trialDaysRemaining}d restantes)`
+                      : "Assinatura ativa"
                 }
               />
               <InfoRow
                 icon={CreditCard}
                 label="Método"
-                value="Cartão de Crédito recorrente"
+                value={cardLast4 ? `Cartão final ${cardLast4}` : "Cartão de Crédito recorrente"}
               />
               <InfoRow
                 icon={RefreshCw}
@@ -176,12 +193,16 @@ export function CurrentPlanHeroCard({ subscription, onUpgrade }: CurrentPlanHero
         ) : isPro ? (
           <div className="space-y-4">
             <div className="flex items-center gap-2 flex-wrap">
-              <CheckCircle2 className="size-5 text-positive-strong shrink-0" aria-hidden="true" />
+              {isPastDue ? (
+                <AlertTriangle className="size-5 text-critical-strong shrink-0" aria-hidden="true" />
+              ) : (
+                <CheckCircle2 className="size-5 text-positive-strong shrink-0" aria-hidden="true" />
+              )}
               <span className="text-sm font-semibold text-foreground">
                 Plano {plan === "annual" ? "Pro Anual" : "Pro Mensal"}
               </span>
-              <Badge variant="default" size="sm">
-                Ativo
+              <Badge variant={isPastDue ? "critical" : "default"} size="sm">
+                {isPastDue ? "Pagamento Pendente" : "Ativo"}
               </Badge>
             </div>
 
@@ -191,7 +212,11 @@ export function CurrentPlanHeroCard({ subscription, onUpgrade }: CurrentPlanHero
                 label="Próxima renovação"
                 value={formatLongDateBR(currentPeriodEnd)}
               />
-              <InfoRow icon={ShieldCheck} label="Status" value="Assinatura ativa" />
+              <InfoRow
+                icon={ShieldCheck}
+                label="Status"
+                value={isPastDue ? "Pendência de pagamento" : "Assinatura ativa"}
+              />
               <InfoRow
                 icon={RefreshCw}
                 label="Cancelamento"

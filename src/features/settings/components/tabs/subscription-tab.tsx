@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
+import { SubscriptionPastDueBanner } from "@/components/modules/subscription";
 import { UpgradeDialog } from "@/components/modules/subscription/upgrade-dialog";
 import { calculateGuaranteeResidual } from "@/domain/subscription";
 import { buildCheckoutUrl } from "@/domain/subscription/plans";
@@ -66,6 +67,18 @@ export function SubscriptionTab() {
 
   return (
     <div className="flex flex-col gap-5 sm:gap-6 min-w-0">
+      {subscription.status === "past_due" ? (
+        <SubscriptionPastDueBanner
+          onRegularize={() => {
+            if (subscription.hasCardRegistered || subscription.hasAutoRenew) {
+              setUpdateCardOpen(true);
+            } else {
+              navigate("/assinatura");
+            }
+          }}
+        />
+      ) : null}
+
       <CurrentPlanHeroCard
         subscription={subscription}
         onUpgrade={() => setUpgradeOpen(true)}
@@ -80,7 +93,10 @@ export function SubscriptionTab() {
         }}
       />
 
-      {subscription.isPro && subscription.plan === "monthly" && !subscription.pendingPlanId ? (
+      {subscription.isPro &&
+      subscription.status === "active" &&
+      subscription.plan === "monthly" &&
+      !subscription.pendingPlanId ? (
         <CumulativeRenewalCard
           currentPeriodEnd={subscription.currentPeriodEnd}
           onUpgradeToAnnual={() => handleProceedToCheckout("annual")}
