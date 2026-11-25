@@ -231,6 +231,9 @@ function StatementImportContent({
             <StatementMappingFallback
               rows={state.parsedRows}
               initialMapping={state.columnMapping}
+              sheets={state.spreadsheetSheets}
+              activeSheetIndex={state.activeSheetIndex}
+              onSelectSheet={state.handleSelectSpreadsheetSheet}
               onConfirmMapping={(mapping) => void state.handleConfirmMapping(mapping)}
               onBack={() => state.setStep("upload")}
               formId={mappingFormId}

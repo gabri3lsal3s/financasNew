@@ -1,4 +1,5 @@
-import type { ColumnMapping, StatementTransaction } from "../contracts";
+import type { ColumnMapping, RawParsedRow, StatementTransaction } from "../contracts";
+import { buildTransactionsFromRows } from "../extractors";
 import {
   buildSpatialLinesFromRawLines,
   extractTransactionsFromSpatialLines,
@@ -181,6 +182,7 @@ export interface DistillBlueprintDraftParams {
   columnMapping?: ColumnMapping;
   delimiter?: "," | ";" | "\t" | "|";
   headerSignature?: string;
+  sheetName?: string;
 }
 
 export interface DistillBlueprintDraftResult {
@@ -212,6 +214,7 @@ export function distillStatementBlueprintDraft(
     columnMapping,
     delimiter,
     headerSignature,
+    sheetName,
   } = params;
 
   if (extractedTransactions.length === 0) {
@@ -264,6 +267,7 @@ export function distillStatementBlueprintDraft(
         delimiter,
         headerSignature,
         columnMapping,
+        ...(sheetName ? { sheetName: sheetName.slice(0, 80) } : {}),
       },
       polarity: "auto",
       dateFormatHint: "auto",
@@ -438,6 +442,8 @@ export interface ShadowReplayParams {
   spatialLines?: readonly SpatialPdfLine[];
   /** Fallback para textos sem camada espacial (sintetiza `SpatialPdfLine[]`). */
   rawLines?: readonly string[];
+  /** Linhas tabulares (CSV/XLSX) para Shadow Replay determinístico de blueprints tabulares. */
+  rows?: readonly RawParsedRow[];
   cardId: string;
   competenceMonth: string;
   closingDay?: number | null;
@@ -466,6 +472,7 @@ export function validateBlueprintWithShadowReplay(
     blueprint,
     spatialLines,
     rawLines = [],
+    rows = [],
     cardId,
     competenceMonth,
     closingDay,
@@ -475,6 +482,46 @@ export function validateBlueprintWithShadowReplay(
     paymentsCents = null,
     referenceTodayIso,
   } = params;
+
+  if (
+    (blueprint.fileKind === "csv" || blueprint.fileKind === "xlsx") &&
+    blueprint.tabularRules?.columnMapping &&
+    rows.length > 0
+  ) {
+    const tabularTransactions = buildTransactionsFromRows(
+      [...rows],
+      blueprint.tabularRules.columnMapping,
+      {
+        cardId,
+        competenceMonth,
+        closingDay,
+      },
+      blueprint.fileKind === "xlsx" ? "spreadsheet" : "csv",
+    );
+    const qualityGate = evaluateStatementExtractionQuality({
+      transactions: tabularTransactions,
+      officialTotalCents,
+      cycleNetTargetCents,
+      previousBalanceCents,
+      paymentsCents,
+      columnMapping: blueprint.tabularRules.columnMapping,
+      referenceTodayIso,
+    });
+    const hasKnownTarget =
+      (cycleNetTargetCents !== null && cycleNetTargetCents > 0) ||
+      (officialTotalCents !== null && officialTotalCents > 0);
+    const checksumOk = !hasKnownTarget || qualityGate.diffCents <= 5;
+    const passed =
+      tabularTransactions.length > 0 &&
+      qualityGate.passed &&
+      (qualityGate.score >= SHADOW_REPLAY_MIN_SCORE || (!hasKnownTarget && qualityGate.score >= 75)) &&
+      checksumOk;
+    return {
+      passed,
+      qualityGate,
+      transactions: tabularTransactions,
+    };
+  }
 
   const linesToReplay: SpatialPdfLine[] =
     spatialLines && spatialLines.length > 0

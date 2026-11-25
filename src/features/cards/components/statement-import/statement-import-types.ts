@@ -5,6 +5,7 @@ import type {
   ColumnMapping,
   RawEntrySignHint,
   RawExtractedEntry,
+  ParsedSpreadsheetSheet,
   RawParsedRow,
   SpatialPdfLine,
   StatementLayoutBlueprint,
@@ -62,6 +63,7 @@ export interface StatementAiStatusNotice {
 export interface DraftStatementBlueprintSession {
   blueprint: StatementLayoutBlueprint;
   rawLines: string[];
+  rows?: RawParsedRow[];
   spatialLines?: SpatialPdfLine[];
   officialTotalCents: number | null;
   cycleNetTargetCents: number | null;
@@ -111,7 +113,7 @@ export type LoadedStatementSource =
       pdfTotalPages?: number;
     }
   | { kind: "image"; file: File; sha256: string | null; fileName: string }
-  | { kind: "spreadsheet"; buffer: ArrayBuffer; fileName: string }
+  | { kind: "spreadsheet"; buffer: ArrayBuffer; fileName: string; sha256?: string | null }
   | { kind: "binary_or_text"; content: ArrayBuffer | string; fileName: string };
 
 export interface StatementSessionSnapshot {
@@ -144,6 +146,9 @@ export interface StatementSessionSnapshot {
   aiStatusNotice?: StatementAiStatusNotice;
   printedTotalCents?: number | null;
   rows?: RawParsedRow[];
+  spreadsheetSheets?: ParsedSpreadsheetSheet[];
+  activeSheetIndex?: number;
+  selectedSheetName?: string | null;
   mapping?: ColumnMapping;
   shouldAutoAdvance?: boolean;
   sourceCompetenceMonth?: string;

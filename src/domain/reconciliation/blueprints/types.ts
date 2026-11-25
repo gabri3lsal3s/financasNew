@@ -72,6 +72,7 @@ export const BlueprintPdfRulesSchema = z.object({
     })
     .optional(),
   requireExplicitDatePerLine: z.boolean().default(true),
+  carryForwardDate: z.boolean().default(false),
 });
 export type BlueprintPdfRules = z.infer<typeof BlueprintPdfRulesSchema>;
 
@@ -84,12 +85,14 @@ export const BlueprintColumnMappingSchema = z.object({
   creditColIndex: z.number().int().min(0).optional(),
   hasHeader: z.boolean(),
   startRowIndex: z.number().int().min(0),
+  headerRowIndex: z.number().int().min(0).optional(),
 });
 
 export const BlueprintTabularRulesSchema = z.object({
   delimiter: z.enum([",", ";", "\t", "|"]).optional(),
   headerSignature: z.string().max(200).optional(),
   columnMapping: BlueprintColumnMappingSchema.optional(),
+  sheetName: z.string().max(80).optional(),
 });
 export type BlueprintTabularRules = z.infer<typeof BlueprintTabularRulesSchema>;
 
@@ -198,6 +201,9 @@ export function toSpatialBlueprintHints(
     strictStartZone: blueprint.pdfRules?.strictStartZone ?? false,
     polarity: blueprint.polarity,
     dateFormatHint: blueprint.dateFormatHint,
+    carryForwardDate:
+      blueprint.pdfRules?.carryForwardDate === true ||
+      blueprint.pdfRules?.requireExplicitDatePerLine === false,
   };
 }
 

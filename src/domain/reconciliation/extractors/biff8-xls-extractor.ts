@@ -1,4 +1,5 @@
 import type { RawParsedRow } from "../contracts";
+import { EncryptedSpreadsheetError, isEncryptedOle2OfficeFile } from "./ole2-crypto";
 
 const OLE2_MAGIC = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1] as const;
 const ENDOFCHAIN = 0xfffffffe;
@@ -357,6 +358,9 @@ export function parseBiff8XlsToRows(
   bytes: Uint8Array,
   scoreRowsFn?: (rows: RawParsedRow[]) => number,
 ): RawParsedRow[] {
+  if (isEncryptedOle2OfficeFile(bytes)) {
+    throw new EncryptedSpreadsheetError("ENCRYPTED_SPREADSHEET");
+  }
   const stream = extractOle2WorkbookStream(bytes);
   if (!stream || stream.length < 4) return [];
 
@@ -376,7 +380,8 @@ export function parseBiff8XlsToRows(
     cursor = recEnd;
 
     if (recId === BIFF_FILEPASS) {
-      throw new Error(
+      throw new EncryptedSpreadsheetError(
+        "UNSUPPORTED_SPREADSHEET_ENCRYPTION",
         "Esta planilha .xls está protegida por senha ou criptografada. Remova a proteção ou salve como .xlsx ou .csv para importar.",
       );
     }

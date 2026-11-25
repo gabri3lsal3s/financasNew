@@ -70,12 +70,20 @@ export interface ResolveDateForCycleParams {
   dateFormatHint?: "dmy" | "d_mmm" | "ymd" | "auto";
 }
 
+function stripDateTimeSuffix(rawDate: string): string {
+  return rawDate
+    .trim()
+    .toLowerCase()
+    .replace(/(?:t|\s+(?:[àa]s\s+)?)\d{1,2}:\d{2}(?::\d{2}(?:[.,]\d{1,6})?)?(?:\s*(?:z|[+-]\d{2}:?\d{2}))?$/i, "")
+    .trim();
+}
+
 function hasExplicitYearInDateToken(rawDate: string): boolean {
-  const t = rawDate.trim().toLowerCase();
+  const t = stripDateTimeSuffix(rawDate);
   if (t === "hoje" || t === "ontem" || t === "anteontem") return true;
   if (/^\d{4}[/-]\d{2}[/-]\d{2}$/.test(t)) return true;
   if (/^\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}$/.test(t)) return true;
-  if (/[a-zç]{3,9}(?:\s*(?:de\s+|[/-])?\s*|\s+)\d{2,4}$/i.test(t)) return true;
+  if (/[a-zç]{3,9}\.?(?:\s*(?:de\s+|[/-])?\s*|\s+)\d{2,4}$/i.test(t)) return true;
   return false;
 }
 
@@ -87,7 +95,7 @@ export function normalizeDateToISO(
   defaultYear = new Date().getFullYear(),
   referenceMonth?: number,
 ): string | null {
-  const trimmed = rawDate.trim().toLowerCase();
+  const trimmed = stripDateTimeSuffix(rawDate);
   if (!trimmed) return null;
 
   if (trimmed === "hoje") return todayISO();
@@ -114,7 +122,7 @@ export function normalizeDateToISO(
 
   // DD de [Mês] (de [Ano])? ou DD-[Mês]-[Ano] ou DD [Mês] [Ano]
   const namedMatch =
-    /^(\d{1,2})(?:º|o)?\s*(?:de\s+|[/-])?\s*(janeiro|jan|fevereiro|fev|feb|março|marco|mar|abril|abr|apr|maio|mai|may|junho|jun|julho|jul|agosto|ago|aug|setembro|set|sep|outubro|out|oct|novembro|nov|dezembro|dez|dec)(?:(?:\s*(?:de\s+|[/-])?\s*|\s+)(\d{2,4}))?$/i.exec(
+    /^(\d{1,2})(?:º|o)?\s*(?:de\s+|[/-])?\s*(janeiro|jan|fevereiro|fev|feb|março|marco|mar|abril|abr|apr|maio|mai|may|junho|jun|julho|jul|agosto|ago|aug|setembro|set|sep|outubro|out|oct|novembro|nov|dezembro|dez|dec)\.?(?:(?:\s*(?:de\s+|[/-])?\s*|\s+)(\d{2,4}))?$/i.exec(
       trimmed,
     );
   if (namedMatch && namedMatch[1] && namedMatch[2]) {
@@ -395,19 +403,25 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
   let headerRowIndex = 0;
   let maxHeaderSignal = 0;
 
-  const candidateHeaderRows = rows.slice(0, 12);
+  const candidateHeaderRows = rows.slice(0, 50);
   for (let r = 0; r < candidateHeaderRows.length; r++) {
     const row = candidateHeaderRows[r];
     if (!row || row.cells.length === 0) continue;
 
     let rowSignal = 0;
+    let matchedRoleCols = 0;
     for (const cell of row.cells) {
       const lower = (cell ?? "").trim().toLowerCase();
-      if (!lower) continue;
-      if (lower.includes("data") || lower.includes("date") || lower === "dt") rowSignal += 2;
-      if (
+      if (!lower || lower.length > 48) continue;
+      let cellHit = false;
+      if (lower.includes("data") || lower.includes("date") || lower === "dt") {
+        rowSignal += 2;
+        cellHit = true;
+      } else if (
         lower.includes("valor") ||
         lower.includes("amount") ||
+        lower.includes("montante") ||
+        lower.includes("quantia") ||
         lower.includes("total") ||
         lower.includes("preço") ||
         lower.includes("preco") ||
@@ -417,8 +431,8 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
         lower.includes("credito")
       ) {
         rowSignal += 2;
-      }
-      if (
+        cellHit = true;
+      } else if (
         lower.includes("desc") ||
         lower.includes("estabelecimento") ||
         lower.includes("histórico") ||
@@ -428,12 +442,22 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
         lower.includes("transação") ||
         lower.includes("transacao") ||
         lower.includes("detalhe") ||
+        lower.includes("compra") ||
+        lower.includes("movimenta") ||
+        lower.includes("merchant") ||
+        lower.includes("comércio") ||
+        lower.includes("comercio") ||
         lower.includes("memo")
       ) {
         rowSignal += 2;
+        cellHit = true;
+      } else if (lower === "d/c" || lower === "tipo" || lower === "sinal") {
+        rowSignal += 1;
+        cellHit = true;
       }
-      if (lower === "d/c" || lower === "tipo" || lower === "sinal") rowSignal += 1;
+      if (cellHit) matchedRoleCols += 1;
     }
+    if (matchedRoleCols < 2) rowSignal = Math.min(rowSignal, 2);
 
     if (rowSignal > maxHeaderSignal) {
       maxHeaderSignal = rowSignal;
@@ -456,11 +480,57 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
       if (
         headerCell.includes("valor") ||
         headerCell.includes("amount") ||
+        headerCell.includes("montante") ||
+        headerCell.includes("quantia") ||
         headerCell.includes("total") ||
         headerCell.includes("preço") ||
         headerCell.includes("preco")
       ) {
         amountScores[c] = (amountScores[c] ?? 0) + 100;
+      }
+
+      if (
+        headerCell.includes("r$") ||
+        /\bbrl\b/i.test(headerCell) ||
+        headerCell.includes("reais") ||
+        headerCell.includes("valor nacional") ||
+        headerCell.includes("valor fatura") ||
+        headerCell.includes("valor em real")
+      ) {
+        amountScores[c] = (amountScores[c] ?? 0) + 65;
+      }
+
+      if (
+        headerCell.includes("us$") ||
+        /\b(?:usd|eur|gbp)\b/i.test(headerCell) ||
+        headerCell.includes("€") ||
+        headerCell.includes("dólar") ||
+        headerCell.includes("dolar") ||
+        headerCell.includes("moeda original") ||
+        headerCell.includes("valor original") ||
+        headerCell.includes("valor estrangeiro") ||
+        headerCell.includes("valor moeda")
+      ) {
+        amountScores[c] = (amountScores[c] ?? 0) - 130;
+      }
+
+      if (
+        headerCell.includes("cotação") ||
+        headerCell.includes("cotacao") ||
+        headerCell.includes("câmbio") ||
+        headerCell.includes("cambio") ||
+        headerCell.includes("ptax") ||
+        headerCell.includes("spread") ||
+        headerCell === "taxa" ||
+        headerCell.includes("taxa de") ||
+        headerCell.includes("taxa câmbio") ||
+        headerCell.includes("taxa cambio") ||
+        headerCell === "parcela" ||
+        headerCell === "parcelas" ||
+        headerCell === "parc." ||
+        headerCell === "parc"
+      ) {
+        amountScores[c] = (amountScores[c] ?? 0) - 180;
       }
 
       if (
@@ -507,7 +577,16 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
         headerCell.includes("num doc") ||
         headerCell.includes("nº doc") ||
         headerCell === "doc" ||
-        headerCell === "doc."
+        headerCell === "doc." ||
+        headerCell.includes("nsu") ||
+        headerCell.includes("autorização") ||
+        headerCell.includes("autorizacao") ||
+        headerCell.includes("código") ||
+        headerCell.includes("codigo") ||
+        headerCell.includes("final cartão") ||
+        headerCell.includes("final cartao") ||
+        headerCell.includes("últimos dígitos") ||
+        headerCell.includes("ultimos digitos")
       ) {
         amountScores[c] = (amountScores[c] ?? 0) - 150;
         textScores[c] = (textScores[c] ?? 0) - 50;
@@ -537,6 +616,11 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
         headerCell.includes("transacao") ||
         headerCell.includes("title") ||
         headerCell.includes("memo") ||
+        headerCell.includes("compra") ||
+        headerCell.includes("movimenta") ||
+        headerCell.includes("merchant") ||
+        headerCell.includes("comércio") ||
+        headerCell.includes("comercio") ||
         headerCell.includes("origem")
       ) {
         textScores[c] = (textScores[c] ?? 0) + 100;
@@ -558,7 +642,32 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
     }
   }
 
-  const startRowIndex = hasHeader ? headerRowIndex + 1 : 0;
+  let startRowIndex = hasHeader ? headerRowIndex + 1 : 0;
+  if (!hasHeader && rows.length >= 2) {
+    const scanLimit = Math.min(rows.length, 60);
+    const isTabularDataRow = (row: RawParsedRow): boolean => {
+      let hasDate = false;
+      let hasAmt = false;
+      for (const cell of row.cells) {
+        const trimmedCell = (cell ?? "").trim();
+        if (!trimmedCell) continue;
+        if (!hasDate && (DATE_PATTERNS.some((p) => p.test(trimmedCell)) || normalizeDateToISO(trimmedCell) !== null)) {
+          hasDate = true;
+        } else if (!hasAmt && parseAmountToCents(trimmedCell) !== null) {
+          hasAmt = true;
+        }
+      }
+      return hasDate && hasAmt;
+    };
+    for (let r = 0; r < scanLimit; r++) {
+      const cur = rows[r];
+      const next = rows[r + 1];
+      if (cur && isTabularDataRow(cur) && (!next || isTabularDataRow(next) || r === scanLimit - 1)) {
+        startRowIndex = r;
+        break;
+      }
+    }
+  }
   const sampleRows = rows.slice(startRowIndex, startRowIndex + 30);
   const columnValues: Array<Set<string>> = Array.from({ length: maxCols }, () => new Set<string>());
 
@@ -576,6 +685,11 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
 
       if (parseAmountToCents(cell) !== null) {
         amountScores[c] = (amountScores[c] ?? 0) + 3;
+        if (/(?:R\$|\bBRL\b)/i.test(cell)) {
+          amountScores[c] = (amountScores[c] ?? 0) + 2;
+        } else if (/(?:US\$|\b(?:USD|EUR|GBP)\b|€|£)/i.test(cell)) {
+          amountScores[c] = (amountScores[c] ?? 0) - 4;
+        }
       }
 
       if (

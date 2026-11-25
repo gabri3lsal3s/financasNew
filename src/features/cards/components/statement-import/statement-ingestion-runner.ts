@@ -3,6 +3,7 @@ import {
   detectStatementMetadata,
   evaluateStatementExtractionQuality,
   extractOfxMetadata,
+  isSpreadsheetOrHtmlFileName,
   normalizeRawEntries,
   parseStatementInput,
   type CardContextForMetadata,
@@ -77,11 +78,17 @@ export function reNormalizeSessionSnapshot(params: {
       defaultSignHint: session.defaultSignHint ?? "auto",
     });
   } else if (session.rows && session.mapping && session.rows.length > 0) {
-    transactions = buildTransactionsFromRows(session.rows, session.mapping, {
-      cardId: targetCard.id,
-      competenceMonth: targetCompetenceMonth,
-      closingDay: targetCard.closing_day,
-    });
+    const sourceKind = isSpreadsheetOrHtmlFileName(session.fileNameOrType) || (session.spreadsheetSheets?.length ?? 0) > 0 ? "spreadsheet" : "csv";
+    transactions = buildTransactionsFromRows(
+      session.rows,
+      session.mapping,
+      {
+        cardId: targetCard.id,
+        competenceMonth: targetCompetenceMonth,
+        closingDay: targetCard.closing_day,
+      },
+      sourceKind,
+    );
   } else if (typeof session.content === "string" && session.content.trim().length > 0) {
     const reparsed = parseStatementInput(session.content, session.fileNameOrType, {
       cardId: targetCard.id,

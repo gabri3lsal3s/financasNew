@@ -17,6 +17,8 @@ export * from "./magic-bytes";
 export * from "./csv-extractor";
 export * from "./ofx-extractor";
 export * from "./text-extractor";
+export * from "./sync-hash";
+export * from "./ole2-crypto";
 export * from "./biff8-xls-extractor";
 export * from "./spreadsheet-extractor";
 export * from "./spatial-pdf-extractor";

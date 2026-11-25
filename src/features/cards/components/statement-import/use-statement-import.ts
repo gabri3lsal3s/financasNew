@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getErrorMessage } from "@/services/errors";
 import { getMerchantLearningMemory } from "@/services/merchant-learning";
+import { isLocalTabularBlueprintId, loadLocalTabularBlueprints, recordLocalTabularBlueprintOutcome } from "@/services/statement-tabular-blueprints";
 import {
   useAiQuota,
   useBusinessMode,
@@ -96,7 +97,7 @@ export function useStatementImport({
     activeCard, availableCards: availableCardsList, activeCompetenceMonth,
     allExpenses, allPayments, allRollovers, allCardExpensesForSeries, categories, defaultCategoryId,
   });
-  const commit = useStatementCommit({ onError: reconciliation.setError, onSuccessCloseOrStep: () => setStep("success") });
+  const commit = useStatementCommit({ userId, onError: reconciliation.setError, onSuccessCloseOrStep: () => setStep("success") });
 
   const reconcileRunIdRef = useRef(0);
   const reconcileAbortRef = useRef<AbortController | null>(null);
@@ -177,8 +178,17 @@ export function useStatementImport({
     isReadOnlyMode,
     aiExtractionEnabled,
     availableBatchCalls: aiQuota.summary.getAffordableBatchCalls(6),
-    learnedBlueprints: blueprintsQuery.data ?? [],
-    onRecordBlueprintOutcome: (outcome) => { void recordBlueprintOutcomeMutation.mutateAsync(outcome).catch(() => {}); },
+    learnedBlueprints: useMemo(
+      () => [...loadLocalTabularBlueprints(userId), ...(blueprintsQuery.data ?? [])],
+      [blueprintsQuery.data, userId],
+    ),
+    onRecordBlueprintOutcome: (outcome) => {
+      if (isLocalTabularBlueprintId(outcome.blueprintId)) {
+        recordLocalTabularBlueprintOutcome(outcome.blueprintId, outcome.exactChecksumHit, userId);
+        return;
+      }
+      void recordBlueprintOutcomeMutation.mutateAsync(outcome).catch(() => {});
+    },
     onCompetenceConflict: (payload) => {
       reconciliation.setUsedAiStructurer(payload.usedAiStructurer);
       reconciliation.setExtractionOrigin(payload.extractionOrigin);
@@ -324,7 +334,7 @@ export function useStatementImport({
     isSwitchingCard: pendingCardSwitchId !== null,
     isReadingFile: ingestion.isReadingFile || pendingCardSwitchId !== null || Boolean(categorizeStatusMessage),
     readingStatusMessage: switchingStatusMessage ?? categorizeStatusMessage ?? ingestion.readingStatusMessage,
-    parsedRows: ingestion.parsedRows, columnMapping: ingestion.columnMapping,
+    parsedRows: ingestion.parsedRows, columnMapping: ingestion.columnMapping, spreadsheetSheets: ingestion.spreadsheetSheets, activeSheetIndex: ingestion.activeSheetIndex, handleSelectSpreadsheetSheet: ingestion.handleSelectSpreadsheetSheet,
     canOpenMapping: ingestion.canOpenMapping, canAdjustColumns: ingestion.canAdjustColumns,
     pendingPasswordFile: ingestion.pendingPasswordFile, passwordError: ingestion.passwordError,
     handleFileSelect: ingestion.handleFileSelect, handleFilesSelect: ingestion.handleFilesSelect,

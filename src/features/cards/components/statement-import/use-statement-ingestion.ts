@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  buildTransactionsFromRows, type ChecksumGateResult, type ColumnMapping, type RawEntrySignHint,
+  buildTransactionsFromRows, distillStatementBlueprintDraft, extractStatementSummaryAmounts, isSpreadsheetOrHtmlFileName, sniffColumnMapping,
+  type ChecksumGateResult, type ColumnMapping, type ParsedSpreadsheetSheet, type RawEntrySignHint,
   type RawExtractedEntry, type RawParsedRow, type SpatialPdfLine, type StatementLayoutBlueprint, type StatementTransaction,
 } from "@/domain/reconciliation";
 import { getErrorMessage } from "@/services/errors";
-import { isPdfPasswordProtectedError, PdfPasswordProtectedError, renderScannedPdfPageToBlob } from "@/services/native/receipt-extractor";
+import { renderScannedPdfPageToBlob } from "@/services/native/receipt-extractor";
 import type { PdfDocumentSession } from "@/services/pdf-session";
 import { pushToast } from "@/services/toast";
 import type { CreditCard } from "@/types";
-import { readStatementFileContent } from "./statement-file-loader";
+import { isStatementPasswordPromptError, readStatementFileContent } from "./statement-file-loader";
 import { parseStatementWithPdfAiFallback } from "./statement-import-pipeline";
 import type { DraftStatementBlueprintSession, LoadedStatementSource, StatementAiStatusNotice, StatementSessionSnapshot } from "./statement-import-types";
 import { executeVisionWaveIngestion, partitionAndPrepareVisionImages, reNormalizeSessionSnapshot, toCardMetadataContext, type ExtractedStatementPayload } from "./statement-ingestion-runner";
@@ -37,6 +38,8 @@ export function useStatementIngestion(params: UseStatementIngestionParams) {
   const { activeCard, activeCompetenceMonth, userId, isReadOnlyMode, aiExtractionEnabled, availableBatchCalls, learnedBlueprints, onRecordBlueprintOutcome, onCompetenceConflict, onMappingRequired, onExtractionReady, onError, onStatusNotice, onUploadStepRequested } = params;
 
   const [parsedRows, setParsedRows] = useState<RawParsedRow[]>([]);
+  const [spreadsheetSheets, setSpreadsheetSheets] = useState<ParsedSpreadsheetSheet[]>([]);
+  const [activeSheetIndex, setActiveSheetIndex] = useState<number>(0);
   const [columnMapping, setColumnMapping] = useState<ColumnMapping | null>(null);
   const [pendingPasswordFile, setPendingPasswordFile] = useState<File | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
@@ -166,17 +169,30 @@ export function useStatementIngestion(params: UseStatementIngestionParams) {
         draftBlueprintRef.current = result.draftBlueprint ?? null;
         if (result.aiStatusNotice) onStatusNotice(result.aiStatusNotice);
         if (result.visionTruncationWarning) pushToast({ title: "Limite de páginas por envio", description: result.visionTruncationWarning, variant: "default" });
+        setSpreadsheetSheets(result.spreadsheetSheets ?? []);
+        setActiveSheetIndex(result.activeSheetIndex ?? 0);
         if (result.transactions.length === 0 && result.rows.length === 0) {
-          onError(result.aiStatusNotice?.kind === "quota_exceeded" ? result.aiStatusNotice.message : "Nenhuma linha de transação válida foi encontrada nos dados informados.");
+          onError(
+            result.aiStatusNotice?.kind === "quota_exceeded"
+              ? result.aiStatusNotice.message
+              : result.failureMessage ?? "Nenhuma linha de transação válida foi encontrada nos dados informados.",
+          );
           return;
         }
         const isPdf = fileNameOrType.trim().toLowerCase().endsWith(".pdf");
-        const shouldAutoAdvance = isPdf || result.isOfx || result.usedAiFallback || result.rows.length === 0 || ((result.mapping.hasHeader ?? false) && ((result.isCacheHit ?? false) || (result.mappingConfidence ?? 0) >= 85));
+        const shouldAutoAdvance =
+          isPdf ||
+          result.isOfx ||
+          result.usedAiFallback ||
+          result.rows.length === 0 ||
+          (result.transactions.length > 0 &&
+            (result.mapping.hasHeader ?? false) &&
+            ((result.isCacheHit ?? false) || (result.mappingConfidence ?? 0) >= 85));
         loadedSessionRef.current = {
           ...loadedSessionRef.current, extractedTransactions: result.transactions, rawEntries: result.rawEntries ?? loadedSessionRef.current?.rawEntries,
           defaultSignHint: result.defaultSignHint ?? loadedSessionRef.current?.defaultSignHint, aiDetectedMeta: result.aiDetectedMeta ?? null,
           usedAiStructurer: result.usedAiFallback, extractionOrigin: result.extractionOrigin, qualityGate: result.qualityGate, aiStatusNotice: result.aiStatusNotice,
-          printedTotalCents: result.printedTotalCents, rows: result.rows, mapping: result.mapping, shouldAutoAdvance,
+          printedTotalCents: result.printedTotalCents, rows: result.rows, spreadsheetSheets: result.spreadsheetSheets, activeSheetIndex: result.activeSheetIndex, selectedSheetName: result.activeSheetIndex !== undefined && result.activeSheetIndex >= 0 ? result.spreadsheetSheets?.[result.activeSheetIndex]?.name ?? null : null, mapping: result.mapping, shouldAutoAdvance,
         };
         await finalizeExtractionResult(runId, controller, {
           transactions: result.transactions, usedAiStructurer: result.usedAiFallback, extractionOrigin: result.extractionOrigin ?? null,
@@ -240,7 +256,7 @@ export function useStatementIngestion(params: UseStatementIngestionParams) {
         return;
       }
       disposePdfSession();
-      await handleProcessInput(loaded.kind === "spreadsheet" ? loaded.buffer : loaded.content, loaded.fileName, null);
+      await handleProcessInput(loaded.kind === "spreadsheet" ? loaded.buffer : loaded.content, loaded.fileName, loaded.kind === "spreadsheet" ? (loaded.sha256 ?? null) : null);
     },
     [beginRun, disposePdfSession, handleProcessInput, onStatusNotice, runVisionSlots],
   );
@@ -267,7 +283,7 @@ export function useStatementIngestion(params: UseStatementIngestionParams) {
         try {
           loaded = await readStatementFileContent(primary, { cardId: activeCard.id, competenceMonth: activeCompetenceMonth, closingDay: activeCard.closing_day, learnedBlueprints });
         } catch (err: unknown) {
-          if (err instanceof PdfPasswordProtectedError || isPdfPasswordProtectedError(err)) { setPendingPasswordFile(primary); setPasswordError(null); return; }
+          if (isStatementPasswordPromptError(err)) { setPendingPasswordFile(primary); setPasswordError(null); return; }
           throw err;
         }
         await processLoadedStatementSource(loaded);
@@ -292,7 +308,7 @@ export function useStatementIngestion(params: UseStatementIngestionParams) {
       setPasswordError(null);
       await processLoadedStatementSource(loaded);
     } catch (err: unknown) {
-      if (err instanceof PdfPasswordProtectedError || isPdfPasswordProtectedError(err)) { pdfPasswordRef.current = null; setPasswordError("Senha incorreta. Verifique e tente novamente."); }
+      if (isStatementPasswordPromptError(err)) { pdfPasswordRef.current = null; setPasswordError("Senha incorreta. Verifique e tente novamente."); }
       else { onError(getErrorMessage(err)); setPendingPasswordFile(null); }
     } finally { setIsReadingFile(false); setReadingStatusMessage(null); }
   }, [activeCard, activeCompetenceMonth, learnedBlueprints, onError, pendingPasswordFile, processLoadedStatementSource]);
@@ -305,16 +321,76 @@ export function useStatementIngestion(params: UseStatementIngestionParams) {
     return payload;
   }, []);
 
+  const handleSelectSpreadsheetSheet = useCallback((sheetIndex: number) => {
+    const targetSheet = spreadsheetSheets[sheetIndex];
+    if (!targetSheet) return;
+    const nextRows = targetSheet.rows;
+    const nextMapping = sniffColumnMapping(nextRows);
+    setActiveSheetIndex(sheetIndex);
+    setParsedRows(nextRows);
+    setColumnMapping(nextMapping);
+    onError(null);
+    if (loadedSessionRef.current) {
+      loadedSessionRef.current = {
+        ...loadedSessionRef.current,
+        rows: nextRows,
+        mapping: nextMapping,
+        activeSheetIndex: sheetIndex,
+        selectedSheetName: targetSheet.name,
+      };
+    }
+  }, [onError, spreadsheetSheets]);
+
   const handleConfirmMapping = useCallback(async (mapping: ColumnMapping) => {
     setColumnMapping(mapping);
     onError(null);
     setIsReadingFile(true);
     try {
-      const transactions = buildTransactionsFromRows(parsedRows, mapping, { cardId: activeCard.id, competenceMonth: activeCompetenceMonth, closingDay: activeCard.closing_day });
+      const fileName = loadedSessionRef.current?.fileNameOrType ?? "";
+      const isSheet = isSpreadsheetOrHtmlFileName(fileName) || spreadsheetSheets.length > 0;
+      const sourceKind = isSheet ? "spreadsheet" : "csv";
+      const transactions = buildTransactionsFromRows(parsedRows, mapping, { cardId: activeCard.id, competenceMonth: activeCompetenceMonth, closingDay: activeCard.closing_day }, sourceKind);
+      if (parsedRows.length > 0 && transactions.length === 0) {
+        onError("Nenhuma transação válida encontrada com este mapeamento. Ajuste as colunas ou a linha inicial.");
+        return;
+      }
+      const rawTextSample = parsedRows.slice(0, 60).map((r) => r.rawText).join("\n");
+      const summary = extractStatementSummaryAmounts(rawTextSample);
+      const headerIdx = mapping.headerRowIndex ?? Math.max(0, mapping.startRowIndex - 1);
+      const headerSig = mapping.hasHeader
+        ? (parsedRows[headerIdx]?.cells ?? []).map((c) => c.trim()).filter(Boolean).join("|").slice(0, 200) || undefined
+        : undefined;
+      const selectedSheetName = activeSheetIndex >= 0 ? spreadsheetSheets[activeSheetIndex]?.name : undefined;
+      const distilled = transactions.length > 0
+        ? distillStatementBlueprintDraft({
+            rawText: rawTextSample,
+            rawLines: parsedRows.map((r) => r.rawText),
+            extractedTransactions: transactions,
+            fileKind: isSheet ? "xlsx" : "csv",
+            fileName,
+            extractionSource: "user_manual",
+            officialTotalCents: loadedSessionRef.current?.printedTotalCents ?? summary.invoiceTotalCents,
+            cycleNetTargetCents: summary.cycleNetTargetCents,
+            columnMapping: mapping,
+            headerSignature: headerSig,
+            sheetName: selectedSheetName,
+          })
+        : null;
+      if (distilled?.blueprint) {
+        draftBlueprintRef.current = {
+          blueprint: distilled.blueprint,
+          rawLines: parsedRows.map((r) => r.rawText),
+          rows: parsedRows,
+          officialTotalCents: loadedSessionRef.current?.printedTotalCents ?? summary.invoiceTotalCents,
+          cycleNetTargetCents: summary.cycleNetTargetCents,
+          previousBalanceCents: summary.previousBalanceCents,
+          paymentsCents: summary.paymentsCents,
+        };
+      }
       if (loadedSessionRef.current) loadedSessionRef.current = { ...loadedSessionRef.current, mapping, extractedTransactions: transactions, shouldAutoAdvance: true };
-      await onExtractionReady({ transactions, usedAiStructurer: false, extractionOrigin: null, qualityGate: null, aiStatusNotice: null, printedTotalCents: loadedSessionRef.current?.printedTotalCents ?? null, detectedMeta: null, shouldAutoAdvance: true });
+      await onExtractionReady({ transactions, usedAiStructurer: false, extractionOrigin: null, qualityGate: null, aiStatusNotice: null, printedTotalCents: loadedSessionRef.current?.printedTotalCents ?? summary.invoiceTotalCents, detectedMeta: null, shouldAutoAdvance: true });
     } catch (err) { onError(getErrorMessage(err)); } finally { setIsReadingFile(false); }
-  }, [activeCard, activeCompetenceMonth, onError, onExtractionReady, parsedRows]);
+  }, [activeCard, activeCompetenceMonth, activeSheetIndex, onError, onExtractionReady, parsedRows, spreadsheetSheets]);
 
   const clearPendingConflict = useCallback(() => { pendingConflictRef.current = null; }, []);
   const consumePendingConflict = useCallback(() => {
@@ -324,7 +400,7 @@ export function useStatementIngestion(params: UseStatementIngestionParams) {
   const clearDraftBlueprint = useCallback(() => { draftBlueprintRef.current = null; }, []);
 
   return {
-    parsedRows, columnMapping: columnMapping ?? CANONICAL_AI_MAPPING, hasMapping: columnMapping !== null,
+    parsedRows, columnMapping: columnMapping ?? CANONICAL_AI_MAPPING, spreadsheetSheets, activeSheetIndex, handleSelectSpreadsheetSheet, hasMapping: columnMapping !== null,
     canOpenMapping: parsedRows.length > 0, canAdjustColumns: parsedRows.length > 0 && isTabularOfflineSource,
     pendingPasswordFile, passwordError, isReadingFile, readingStatusMessage, loadedSessionRef,
     clearPendingConflict, consumePendingConflict, getDraftBlueprint, clearDraftBlueprint,
@@ -340,7 +416,7 @@ export function useStatementIngestion(params: UseStatementIngestionParams) {
     handleCancelProcessing, handleConfirmMapping, reNormalizeLoadedEntries,
     resetIngestionSession: useCallback(() => {
       pendingConflictRef.current = null; loadedSessionRef.current = null; draftBlueprintRef.current = null; pdfPasswordRef.current = null;
-      disposePdfSession(); setParsedRows([]); setColumnMapping(null); setIsTabularOfflineSource(false); onStatusNotice(null); onError(null); onUploadStepRequested();
+      disposePdfSession(); setParsedRows([]); setSpreadsheetSheets([]); setActiveSheetIndex(0); setColumnMapping(null); setIsTabularOfflineSource(false); onStatusNotice(null); onError(null); onUploadStepRequested();
     }, [disposePdfSession, onError, onStatusNotice, onUploadStepRequested]),
   };
 }

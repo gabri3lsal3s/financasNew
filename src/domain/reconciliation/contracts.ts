@@ -425,3 +425,50 @@ export interface BankReconciliationResult {
   unmatchedExistingExpenses: ExistingExpenseForReconciliation[];
   unmatchedExistingIncomes: ExistingIncomeForReconciliation[];
 }
+
+export type StatementIngestionErrorCode =
+  | "encrypted_spreadsheet"
+  | "encrypted_pdf"
+  | "unsupported_archive"
+  | "unsupported_spreadsheet_encryption"
+  | "no_tabular_rows_found"
+  | "mapping_failed"
+  | "empty_file";
+
+const STATEMENT_INGESTION_ERROR_MESSAGES: Record<StatementIngestionErrorCode, string> = {
+  encrypted_spreadsheet:
+    "Esta planilha está protegida por senha. Digite a senha para desbloquear e importar.",
+  encrypted_pdf:
+    "Esta fatura em PDF está protegida por senha. Digite a senha para desbloquear e importar.",
+  unsupported_archive:
+    "Formato compactado não suportado. Envie uma fatura em PDF, imagem, CSV, OFX ou planilha (.xlsx/.xlsm/.xls/.ods).",
+  unsupported_spreadsheet_encryption:
+    "Esta planilha usa uma criptografia legada não suportada no navegador. Remova a proteção ou exporte em PDF, CSV ou XLSX.",
+  no_tabular_rows_found:
+    "Não encontramos lançamentos válidos nesta planilha ou arquivo. Verifique se a aba correta contém compras ou tente exportar em PDF ou CSV.",
+  mapping_failed:
+    "Não foi possível identificar automaticamente as colunas de data, descrição e valor. Ajuste o mapeamento de colunas para continuar.",
+  empty_file:
+    "O arquivo enviado está vazio. Selecione uma fatura válida para importar.",
+};
+
+export function getStatementIngestionErrorMessage(code: StatementIngestionErrorCode): string {
+  return STATEMENT_INGESTION_ERROR_MESSAGES[code];
+}
+
+export class StatementIngestionError extends Error {
+  readonly code: StatementIngestionErrorCode;
+
+  constructor(code: StatementIngestionErrorCode, message?: string) {
+    super(message ?? getStatementIngestionErrorMessage(code));
+    this.name = "StatementIngestionError";
+    this.code = code;
+  }
+}
+
+export function isStatementIngestionError(err: unknown): err is StatementIngestionError {
+  if (!err || typeof err !== "object") return false;
+  if (err instanceof StatementIngestionError) return true;
+  const candidate = err as { name?: unknown; code?: unknown };
+  return candidate.name === "StatementIngestionError" && typeof candidate.code === "string";
+}

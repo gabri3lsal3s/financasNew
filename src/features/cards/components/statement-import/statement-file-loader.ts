@@ -1,5 +1,9 @@
 import {
   computeStatementFingerprint,
+  decryptOfficeSpreadsheet,
+  EncryptedSpreadsheetError,
+  isSpreadsheetPasswordPromptError,
+  StatementIngestionError,
   detectFileKindFromBytes,
   evaluateChecksumGate,
   extractPrintedStatementTotalCents,
@@ -103,7 +107,22 @@ export function isStructuredTabularFileName(
     return /<OFX[\s>]|<STMTTRN[\s>]|^OFXHEADER\s*:/i.test(content.slice(0, 4096));
   }
   const detected = detectFileKindFromBytes(new Uint8Array(content), lower);
-  return detected === "ofx" || detected === "xlsx" || detected === "html_or_xml_sheet";
+  return (
+    detected === "ofx" ||
+    detected === "xlsx" ||
+    detected === "encrypted_xlsx" ||
+    detected === "ods" ||
+    detected === "xls_biff8" ||
+    detected === "html_or_xml_sheet"
+  );
+}
+
+export function isStatementPasswordPromptError(err: unknown): boolean {
+  return (
+    err instanceof PdfPasswordProtectedError ||
+    isPdfPasswordProtectedError(err) ||
+    isSpreadsheetPasswordPromptError(err)
+  );
 }
 
 export interface ReadStatementFileOptions {
@@ -119,15 +138,16 @@ export async function readStatementFileContent(
   options?: ReadStatementFileOptions,
 ): Promise<LoadedStatementSource> {
   const buffer = await file.arrayBuffer();
+  if (buffer.byteLength === 0) {
+    throw new StatementIngestionError("empty_file");
+  }
   const detectedKind = detectFileKindFromBytes(
     new Uint8Array(buffer),
     file.name || file.type,
   );
 
   if (detectedKind === "unsupported_archive") {
-    throw new Error(
-      "Formato compactado não suportado. Envie uma fatura em PDF, imagem, CSV, OFX ou Excel (.xlsx/.xls).",
-    );
+    throw new StatementIngestionError("unsupported_archive");
   }
 
   if (detectedKind === "image") {
@@ -276,12 +296,31 @@ export async function readStatementFileContent(
     };
   }
 
+  if (detectedKind === "encrypted_xlsx") {
+    if (!options?.password) {
+      throw new EncryptedSpreadsheetError("ENCRYPTED_SPREADSHEET");
+    }
+    const decryptedBuffer = await decryptOfficeSpreadsheet(buffer, options.password);
+    return {
+      kind: "spreadsheet",
+      buffer: decryptedBuffer,
+      fileName: file.name,
+      sha256: await computeFileSha256(file),
+    };
+  }
+
   if (
     detectedKind === "xlsx" ||
+    detectedKind === "ods" ||
     detectedKind === "xls_biff8" ||
     detectedKind === "html_or_xml_sheet"
   ) {
-    return { kind: "spreadsheet", buffer, fileName: file.name };
+    return {
+      kind: "spreadsheet",
+      buffer,
+      fileName: file.name,
+      sha256: await computeFileSha256(file),
+    };
   }
 
   return { kind: "binary_or_text", content: buffer, fileName: file.name };

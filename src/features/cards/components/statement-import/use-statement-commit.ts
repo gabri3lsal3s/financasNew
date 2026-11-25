@@ -10,6 +10,7 @@ import {
 import { getErrorMessage } from "@/services/errors";
 import { autoLearnExpenseCategory } from "@/services/merchant-learning";
 import { triggerSensory } from "@/services/sensory";
+import { saveLocalTabularBlueprint } from "@/services/statement-tabular-blueprints";
 import { pushToast } from "@/services/toast";
 import {
   useCommitStatementReconciliation,
@@ -53,11 +54,12 @@ function buildSuccessToastTitle(acc: CommitStatementReconciliationResult): strin
 }
 
 export interface UseStatementCommitParams {
+  userId?: string | null;
   onError: (msg: string | null) => void;
   onSuccessCloseOrStep: (summary: StatementCommitSummary) => void;
 }
 
-export function useStatementCommit({ onError, onSuccessCloseOrStep }: UseStatementCommitParams) {
+export function useStatementCommit({ userId = null, onError, onSuccessCloseOrStep }: UseStatementCommitParams) {
   const commitMutation = useCommitStatementReconciliation();
   const upsertBlueprintMutation = useUpsertStatementBlueprint();
 
@@ -70,18 +72,22 @@ export function useStatementCommit({ onError, onSuccessCloseOrStep }: UseStateme
       if (!draft) return;
       try {
         const replay = validateBlueprintWithShadowReplay({
-          blueprint: draft.blueprint, spatialLines: draft.spatialLines, rawLines: draft.rawLines, cardId, competenceMonth, closingDay,
+          blueprint: draft.blueprint, spatialLines: draft.spatialLines, rawLines: draft.rawLines, rows: draft.rows, cardId, competenceMonth, closingDay,
           officialTotalCents: draft.officialTotalCents, cycleNetTargetCents: draft.cycleNetTargetCents, previousBalanceCents: draft.previousBalanceCents, paymentsCents: draft.paymentsCents,
         });
-        if (replay.passed && (draft.blueprint.fileKind === "pdf_text" || draft.blueprint.fileKind === "text")) {
-          await upsertBlueprintMutation.mutateAsync({
-            fingerprint: draft.blueprint.fingerprint, issuerKey: draft.blueprint.issuerKey, issuerName: draft.blueprint.issuerName,
-            fileKind: draft.blueprint.fileKind, rulesJson: toCloudBlueprintRules(draft.blueprint),
-          });
+        if (replay.passed) {
+          if (draft.blueprint.fileKind === "pdf_text" || draft.blueprint.fileKind === "text") {
+            await upsertBlueprintMutation.mutateAsync({
+              fingerprint: draft.blueprint.fingerprint, issuerKey: draft.blueprint.issuerKey, issuerName: draft.blueprint.issuerName,
+              fileKind: draft.blueprint.fileKind, rulesJson: toCloudBlueprintRules(draft.blueprint),
+            });
+          } else if (draft.blueprint.fileKind === "csv" || draft.blueprint.fileKind === "xlsx") {
+            saveLocalTabularBlueprint(draft.blueprint, userId);
+          }
         }
       } catch { /* persistência de blueprint na nuvem é não-bloqueante */ }
     },
-    [upsertBlueprintMutation],
+    [upsertBlueprintMutation, userId],
   );
 
   const runChunkSequence = useCallback(

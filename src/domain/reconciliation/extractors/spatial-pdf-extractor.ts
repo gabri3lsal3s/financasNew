@@ -64,6 +64,8 @@ export interface SpatialBlueprintHints {
   strictStartZone?: boolean;
   polarity?: "auto" | "positive_purchase" | "negative_purchase";
   dateFormatHint?: "dmy" | "d_mmm" | "ymd" | "auto";
+  /** Permite herdar a última data vista quando o PDF agrupa compras sob cabeçalhos de dia (ex.: "15 OUT"). */
+  carryForwardDate?: boolean;
 }
 
 function normalizeMarkerMatchText(text: string): string {
@@ -512,6 +514,8 @@ export function extractRawEntriesFromSpatialLines(
   const detectedCardLast4s = new Set<string>();
   let discardedMoneyLines = 0;
   let sourceIndex = 0;
+  let lastSeenRawDate: string | null = null;
+  const allowCarryForwardDate = hints?.carryForwardDate === true;
 
   const expandedLines = lines.flatMap((l) => splitMergedSpatialLineByTokens(l));
 
@@ -525,7 +529,10 @@ export function extractRawEntriesFromSpatialLines(
       detectedCardLast4s.add(matchedDigits);
     }
 
-    const { shouldDrop } = stateMachine.processLine(text, line.pageNumber ?? 1);
+    const { state: zoneState, shouldDrop } = stateMachine.processLine(text, line.pageNumber ?? 1);
+    if (zoneState !== "start_zone") {
+      lastSeenRawDate = null;
+    }
     if (shouldDrop) {
       if (AMOUNT_REGEX.test(text)) {
         discardedMoneyLines++;
@@ -547,7 +554,20 @@ export function extractRawEntriesFromSpatialLines(
     const dateMatch = DATE_REGEX.exec(text);
     const amountExtracted = extractBrlAmountFromLine(text);
 
-    if (!dateMatch || !amountExtracted) {
+    if (dateMatch && !amountExtracted) {
+      if (
+        allowCarryForwardDate &&
+        !isSubcardHeader(text) &&
+        !isStatementNoiseOrSummary(text) &&
+        !isBoletoFieldNoise(text) &&
+        text.length <= 40
+      ) {
+        lastSeenRawDate = dateMatch[0];
+      }
+      continue;
+    }
+
+    if (!amountExtracted) {
       if (isFxDetail(text) && entries.length > 0) {
         const lastEntry = entries[entries.length - 1]!;
         lastEntry.fxDetails = [...(lastEntry.fxDetails ?? []), text];
@@ -556,7 +576,26 @@ export function extractRawEntriesFromSpatialLines(
       continue;
     }
 
-    const rawDateStr = dateMatch[0];
+    if (!dateMatch && (!allowCarryForwardDate || !lastSeenRawDate)) {
+      if (isFxDetail(text) && entries.length > 0) {
+        const lastEntry = entries[entries.length - 1]!;
+        lastEntry.fxDetails = [...(lastEntry.fxDetails ?? []), text];
+        acceptedLines.push(`  -> [fx_detail] ${text}`);
+      }
+      continue;
+    }
+
+    if (!dateMatch && isFxDetail(text) && entries.length > 0) {
+      const lastEntry = entries[entries.length - 1]!;
+      lastEntry.fxDetails = [...(lastEntry.fxDetails ?? []), text];
+      acceptedLines.push(`  -> [fx_detail] ${text}`);
+      continue;
+    }
+
+    const rawDateStr = dateMatch ? dateMatch[0] : lastSeenRawDate!;
+    if (dateMatch) {
+      lastSeenRawDate = dateMatch[0];
+    }
     const parsedAmt = parseAmountToCents(amountExtracted.valueStr);
     if (!parsedAmt || parsedAmt.amountCents === 0) continue;
 
@@ -568,9 +607,9 @@ export function extractRawEntriesFromSpatialLines(
     );
 
     // G5: Remove apenas a data capturada e a ÚLTIMA ocorrência do valor (nunca executa regex global C/D sobre nomes como "C&A" ou "D PEDRO")
-    const dateStart = dateMatch.index;
-    const withoutDate =
-      text.slice(0, dateStart) + text.slice(dateStart + rawDateStr.length);
+    const withoutDate = dateMatch
+      ? text.slice(0, dateMatch.index) + text.slice(dateMatch.index + rawDateStr.length)
+      : text;
     const lastAmtIdx = withoutDate.lastIndexOf(amountExtracted.fullMatch);
     const rawDesc = (
       lastAmtIdx >= 0

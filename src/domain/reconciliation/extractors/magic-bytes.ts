@@ -1,12 +1,17 @@
 /**
  * Sniffer de Magic Bytes e Cabeçalho de Conteúdo (Estágio 0).
  * Identifica o formato real do arquivo antes de confiar na extensão ou MIME type,
- * validando ZIP OOXML (impede falsos positivos em .docx/.zip) e suportando HEIC/HEIF/AVIF.
+ * validando ZIP OOXML/ODS, diferenciando `.xls` BIFF8 de `.xlsx` criptografado (MS-OFFCRYPTO)
+ * e suportando imagens rasterizadas (incl. HEIC/HEIF/AVIF).
  */
+
+import { isEncryptedOle2OfficeFile } from "./ole2-crypto";
 
 export type DetectedFileKind =
   | "pdf"
   | "xlsx"
+  | "encrypted_xlsx"
+  | "ods"
   | "xls_biff8"
   | "unsupported_archive"
   | "ofx"
@@ -41,14 +46,10 @@ function isXlsxEntryName(name: string): boolean {
   return lower === "xl/workbook.xml" || lower.startsWith("xl/worksheets/");
 }
 
-/**
- * Valida se um arquivo ZIP (`PK\x03\x04`) contém estrutura OOXML de planilha (`xl/workbook.xml` ou `xl/worksheets/`),
- * percorrendo o Diretório Central (ou cabeçalhos locais quando truncado).
- */
-function hasValidXlsxZipEntries(bytes: Uint8Array): boolean {
+function collectZipEntryNames(bytes: Uint8Array): Set<string> {
   const decoder = new TextDecoder("utf-8");
+  const names = new Set<string>();
 
-  // 1. Inspeção pelo End of Central Directory (EOCD) -> Central Directory
   const minEocd = 22;
   if (bytes.length >= minEocd) {
     const maxScan = Math.max(0, bytes.length - 65_557);
@@ -77,8 +78,7 @@ function hasValidXlsxZipEntries(bytes: Uint8Array): boolean {
           const nameStart = cursor + 46;
           const nameEnd = nameStart + nameLen;
           if (nameEnd > bytes.length) break;
-          const name = decoder.decode(bytes.subarray(nameStart, nameEnd));
-          if (isXlsxEntryName(name)) return true;
+          names.add(decoder.decode(bytes.subarray(nameStart, nameEnd)).trim().toLowerCase());
           cursor = nameEnd + extraLen + commentLen;
         }
         break;
@@ -86,7 +86,8 @@ function hasValidXlsxZipEntries(bytes: Uint8Array): boolean {
     }
   }
 
-  // 2. Varredura defensiva de cabeçalhos locais PK\x03\x04 (ZIPs sem EOCD ou streaming)
+  if (names.size > 0) return names;
+
   let localCursor = 0;
   let checkedHeaders = 0;
   while (localCursor + 30 <= bytes.length && checkedHeaders < 128) {
@@ -104,13 +105,37 @@ function hasValidXlsxZipEntries(bytes: Uint8Array): boolean {
     const nameStart = localCursor + 30;
     const nameEnd = nameStart + nameLen;
     if (nameEnd > bytes.length) break;
-    const name = decoder.decode(bytes.subarray(nameStart, nameEnd));
-    if (isXlsxEntryName(name)) return true;
+    names.add(decoder.decode(bytes.subarray(nameStart, nameEnd)).trim().toLowerCase());
     checkedHeaders += 1;
     localCursor = nameEnd + extraLen + compSize;
   }
 
-  return false;
+  return names;
+}
+
+function classifyZipArchiveKind(bytes: Uint8Array, fileNameOrType: string): "xlsx" | "ods" | "unsupported_archive" {
+  const names = collectZipEntryNames(bytes);
+  for (const name of names) {
+    if (isXlsxEntryName(name)) return "xlsx";
+  }
+
+  const hasContentXml = names.has("content.xml");
+  if (hasContentXml) {
+    const headText = new TextDecoder("iso-8859-1").decode(
+      bytes.subarray(0, Math.min(bytes.length, 512)),
+    );
+    const lowerName = fileNameOrType.trim().toLowerCase();
+    if (
+      headText.includes("oasis.opendocument.spreadsheet") ||
+      lowerName.endsWith(".ods") ||
+      lowerName.includes("opendocument.spreadsheet") ||
+      (names.has("mimetype") && names.has("meta-inf/manifest.xml") && !headText.includes("opendocument.text") && !headText.includes("opendocument.presentation"))
+    ) {
+      return "ods";
+    }
+  }
+
+  return "unsupported_archive";
 }
 
 const ISO_BMFF_IMAGE_BRANDS = new Set([
@@ -126,7 +151,6 @@ const ISO_BMFF_IMAGE_BRANDS = new Set([
 
 function isHeicOrAvifBytes(bytes: Uint8Array): boolean {
   if (bytes.length < 12) return false;
-  // Box `ftyp` nos bytes 4..7
   if (
     bytes[4] !== 0x66 ||
     bytes[5] !== 0x74 ||
@@ -145,7 +169,6 @@ function isHeicOrAvifBytes(bytes: Uint8Array): boolean {
     return true;
   }
 
-  // Verifica marcas compatíveis dentro do tamanho do box `ftyp` (ex.: major brand "isom" / compatible "avif")
   const boxSize = Math.min(bytes.length, readUint32LE(bytes, 0) || 32);
   for (let offset = 16; offset + 4 <= boxSize; offset += 4) {
     const compatBrand = String.fromCharCode(
@@ -173,14 +196,14 @@ export function detectFileKindFromBytes(
     return "pdf";
   }
 
-  // 2. ZIP OOXML: PK\x03\x04 precisa conter estrutura XLSX real (evita .docx/.zip disfarçado)
+  // 2. ZIP OOXML (.xlsx/.xlsm) ou OpenDocument Spreadsheet (.ods)
   if (startsWithBytes(bytes, [0x50, 0x4b, 0x03, 0x04])) {
-    return hasValidXlsxZipEntries(bytes) ? "xlsx" : "unsupported_archive";
+    return classifyZipArchiveKind(bytes, fileNameOrType);
   }
 
-  // 3. OLE2 / BIFF8 (.xls legado Excel 97-2003): D0 CF 11 E0
+  // 3. OLE2 / CFBF: distingue OOXML criptografado (MS-OFFCRYPTO) de Excel BIFF8 legado (.xls)
   if (startsWithBytes(bytes, [0xd0, 0xcf, 0x11, 0xe0])) {
-    return "xls_biff8";
+    return isEncryptedOle2OfficeFile(bytes) ? "encrypted_xlsx" : "xls_biff8";
   }
 
   // 4. Imagens rasterizadas (PNG, JPEG, WEBP, HEIC/HEIF/AVIF)
@@ -239,15 +262,21 @@ export function detectFileKindFromBytes(
   ) {
     return "image";
   }
+  if (lower.endsWith(".ods") || lower.includes("opendocument.spreadsheet")) {
+    return "ods";
+  }
   if (
     lower.endsWith(".xlsx") ||
+    lower.endsWith(".xlsm") ||
     lower.endsWith(".xls") ||
     lower.endsWith(".html") ||
     lower.endsWith(".htm") ||
     lower.includes("spreadsheetml") ||
     lower.includes("ms-excel")
   ) {
-    return lower.endsWith(".xlsx") ? "xlsx" : "html_or_xml_sheet";
+    return lower.endsWith(".xlsx") || lower.endsWith(".xlsm")
+      ? "xlsx"
+      : "html_or_xml_sheet";
   }
 
   return "text_or_csv";

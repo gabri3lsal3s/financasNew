@@ -4,7 +4,7 @@ import { Button, Dropzone, FormField, PasswordInput, Tabs, Textarea } from "@/co
 import { readClipboardText } from "@/services/clipboard";
 
 export const STATEMENT_FILE_ACCEPT =
-  ".pdf,.csv,.ofx,.xlsx,.xls,.txt,.tsv,.html,.htm,.png,.jpg,.jpeg,.webp,.avif,application/pdf,text/csv,text/plain,text/html,text/comma-separated-values,text/tab-separated-values,application/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/x-ofx,application/ofx,text/ofx,image/png,image/jpeg,image/webp,image/avif,application/octet-stream,*/*";
+  ".pdf,.csv,.ofx,.xlsx,.xlsm,.xls,.ods,.txt,.tsv,.html,.htm,.png,.jpg,.jpeg,.webp,.avif,application/pdf,text/csv,text/plain,text/html,text/comma-separated-values,text/tab-separated-values,application/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.oasis.opendocument.spreadsheet,application/x-ofx,application/ofx,text/ofx,image/png,image/jpeg,image/webp,image/avif,application/octet-stream,*/*";
 
 type UploadInputMode = "file" | "paste";
 
@@ -40,7 +40,12 @@ export function StatementUploadStep({
   const uid = useId();
   const [mode, setMode] = useState<UploadInputMode>("file");
   const [pastedText, setPastedText] = useState("");
-  const [pdfPassword, setPdfPassword] = useState("");
+  const [filePassword, setFilePassword] = useState("");
+  const isPendingSpreadsheet = pendingPasswordFile
+    ? /\.(xlsx|xlsm|xls|ods)$/i.test(pendingPasswordFile.name) ||
+      pendingPasswordFile.type.toLowerCase().includes("spreadsheet") ||
+      pendingPasswordFile.type.toLowerCase().includes("excel")
+    : false;
 
   const handleDrop = (files: File[]) => {
     if (isProcessing || files.length === 0) return;
@@ -65,11 +70,11 @@ export function StatementUploadStep({
     onTextSubmit(pastedText);
   };
 
-  const handleUnlockPdf = (e: React.FormEvent) => {
+  const handleUnlockFile = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!pdfPassword.trim() || !onPasswordSubmit) return;
-    onPasswordSubmit(pdfPassword);
-    setPdfPassword("");
+    if (!filePassword.trim() || !onPasswordSubmit) return;
+    onPasswordSubmit(filePassword);
+    setFilePassword("");
   };
 
   const modeTabs = [
@@ -81,14 +86,16 @@ export function StatementUploadStep({
     <div className="space-y-3.5 pt-1">
       {pendingPasswordFile ? (
         <form
-          onSubmit={handleUnlockPdf}
+          onSubmit={handleUnlockFile}
           className="rounded-xl border border-warning/30 bg-surface p-4 space-y-3 shadow-xs animate-in fade-in duration-200"
         >
           <div className="flex items-start gap-2.5">
             <Lock className="size-4 text-warning-strong shrink-0 mt-0.5" aria-hidden="true" />
             <div className="space-y-1 flex-1 min-w-0">
               <h3 className="text-sm font-semibold text-foreground line-clamp-2 break-words">
-                Fatura em PDF protegida por senha
+                {isPendingSpreadsheet
+                  ? "Planilha protegida por senha"
+                  : "Fatura em PDF protegida por senha"}
               </h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 O arquivo <strong className="text-foreground">{pendingPasswordFile.name}</strong> está
@@ -98,18 +105,22 @@ export function StatementUploadStep({
           </div>
 
           <FormField
-            label="Senha do arquivo PDF"
-            htmlFor={`${uid}-pdf-pass`}
+            label={isPendingSpreadsheet ? "Senha da planilha" : "Senha do arquivo PDF"}
+            htmlFor={`${uid}-file-pass`}
             helperText="A senha não é armazenada e permanece apenas em memória durante a leitura."
             error={passwordError ?? undefined}
           >
             <PasswordInput
-              id={`${uid}-pdf-pass`}
-              value={pdfPassword}
-              onChange={(e) => setPdfPassword(e.target.value)}
-              placeholder="Digite a senha do PDF"
+              id={`${uid}-file-pass`}
+              value={filePassword}
+              onChange={(e) => setFilePassword(e.target.value)}
+              placeholder={
+                isPendingSpreadsheet
+                  ? "Digite a senha da planilha (ex.: dígitos do CPF)"
+                  : "Digite a senha do PDF"
+              }
               disabled={isProcessing}
-              aria-label="Senha do arquivo PDF"
+              aria-label={isPendingSpreadsheet ? "Senha da planilha" : "Senha do arquivo PDF"}
             />
           </FormField>
 
@@ -121,7 +132,7 @@ export function StatementUploadStep({
                 size="sm"
                 disabled={isProcessing}
                 onClick={() => {
-                  setPdfPassword("");
+                  setFilePassword("");
                   onPasswordCancel();
                 }}
               >
@@ -131,7 +142,7 @@ export function StatementUploadStep({
             <Button
               type="submit"
               size="sm"
-              disabled={isProcessing || !pdfPassword.trim()}
+              disabled={isProcessing || !filePassword.trim()}
               className="gap-1.5"
             >
               {isProcessing ? (
@@ -164,7 +175,7 @@ export function StatementUploadStep({
               onFiles={handleDrop}
               disabled={isProcessing}
               label="Selecione o arquivo da fatura (PDF, CSV, OFX, Excel ou print)"
-              hint="Aceita PDF, CSV, OFX, Excel (.xlsx/.xls) e de 1 a 6 prints da fatura"
+              hint="Aceita PDF, CSV, OFX, Excel (.xlsx/.xlsm/.xls), ODS e de 1 a 6 prints da fatura"
             />
           ) : (
             <div className="space-y-3 rounded-xl border border-border/80 bg-surface p-3.5 shadow-xs">

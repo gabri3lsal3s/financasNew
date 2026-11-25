@@ -1,6 +1,7 @@
 import type { RawParsedRow } from "../contracts";
 import { parseBiff8XlsToRows } from "./biff8-xls-extractor";
 import { decodeBufferToString, parseCsvToRows } from "./csv-extractor";
+import { EncryptedSpreadsheetError, isEncryptedOle2OfficeFile } from "./ole2-crypto";
 import { normalizeDateToISO, parseAmountToCents } from "./type-sniffer";
 
 interface ZipCentralEntry {
@@ -10,6 +11,22 @@ interface ZipCentralEntry {
   uncompressedSize: number;
   localHeaderOffset: number;
 }
+
+export interface ParsedSpreadsheetSheet {
+  name: string;
+  rows: RawParsedRow[];
+  score: number;
+}
+
+export interface ParsedSpreadsheetWorkbook {
+  sheets: ParsedSpreadsheetSheet[];
+  activeSheetIndex: number;
+  rows: RawParsedRow[];
+  aggregatedMultipleSheets: boolean;
+}
+
+const SUMMARY_SHEET_NAME_REGEX =
+  /\b(?:resumo|summary|capa|overview|dashboard|gr[aá]ficos?|charts?|totais?|consolida(?:do|cao|ção)|[ií]ndice|home|capa)\b/i;
 
 function readUint16LE(bytes: Uint8Array, offset: number): number {
   return (bytes[offset] ?? 0) | ((bytes[offset + 1] ?? 0) << 8);
@@ -165,12 +182,15 @@ function columnLettersToIndex(cellRef: string): number {
   return col - 1;
 }
 
-function excelSerialToIsoDate(serial: number): string | null {
-  if (!Number.isFinite(serial) || serial < 34_700 || serial > 60_265) {
+function excelSerialToIsoDate(serial: number, isDate1904 = false): string | null {
+  const minSerial = isDate1904 ? 33_200 : 34_700;
+  const maxSerial = isDate1904 ? 58_800 : 60_265;
+  if (!Number.isFinite(serial) || serial < minSerial || serial > maxSerial) {
     return null;
   }
   const wholeDays = Math.floor(serial);
-  const utcMs = Date.UTC(1899, 11, 30) + wholeDays * 86_400_000;
+  const epochMs = isDate1904 ? Date.UTC(1904, 0, 1) : Date.UTC(1899, 11, 30);
+  const utcMs = epochMs + wholeDays * 86_400_000;
   const dt = new Date(utcMs);
   const y = dt.getUTCFullYear();
   const m = String(dt.getUTCMonth() + 1).padStart(2, "0");
@@ -279,11 +299,10 @@ function parseDateStyleIndicesFromStylesXml(stylesXml: string): Set<number> {
   const xfNodes = Array.from(cellXfs.getElementsByTagName("xf"));
   xfNodes.forEach((xf, styleIdx) => {
     const numFmtId = Number.parseInt(xf.getAttribute("numFmtId") ?? "", 10);
-    const isBuiltInDate =
+    const isBuiltinDate =
       (numFmtId >= 14 && numFmtId <= 22) ||
-      (numFmtId >= 27 && numFmtId <= 36) ||
       (numFmtId >= 45 && numFmtId <= 47);
-    if (isBuiltInDate || customDateFmtIds.has(numFmtId)) {
+    if (isBuiltinDate || customDateFmtIds.has(numFmtId)) {
       dateStyles.add(styleIdx);
     }
   });
@@ -301,10 +320,69 @@ function parseSharedStringsXml(xml: string): string[] {
   });
 }
 
+interface ResolvedWorkbookManifest {
+  isDate1904: boolean;
+  sheets: Array<{ name: string; targetPath: string }>;
+}
+
+function normalizeOoxmlTargetPath(rawTarget: string): string {
+  const cleaned = rawTarget.trim().replace(/^\/+/, "");
+  if (cleaned.toLowerCase().startsWith("xl/")) return cleaned;
+  if (cleaned.startsWith("../")) return cleaned.replace(/^\.\.\//, "");
+  return `xl/${cleaned}`;
+}
+
+function resolveWorkbookManifest(
+  workbookXml: string,
+  relsXml: string,
+): ResolvedWorkbookManifest {
+  if (!workbookXml || typeof DOMParser === "undefined") {
+    return { isDate1904: false, sheets: [] };
+  }
+  const wbDoc = new DOMParser().parseFromString(workbookXml, "application/xml");
+  const wbPr = wbDoc.getElementsByTagName("workbookPr")[0];
+  const date1904Attr = (wbPr?.getAttribute("date1904") ?? "").trim().toLowerCase();
+  const isDate1904 = date1904Attr === "1" || date1904Attr === "true";
+
+  const relMap = new Map<string, string>();
+  if (relsXml) {
+    const relsDoc = new DOMParser().parseFromString(relsXml, "application/xml");
+    const relNodes = Array.from(relsDoc.getElementsByTagName("Relationship"));
+    for (const rel of relNodes) {
+      const id = rel.getAttribute("Id") ?? "";
+      const target = rel.getAttribute("Target") ?? "";
+      const type = (rel.getAttribute("Type") ?? "").toLowerCase();
+      if (id && target && (!type || type.includes("worksheet"))) {
+        relMap.set(id, normalizeOoxmlTargetPath(target));
+      }
+    }
+  }
+
+  const sheets: Array<{ name: string; targetPath: string }> = [];
+  const sheetNodes = Array.from(wbDoc.getElementsByTagName("sheet"));
+  sheetNodes.forEach((node, idx) => {
+    const state = (node.getAttribute("state") ?? "").trim().toLowerCase();
+    if (state === "hidden" || state === "veryhidden") return;
+    const name = (node.getAttribute("name") ?? `Aba ${idx + 1}`).trim() || `Aba ${idx + 1}`;
+    const relId =
+      node.getAttribute("r:id") ??
+      node.getAttributeNS(
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+        "id",
+      ) ??
+      "";
+    const targetPath = (relId ? relMap.get(relId) : undefined) ?? `xl/worksheets/sheet${idx + 1}.xml`;
+    sheets.push({ name, targetPath });
+  });
+
+  return { isDate1904, sheets };
+}
+
 function parseWorksheetXmlToRows(
   sheetXml: string,
   sharedStrings: readonly string[],
   dateStyleIndices: ReadonlySet<number>,
+  isDate1904 = false,
 ): RawParsedRow[] {
   if (!sheetXml || typeof DOMParser === "undefined") return [];
   const doc = new DOMParser().parseFromString(sheetXml, "application/xml");
@@ -339,7 +417,7 @@ function parseWorksheetXmlToRows(
         } else if (cellType === "" || cellType === "n") {
           if (Number.isFinite(styleIdx) && dateStyleIndices.has(styleIdx)) {
             const serial = Number.parseFloat(vText);
-            value = excelSerialToIsoDate(serial) ?? vText;
+            value = excelSerialToIsoDate(serial, isDate1904) ?? vText;
           } else {
             value = normalizeSpreadsheetNumericCellValue(vText);
           }
@@ -368,6 +446,104 @@ function parseWorksheetXmlToRows(
   }
 
   return rows;
+}
+
+function parseOdsContentXmlToSheets(contentXml: string): ParsedSpreadsheetSheet[] {
+  if (!contentXml || typeof DOMParser === "undefined") return [];
+  const doc = new DOMParser().parseFromString(contentXml, "application/xml");
+  const tableNodes = Array.from(doc.getElementsByTagName("table:table"));
+  const fallbackTables =
+    tableNodes.length > 0 ? tableNodes : Array.from(doc.getElementsByTagName("table"));
+
+  const sheets: ParsedSpreadsheetSheet[] = [];
+
+  fallbackTables.forEach((tableNode, tableIdx) => {
+    const sheetName =
+      (tableNode.getAttribute("table:name") ?? tableNode.getAttribute("name") ?? "").trim() ||
+      `Aba ${tableIdx + 1}`;
+    const rowNodes = Array.from(tableNode.getElementsByTagName("table:table-row"));
+    const effectiveRowNodes =
+      rowNodes.length > 0 ? rowNodes : Array.from(tableNode.getElementsByTagName("table-row"));
+
+    const rows: RawParsedRow[] = [];
+    let rowIndex = 0;
+
+    for (const rowNode of effectiveRowNodes) {
+      const rawRepeatRows = Number.parseInt(
+        rowNode.getAttribute("table:number-rows-repeated") ?? "1",
+        10,
+      );
+      const repeatRows = Number.isFinite(rawRepeatRows) && rawRepeatRows > 0 ? rawRepeatRows : 1;
+
+      const cellNodes = Array.from(rowNode.children).filter(
+        (el) =>
+          el.tagName === "table:table-cell" ||
+          el.tagName === "table-cell" ||
+          el.tagName === "table:covered-table-cell",
+      );
+      if (cellNodes.length === 0) continue;
+
+      const cells: string[] = [];
+      for (const cellNode of cellNodes) {
+        const rawRepeatCols = Number.parseInt(
+          cellNode.getAttribute("table:number-columns-repeated") ?? "1",
+          10,
+        );
+        const repeatCols =
+          Number.isFinite(rawRepeatCols) && rawRepeatCols > 0 ? rawRepeatCols : 1;
+
+        const valueType = (cellNode.getAttribute("office:value-type") ?? "").trim().toLowerCase();
+        const dateVal = (cellNode.getAttribute("office:date-value") ?? "").trim();
+        const numVal = (cellNode.getAttribute("office:value") ?? "").trim();
+        const textContent = (cellNode.textContent ?? "").replace(/\s+/g, " ").trim();
+
+        let value = textContent;
+        if (valueType === "date" && dateVal) {
+          const isoMatch = /^(\d{4}-\d{2}-\d{2})/.exec(dateVal);
+          value = isoMatch?.[1] ?? textContent;
+        } else if ((valueType === "currency" || valueType === "float") && !textContent && numVal) {
+          value = normalizeSpreadsheetNumericCellValue(numVal);
+        }
+
+        if (!value) {
+          if (repeatCols <= 32) {
+            for (let k = 0; k < repeatCols; k++) cells.push("");
+          }
+          continue;
+        }
+
+        const boundedCols = Math.min(repeatCols, 32);
+        for (let k = 0; k < boundedCols; k++) {
+          cells.push(value);
+        }
+      }
+
+      while (cells.length > 0 && !(cells[cells.length - 1] ?? "").trim()) {
+        cells.pop();
+      }
+
+      if (cells.some((c) => c.trim().length > 0)) {
+        const boundedRows = Math.min(repeatRows, 50);
+        for (let r = 0; r < boundedRows; r++) {
+          rows.push({
+            rowIndex: rowIndex++,
+            rawText: cells.join("\t"),
+            cells: [...cells],
+          });
+        }
+      }
+    }
+
+    if (rows.length > 0) {
+      sheets.push({
+        name: sheetName,
+        rows,
+        score: scoreWorksheetRows(rows),
+      });
+    }
+  });
+
+  return sheets;
 }
 
 function parseHtmlTableToRows(html: string): RawParsedRow[] {
@@ -442,89 +618,236 @@ function parseSpreadsheetMlXmlToRows(xml: string): RawParsedRow[] {
   return rows;
 }
 
+function selectOrAggregateWorkbookSheets(
+  sheets: ParsedSpreadsheetSheet[],
+): ParsedSpreadsheetWorkbook {
+  if (sheets.length === 0) {
+    return {
+      sheets: [],
+      activeSheetIndex: 0,
+      rows: [],
+      aggregatedMultipleSheets: false,
+    };
+  }
+
+  let bestIdx = 0;
+  let bestScore = -1;
+  sheets.forEach((sheet, idx) => {
+    const penalty = SUMMARY_SHEET_NAME_REGEX.test(sheet.name) ? -0.5 : 0;
+    const effective = sheet.score + penalty;
+    if (effective > bestScore || (sheets[bestIdx]!.rows.length === 0 && sheet.rows.length > 0)) {
+      bestScore = effective;
+      bestIdx = idx;
+    }
+  });
+
+  const transactionalSheets = sheets.filter(
+    (s) => s.score >= 2 && !SUMMARY_SHEET_NAME_REGEX.test(s.name),
+  );
+  if (transactionalSheets.length > 1) {
+    const primaryCols = Math.max(
+      ...transactionalSheets[0]!.rows.slice(0, 20).map((r) => r.cells.length),
+      0,
+    );
+    const compatible = transactionalSheets.filter((s) => {
+      const cols = Math.max(...s.rows.slice(0, 20).map((r) => r.cells.length), 0);
+      return Math.abs(cols - primaryCols) <= 1;
+    });
+    if (compatible.length > 1) {
+      const seenSheetFingerprints = new Set<string>();
+      const mergedRows: RawParsedRow[] = [];
+      let nextIdx = 0;
+      let includedSheets = 0;
+      for (const sheet of compatible) {
+        const fp = sheet.rows
+          .slice(0, 5)
+          .map((r) => r.rawText)
+          .join("\n");
+        if (seenSheetFingerprints.has(fp)) continue;
+        seenSheetFingerprints.add(fp);
+        includedSheets += 1;
+        for (const r of sheet.rows) {
+          mergedRows.push({
+            rowIndex: nextIdx++,
+            rawText: r.rawText,
+            cells: r.cells,
+          });
+        }
+      }
+      if (includedSheets > 1) {
+        return {
+          sheets,
+          activeSheetIndex: -1,
+          rows: mergedRows,
+          aggregatedMultipleSheets: true,
+        };
+      }
+    }
+  }
+
+  return {
+    sheets,
+    activeSheetIndex: bestIdx,
+    rows: sheets[bestIdx]?.rows ?? [],
+    aggregatedMultipleSheets: false,
+  };
+}
+
 export function isSpreadsheetOrHtmlFileName(fileNameOrType: string): boolean {
   const lower = fileNameOrType.trim().toLowerCase();
   return (
     lower.endsWith(".xlsx") ||
+    lower.endsWith(".xlsm") ||
     lower.endsWith(".xls") ||
+    lower.endsWith(".ods") ||
     lower.endsWith(".html") ||
     lower.endsWith(".htm") ||
     lower.includes("spreadsheetml") ||
+    lower.includes("opendocument.spreadsheet") ||
     lower.includes("ms-excel")
   );
 }
 
 /**
- * Extrator "burro" de planilhas (.xlsx, .xls HTML/XML/TSV e .html) emitindo `RawParsedRow[]`.
+ * Extrator de planilhas com metadados de abas (.xlsx, .xlsm, .ods, .xls BIFF8/HTML/XML e .html).
  */
-export async function parseSpreadsheetOrHtmlToRows(
+export async function parseSpreadsheetWorkbook(
   input: ArrayBuffer | string,
-): Promise<RawParsedRow[]> {
+): Promise<ParsedSpreadsheetWorkbook> {
   if (typeof input !== "string") {
     const bytes = new Uint8Array(input);
     if (isBiff8Excel(bytes)) {
-      return parseBiff8XlsToRows(bytes, scoreWorksheetRows);
+      if (isEncryptedOle2OfficeFile(bytes)) {
+        throw new EncryptedSpreadsheetError("ENCRYPTED_SPREADSHEET");
+      }
+      const biffRows = parseBiff8XlsToRows(bytes, scoreWorksheetRows);
+      return selectOrAggregateWorkbookSheets(
+        biffRows.length > 0
+          ? [{ name: "Planilha", rows: biffRows, score: scoreWorksheetRows(biffRows) }]
+          : [],
+      );
     }
     if (isZipArchive(bytes)) {
       const entries = parseZipCentralDirectory(bytes);
-      const sharedEntry = entries.find(
-        (e) => e.name.toLowerCase() === "xl/sharedstrings.xml",
-      );
-      const stylesEntry = entries.find(
-        (e) => e.name.toLowerCase() === "xl/styles.xml",
-      );
-      const sheetEntries = entries
-        .filter((e) => /^xl\/worksheets\/sheet\d+\.xml$/i.test(e.name))
-        .sort((a, b) => {
-          const numA = Number.parseInt(/sheet(\d+)\.xml$/i.exec(a.name)?.[1] ?? "0", 10);
-          const numB = Number.parseInt(/sheet(\d+)\.xml$/i.exec(b.name)?.[1] ?? "0", 10);
-          return numA - numB;
-        });
-
-      if (sheetEntries.length === 0) return [];
-
-      const [sharedXml, stylesXml, ...sheetXmls] = await Promise.all([
-        sharedEntry ? extractZipEntryText(bytes, sharedEntry) : Promise.resolve(""),
-        stylesEntry ? extractZipEntryText(bytes, stylesEntry) : Promise.resolve(""),
-        ...sheetEntries.map((entry) => extractZipEntryText(bytes, entry)),
-      ]);
-
-      const sharedStrings = parseSharedStringsXml(sharedXml);
-      const dateStyleIndices = parseDateStyleIndicesFromStylesXml(stylesXml);
-
-      let bestRows: RawParsedRow[] = [];
-      let bestScore = -1;
-
-      for (const sheetXml of sheetXmls) {
-        const candidateRows = parseWorksheetXmlToRows(
-          sheetXml,
-          sharedStrings,
-          dateStyleIndices,
-        );
-        const score = scoreWorksheetRows(candidateRows);
-        if (score > bestScore || (bestRows.length === 0 && candidateRows.length > 0)) {
-          bestScore = score;
-          bestRows = candidateRows;
-        }
+      const entryByLower = new Map<string, ZipCentralEntry>();
+      for (const entry of entries) {
+        entryByLower.set(entry.name.toLowerCase(), entry);
       }
 
-      return bestRows;
+      const hasXlsxStructure =
+        entryByLower.has("xl/workbook.xml") ||
+        entries.some((e) => e.name.toLowerCase().startsWith("xl/worksheets/"));
+
+      if (hasXlsxStructure) {
+        const workbookEntry = entryByLower.get("xl/workbook.xml");
+        const relsEntry = entryByLower.get("xl/_rels/workbook.xml.rels");
+        const sharedEntry = entryByLower.get("xl/sharedstrings.xml");
+        const stylesEntry = entryByLower.get("xl/styles.xml");
+
+        const [workbookXml, relsXml, sharedXml, stylesXml] = await Promise.all([
+          workbookEntry ? extractZipEntryText(bytes, workbookEntry) : Promise.resolve(""),
+          relsEntry ? extractZipEntryText(bytes, relsEntry) : Promise.resolve(""),
+          sharedEntry ? extractZipEntryText(bytes, sharedEntry) : Promise.resolve(""),
+          stylesEntry ? extractZipEntryText(bytes, stylesEntry) : Promise.resolve(""),
+        ]);
+
+        const manifest = resolveWorkbookManifest(workbookXml, relsXml);
+        const sharedStrings = parseSharedStringsXml(sharedXml);
+        const dateStyleIndices = parseDateStyleIndicesFromStylesXml(stylesXml);
+
+        const orderedSheetTargets: Array<{ name: string; entry: ZipCentralEntry }> = [];
+        const usedTargets = new Set<string>();
+
+        for (const item of manifest.sheets) {
+          const found = entryByLower.get(item.targetPath.toLowerCase());
+          if (found && !usedTargets.has(found.name.toLowerCase())) {
+            usedTargets.add(found.name.toLowerCase());
+            orderedSheetTargets.push({ name: item.name, entry: found });
+          }
+        }
+
+        if (orderedSheetTargets.length === 0) {
+          const fallbackSheets = entries
+            .filter((e) => /^xl\/worksheets\/sheet\d+\.xml$/i.test(e.name))
+            .sort((a, b) => {
+              const numA = Number.parseInt(/sheet(\d+)\.xml$/i.exec(a.name)?.[1] ?? "0", 10);
+              const numB = Number.parseInt(/sheet(\d+)\.xml$/i.exec(b.name)?.[1] ?? "0", 10);
+              return numA - numB;
+            });
+          fallbackSheets.forEach((entry, idx) => {
+            orderedSheetTargets.push({ name: `Aba ${idx + 1}`, entry });
+          });
+        }
+
+        if (orderedSheetTargets.length === 0) {
+          return selectOrAggregateWorkbookSheets([]);
+        }
+
+        const sheetXmls = await Promise.all(
+          orderedSheetTargets.map((item) => extractZipEntryText(bytes, item.entry)),
+        );
+        const parsedSheets: ParsedSpreadsheetSheet[] = orderedSheetTargets
+          .map((item, idx) => {
+            const rows = parseWorksheetXmlToRows(
+              sheetXmls[idx] ?? "",
+              sharedStrings,
+              dateStyleIndices,
+              manifest.isDate1904,
+            );
+            return { name: item.name, rows, score: scoreWorksheetRows(rows) };
+          })
+          .filter((s) => s.rows.length > 0);
+
+        return selectOrAggregateWorkbookSheets(parsedSheets);
+      }
+
+      const odsContentEntry = entryByLower.get("content.xml");
+      if (odsContentEntry) {
+        const contentXml = await extractZipEntryText(bytes, odsContentEntry);
+        const odsSheets = parseOdsContentXmlToSheets(contentXml);
+        return selectOrAggregateWorkbookSheets(odsSheets);
+      }
+
+      return selectOrAggregateWorkbookSheets([]);
     }
   }
 
   const text = typeof input === "string" ? input : decodeBufferToString(input);
   const trimmed = text.trim();
-  if (!trimmed) return [];
+  if (!trimmed) return selectOrAggregateWorkbookSheets([]);
 
   if (/<table[\s>]/i.test(trimmed) || /<tr[\s>]/i.test(trimmed)) {
     const htmlRows = parseHtmlTableToRows(trimmed);
-    if (htmlRows.length > 0) return htmlRows;
+    if (htmlRows.length > 0) {
+      return selectOrAggregateWorkbookSheets([
+        { name: "Tabela HTML", rows: htmlRows, score: scoreWorksheetRows(htmlRows) },
+      ]);
+    }
   }
 
   if (/<Workbook[\s>]/i.test(trimmed) && /<Row[\s>]/i.test(trimmed)) {
     const xmlRows = parseSpreadsheetMlXmlToRows(trimmed);
-    if (xmlRows.length > 0) return xmlRows;
+    if (xmlRows.length > 0) {
+      return selectOrAggregateWorkbookSheets([
+        { name: "Planilha XML", rows: xmlRows, score: scoreWorksheetRows(xmlRows) },
+      ]);
+    }
   }
 
-  return parseCsvToRows(trimmed);
+  const csvRows = parseCsvToRows(trimmed);
+  return selectOrAggregateWorkbookSheets(
+    csvRows.length > 0
+      ? [{ name: "Dados", rows: csvRows, score: scoreWorksheetRows(csvRows) }]
+      : [],
+  );
+}
+
+/**
+ * Extrator "burro" de planilhas (.xlsx, .xlsm, .ods, .xls BIFF8/HTML/XML/TSV e .html) emitindo `RawParsedRow[]`.
+ */
+export async function parseSpreadsheetOrHtmlToRows(
+  input: ArrayBuffer | string,
+): Promise<RawParsedRow[]> {
+  const workbook = await parseSpreadsheetWorkbook(input);
+  return workbook.rows;
 }

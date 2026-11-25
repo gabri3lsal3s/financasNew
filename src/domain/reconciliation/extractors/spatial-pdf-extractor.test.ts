@@ -428,8 +428,8 @@ describe("spatial-pdf-parser — Motor Espacial (X, Y) com 4 Barreiras Anti-Ruí
       const pageWidth = 600;
       const btgTokens: SpatialPdfToken[] = [
         // Cabeçalho largo bloqueando X = 40..560
-        { str: "Olá, Jose! Esta é a fatura do seu cartão BTG Pactual de Novembro no valor de R$ 830,38", x: 40, y: 780, width: 500, height: 12, fontSize: 12 },
-        { str: "Lançamentos do cartão físico | Jose Aparecido | Final 7182 Total do cartão: R$ 736,48", x: 40, y: 740, width: 510, height: 10, fontSize: 10 },
+        { str: "Olá, Titular! Esta é a fatura do seu cartão BTG Pactual de Novembro no valor de R$ 830,38", x: 40, y: 780, width: 500, height: 12, fontSize: 12 },
+        { str: "Lançamentos do cartão físico | Titular Exemplo | Final 1234 Total do cartão: R$ 736,48", x: 40, y: 740, width: 510, height: 10, fontSize: 10 },
         // Tabela 2 colunas
         { str: "02 Set", x: 40, y: 710, width: 30, height: 9, fontSize: 9 },
         { str: "Mulvi (2/2)", x: 85, y: 710, width: 60, height: 9, fontSize: 9 },
@@ -454,7 +454,7 @@ describe("spatial-pdf-parser — Motor Espacial (X, Y) com 4 Barreiras Anti-Ruí
         { str: "R$ 307,83", x: 505, y: 678, width: 45, height: 9, fontSize: 9 },
 
         // Cartão virtual
-        { str: "Lançamentos do cartão virtual | Jose Aparecido | Final 0864 Total do cartão: R$ 93,90", x: 40, y: 640, width: 510, height: 10, fontSize: 10 },
+        { str: "Lançamentos do cartão virtual | Titular Exemplo | Final 5678 Total do cartão: R$ 93,90", x: 40, y: 640, width: 510, height: 10, fontSize: 10 },
         { str: "21 Out", x: 40, y: 620, width: 30, height: 9, fontSize: 9 },
         { str: "Vivo", x: 85, y: 620, width: 25, height: 9, fontSize: 9 },
         { str: "R$ 49,00", x: 235, y: 620, width: 40, height: 9, fontSize: 9 },

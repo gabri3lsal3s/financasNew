@@ -11,9 +11,10 @@ import {
   extractStatementSummaryAmounts,
   extractTransactionsFromSpatialLines,
   findBestStatementBlueprint,
+  getStatementIngestionErrorMessage,
   isSpreadsheetOrHtmlFileName,
   MAX_STATEMENT_AI_CHUNKS,
-  parseSpreadsheetOrHtmlToRows,
+  parseSpreadsheetWorkbook,
   parseStatementInput,
   preprocessStatementTextForAi,
   sniffColumnMapping,
@@ -24,6 +25,7 @@ import {
   type ChecksumGateResult,
   type ColumnMapping,
   type DetectedStatementMetadata,
+  type ParsedSpreadsheetSheet,
   type RawEntrySignHint,
   type RawExtractedEntry,
   type RawParsedRow,
@@ -98,6 +100,9 @@ export interface ParsedStatementWithFallbackResult {
   aiDetectedMeta?: AiDetectedMetaSnapshot | null;
   rows: RawParsedRow[];
   mapping: ColumnMapping;
+  spreadsheetSheets?: ParsedSpreadsheetSheet[];
+  activeSheetIndex?: number;
+  failureMessage?: string;
   isOfx: boolean;
   usedAiFallback: boolean;
   extractionOrigin?: StatementExtractionOrigin;
@@ -263,14 +268,157 @@ export async function parseStatementWithPdfAiFallback(params: ParseStatementWith
   }
 
   const contentKind = typeof params.content !== "string" ? detectFileKindFromBytes(new Uint8Array(params.content), lowerName) : null;
-  if (isSpreadsheetOrHtmlFileName(lowerName) || contentKind === "xlsx" || contentKind === "xls_biff8" || contentKind === "html_or_xml_sheet") {
-    const sheetRows = await parseSpreadsheetOrHtmlToRows(params.content);
-    const mapping = sniffColumnMapping(sheetRows);
-    const mappingConfidence = evaluateMappingConfidence({ rows: sheetRows, mapping, isCacheHit: false });
-    const transactions = buildTransactionsFromRows(sheetRows, mapping, { cardId: params.cardId, competenceMonth: params.competenceMonth, closingDay }, "spreadsheet");
-    const summary = extractStatementSummaryAmounts(sheetRows.map((r) => r.rawText).join("\n"));
-    const localQuality = evaluateStatementExtractionQuality({ transactions, officialTotalCents: summary.invoiceTotalCents, cycleNetTargetCents: summary.cycleNetTargetCents, previousBalanceCents: summary.previousBalanceCents, paymentsCents: summary.paymentsCents, mappingConfidence, columnMapping: mapping });
-    return { transactions, rows: sheetRows, mapping, isOfx: false, usedAiFallback: false, extractionOrigin: localQuality.passed ? "local_verified" : "local_unverified", qualityGate: localQuality, printedTotalCents: summary.invoiceTotalCents, detectedMeta: buildMeta(params, sheetRows.slice(0, 15).map((r) => r.rawText).join("\n"), transactions, summary.invoiceTotalCents), isCacheHit: false, mappingConfidence };
+  if (
+    isSpreadsheetOrHtmlFileName(lowerName) ||
+    contentKind === "xlsx" ||
+    contentKind === "ods" ||
+    contentKind === "xls_biff8" ||
+    contentKind === "html_or_xml_sheet"
+  ) {
+    const workbook = await parseSpreadsheetWorkbook(params.content);
+    if (workbook.rows.length === 0) {
+      return {
+        transactions: [],
+        rows: [],
+        mapping: CANONICAL_AI_MAPPING,
+        spreadsheetSheets: workbook.sheets,
+        activeSheetIndex: workbook.activeSheetIndex,
+        isOfx: false,
+        usedAiFallback: false,
+        extractionOrigin: "local_unverified",
+        failureMessage: getStatementIngestionErrorMessage("no_tabular_rows_found"),
+        printedTotalCents: null,
+        isCacheHit: false,
+        mappingConfidence: 0,
+      };
+    }
+
+    let activeSheetIndex = workbook.activeSheetIndex;
+    let sheetRows = workbook.rows;
+    const rawTextSample = sheetRows.slice(0, 60).map((r) => r.rawText).join("\n");
+    let rawLines = sheetRows.map((r) => r.rawText);
+
+    const sheetFingerprint = computeStatementFingerprint({
+      rawText: rawTextSample,
+      fileKind: "xlsx",
+      fileName: params.fileNameOrType,
+      headerLines: rawLines,
+    });
+    let matchedSheetBp = findBestStatementBlueprint({
+      fingerprint: sheetFingerprint,
+      learnedBlueprints: params.learnedBlueprints ?? [],
+      fileKind: "xlsx",
+    });
+
+    if (!matchedSheetBp && workbook.sheets.length > 1 && (params.learnedBlueprints?.length ?? 0) > 0) {
+      for (let sIdx = 0; sIdx < workbook.sheets.length; sIdx++) {
+        const candSheet = workbook.sheets[sIdx]!;
+        const candLines = candSheet.rows.map((r) => r.rawText);
+        const candFp = computeStatementFingerprint({
+          rawText: candLines.slice(0, 60).join("\n"),
+          fileKind: "xlsx",
+          fileName: params.fileNameOrType,
+          headerLines: candLines,
+        });
+        const candMatch = findBestStatementBlueprint({
+          fingerprint: candFp,
+          learnedBlueprints: params.learnedBlueprints ?? [],
+          fileKind: "xlsx",
+        });
+        if (candMatch?.blueprint.tabularRules?.columnMapping) {
+          matchedSheetBp = candMatch;
+          activeSheetIndex = sIdx;
+          sheetRows = candSheet.rows;
+          rawLines = candLines;
+          break;
+        }
+      }
+    } else if (matchedSheetBp?.blueprint.tabularRules?.sheetName && workbook.sheets.length > 1) {
+      const targetIdx = workbook.sheets.findIndex(
+        (sheet) => sheet.name === matchedSheetBp?.blueprint.tabularRules?.sheetName,
+      );
+      if (targetIdx >= 0 && targetIdx !== activeSheetIndex) {
+        activeSheetIndex = targetIdx;
+        sheetRows = workbook.sheets[targetIdx]!.rows;
+        rawLines = sheetRows.map((r) => r.rawText);
+      }
+    }
+
+    const sniffedMapping = sniffColumnMapping(sheetRows);
+    const sniffedConf = evaluateMappingConfidence({ rows: sheetRows, mapping: sniffedMapping, isCacheHit: false });
+    const sniffedTxs = buildTransactionsFromRows(
+      sheetRows,
+      sniffedMapping,
+      { cardId: params.cardId, competenceMonth: params.competenceMonth, closingDay },
+      "spreadsheet",
+    );
+
+    const learnedMapping = matchedSheetBp?.blueprint.tabularRules?.columnMapping;
+    let finalMapping = sniffedMapping;
+    let finalConf = sniffedConf;
+    let finalTxs = sniffedTxs;
+    let usedLearnedBp = false;
+
+    if (matchedSheetBp && learnedMapping) {
+      const bpTxs = buildTransactionsFromRows(
+        sheetRows,
+        learnedMapping,
+        { cardId: params.cardId, competenceMonth: params.competenceMonth, closingDay },
+        "spreadsheet",
+      );
+      if (bpTxs.length > 0 && bpTxs.length >= sniffedTxs.length) {
+        finalMapping = learnedMapping;
+        finalConf = 100;
+        finalTxs = bpTxs;
+        usedLearnedBp = true;
+      }
+    }
+
+    const summary = extractStatementSummaryAmounts(rawLines.join("\n"));
+    const localQuality = evaluateStatementExtractionQuality({
+      transactions: finalTxs,
+      officialTotalCents: summary.invoiceTotalCents,
+      cycleNetTargetCents: summary.cycleNetTargetCents,
+      previousBalanceCents: summary.previousBalanceCents,
+      paymentsCents: summary.paymentsCents,
+      mappingConfidence: finalConf,
+      columnMapping: finalMapping,
+    });
+    const bp = matchedSheetBp?.blueprint;
+    return {
+      transactions: finalTxs,
+      rows: sheetRows,
+      mapping: finalMapping,
+      spreadsheetSheets: workbook.sheets,
+      activeSheetIndex,
+      isOfx: false,
+      usedAiFallback: false,
+      extractionOrigin: usedLearnedBp
+        ? "local_learned_blueprint"
+        : localQuality.passed
+          ? "local_verified"
+          : "local_unverified",
+      qualityGate: localQuality,
+      ...(usedLearnedBp && bp
+        ? {
+            appliedBlueprintId: bp.cloudId,
+            appliedBlueprintFingerprint: bp.fingerprint,
+            appliedBlueprintOrigin: bp.origin,
+          }
+        : {}),
+      ...(bp?.cloudId
+        ? {
+            blueprintOutcome: {
+              blueprintId: bp.cloudId,
+              exactChecksumHit: usedLearnedBp && localQuality.passed && localQuality.diffCents <= 5,
+            },
+          }
+        : {}),
+      printedTotalCents: summary.invoiceTotalCents,
+      detectedMeta: buildMeta(params, sheetRows.slice(0, 15).map((r) => r.rawText).join("\n"), finalTxs, summary.invoiceTotalCents),
+      isCacheHit: usedLearnedBp,
+      mappingConfidence: finalConf,
+    };
   }
 
   const deterministic = parseStatementInput(params.content, params.fileNameOrType, { cardId: params.cardId, competenceMonth: params.competenceMonth, closingDay });
@@ -282,6 +430,75 @@ export async function parseStatementWithPdfAiFallback(params: ParseStatementWith
     const enrichedOfx = [ofxMeta.org ? `Emissor: ${ofxMeta.org}` : "", ofxMeta.acctLast4 ? `Cartão final ${ofxMeta.acctLast4}` : "", textContent].filter(Boolean).join("\n");
     const ofxQuality = evaluateStatementExtractionQuality({ transactions: deterministic.transactions, officialTotalCents: ofxMeta.ledgerBalanceCents, isOfx: true });
     return { ...deterministic, usedAiFallback: false, extractionOrigin: ofxQuality.passed ? "local_verified" : "local_unverified", qualityGate: ofxQuality, printedTotalCents: ofxMeta.ledgerBalanceCents, detectedMeta: buildMeta(params, enrichedOfx, deterministic.transactions, ofxMeta.ledgerBalanceCents), isCacheHit: true, mappingConfidence: 100 };
+  }
+
+  const isCsvOrTsv = lowerName.endsWith(".csv") || lowerName.endsWith(".tsv");
+  if (isCsvOrTsv && deterministic.rows.length === 0) {
+    return {
+      ...deterministic,
+      usedAiFallback: false,
+      extractionOrigin: "local_unverified",
+      failureMessage: getStatementIngestionErrorMessage("no_tabular_rows_found"),
+      printedTotalCents: null,
+      isCacheHit: false,
+      mappingConfidence: 0,
+    };
+  }
+  if (isCsvOrTsv && deterministic.rows.length > 0 && (params.learnedBlueprints?.length ?? 0) > 0) {
+    const csvLines = deterministic.rows.map((r) => r.rawText);
+    const csvSample = csvLines.slice(0, 60).join("\n");
+    const csvFp = computeStatementFingerprint({
+      rawText: csvSample,
+      fileKind: "csv",
+      fileName: params.fileNameOrType,
+      headerLines: csvLines,
+    });
+    const matchedCsvBp = findBestStatementBlueprint({
+      fingerprint: csvFp,
+      learnedBlueprints: params.learnedBlueprints ?? [],
+      fileKind: "csv",
+    });
+    const csvBpMapping = matchedCsvBp?.blueprint.tabularRules?.columnMapping;
+    if (matchedCsvBp && csvBpMapping) {
+      const bpTxs = buildTransactionsFromRows(
+        deterministic.rows,
+        csvBpMapping,
+        { cardId: params.cardId, competenceMonth: params.competenceMonth, closingDay },
+        "csv",
+      );
+      if (bpTxs.length > 0 && bpTxs.length >= deterministic.transactions.length) {
+        const csvSummary = extractStatementSummaryAmounts(metadataRawText);
+        const csvQuality = evaluateStatementExtractionQuality({
+          transactions: bpTxs,
+          officialTotalCents: csvSummary.invoiceTotalCents,
+          cycleNetTargetCents: csvSummary.cycleNetTargetCents,
+          previousBalanceCents: csvSummary.previousBalanceCents,
+          paymentsCents: csvSummary.paymentsCents,
+          mappingConfidence: 100,
+          columnMapping: csvBpMapping,
+        });
+        const bp = matchedCsvBp.blueprint;
+        return {
+          transactions: bpTxs,
+          rows: deterministic.rows,
+          mapping: csvBpMapping,
+          isOfx: false,
+          usedAiFallback: false,
+          extractionOrigin: "local_learned_blueprint",
+          qualityGate: csvQuality,
+          appliedBlueprintId: bp.cloudId,
+          appliedBlueprintFingerprint: bp.fingerprint,
+          appliedBlueprintOrigin: bp.origin,
+          ...(bp.cloudId
+            ? { blueprintOutcome: { blueprintId: bp.cloudId, exactChecksumHit: csvQuality.passed && csvQuality.diffCents <= 5 } }
+            : {}),
+          printedTotalCents: csvSummary.invoiceTotalCents,
+          detectedMeta: buildMeta(params, metadataRawText, bpTxs, csvSummary.invoiceTotalCents),
+          isCacheHit: true,
+          mappingConfidence: 100,
+        };
+      }
+    }
   }
 
   const textBpKind: BlueprintFileKind = lowerName.endsWith(".pdf") ? "pdf_text" : "text";
