@@ -41,11 +41,11 @@ describe("InternalTransferDialog", () => {
       />,
     );
 
-    expect(screen.getByText(/Saída: Caixa Meu Negócio \(PJ\)/i)).toBeInTheDocument();
-    expect(screen.getByText(/Entrada: Caixa Pessoal \(PF\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Saída: Caixa Profissional/i)).toBeInTheDocument();
+    expect(screen.getByText(/Entrada: Caixa Pessoal/i)).toBeInTheDocument();
   });
 
-  it("inverte direção visual quando defaultKind é capital_injection (PF para PJ)", () => {
+  it("inverte direção visual quando defaultKind é capital_injection (Pessoal para Profissional)", () => {
     render(
       <InternalTransferDialog
         open
@@ -55,8 +55,8 @@ describe("InternalTransferDialog", () => {
       />,
     );
 
-    expect(screen.getByText(/Saída: Caixa Pessoal \(PF\)/i)).toBeInTheDocument();
-    expect(screen.getByText(/Entrada: Caixa Meu Negócio \(PJ\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Saída: Caixa Pessoal/i)).toBeInTheDocument();
+    expect(screen.getByText(/Entrada: Caixa Profissional/i)).toBeInTheDocument();
   });
 
   it("envia transferência pareada via RPC ao confirmar", async () => {

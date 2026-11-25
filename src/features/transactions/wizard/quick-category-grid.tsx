@@ -120,8 +120,8 @@ export function QuickCategoryGrid({
                 {isBusinessModeEnabled && cat.scope === "business" ? (
                   <span
                     className="absolute right-1.5 top-1.5 flex items-center justify-center text-portfolio"
-                    title="Categoria do Meu Negócio (PJ)"
-                    aria-label="Categoria do Meu Negócio (PJ)"
+                    title="Categoria Profissional"
+                    aria-label="Categoria Profissional"
                   >
                     <Briefcase className="size-2.5" aria-hidden="true" />
                   </span>

@@ -218,7 +218,7 @@ function ExpenseDetailDialogContent({
         }}
         title={
           actions.isInternalTransfer
-            ? "Excluir transferência interna pareada PF/PJ?"
+            ? "Excluir transferência interna pareada?"
             : actions.isRachaExpense
               ? "Excluir despesa e racha vinculado?"
               : expense?.trip_id
@@ -227,7 +227,7 @@ function ExpenseDetailDialogContent({
         }
         description={
           actions.isInternalTransfer
-            ? "Esta ação exclui simultaneamente a saída e a entrada correspondentes nos dois caixas (PF e PJ) e não pode ser desfeita."
+            ? "Esta ação exclui simultaneamente a saída e a entrada correspondentes nos dois caixas (Pessoal e Profissional) e não pode ser desfeita."
             : expense?.trip_id
               ? "Esta despesa está vinculada ao Modo Viagem. Escolha como deseja prosseguir com a exclusão:"
               : actions.isRachaExpense

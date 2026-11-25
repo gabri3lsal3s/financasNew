@@ -147,11 +147,11 @@ export function InvoiceKpisSection({
               </div>
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1">
-                  <span>Pessoal (PF):</span>
+                  <span>Pessoal:</span>
                   <MoneyText cents={mixedCardSplit.personalCents} tone="default" variant="caption" className="font-semibold text-foreground" />
                 </span>
                 <span className="inline-flex items-center gap-1">
-                  <span>Negócio (PJ):</span>
+                  <span>Profissional:</span>
                   <MoneyText cents={mixedCardSplit.businessCents} tone="portfolio" variant="caption" className="font-semibold" />
                 </span>
               </div>
@@ -166,7 +166,7 @@ export function InvoiceKpisSection({
               className="shrink-0"
               onClick={onOpenReimbursement}
             >
-              Registrar Reembolso PJ para PF
+              Registrar Reembolso (Profissional → Pessoal)
             </Button>
           ) : null}
         </div>

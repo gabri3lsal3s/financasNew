@@ -160,7 +160,7 @@ describe("BusinessPage (/negocio)", () => {
     );
 
     expect(screen.getByText("Studio Beta")).toBeInTheDocument();
-    expect(screen.getByText(/Caixa Real PJ/i)).toBeInTheDocument();
+    expect(screen.getByText(/Caixa Real Profissional/i)).toBeInTheDocument();
     expect(screen.getAllByText(/DRE Simplificado/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Escudo Tributário Líquido/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Ponto de Equilíbrio/i).length).toBeGreaterThan(0);
@@ -185,7 +185,7 @@ describe("BusinessPage (/negocio)", () => {
 
     expect(await screen.findByText(/Guia do Empreendedor & Enquadramento/i)).toBeInTheDocument();
     expect(screen.getByText(/Descobrir Perfil/i)).toBeInTheDocument();
-    expect(screen.getByText(/PF × PJ na Prática/i)).toBeInTheDocument();
+    expect(screen.getByText(/Pessoal × Profissional na Prática/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Despesas Dedutíveis/i).length).toBeGreaterThan(0);
   });
 });

@@ -80,6 +80,27 @@ const VISION_CANDIDATE_MONEY_REGEX = /(?:\d{1,3}(?:\.\d{3})*,\d{2}|\d+\.\d{2})/;
 const VISION_CANDIDATE_SECTION_REGEX =
   /\b(?:lan[çc]amentos|compras|detalhamento|extrato\s+referente|hist[óo]rico\s+de\s+transa[çc][õo]es|despesas\s+do\s+cart[ãa]o)\b/i;
 
+const VISION_SUMMARY_ONLY_LINE_REGEX =
+  /\b(?:total\s+(?:da\s+fatura|a\s+pagar|anterior|de\s+compras|do\s+cart[aã]o)|pagamento\s+m[ií]nimo|dispon[ií]vel|limite|per[ií]odo\s+de\s+compras|hist[oó]rico\s+de\s+fatura)\b/i;
+
+function scorePdfPageForVision(pageText: string): number {
+  const lines = pageText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  let txLineCount = 0;
+  for (const line of lines) {
+    if (VISION_SUMMARY_ONLY_LINE_REGEX.test(line)) continue;
+    if (VISION_CANDIDATE_DATE_REGEX.test(line) && VISION_CANDIDATE_MONEY_REGEX.test(line)) {
+      txLineCount++;
+    }
+  }
+  const hasSection = VISION_CANDIDATE_SECTION_REGEX.test(pageText);
+  const isSummaryCover = /\b(?:resumo\s+da\s+fatura|informa[çc][õo]es\s+essenciais)\b/i.test(pageText);
+  let score = txLineCount * 10 + (hasSection ? 8 : 0);
+  if (isSummaryCover && txLineCount < 2) {
+    score -= 12;
+  }
+  return score;
+}
+
 export function selectCandidatePdfVisionPagesWithOverflow(
   pageTexts: readonly string[],
   totalPages?: number,
@@ -88,7 +109,7 @@ export function selectCandidatePdfVisionPagesWithOverflow(
     1,
     totalPages && totalPages > 0 ? totalPages : pageTexts.length || 1,
   );
-  const allCandidates: number[] = [];
+  const scoredCandidates: Array<{ page: number; score: number }> = [];
 
   for (let i = 0; i < pageTexts.length; i++) {
     const pageText = pageTexts[i] ?? "";
@@ -96,15 +117,20 @@ export function selectCandidatePdfVisionPagesWithOverflow(
     const hasMoney = VISION_CANDIDATE_MONEY_REGEX.test(pageText);
     const hasSection = VISION_CANDIDATE_SECTION_REGEX.test(pageText);
     if ((hasDate && hasMoney) || (hasSection && (hasDate || hasMoney))) {
-      allCandidates.push(i + 1);
+      scoredCandidates.push({
+        page: i + 1,
+        score: scorePdfPageForVision(pageText),
+      });
     }
   }
 
-  if (allCandidates.length > 0) {
+  if (scoredCandidates.length > 0) {
+    scoredCandidates.sort((a, b) => (b.score !== a.score ? b.score - a.score : a.page - b.page));
+    const orderedPages = scoredCandidates.map((c) => c.page);
     return {
-      pages: allCandidates.slice(0, MAX_STATEMENT_VISION_PAGES_OR_IMAGES),
-      totalCandidateCount: allCandidates.length,
-      hasOverflow: allCandidates.length > MAX_STATEMENT_VISION_PAGES_OR_IMAGES,
+      pages: orderedPages.slice(0, MAX_STATEMENT_VISION_PAGES_OR_IMAGES),
+      totalCandidateCount: orderedPages.length,
+      hasOverflow: orderedPages.length > MAX_STATEMENT_VISION_PAGES_OR_IMAGES,
     };
   }
 

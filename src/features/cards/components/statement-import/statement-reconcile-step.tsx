@@ -235,9 +235,9 @@ export function StatementReconcileStep(props: StatementReconcileStepProps) {
             {showScopeControls ? (
               <div className="flex items-center gap-1 border-l border-border/80 pl-1.5">
                 <Button type="button" variant="ghost" size="xs" disabled={isPending} onClick={() => onSetScopeAll("business")} className="text-portfolio gap-1">
-                  <Briefcase className="size-3" aria-hidden="true" />Tudo PJ
+                  <Briefcase className="size-3" aria-hidden="true" />Tudo Profissional
                 </Button>
-                <Button type="button" variant="ghost" size="xs" disabled={isPending} onClick={() => onSetScopeAll("personal")}>Tudo PF</Button>
+                <Button type="button" variant="ghost" size="xs" disabled={isPending} onClick={() => onSetScopeAll("personal")}>Tudo Pessoal</Button>
               </div>
             ) : null}
             {toggleableTabIds.length > 0 ? (

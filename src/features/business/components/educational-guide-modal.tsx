@@ -121,7 +121,7 @@ export function EducationalGuideModal({
       }
       return {
         kind: "liberal",
-        title: "Profissional Liberal / Autônomo PF",
+        title: "Profissional Liberal / Autônomo",
         subtitle: "Atuação como pessoa física com Livro Caixa e Carnê-Leão.",
         reasons: [
           "Ideal para profissionais que recebem de pessoas físicas (ex.: consultas, honorários).",
@@ -461,7 +461,7 @@ export function EducationalGuideModal({
     },
     {
       value: "separation",
-      label: "PF × PJ na Prática",
+      label: "Pessoal × Profissional na Prática",
       icon: <Scale className="size-4" aria-hidden="true" />,
       content: (
         <div className="flex flex-col gap-4 py-2 text-xs text-muted-foreground leading-relaxed">
@@ -479,15 +479,15 @@ export function EducationalGuideModal({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="rounded-xl border border-border/80 bg-surface p-3.5 flex flex-col gap-1.5">
-              <span className="font-semibold text-foreground text-xs">Pró-labore (PJ &rarr; PF)</span>
+              <span className="font-semibold text-foreground text-xs">Pró-labore (Profissional &rarr; Pessoal)</span>
               <p>
                 É o seu &ldquo;salário&rdquo; como dono. Você transfere um valor fixo mensal da conta do
-                negócio para sua conta pessoal. No app, registre como <strong>Transferência PF/PJ</strong> (tipo Pró-labore).
+                negócio para sua conta pessoal. No app, registre como <strong>Transferência Pessoal/Profissional</strong> (tipo Pró-labore).
               </p>
             </div>
 
             <div className="rounded-xl border border-border/80 bg-surface p-3.5 flex flex-col gap-1.5">
-              <span className="font-semibold text-foreground text-xs">Aporte de Capital (PF &rarr; PJ)</span>
+              <span className="font-semibold text-foreground text-xs">Aporte de Capital (Pessoal &rarr; Profissional)</span>
               <p>
                 Quando você injeta dinheiro do seu bolso pessoal para abrir a empresa ou cobrir um período
                 difícil. No app, entra como aumento de Caixa sem inflar a receita de vendas.
@@ -495,7 +495,7 @@ export function EducationalGuideModal({
             </div>
 
             <div className="rounded-xl border border-border/80 bg-surface p-3.5 flex flex-col gap-1.5">
-              <span className="font-semibold text-foreground text-xs">Reembolso de Cartão PF</span>
+              <span className="font-semibold text-foreground text-xs">Reembolso de Cartão Pessoal</span>
               <p>
                 Comprou um equipamento da empresa no seu cartão de crédito pessoal? O Axir marca para
                 reembolso. Quando a empresa te transferir de volta, o caixa é ajustado sem duplicidade.
@@ -577,7 +577,7 @@ export function EducationalGuideModal({
               <div className="flex flex-col gap-1 border-t sm:border-t-0 sm:border-l border-border/80 pt-2 sm:pt-0 sm:pl-3">
                 <span className="font-semibold text-foreground">1. Safe-to-Spend Pessoal</span>
                 <p>
-                  O saldo da PJ na conta bancária compartilhada é descontado do seu saldo livre para gastar na Home,
+                  O saldo profissional na conta bancária compartilhada é descontado do seu saldo livre para gastar na Home,
                   impedindo que você gaste o capital de giro da empresa em compras pessoais.
                 </p>
               </div>

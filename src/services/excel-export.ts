@@ -571,7 +571,7 @@ export function generateMultiSheetExcelXml(data: ExcelWorkbookData): string {
    </Row>
    <Row/>
    <Row ss:StyleID="Header">
-    <Cell><Data ss:Type="String">Linha do DRE (PJ)</Data></Cell>
+    <Cell><Data ss:Type="String">Linha do DRE (Profissional)</Data></Cell>
     <Cell><Data ss:Type="String">Valor</Data></Cell>
    </Row>
    <Row>
@@ -583,7 +583,7 @@ export function generateMultiSheetExcelXml(data: ExcelWorkbookData): string {
     <Cell ss:StyleID="Currency"><Data ss:Type="Number">${formatNumberRaw(-Math.abs(biz.operationalCostsBRL))}</Data></Cell>
    </Row>
    <Row>
-    <Cell ss:StyleID="TextBold"><Data ss:Type="String">(=) Lucro Operacional PJ</Data></Cell>
+    <Cell ss:StyleID="TextBold"><Data ss:Type="String">(=) Lucro Operacional Profissional</Data></Cell>
     <Cell ss:StyleID="Currency"><Data ss:Type="Number">${formatNumberRaw(biz.operationalProfitBRL)}</Data></Cell>
    </Row>
    <Row>
@@ -591,11 +591,11 @@ export function generateMultiSheetExcelXml(data: ExcelWorkbookData): string {
     <Cell ss:StyleID="Currency"><Data ss:Type="Number">${formatNumberRaw(-Math.abs(biz.fiscalTaxesPaidBRL))}</Data></Cell>
    </Row>
    <Row>
-    <Cell><Data ss:Type="String">(-) Retiradas de Pró-Labore (PJ para PF)</Data></Cell>
+    <Cell><Data ss:Type="String">(-) Retiradas de Pró-Labore (Profissional para Pessoal)</Data></Cell>
     <Cell ss:StyleID="Currency"><Data ss:Type="Number">${formatNumberRaw(-Math.abs(biz.proLaboreWithdrawnBRL))}</Data></Cell>
    </Row>
    <Row>
-    <Cell ss:StyleID="TextBold"><Data ss:Type="String">(=) Lucro Retido no Caixa PJ</Data></Cell>
+    <Cell ss:StyleID="TextBold"><Data ss:Type="String">(=) Lucro Retido no Caixa Profissional</Data></Cell>
     <Cell ss:StyleID="Currency"><Data ss:Type="Number">${formatNumberRaw(biz.retainedEarningsBRL)}</Data></Cell>
    </Row>
    <Row>

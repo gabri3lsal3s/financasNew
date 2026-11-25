@@ -385,7 +385,7 @@
     │   │                          #     referencial (backup.ts, BACKUP_TABLE_KEYS)
     │   ├── reconciliation/        #   F30 + Motor Universal & Autoevolutivo de Faturas:
     │   │                          #     contracts.ts, normalize-entries.ts (Normalizador Canônico Único + D13 + G1-G5),
-    │   │                          #     extractors/ (magic-bytes.ts, ofx-extractor.ts, csv-extractor.ts, xlsx-extractor.ts, text-extractor.ts, spatial-pdf-extractor.ts),
+    │   │                          #     extractors/ (magic-bytes.ts, ofx-extractor.ts, csv-extractor.ts, xlsx-extractor.ts, biff8-xls-extractor.ts, text-extractor.ts, spatial-pdf-extractor.ts, spatial-line-splitter.ts),
     │   │                          #     blueprints/ (types.ts, issuer-profiles.ts, fingerprint.ts, matcher.ts, distiller.ts — 0 PII + Shadow Replay),
     │   │                          #     quality-gate.ts (equação contábil dupla cycleNet + statementBalance ±5c),
     │   │                          #     plan-builder.ts (buildStatementReconciliationPlan + toCommitReconciliationPlanPayload),

@@ -109,7 +109,7 @@ describe("Kits de Categorias (kits.ts)", () => {
       expect(missing).toHaveLength(5);
       expect(missing.map((i) => i.name)).not.toContain("Prestação de Serviços");
       expect(missing.map((i) => i.name)).not.toContain("Impostos e Guia DAS");
-      expect(missing.map((i) => i.name)).toContain("Ferramentas e Softwares PJ");
+      expect(missing.map((i) => i.name)).toContain("Ferramentas e Softwares");
     });
 
     it("getMissingKitItems funciona perfeitamente para recuperação no Kit Essencial", () => {

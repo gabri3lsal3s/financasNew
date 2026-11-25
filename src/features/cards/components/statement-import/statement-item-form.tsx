@@ -185,7 +185,7 @@ export function StatementItemForm({
         <Checkbox
           checked={isTaxDeductible}
           onCheckedChange={setIsTaxDeductible}
-          label="Despesa dedutível para o Meu Negócio (PJ)"
+          label="Despesa dedutível para a esfera Profissional"
         />
       ) : null}
 

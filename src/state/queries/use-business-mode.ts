@@ -63,7 +63,7 @@ export function useBusinessMode() {
         pushToast({
           title: enabled ? "Modo Negócio ativado" : "Modo Negócio desativado",
           description: enabled
-            ? "Separação PF e PJ e o painel /negocio já estão disponíveis."
+            ? "Separação Pessoal e Profissional e o painel /negocio já estão disponíveis."
             : hasActiveBusinessRecurrences
               ? "Interface pessoal restaurada. Atenção: existem recorrências do negócio ativas que continuarão gerando lançamentos. Pause-as em Recorrências se desejar interrompê-las."
               : "Interface pessoal restaurada. Seus lançamentos de negócio seguem preservados com segurança.",

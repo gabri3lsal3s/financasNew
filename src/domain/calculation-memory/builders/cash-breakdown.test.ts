@@ -124,12 +124,12 @@ describe("Builders de Memória de Cálculo: Cash", () => {
       expect(breakdown.steps).toHaveLength(3);
       expect(breakdown.steps[0]?.rawValue).toBe(500000);
       expect(breakdown.steps[1]?.rawValue).toBe(150000); // 1000 + 500
-      expect(breakdown.steps[2]?.label).toBe("Reserva Caixa Meu Negócio (PJ)");
+      expect(breakdown.steps[2]?.label).toBe("Reserva Caixa Profissional");
       expect(breakdown.steps[2]?.rawValue).toBe(150000);
       expect(breakdown.steps[2]?.operator).toBe("-");
 
       expect(breakdown.result.rawValue).toBe(200000);
-      expect(breakdown.formulaExpression).toContain("Reserva Caixa PJ");
+      expect(breakdown.formulaExpression).toContain("Reserva Caixa Profissional");
     });
   });
 

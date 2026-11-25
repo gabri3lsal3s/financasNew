@@ -207,7 +207,7 @@ export function CardFormFields({
       {isBusinessModeEnabled && onScopeChange ? (
         <FormField
           label="Esfera do cartão"
-          helperText="Cartões Pessoais aceitam despesas do Meu Negócio e permitem registrar reembolso PJ para PF na fatura."
+          helperText="Cartões Pessoais aceitam despesas profissionais e permitem registrar reembolso da esfera Profissional para a Pessoal na fatura."
         >
           <Select
             value={scope}

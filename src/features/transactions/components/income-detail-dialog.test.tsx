@@ -272,8 +272,8 @@ describe("IncomeDetailDialog", () => {
 
     render(<IncomeDetailDialog income={pairedIncome} open={true} onOpenChange={vi.fn()} />);
 
-    expect(screen.getByText("Transferência Interna (PF/PJ)")).toBeInTheDocument();
-    expect(screen.getByText("Aporte de Capital (PF para PJ)")).toBeInTheDocument();
+    expect(screen.getByText("Transferência Interna (Pessoal / Profissional)")).toBeInTheDocument();
+    expect(screen.getByText("Aporte de Capital (Pessoal para Profissional)")).toBeInTheDocument();
     expect(screen.getByText(/Não é faturamento comercial nem gera tributação/)).toBeInTheDocument();
     expect(screen.getByText("Excluir transferência pareada")).toBeInTheDocument();
   });

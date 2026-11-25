@@ -5,6 +5,11 @@ import {
   isSubcardHeader,
 } from "../clean";
 import { normalizeRawEntries } from "../normalize-entries";
+import {
+  filterTransactionalTokensForBimodal,
+  isIsolatedPictographToken,
+  splitMergedSpatialLineByTokens,
+} from "./spatial-line-splitter";
 import { parseAmountToCents } from "./type-sniffer";
 
 export interface SpatialPdfToken {
@@ -95,7 +100,7 @@ const DATE_REGEX =
   /\b(?:(\d{4})-(\d{2})-(\d{2})|(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?|(\d{1,2})\s+(?:de\s+)?(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-z]*)\b/i;
 
 const AMOUNT_REGEX =
-  /(?:r\$\s*)?(-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2})(?:\s*([cd-]))?(?!\d)/i;
+  /(?:(?:-\s*)?r\$\s*)?(-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2})(?:\s*([cd-]))?(?!\d)/i;
 
 const BOLETO_FIELD_NOISE_REGEX =
   /\b(?:vencimento|data\s+do\s+documento|valor\s+do\s+documento|sacado|pagador|cedente|benefici[aá]rio|nosso\s+n[uú]mero|ag[eê]ncia\s*\/\s*c[oó]digo|ficha\s+de\s+compensa[çc][aã]o|autentica[çc][aã]o\s+mec[aâ]nica|recibo\s+do\s+sacado)\b/i;
@@ -120,9 +125,13 @@ export function extractBrlAmountFromLine(text: string): {
   let match: RegExpExecArray | null;
 
   while ((match = globalRegex.exec(text)) !== null) {
+    const rawNum = match[1] ?? match[0];
+    const hasSpacedMinusBeforeCurrency = /^-\s*r\$/i.test(match[0].trim());
+    const valueStr =
+      hasSpacedMinusBeforeCurrency && !rawNum.startsWith("-") ? `-${rawNum}` : rawNum;
     matches.push({
       fullMatch: match[0],
-      valueStr: match[1] ?? match[0],
+      valueStr,
       suffix: match[2],
       index: match.index,
     });
@@ -205,6 +214,9 @@ export function findBimodalGutterX(
 ): number | null {
   if (tokens.length === 0 || pageWidth <= 0) return null;
 
+  const transactionalTokens = filterTransactionalTokensForBimodal(tokens);
+  const targetTokens = transactionalTokens.length >= 4 ? transactionalTokens : tokens;
+
   const searchStart = pageWidth * 0.3;
   const searchEnd = pageWidth * 0.7;
   const bucketSize = 10;
@@ -212,7 +224,7 @@ export function findBimodalGutterX(
   if (bucketCount < 2) return null;
 
   const occupied = new Array<boolean>(bucketCount).fill(false);
-  for (const tok of tokens) {
+  for (const tok of targetTokens) {
     const tokStart = tok.x;
     const tokEnd = tokStart + estimateTokenWidth(tok);
     if (tokEnd <= searchStart || tokStart >= searchEnd) continue;
@@ -245,7 +257,7 @@ export function findBimodalGutterX(
     }
   }
 
-  const intervals = tokens
+  const intervals = targetTokens
     .map((t) => ({
       start: t.x,
       end: t.x + estimateTokenWidth(t),
@@ -271,8 +283,8 @@ export function findBimodalGutterX(
   });
 
   for (const cand of candidates) {
-    const leftTokens = tokens.filter((t) => t.x < cand.gutterX);
-    const rightTokens = tokens.filter((t) => t.x >= cand.gutterX);
+    const leftTokens = targetTokens.filter((t) => t.x < cand.gutterX);
+    const rightTokens = targetTokens.filter((t) => t.x >= cand.gutterX);
     if (
       countDateAndAmountPairs(leftTokens) >= 2 &&
       countDateAndAmountPairs(rightTokens) >= 2
@@ -343,6 +355,7 @@ export function groupTokensIntoLines(
     };
 
     for (const tok of sorted) {
+      if (isIsolatedPictographToken(tok.str)) continue;
       const refSize = tok.fontSize > 0 ? tok.fontSize : currentRefFontSize;
       const yTolerance = Math.max(2.5, Math.min(6, refSize * 0.35));
 
@@ -500,8 +513,10 @@ export function extractRawEntriesFromSpatialLines(
   let discardedMoneyLines = 0;
   let sourceIndex = 0;
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]!;
+  const expandedLines = lines.flatMap((l) => splitMergedSpatialLineByTokens(l));
+
+  for (let i = 0; i < expandedLines.length; i++) {
+    const line = expandedLines[i]!;
     const text = line.text.trim();
 
     const cardLast4Match = /(?:[•*xX.-]{3,4}\s*){1,4}(\d{4})\b|\bfinal\s+(\d{4})\b/i.exec(text);

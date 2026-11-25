@@ -423,5 +423,82 @@ describe("spatial-pdf-parser — Motor Espacial (X, Y) com 4 Barreiras Anti-Ruí
       expect(transactions[1]?.cleanDescription).toContain("CAFE D CASA");
       expect(transactions[1]?.isRefund).toBe(true);
     });
+
+    it("BTG Pactual: detecta vale bimodal mesmo com cabeçalhos/rodapés largos, separa linhas fundidas e reconhece '- R$ 942,40'", () => {
+      const pageWidth = 600;
+      const btgTokens: SpatialPdfToken[] = [
+        // Cabeçalho largo bloqueando X = 40..560
+        { str: "Olá, Jose! Esta é a fatura do seu cartão BTG Pactual de Novembro no valor de R$ 830,38", x: 40, y: 780, width: 500, height: 12, fontSize: 12 },
+        { str: "Lançamentos do cartão físico | Jose Aparecido | Final 7182 Total do cartão: R$ 736,48", x: 40, y: 740, width: 510, height: 10, fontSize: 10 },
+        // Tabela 2 colunas
+        { str: "02 Set", x: 40, y: 710, width: 30, height: 9, fontSize: 9 },
+        { str: "Mulvi (2/2)", x: 85, y: 710, width: 60, height: 9, fontSize: 9 },
+        { str: "R$ 112,39", x: 230, y: 710, width: 45, height: 9, fontSize: 9 },
+        { str: "29 Out", x: 315, y: 710, width: 30, height: 9, fontSize: 9 },
+        { str: "Filialshopping", x: 360, y: 710, width: 70, height: 9, fontSize: 9 },
+        { str: "R$ 156,50", x: 505, y: 710, width: 45, height: 9, fontSize: 9 },
+        { str: "🌐", x: 554, y: 710, width: 8, height: 9, fontSize: 9 },
+
+        { str: "18 Out", x: 40, y: 694, width: 30, height: 9, fontSize: 9 },
+        { str: "Cactus Burguer", x: 85, y: 694, width: 75, height: 9, fontSize: 9 },
+        { str: "R$ 80,50", x: 235, y: 694, width: 40, height: 9, fontSize: 9 },
+        { str: "29 Out", x: 315, y: 694, width: 30, height: 9, fontSize: 9 },
+        { str: "Riomar Aracaju Parking", x: 360, y: 694, width: 100, height: 9, fontSize: 9 },
+        { str: "R$ 11,00", x: 510, y: 694, width: 40, height: 9, fontSize: 9 },
+
+        { str: "29 Out", x: 40, y: 678, width: 30, height: 9, fontSize: 9 },
+        { str: "Flor Da Pavão", x: 85, y: 678, width: 65, height: 9, fontSize: 9 },
+        { str: "R$ 68,26", x: 235, y: 678, width: 40, height: 9, fontSize: 9 },
+        { str: "31 Out", x: 315, y: 678, width: 30, height: 9, fontSize: 9 },
+        { str: "Posto Dynamus Iii", x: 360, y: 678, width: 85, height: 9, fontSize: 9 },
+        { str: "R$ 307,83", x: 505, y: 678, width: 45, height: 9, fontSize: 9 },
+
+        // Cartão virtual
+        { str: "Lançamentos do cartão virtual | Jose Aparecido | Final 0864 Total do cartão: R$ 93,90", x: 40, y: 640, width: 510, height: 10, fontSize: 10 },
+        { str: "21 Out", x: 40, y: 620, width: 30, height: 9, fontSize: 9 },
+        { str: "Vivo", x: 85, y: 620, width: 25, height: 9, fontSize: 9 },
+        { str: "R$ 49,00", x: 235, y: 620, width: 40, height: 9, fontSize: 9 },
+        { str: "23 Out", x: 315, y: 620, width: 30, height: 9, fontSize: 9 },
+        { str: "Netflix", x: 360, y: 620, width: 35, height: 9, fontSize: 9 },
+        { str: "R$ 44,90", x: 510, y: 620, width: 40, height: 9, fontSize: 9 },
+
+        // Pagamento com sinal "- R$" + rodapé largo bloqueando o centro
+        { str: "05 Out", x: 40, y: 760, width: 30, height: 9, fontSize: 9 },
+        { str: "Pagamento de fatura", x: 85, y: 760, width: 95, height: 9, fontSize: 9 },
+        { str: "- R$ 942,40", x: 220, y: 760, width: 55, height: 9, fontSize: 9 },
+        { str: "Taxas e encargos: Crédito Rotativo 6,19% a.m / 105,59% a.a / CET 108,59% a.a", x: 40, y: 400, width: 480, height: 9, fontSize: 9 },
+      ];
+
+      const gutter = findBimodalGutterX(btgTokens, pageWidth);
+      expect(gutter).not.toBeNull();
+      const grouped = groupTokensIntoLines(btgTokens, pageWidth, true, gutter ?? undefined);
+      const { transactions } = extractTransactionsFromSpatialLines(grouped, {
+        cardId: "card-btg",
+        competenceMonth: "2026-11",
+        closingDay: 1,
+      });
+
+      const purchases = transactions.filter((t) => !t.isPayment);
+      const payments = transactions.filter((t) => t.isPayment);
+      expect(purchases).toHaveLength(8);
+      expect(payments).toHaveLength(1);
+      expect(payments[0]?.amountCents).toBe(94240);
+      expect(purchases.reduce((acc, t) => acc + t.amountCents, 0)).toBe(83038);
+
+      // Segunda barreira: mesmo sem gutter bimodal, split intra-linha separa os pares Data+Valor
+      const mergedFallback: SpatialPdfLine[] = [
+        { y: 710, xStart: 40, xEnd: 550, fontSize: 9, column: 1, pageNumber: 2, text: "02 Set Mulvi (2/2) R$ 112,39 29 Out Filialshopping R$ 156,50", tokens: [] },
+        { y: 620, xStart: 40, xEnd: 550, fontSize: 9, column: 1, pageNumber: 2, text: "21 Out Vivo R$ 49,00 23 Out Netflix R$ 44,90", tokens: [] },
+      ];
+      const splitRes = extractTransactionsFromSpatialLines(mergedFallback, {
+        cardId: "card-btg",
+        competenceMonth: "2026-11",
+        closingDay: 1,
+      });
+      expect(splitRes.transactions).toHaveLength(4);
+      expect(splitRes.transactions.reduce((acc, t) => acc + t.amountCents, 0)).toBe(
+        11239 + 15650 + 4900 + 4490,
+      );
+    });
   });
 });

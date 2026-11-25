@@ -100,11 +100,11 @@ describe("CategoriesPage", () => {
     expect(screen.queryByText("Serviços PJ")).not.toBeInTheDocument();
   });
 
-  it("filtra categorias por escopo (Negócio PJ)", async () => {
+  it("filtra categorias por escopo (Profissional)", async () => {
     const user = userEvent.setup();
     renderCategoriesPage();
 
-    const pjChip = screen.getByRole("button", { name: "Negócio PJ" });
+    const pjChip = screen.getByRole("button", { name: "Profissional" });
     await user.click(pjChip);
 
     expect(screen.getByText("Serviços PJ")).toBeInTheDocument();

@@ -163,7 +163,7 @@ export function CategoryKitsModal({
                         ) : null}
                         {item.scope === "business" ? (
                           <Badge size="xs" variant="default" className="shrink-0">
-                            Negócio PJ
+                            Profissional
                           </Badge>
                         ) : null}
                       </div>

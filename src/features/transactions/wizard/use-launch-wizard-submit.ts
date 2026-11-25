@@ -165,8 +165,8 @@ export function useLaunchWizardSubmit(params: UseLaunchWizardSubmitParams) {
 
           triggerSensory("success");
           pushToast({
-            title: "Despesa mista dividida entre PF e PJ com sucesso",
-            description: `Registrados R$ ${(splitResult.personalCents / 100).toFixed(2).replace(".", ",")} no Pessoal e R$ ${(splitResult.businessCents / 100).toFixed(2).replace(".", ",")} no Negócio.`,
+            title: "Despesa mista dividida entre Pessoal e Profissional",
+            description: `Registrados R$ ${(splitResult.personalCents / 100).toFixed(2).replace(".", ",")} no Pessoal e R$ ${(splitResult.businessCents / 100).toFixed(2).replace(".", ",")} no Profissional.`,
             variant: "success",
           });
           onSuccess?.();
@@ -245,7 +245,7 @@ export function useLaunchWizardSubmit(params: UseLaunchWizardSubmitParams) {
       pushToast({
         title: state.type === "expense" ? "Despesa registrada" : "Receita registrada",
         description: submittedAsBusiness
-          ? "Lançamento adicionado ao Meu Negócio (PJ)."
+          ? "Lançamento adicionado à esfera Profissional."
           : isFamilyActive && state.isFamily
             ? "Lançamento adicionado à visão Familiar."
             : undefined,

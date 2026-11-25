@@ -78,7 +78,7 @@ export function useIncomeDetailActions({
       if (isInternalTransfer && income.transfer_pair_id) {
         await deleteTransferPair.mutateAsync(income.transfer_pair_id);
         pushToast({
-          title: "Transferência pareada removida das duas esferas (PF e PJ)",
+          title: "Transferência pareada removida das duas esferas (Pessoal e Profissional)",
           variant: "success",
         });
       } else if (isRecurring) {
@@ -120,7 +120,7 @@ export function useIncomeDetailActions({
   const handleSaveEdit = async (payload: IncomeEditSavePayload) => {
     if (!income) return;
     if (isInternalTransfer) {
-      setError("Transferências pareadas entre PF e PJ não podem ser alteradas isoladamente. Para ajustar o valor ou a data, exclua o par e realize uma nova transferência.");
+      setError("Transferências pareadas entre Pessoal e Profissional não podem ser alteradas isoladamente. Para ajustar o valor ou a data, exclua o par e realize uma nova transferência.");
       return;
     }
     setError(null);

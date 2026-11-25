@@ -52,7 +52,7 @@ export function BusinessOnboardingEmptyView({
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2 text-xs font-semibold text-portfolio">
             <ShieldCheck className="size-4 shrink-0" aria-hidden="true" />
-            <span>Separação estrita PF e PJ (Opt-in)</span>
+            <span>Separação estrita Pessoal e Profissional (Opt-in)</span>
           </div>
           <h2 className="font-display text-lg sm:text-xl font-bold tracking-tight text-foreground">
             Ative o Modo Negócio sem poluir suas finanças pessoais

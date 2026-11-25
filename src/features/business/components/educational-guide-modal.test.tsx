@@ -75,29 +75,29 @@ describe("EducationalGuideModal", () => {
     const regBtn = await screen.findByText("Profissão Regulamentada / Conselho de Classe");
     await user.click(regBtn);
 
-    // Resultado: Profissional Liberal / Autônomo PF
+    // Resultado: Profissional Liberal / Autônomo
     expect(
-      await screen.findByText("Profissional Liberal / Autônomo PF"),
+      await screen.findByText("Profissional Liberal / Autônomo"),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/Permite deduzir despesas indispensáveis à profissão \(Livro Caixa\)/i),
     ).toBeInTheDocument();
   });
 
-  it("permite navegar para as abas didáticas de separação PF/PJ e despesas dedutíveis", async () => {
+  it("permite navegar para as abas didáticas de separação Pessoal/Profissional e despesas dedutíveis", async () => {
     const user = userEvent.setup();
 
     render(<EducationalGuideModal open={true} onOpenChange={vi.fn()} />);
 
-    // Alterna para aba PF x PJ
-    const tabSeparation = screen.getByRole("tab", { name: /PF × PJ na Prática/i });
+    // Alterna para aba Pessoal x Profissional
+    const tabSeparation = screen.getByRole("tab", { name: /Pessoal × Profissional na Prática/i });
     await user.click(tabSeparation);
 
     expect(
       await screen.findByText("A Regra de Ouro: Nunca misture contas bancárias"),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Pró-labore \(PJ → PF\)/i)).toBeInTheDocument();
-    expect(screen.getByText(/Aporte de Capital \(PF → PJ\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Pró-labore \(Profissional → Pessoal\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Aporte de Capital \(Pessoal → Profissional\)/i)).toBeInTheDocument();
 
     // Alterna para aba Despesas Dedutíveis
     const tabDeductible = screen.getByRole("tab", { name: /Despesas Dedutíveis/i });

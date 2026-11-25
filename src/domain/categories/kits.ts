@@ -64,14 +64,14 @@ export const CATEGORY_KIT_ESSENTIAL: CategoryKit = {
   ],
 };
 
-/** Kit 2: Negócio & PJ (MEI, autônomos, consultores, prestadores e microempresas). */
+/** Kit 2: Profissional (MEI, autônomos, consultores, prestadores e microempresas). */
 export const CATEGORY_KIT_BUSINESS: CategoryKit = {
   id: "business",
-  title: "Negócio & PJ",
+  title: "Profissional",
   description:
-    "Plano de contas profissional para separar custos operacionais da empresa, viabilizando o DRE e o Termômetro do DAS-MEI.",
+    "Plano de contas profissional para separar custos operacionais do trabalho ou empresa, viabilizando o DRE e o Termômetro do DAS-MEI.",
   iconName: "briefcase",
-  badge: "Modo Negócio",
+  badge: "Modo Profissional",
   items: [
     {
       name: "Prestação de Serviços",
@@ -98,7 +98,7 @@ export const CATEGORY_KIT_BUSINESS: CategoryKit = {
       description: "Guia DAS-MEI, Simples Nacional, ISS e tributos corporativos.",
     },
     {
-      name: "Ferramentas e Softwares PJ",
+      name: "Ferramentas e Softwares",
       type: "expense",
       icon: "assinaturas",
       color: "#6366F1",

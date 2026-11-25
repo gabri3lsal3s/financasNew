@@ -303,13 +303,13 @@ function BusinessDashboardContent({
     expensesQuery.error ?? incomesQuery.error ?? debtsQuery.error ?? businessCash.error;
 
   const pageTitle = effectiveProfile.businessName?.trim() || "Meu Negócio";
-  const profileBadgeLabel = BUSINESS_PROFILE_LABELS[effectiveProfile.profileKind] ?? "PJ";
+  const profileBadgeLabel = BUSINESS_PROFILE_LABELS[effectiveProfile.profileKind] ?? "Profissional";
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title={pageTitle}
-        description="Operação PJ e transferências com a conta pessoal"
+        description="Operação profissional e transferências com a conta pessoal"
         badge={
           <Badge variant="portfolio" size="sm">
             {profileBadgeLabel}
@@ -343,15 +343,15 @@ function BusinessDashboardContent({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => guardAction(() => setTransferOpen(true), "Transferência PF/PJ")}
+              onClick={() => guardAction(() => setTransferOpen(true), "Transferência Pessoal/Profissional")}
             >
               <ArrowLeftRight aria-hidden="true" />
-              <span>Transferir PF/PJ</span>
+              <span>Transferir</span>
             </Button>
             <Button
               type="button"
               size="sm"
-              onClick={() => guardAction(() => setWizardOpen(true), "Novo Lançamento PJ")}
+              onClick={() => guardAction(() => setWizardOpen(true), "Novo Lançamento Profissional")}
             >
               <Plus aria-hidden="true" />
               <span>Lançar</span>
@@ -385,7 +385,7 @@ function BusinessDashboardContent({
         <>
           <KpiGrid columns={4}>
             <KpiCard
-              label="Caixa Real PJ"
+              label="Caixa Real Profissional"
               cents={businessCash.cashBalance.currentBalanceCents}
               tone={businessCash.cashBalance.currentBalanceCents >= 0 ? "portfolio" : "negative"}
               action={
@@ -394,7 +394,7 @@ function BusinessDashboardContent({
                   variant="ghost"
                   size="xs"
                   className="h-6 px-1.5 text-[11px] gap-1"
-                  onClick={() => guardAction(() => setCheckpointOpen(true), "Calibrar Caixa PJ")}
+                  onClick={() => guardAction(() => setCheckpointOpen(true), "Calibrar Caixa Profissional")}
                 >
                   <SlidersHorizontal className="size-3" aria-hidden="true" />
                   <span>Calibrar</span>
@@ -403,7 +403,7 @@ function BusinessDashboardContent({
               hint={
                 businessCash.cashBalance.latestCheckpoint
                   ? `Âncora em ${businessCash.cashBalance.latestCheckpoint.date}`
-                  : "Sem calibração PJ ainda"
+                  : "Sem calibração ainda"
               }
             />
             <KpiCard
@@ -417,7 +417,7 @@ function BusinessDashboardContent({
               }
             />
             <KpiCard
-              label="Custos e Impostos PJ"
+              label="Custos e Impostos"
               cents={dre.operationalCostsCents + dre.fiscalTaxesPaidCents}
               tone="negative"
               hint={
@@ -433,7 +433,7 @@ function BusinessDashboardContent({
               }
             />
             <KpiCard
-              label="Lucro Retido PJ"
+              label="Lucro Retido"
               cents={dre.retainedEarningsCents}
               tone={dre.retainedEarningsCents >= 0 ? "positive" : "negative"}
               hint="Após custos, impostos e retiradas"
@@ -479,17 +479,17 @@ function BusinessDashboardContent({
                 <div className="p-6">
                   <EmptyState
                     icon={<Briefcase className="size-6" aria-hidden="true" />}
-                    title="Sem movimentações PJ neste mês"
-                    description="Registre uma venda, serviço, despesa do negócio ou transferência PF/PJ."
+                    title="Sem movimentações profissionais neste mês"
+                    description="Registre uma venda, serviço, despesa profissional ou transferência entre caixas."
                     action={
                       <div className="flex flex-col sm:flex-row items-center gap-2">
                         <Button
                           type="button"
                           size="sm"
-                          onClick={() => guardAction(() => setWizardOpen(true), "Novo Lançamento PJ")}
+                          onClick={() => guardAction(() => setWizardOpen(true), "Novo Lançamento Profissional")}
                         >
                           <Plus className="size-4" aria-hidden="true" />
-                          <span>Novo lançamento PJ</span>
+                          <span>Novo lançamento</span>
                         </Button>
                         <Button
                           type="button"
@@ -558,7 +558,7 @@ function BusinessDashboardContent({
         onOpenChange={setCheckpointOpen}
         scope="business"
         currentBalanceCents={businessCash.cashBalance.currentBalanceCents}
-        title="Calibrar Caixa do Negócio (PJ)"
+        title="Calibrar Caixa Profissional"
         description="Informe o saldo real da conta bancária da sua empresa / MEI hoje. Isolado do seu saldo pessoal."
       />
 

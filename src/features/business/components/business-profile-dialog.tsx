@@ -164,7 +164,7 @@ export function BusinessProfileDialog({
           </FormField>
 
           <FormField
-            label="Saldo Inicial do Negócio (Caixa PJ)"
+            label="Saldo Inicial Profissional"
             optional
             htmlFor={`${formId}-opening-balance`}
             helperText="Saldo inicial do caixa da empresa sem afetar checkpoints bancários."

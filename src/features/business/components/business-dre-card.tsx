@@ -32,7 +32,7 @@ export function BusinessDreCard({ dre, periodLabel }: BusinessDreCardProps) {
       </CardHeader>
 
       <CardContent className="flex flex-col gap-2.5 text-xs sm:text-sm">
-        <DreRow label="(+) Receita Bruta PJ" cents={dre.grossRevenueCents} tone="positive" />
+        <DreRow label="(+) Receita Bruta Profissional" cents={dre.grossRevenueCents} tone="positive" />
         <DreRow
           label="(-) Custos Operacionais e Encargos"
           cents={-Math.abs(dre.operationalCostsCents)}
@@ -52,13 +52,13 @@ export function BusinessDreCard({ dre, periodLabel }: BusinessDreCardProps) {
           tone="negative"
         />
         <DreRow
-          label="(-) Pró-Labore e Distribuição (PJ para PF)"
+          label="(-) Pró-Labore e Distribuição (Profissional para Pessoal)"
           cents={-Math.abs(dre.proLaboreWithdrawnCents)}
           tone="default"
         />
         <div className="flex items-center justify-between gap-2 border-t border-border/80 pt-2.5">
           <div className="flex flex-col min-w-0">
-            <span className="font-semibold text-foreground">Lucro Retido no Caixa PJ</span>
+            <span className="font-semibold text-foreground">Lucro Retido no Caixa Profissional</span>
             {dre.pendingReceivablesCents > 0 ? (
               <span className="text-[11px] text-muted-foreground">
                 A receber pendente:{" "}

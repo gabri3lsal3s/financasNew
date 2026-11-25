@@ -28,7 +28,7 @@ export function FinancialBusinessDreSection({ businessDre }: FinancialBusinessDr
         <div className="flex items-center gap-1.5">
           <Briefcase className="size-3.5 text-portfolio" aria-hidden="true" />
           <h2 className="text-[10px] font-bold uppercase tracking-wider text-foreground">
-            DRE do Negócio — Esfera PJ ({businessDre.profileLabel})
+            DRE Profissional ({businessDre.profileLabel})
           </h2>
         </div>
         <Badge variant={retainedCents >= 0 ? "positive" : "critical"} size="xs">
@@ -45,7 +45,7 @@ export function FinancialBusinessDreSection({ businessDre }: FinancialBusinessDr
           </colgroup>
           <thead>
             <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider">
-              <th className="py-2 px-3">Estrutura Operacional PJ</th>
+              <th className="py-2 px-3">Estrutura Operacional Profissional</th>
               <th className="py-2 px-3 text-right">Valor (R$)</th>
               <th className="py-2 px-3 text-right">% Faturamento</th>
             </tr>

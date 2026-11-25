@@ -99,15 +99,15 @@ export function CategoryFormFields({
       {isBusinessActive && onScopeChange ? (
         <FormField
           label="Esfera de uso"
-          helperText="Controla em quais caixas (Pessoal, Negócio ou ambos) esta categoria aparece sugerida."
+          helperText="Controla em quais caixas (Pessoal, Profissional ou ambos) esta categoria aparece sugerida."
         >
           <Select
             value={scope}
             onValueChange={(value) => onScopeChange(value as CategoryScope)}
             options={[
-              { value: "personal", label: "Pessoal (PF)" },
-              { value: "business", label: "Meu Negócio (PJ)" },
-              { value: "both", label: "Ambos (PF e PJ)" },
+              { value: "personal", label: "Pessoal" },
+              { value: "business", label: "Profissional" },
+              { value: "both", label: "Ambos (Pessoal e Profissional)" },
             ]}
             ariaLabel="Esfera de uso da categoria"
           />

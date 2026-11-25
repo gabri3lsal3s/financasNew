@@ -178,7 +178,7 @@ function StatementImportContent({
           state.activeCard.scope === "business" ? (
             <Badge size="xs" variant="portfolio" className="gap-1">
               <Briefcase className="size-3" aria-hidden="true" />
-              Cartão PJ
+              Cartão Profissional
             </Badge>
           ) : undefined
         }

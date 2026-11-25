@@ -235,8 +235,8 @@ export function InterfaceShortcutsCard({
                   </div>
                   <div className="text-[11px] text-muted-foreground">
                     {isBusinessModeEnabled
-                      ? "Ativo. Separa finanças pessoais (PF) e do negócio (PJ), DRE mensal, Teto MEI e painel /negocio."
-                      : "Desativado por padrão. Ative se você é MEI, autônomo ou profissional liberal e deseja separar PF e PJ."}
+                      ? "Ativo. Separa finanças pessoais e profissionais, DRE mensal, Teto MEI e painel /negocio."
+                      : "Desativado por padrão. Ative se você é MEI, autônomo ou profissional liberal e deseja separar Pessoal e Profissional."}
                   </div>
                 </div>
               </div>

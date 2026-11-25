@@ -141,7 +141,8 @@ export function extractPrintedStatementTotalCents(
 
   const primaryInvoiceTotalRegex =
     /\b(?:valor\s+total\s+(?:desta\s+|da\s+)?fatura|total\s+(?:desta\s+|da\s+|de\s+sua\s+)?fatura(?:\s+atual)?|valor\s+da\s+fatura(?:\s+atual)?)\b/i;
-  const cycleNetTotalRegex = /\b(?:despesas\s+e\s+cr[eé]ditos\s+do\s+m[eê]s)\b/i;
+  const cycleNetTotalRegex =
+    /\b(?:despesas\s+e\s+cr[eé]ditos\s+do\s+m[eê]s|total\s+de\s+compras\s+e\s+despesas)\b/i;
   const fallbackTotalToPayRegex = /\btotal\s+a\s+pagar\b/i;
 
   let blueprintTotalCandidate: number | null = null;

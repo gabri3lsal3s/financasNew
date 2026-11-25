@@ -44,9 +44,9 @@ describe("LaunchContextSelector - Proporção Personalizada no Split PF/PJ", () 
     setup();
 
     expect(screen.getByRole("radio", { name: /50% \/ 50%/i })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: /70% PJ \/ 30% PF/i })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: /30% PJ \/ 70% PF/i })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: /80% PJ \/ 20% PF/i })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /70% Prof\. \/ 30% Pess\./i })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /30% Prof\. \/ 70% Pess\./i })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /80% Prof\. \/ 20% Pess\./i })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /Personalizado/i })).toBeInTheDocument();
   });
 
@@ -54,7 +54,7 @@ describe("LaunchContextSelector - Proporção Personalizada no Split PF/PJ", () 
     const user = userEvent.setup();
     const { onSplitPFPJBusinessPercentChange } = setup();
 
-    await user.click(screen.getByRole("radio", { name: /70% PJ \/ 30% PF/i }));
+    await user.click(screen.getByRole("radio", { name: /70% Prof\. \/ 30% Pess\./i }));
     expect(onSplitPFPJBusinessPercentChange).toHaveBeenCalledWith(70);
   });
 
@@ -67,7 +67,7 @@ describe("LaunchContextSelector - Proporção Personalizada no Split PF/PJ", () 
     await user.click(screen.getByRole("radio", { name: /Personalizado/i }));
 
     expect(screen.getByText("Proporção Personalizada")).toBeInTheDocument();
-    expect(screen.getByText("Fatia do negócio:")).toBeInTheDocument();
+    expect(screen.getByText("Fatia profissional:")).toBeInTheDocument();
     expect(screen.getByText("+5%")).toBeInTheDocument();
     expect(screen.getByText("+10%")).toBeInTheDocument();
     expect(screen.getByText("-5%")).toBeInTheDocument();
@@ -78,7 +78,7 @@ describe("LaunchContextSelector - Proporção Personalizada no Split PF/PJ", () 
     setup({ splitPFPJBusinessPercent: 65 });
 
     expect(screen.getByText("Proporção Personalizada")).toBeInTheDocument();
-    expect(screen.getByText("65% PJ · 35% PF")).toBeInTheDocument();
+    expect(screen.getByText("65% Prof. · 35% Pess.")).toBeInTheDocument();
   });
 
   it("ajusta o percentual via botões delta (+5%, -10%)", async () => {
@@ -102,7 +102,7 @@ describe("LaunchContextSelector - Proporção Personalizada no Split PF/PJ", () 
     // Clica em personalizado para abrir
     fireEvent.click(screen.getByRole("radio", { name: /Personalizado/i }));
 
-    const moneyInput = screen.getByLabelText("Cota do negócio em reais");
+    const moneyInput = screen.getByLabelText("Cota profissional em reais");
     expect(moneyInput).toBeInTheDocument();
 
     // Simula alteração do valor no MoneyInput (digita 4000)
@@ -116,10 +116,10 @@ describe("LaunchContextSelector - Proporção Personalizada no Split PF/PJ", () 
       splitPFPJBusinessPercent: 65,
     });
 
-    expect(screen.getByText("Parcela Pessoal (PF)")).toBeInTheDocument();
+    expect(screen.getByText("Parcela Pessoal")).toBeInTheDocument();
     expect(screen.getByText("35%")).toBeInTheDocument();
 
-    expect(screen.getByText("Parcela Negócio (PJ)")).toBeInTheDocument();
+    expect(screen.getByText("Parcela Profissional")).toBeInTheDocument();
     expect(screen.getByText("65%")).toBeInTheDocument();
   });
 });

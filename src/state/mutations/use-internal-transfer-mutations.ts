@@ -40,7 +40,7 @@ export function useCreateInternalTransferPair() {
       invalidateInternalTransferEcosystem(queryClient);
       triggerSensory("success");
       pushToast({
-        title: "Transferência PF/PJ registrada",
+        title: "Transferência Pessoal/Profissional registrada",
         description: "Ambas as pernas foram pareadas com segurança.",
         variant: "success",
       });

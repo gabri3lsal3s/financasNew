@@ -26,7 +26,7 @@ export function CategoryCard({ category, onEdit, onDelete }: CategoryCardProps) 
     if (category.scope === "business") {
       return (
         <Badge variant="default" size="xs" className="text-primary border-primary/30 bg-primary/5">
-          <span>Negócio PJ</span>
+          <span>Profissional</span>
         </Badge>
       );
     }

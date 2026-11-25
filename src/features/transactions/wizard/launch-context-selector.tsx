@@ -118,11 +118,11 @@ export function LaunchContextSelector({
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-foreground">{title}</span>
         {isSplitPFPJSelected ? (
-          <span className="text-[11px] font-medium text-warning-strong">Uso Misto (PF/PJ)</span>
+          <span className="text-[11px] font-medium text-warning-strong">Uso Misto (Pessoal/Profissional)</span>
         ) : activeContext === "personal" ? (
           <span className="text-[11px] text-muted-foreground">Individual</span>
         ) : activeContext === "business" ? (
-          <span className="text-[11px] font-medium text-portfolio">Esfera PJ</span>
+          <span className="text-[11px] font-medium text-portfolio">Esfera Profissional</span>
         ) : null}
       </div>
 
@@ -136,7 +136,7 @@ export function LaunchContextSelector({
             onClick={() => handleSelectContext("personal")}
             icon={<User className="size-3.5" />}
           >
-            <span>Pessoal (PF)</span>
+            <span>Pessoal</span>
           </Chip>
 
           <Chip
@@ -148,7 +148,7 @@ export function LaunchContextSelector({
             icon={<Briefcase className="size-3.5" />}
             className={!isSplitPFPJSelected && currentScope === "business" ? "border-portfolio bg-portfolio/10 text-portfolio font-semibold" : undefined}
           >
-            <span>Meu Negócio (PJ)</span>
+            <span>Profissional</span>
           </Chip>
 
           {isExpense ? (
@@ -167,7 +167,7 @@ export function LaunchContextSelector({
               icon={<Scale className="size-3.5" />}
               className={isSplitPFPJSelected ? "border-warning/50 bg-warning/15 text-warning-strong font-semibold" : undefined}
             >
-              <span>Dividir PF / PJ</span>
+              <span>Dividir Pessoal / Profissional</span>
             </Chip>
           ) : null}
         </div>
@@ -176,9 +176,9 @@ export function LaunchContextSelector({
       {isSplitPFPJSelected && splitPFPJResult ? (
         <div className="flex flex-col gap-3 rounded-lg border border-border/80 bg-surface-raised p-3">
           <div className="flex flex-col gap-1">
-            <span className="text-xs font-semibold text-foreground">Divisão de Uso Misto (Split PF/PJ)</span>
+            <span className="text-xs font-semibold text-foreground">Divisão de Uso Misto (Pessoal / Profissional)</span>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Gera dois lançamentos com peso 100% nominal em cada esfera contábil, sem distorcer o DRE da empresa nem o orçamento da família.
+              Gera dois lançamentos com peso 100% nominal em cada esfera contábil, sem distorcer o DRE profissional nem o orçamento pessoal.
             </p>
           </div>
 
@@ -186,15 +186,15 @@ export function LaunchContextSelector({
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-medium text-foreground">Distribuição da despesa</span>
               <span className="text-[10px] text-muted-foreground font-mono">
-                {100 - businessPercent}% PF / {businessPercent}% PJ
+                {100 - businessPercent}% Pessoal / {businessPercent}% Profissional
               </span>
             </div>
             <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Distribuição da despesa">
               {[
                 { label: "50% / 50%", val: 50 },
-                { label: "70% PJ / 30% PF", val: 70 },
-                { label: "30% PJ / 70% PF", val: 30 },
-                { label: "80% PJ / 20% PF", val: 80 },
+                { label: "70% Prof. / 30% Pess.", val: 70 },
+                { label: "30% Prof. / 70% Pess.", val: 30 },
+                { label: "80% Prof. / 20% Pess.", val: 80 },
               ].map((preset) => {
                 const isSelected = !showCustomControls && businessPercent === preset.val;
                 return (
@@ -238,7 +238,7 @@ export function LaunchContextSelector({
                     </span>
                   </div>
                   <Badge size="xs" variant="portfolio" className="font-mono">
-                    {businessPercent}% PJ · {100 - businessPercent}% PF
+                    {businessPercent}% Prof. · {100 - businessPercent}% Pess.
                   </Badge>
                 </div>
 
@@ -248,24 +248,24 @@ export function LaunchContextSelector({
                     <div
                       className="bg-muted-foreground/35 transition-all duration-200"
                       style={{ width: `${100 - businessPercent}%` }}
-                      title={`Pessoal (PF): ${100 - businessPercent}%`}
+                      title={`Pessoal: ${100 - businessPercent}%`}
                     />
                     <div
                       className="bg-portfolio transition-all duration-200"
                       style={{ width: `${businessPercent}%` }}
-                      title={`Negócio (PJ): ${businessPercent}%`}
+                      title={`Profissional: ${businessPercent}%`}
                     />
                   </div>
                   <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono">
-                    <span>PF: {100 - businessPercent}%</span>
-                    <span className="text-portfolio font-medium">PJ: {businessPercent}%</span>
+                    <span>Pessoal: {100 - businessPercent}%</span>
+                    <span className="text-portfolio font-medium">Profissional: {businessPercent}%</span>
                   </div>
                 </div>
 
                 {/* Ajuste fino por Stepper e atalhos delta */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-0.5">
                   <div className="flex items-center justify-between sm:justify-start gap-2.5">
-                    <span className="text-xs font-medium text-foreground shrink-0">Fatia do negócio:</span>
+                    <span className="text-xs font-medium text-foreground shrink-0">Fatia profissional:</span>
                     <NumberStepper
                       editable
                       value={businessPercent}
@@ -276,9 +276,9 @@ export function LaunchContextSelector({
                         const clamped = Math.max(1, Math.min(99, Math.round(val)));
                         onSplitPFPJBusinessPercentChange?.(clamped);
                       }}
-                      ariaLabel="Fatia percentual do negócio"
-                      decreaseLabel="Diminuir parcela PJ em 5%"
-                      increaseLabel="Aumentar parcela PJ em 5%"
+                      ariaLabel="Fatia percentual profissional"
+                      decreaseLabel="Diminuir parcela profissional em 5%"
+                      increaseLabel="Aumentar parcela profissional em 5%"
                       className="w-36 sm:w-40"
                     />
                   </div>
@@ -306,7 +306,7 @@ export function LaunchContextSelector({
                 {state.valueCents > 0 ? (
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-border/60 pt-2.5">
                     <div className="flex flex-col">
-                      <span className="text-[11px] font-medium text-foreground">Definir cota em reais (PJ)</span>
+                      <span className="text-[11px] font-medium text-foreground">Definir cota em reais (Profissional)</span>
                       <span className="text-[10px] text-muted-foreground">
                         Calcula a porcentagem automaticamente com base no total ({formatCentsAsBRL(state.valueCents)})
                       </span>
@@ -324,7 +324,7 @@ export function LaunchContextSelector({
                         size="sm"
                         className="h-8 text-xs font-mono"
                         placeholder="R$ 0,00"
-                        aria-label="Cota do negócio em reais"
+                        aria-label="Cota profissional em reais"
                       />
                     </div>
                   </div>
@@ -335,7 +335,7 @@ export function LaunchContextSelector({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div className="flex flex-col gap-1 rounded-md border border-border/60 bg-surface p-2.5">
-              <span className="text-[11px] font-medium text-muted-foreground">Parcela Pessoal (PF)</span>
+              <span className="text-[11px] font-medium text-muted-foreground">Parcela Pessoal</span>
               <div className="flex items-baseline justify-between gap-1">
                 <MoneyText cents={splitPFPJResult.personalCents} tone="default" className="text-sm font-semibold" />
                 <span className="text-[11px] text-muted-foreground">{100 - businessPercent}%</span>
@@ -344,12 +344,12 @@ export function LaunchContextSelector({
             </div>
 
             <div className="flex flex-col gap-1 rounded-md border border-portfolio/30 bg-portfolio/5 p-2.5">
-              <span className="text-[11px] font-medium text-portfolio">Parcela Negócio (PJ)</span>
+              <span className="text-[11px] font-medium text-portfolio">Parcela Profissional</span>
               <div className="flex items-baseline justify-between gap-1">
                 <MoneyText cents={splitPFPJResult.businessCents} tone="default" className="text-sm font-semibold" />
                 <span className="text-[11px] text-portfolio font-medium">{businessPercent}%</span>
               </div>
-              <span className="text-[10px] text-muted-foreground">Livro PJ · Peso 100%</span>
+              <span className="text-[10px] text-muted-foreground">Livro Profissional · Peso 100%</span>
             </div>
           </div>
 

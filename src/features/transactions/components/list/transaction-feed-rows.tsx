@@ -50,7 +50,7 @@ export function ExpenseRow({
         <div className="hidden sm:flex items-center gap-1.5 shrink-0 flex-wrap">
           {isBusinessModeEnabled && expense.scope === "business" && (
             <Badge variant="portfolio" size="xs" className="shrink-0 font-medium">
-              PJ
+              Profissional
             </Badge>
           )}
           {isBusinessModeEnabled && expense.is_internal_transfer && (
@@ -121,7 +121,7 @@ export function IncomeRow({
           <div className="hidden sm:flex items-center gap-1.5 shrink-0 flex-wrap">
             {isBusinessModeEnabled && income.scope === "business" ? (
               <Badge variant="portfolio" size="xs" className="shrink-0 font-medium">
-                PJ
+                Profissional
               </Badge>
             ) : null}
             {isBusinessModeEnabled && income.is_internal_transfer ? (

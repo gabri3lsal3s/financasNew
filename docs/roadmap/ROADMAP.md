@@ -1,5 +1,11 @@
 # ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.29.0 (Hardening Multi-Coluna, .xls Binário Legado BIFF8 & Cascata Vision)** (2026-11-25):
+> - **Suporte Nativo a `.xls` Binário Legado (`biff8-xls-extractor.ts`):** leitor puro em TypeScript de container OLE2/CFB + stream BIFF8 (`SST`, `CONTINUE`, `DATEMODE` 1900/1904, `FORMAT`/`XF`, `LABELSST`, `NUMBER`, `RK`/`MULRK`, `FORMULA`), com seleção automática da melhor aba via `scoreWorksheetRows` e tratamento claro apenas para arquivos criptografados (`FILEPASS`).
+> - **Motor Espacial Multi-Coluna Resiliente (`spatial-line-splitter.ts` + `spatial-pdf-extractor.ts`):** detecção bimodal por banda transacional (imune a cabeçalhos, títulos de sub-cartão e rodapés largos como no layout BTG Pactual), segunda barreira determinística com split intra-linha por tokens X quando há `2+` pares `Data + Valor BRL`, remoção de glifos isolados e suporte a sinal negativo espaçado (`- R$ 942,40`).
+> - **Quality Gate & Cascata Inteligente (`quality-gate.ts`, `statement-vision-helpers.ts`, `statement-preprocessor.ts`, Edge Function `ai-financial-assistant`):** nova falha crítica `merged_columns` para barrar vazamento de colunas na descrição, precedência de `"Total de compras e despesas"` / `"Total a pagar"` acima de subtotais por sub-cartão, ranking de páginas no Vision priorizando tabelas transacionais acima de capas/resumos e reforço do prompt `statement_pdf_rows` para separar lançamentos lado a lado.
+> - **Padronização Semântica do Modo Negócio:** remoção da sigla `"PJ"` nos rótulos e fluxos de Negócio, Cartões, Categorias, Orçamentos, Transações e Relatórios, unificando a terminologia voltada ao usuário final.
+
 > **v3.28.0 (Motor Universal & Autoevolutivo de Importação de Faturas — Ondas 1–4)** (2026-11-25):
 > - **Onda 1 — Contratos, RPC Atômico, Nuvem Zero-PII & Paridade Trial=Pro (`0155`, `0156`, Edge Function `ai-financial-assistant`):**
 >   - Migration `20260101000155_commit_statement_reconciliation_rpc.sql`: RPC transacional `commit_statement_reconciliation` (proteção de fatura rolada `card_bill_rollovers` e quitada `card_payments` D14, exclusão cirúrgica por `id`, ajustes/moves/estornos `[REFUND]{id}`, criação + projeção futura `K+1..N` com `installment_group_id` e idempotência por `statement_hash` e índice único de parcelas);

@@ -17,6 +17,7 @@ export * from "./magic-bytes";
 export * from "./csv-extractor";
 export * from "./ofx-extractor";
 export * from "./text-extractor";
+export * from "./biff8-xls-extractor";
 export * from "./spreadsheet-extractor";
 export * from "./spatial-pdf-extractor";
 export * from "./issuer-profiles";

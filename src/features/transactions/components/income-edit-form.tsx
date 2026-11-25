@@ -163,8 +163,8 @@ export function IncomeEditForm({
                       if (next === "business") setIsFamily(false);
                     }}
                     options={[
-                      { value: "personal", label: "Pessoal (PF)" },
-                      { value: "business", label: "Meu Negócio (PJ)" },
+                      { value: "personal", label: "Pessoal" },
+                      { value: "business", label: "Profissional" },
                     ]}
                     ariaLabel="Esfera do lançamento"
                   />

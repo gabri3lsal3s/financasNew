@@ -214,7 +214,7 @@ describe("FinancialCloseReportModal (F42)", () => {
       />,
     );
 
-    expect(screen.getByText(/DRE do Negócio — Esfera PJ \(MEI\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/DRE Profissional \(MEI\)/i)).toBeInTheDocument();
     expect(screen.getByText(/Faturamento Bruto da Operação/i)).toBeInTheDocument();
     expect(screen.getByText(/Custos Operacionais e Despesas do Negócio/i)).toBeInTheDocument();
     expect(screen.getByText(/Lucro Retido no Caixa do Negócio/i)).toBeInTheDocument();

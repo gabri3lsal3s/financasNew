@@ -378,7 +378,7 @@ describe("StepQuick (Lançamento Rápido em Tela Única)", () => {
       />,
     );
 
-    const pjRadio = screen.getByRole("radio", { name: /Meu Negócio \(PJ\)/i });
+    const pjRadio = screen.getByRole("radio", { name: /^Profissional$/i });
     await user.click(pjRadio);
     expect(onScopeChange).toHaveBeenCalledWith("business");
 

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as aiAssistant from "@/services/ai-assistant";
 import type { PdfDocumentSession } from "@/services/pdf-session";
 import { parseStatementWithPdfAiFallback } from "./statement-import-pipeline";
+import { selectCandidatePdfVisionPagesWithOverflow } from "./statement-vision-helpers";
 import { runVisionWavesWithAi } from "./statement-vision-runner";
 
 function makeVisionResponse(descriptions: Array<{ desc: string; cents: number }>, totalCents?: number) {
@@ -223,5 +224,31 @@ describe("Onda 3 — statement-import-pipeline (Vision 2 Ondas Paralelas, Chunks
 
     expect(aiSpy).toHaveBeenCalledTimes(3);
     expect(res.wavesExecuted).toBe(1);
+  });
+
+  it("Vision: prioriza página com lançamentos reais antes de página de capa/resumo", () => {
+    const page1Summary = [
+      "Fique de olho nas informações essenciais",
+      "Período de compras: 01/10 até 01/11",
+      "Vencimento: 05/11",
+      "Resumo da Fatura Atual",
+      "Total a pagar R$ 830,38",
+      "Total da fatura anterior R$ 942,40",
+    ].join("\n");
+
+    const page2Transactions = [
+      "Lançamentos do cartão físico | Final 7182",
+      "02 Set Mulvi (2/2) R$ 112,39",
+      "18 Out Cactus Burguer R$ 80,50",
+      "29 Out Filialshopping R$ 156,50",
+      "31 Out Posto Dynamus Iii R$ 307,83",
+    ].join("\n");
+
+    const selected = selectCandidatePdfVisionPagesWithOverflow(
+      [page1Summary, page2Transactions],
+      2,
+    );
+
+    expect(selected.pages[0]).toBe(2);
   });
 });

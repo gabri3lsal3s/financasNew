@@ -210,14 +210,14 @@ export function buildSafeToSpendBreakdown(params: SafeToSpendBreakdownParams): C
 
   if (businessCashReservation > 0) {
     steps.push({
-      label: "Reserva Caixa Meu Negócio (PJ)",
+      label: "Reserva Caixa Profissional",
       operator: "-",
       rawValue: businessCashReservation,
-      hint: "Saldo operacional da empresa retido na conta compartilhada para custear a operação (blindado contra gastos pessoais)",
+      hint: "Saldo operacional profissional retido na conta compartilhada para custear a operação (blindado contra gastos pessoais)",
       tone: "negative",
       actionLink: {
         to: "/negocio",
-        label: "Ver caixa PJ",
+        label: "Ver caixa profissional",
       },
     });
   }
@@ -260,10 +260,10 @@ export function buildSafeToSpendBreakdown(params: SafeToSpendBreakdownParams): C
     periodLabel: "Ciclo Mensal Corrente",
     formulaExpression: isOptimistic
       ? businessCashReservation > 0
-        ? "Saldo em Conta + Recebíveis Previstos − Obrigações do Ciclo − Reserva Caixa PJ"
+        ? "Saldo em Conta + Recebíveis Previstos − Obrigações do Ciclo − Reserva Caixa Profissional"
         : "Saldo em Conta + Recebíveis Previstos − Obrigações do Ciclo"
       : businessCashReservation > 0
-        ? "Saldo em Conta − Obrigações do Ciclo − Reserva Caixa PJ"
+        ? "Saldo em Conta − Obrigações do Ciclo − Reserva Caixa Profissional"
         : "Saldo em Conta − Obrigações do Ciclo",
     unit: "currency",
     steps,

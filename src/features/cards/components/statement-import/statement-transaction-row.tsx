@@ -211,10 +211,10 @@ export const StatementTransactionRow = memo(function StatementTransactionRow({
               disabled={isPending || item.status === "exact_match"}
               onClick={() => onToggleScope(tx.id)}
               className="gap-1 px-2"
-              title="Alternar escopo Pessoal (PF) / Meu Negócio (PJ)"
+              title="Alternar escopo Pessoal / Profissional"
             >
               <Briefcase className="size-3" aria-hidden="true" />
-              <span>{item.scope === "business" ? "PJ" : "PF"}</span>
+              <span>{item.scope === "business" ? "Profissional" : "Pessoal"}</span>
             </Button>
           ) : null}
 

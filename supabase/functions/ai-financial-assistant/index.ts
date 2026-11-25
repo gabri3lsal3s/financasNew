@@ -254,7 +254,7 @@ function buildStatementPdfRowsPrompt(params: {
       ? "Extrator estruturado de fatura de cartao (imagem/print). Retorne JSON estrito."
       : "Extrator estruturado de linhas de fatura de cartao. Retorne JSON estrito.",
     competenceHint,
-    "1) Extraia APENAS lancamentos individuais (compras, encargos/IOF/anuidade, estornos e pagamentos de fatura anterior).",
+    "1) Extraia APENAS lancamentos individuais (compras, encargos/IOF/anuidade, estornos e pagamentos de fatura anterior). Se uma linha de texto contiver DOIS lancamentos lado a lado (ex.: duas datas e dois valores em R$), separe-os obrigatoriamente em duas entradas distintas.",
     "2) IGNORE totais, resumos, limites, pagamento minimo, cabecalhos e simulacoes de parcelamento da fatura (ex.: '12x de R$').",
     "3) date: YYYY-MM-DD; description: nome limpo do estabelecimento/lancamento.",
     "4) Compras internacionais: use SEMPRE o valor final convertido em BRL (R$), nunca USD/EUR puro.",

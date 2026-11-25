@@ -120,28 +120,28 @@ export function StepReview({
             value={
               isSplitPFPJ ? (
                 <Badge variant="warning" size="xs">
-                  Uso Misto (Split PF/PJ)
+                  Uso Misto (Pessoal / Profissional)
                 </Badge>
               ) : state.scope === "business" ? (
                 <Badge variant="portfolio" size="xs">
-                  Meu Negócio (PJ)
+                  Profissional
                 </Badge>
               ) : (
-                "Pessoal (PF)"
+                "Pessoal"
               )
             }
           />
         ) : null}
         {isSplitPFPJ && splitPFPJResult ? (
           <Row
-            label="Divisão PF / PJ"
+            label="Divisão Pessoal / Profissional"
             value={
               <div className="flex flex-col items-end gap-0.5 text-xs">
                 <span>
-                  PF: <strong className="font-semibold text-foreground">R$ {(splitPFPJResult.personalCents / 100).toFixed(2).replace(".", ",")}</strong> ({100 - (state.splitPFPJBusinessPercent ?? 50)}%)
+                  Pessoal: <strong className="font-semibold text-foreground">R$ {(splitPFPJResult.personalCents / 100).toFixed(2).replace(".", ",")}</strong> ({100 - (state.splitPFPJBusinessPercent ?? 50)}%)
                 </span>
                 <span>
-                  PJ: <strong className="font-semibold text-portfolio">R$ {(splitPFPJResult.businessCents / 100).toFixed(2).replace(".", ",")}</strong> ({state.splitPFPJBusinessPercent ?? 50}%)
+                  Profissional: <strong className="font-semibold text-portfolio">R$ {(splitPFPJResult.businessCents / 100).toFixed(2).replace(".", ",")}</strong> ({state.splitPFPJBusinessPercent ?? 50}%)
                 </span>
               </div>
             }
@@ -152,7 +152,7 @@ export function StepReview({
             label="Dedutibilidade"
             value={
               <Badge variant="positive" size="xs">
-                Dedutível para IR (fatia PJ)
+                Dedutível para IR (fatia Profissional)
               </Badge>
             }
           />

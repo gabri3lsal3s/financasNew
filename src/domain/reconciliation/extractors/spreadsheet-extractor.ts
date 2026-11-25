@@ -1,4 +1,5 @@
 import type { RawParsedRow } from "../contracts";
+import { parseBiff8XlsToRows } from "./biff8-xls-extractor";
 import { decodeBufferToString, parseCsvToRows } from "./csv-extractor";
 import { normalizeDateToISO, parseAmountToCents } from "./type-sniffer";
 
@@ -462,9 +463,7 @@ export async function parseSpreadsheetOrHtmlToRows(
   if (typeof input !== "string") {
     const bytes = new Uint8Array(input);
     if (isBiff8Excel(bytes)) {
-      throw new Error(
-        "Planilhas no formato binário legado (.xls / Excel 97-2003) não são suportadas diretamente. Exporte ou salve o arquivo como .xlsx ou .csv para importar.",
-      );
+      return parseBiff8XlsToRows(bytes, scoreWorksheetRows);
     }
     if (isZipArchive(bytes)) {
       const entries = parseZipCentralDirectory(bytes);

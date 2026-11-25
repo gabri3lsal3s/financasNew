@@ -57,7 +57,7 @@ export function IncomeDetailView({
             {income.is_internal_transfer ? (
               <>
                 <ArrowLeftRight className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                <span>Transferência Interna (PF/PJ)</span>
+                <span>Transferência Interna (Pessoal / Profissional)</span>
                 <Badge variant="muted" size="xs">Não fiscal</Badge>
               </>
             ) : currentCategory ? (
@@ -122,7 +122,7 @@ export function IncomeDetailView({
                   ? "Retirada de Pró-Labore: remuneração do fundador transferida do caixa da empresa para a sua conta pessoal."
                   : income.transfer_kind === "card_reimbursement"
                     ? "Reembolso de Despesas: devolução da empresa ao seu caixa pessoal de gastos que você antecipou pelo negócio."
-                    : "Transferência patrimonial interna pareada entre caixas PF e PJ (sem efeito fiscal/DRE)."}
+                    : "Transferência patrimonial interna pareada entre os caixas Pessoal e Profissional (sem efeito fiscal/DRE)."}
             </p>
             <p className="text-[11px] text-muted-foreground/80">
               Transferência pareada atômica — somente leitura. Ao excluir a transferência, a ação é desfeita e o dinheiro volta automaticamente ao caixa de origem.

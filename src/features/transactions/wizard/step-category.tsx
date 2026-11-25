@@ -94,8 +94,8 @@ export function StepCategory({
             {isBusinessModeEnabled && category.scope === "business" ? (
               <span
                 className="absolute top-2 right-2 flex items-center justify-center text-portfolio"
-                title="Categoria do Meu Negócio (PJ)"
-                aria-label="Categoria do Meu Negócio (PJ)"
+                title="Categoria Profissional"
+                aria-label="Categoria Profissional"
               >
                 <Briefcase className="size-3.5" aria-hidden="true" />
               </span>

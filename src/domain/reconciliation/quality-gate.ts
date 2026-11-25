@@ -6,6 +6,7 @@ export type QualityGateFailureReason =
   | "checksum_underflow"
   | "checksum_overflow"
   | "degraded_descriptions"
+  | "merged_columns"
   | "synthetic_dates"
   | "outlier_amount"
   | "spatial_collapse"
@@ -53,6 +54,9 @@ export interface StatementQualityGateResult {
 
 const DEGRADED_DESCRIPTION_REGEX =
   /^(?:transa[çc][aã]o|\d{4}-\d{2}-\d{2}|\d{1,2}[/.-]\d{1,2}(?:[/.-]\d{2,4})?|[\d\s/.,+-]+)$|\b(?:cet\s*\(?m[eê]s|cet\s*\(?ano|taxa\s*\(?m[eê]s|taxa\s+ao\s+m[eê]s|juros\s+de\s+atraso|mora\s+de\s+atraso|pagamento\s+m[ií]nimo)\b/i;
+
+const MERGED_COLUMNS_DESCRIPTION_REGEX =
+  /(?:r\$\s*-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d{1,3}(?:\.\d{3})*,\d{2})\s+\d{1,2}(?:\s+(?:de\s+)?(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)|[/.-]\d{1,2})\b/i;
 
 const CHECKSUM_TOLERANCE_CENTS = 5;
 
@@ -152,7 +156,16 @@ export function evaluateStatementExtractionQuality(
     }
   }
 
-  // 4. Sanidade de descrições
+  // 4. Sanidade de descrições + detecção de colunas fundidas (ex.: "Loja R$ 112,39 29 Out OutraLoja")
+  const mergedColumnsCount = transactions.filter((tx) =>
+    MERGED_COLUMNS_DESCRIPTION_REGEX.test(tx.cleanDescription) ||
+    MERGED_COLUMNS_DESCRIPTION_REGEX.test(tx.rawDescription),
+  ).length;
+  if (mergedColumnsCount > 0) {
+    reasons.push("merged_columns");
+    score -= 35;
+  }
+
   const degradedCount = transactions.filter((tx) => {
     const desc = tx.cleanDescription.trim();
     return !desc || DEGRADED_DESCRIPTION_REGEX.test(desc);
@@ -204,6 +217,7 @@ export function evaluateStatementExtractionQuality(
     (r) =>
       r === "checksum_overflow" ||
       r === "degraded_descriptions" ||
+      r === "merged_columns" ||
       r === "synthetic_dates" ||
       r === "outlier_amount" ||
       r === "spatial_collapse",

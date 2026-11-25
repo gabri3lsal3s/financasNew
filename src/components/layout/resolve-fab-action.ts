@@ -34,7 +34,7 @@ export function resolveFabAction(
   if (normalizedPath === "/negocio" && hasFeature("transactions")) {
     params.set("novo", "transacao");
     params.set("escopo", "business");
-    return { to: `${normalizedPath}?${params.toString()}`, label: "Novo lançamento PJ" };
+    return { to: `${normalizedPath}?${params.toString()}`, label: "Novo lançamento Profissional" };
   }
 
   // Modo Família (/familia ou /modo-familia)

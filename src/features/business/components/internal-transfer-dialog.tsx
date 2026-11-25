@@ -77,8 +77,8 @@ export function InternalTransferDialog({
   }
 
   const isPfToPj = kind === "capital_injection";
-  const fromLabel = isPfToPj ? "Caixa Pessoal (PF)" : "Caixa Meu Negócio (PJ)";
-  const toLabel = isPfToPj ? "Caixa Meu Negócio (PJ)" : "Caixa Pessoal (PF)";
+  const fromLabel = isPfToPj ? "Caixa Pessoal" : "Caixa Profissional";
+  const toLabel = isPfToPj ? "Caixa Profissional" : "Caixa Pessoal";
 
   const executeSubmit = async () => {
     setError(null);
@@ -110,12 +110,12 @@ export function InternalTransferDialog({
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     if (isReadOnlyMode) {
-      guardAction(() => undefined, "Registrar Transferência PF/PJ");
+      guardAction(() => undefined, "Registrar Transferência Pessoal/Profissional");
       return;
     }
     guardAction(() => {
       void executeSubmit();
-    }, "Registrar Transferência PF/PJ");
+    }, "Registrar Transferência Pessoal/Profissional");
   };
 
   return (
@@ -123,7 +123,7 @@ export function InternalTransferDialog({
       <Modal
         open={open}
         onOpenChange={onOpenChange}
-        title="Transferência PF / PJ"
+        title="Transferência Pessoal / Profissional"
         description="Movimentação pareada nos dois caixas sem inflar receitas nem despesas do DRE."
         size="md"
         showCalculator
@@ -212,9 +212,9 @@ export function InternalTransferDialog({
               onChange={(event) => setDescription(event.target.value)}
               placeholder={
                 isPfToPj
-                  ? "Ex.: Capital de giro inicial PF para PJ"
+                  ? "Ex.: Capital de giro inicial Pessoal para Profissional"
                   : kind === "card_reimbursement"
-                    ? "Ex.: Reembolso compras PJ no cartão PF"
+                    ? "Ex.: Reembolso compras profissionais no cartão pessoal"
                     : "Ex.: Retirada mensal de pró-labore"
               }
             />

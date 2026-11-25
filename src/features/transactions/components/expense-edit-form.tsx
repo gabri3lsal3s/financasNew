@@ -291,8 +291,8 @@ export function ExpenseEditForm({
                       else setIsTaxDeductible(false);
                     }}
                     options={[
-                      { value: "personal", label: "Pessoal (PF)" },
-                      { value: "business", label: "Meu Negócio (PJ)" },
+                      { value: "personal", label: "Pessoal" },
+                      { value: "business", label: "Profissional" },
                     ]}
                     ariaLabel="Esfera do lançamento"
                   />

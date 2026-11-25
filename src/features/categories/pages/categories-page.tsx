@@ -18,7 +18,7 @@ export function CategoriesPage() {
   const SCOPE_OPTIONS: { id: CategoryFilterScope; label: string }[] = [
     { id: "all", label: "Todas" },
     { id: "personal", label: "Pessoal" },
-    { id: "business", label: "Negócio PJ" },
+    { id: "business", label: "Profissional" },
     { id: "family", label: "Família" },
   ];
 
@@ -170,7 +170,7 @@ export function CategoriesPage() {
               <EmptyState
                 icon={<Boxes className="size-6" aria-hidden="true" />}
                 title="Nenhuma categoria cadastrada"
-                description="Sua conta ainda não possui categorias para este tipo. Explore os kits temáticos prontos (Essencial, Negócio PJ, Família, Veículos) para começar em segundos."
+                description="Sua conta ainda não possui categorias para este tipo. Explore os kits temáticos prontos (Essencial, Profissional, Família, Veículos) para começar em segundos."
                 action={
                   <div className="flex flex-wrap items-center justify-center gap-2">
                     <Button

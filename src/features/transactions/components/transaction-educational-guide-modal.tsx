@@ -340,7 +340,7 @@ export function TransactionEducationalGuideModal({
                   <strong>Descrição enxuta:</strong> Escreva apenas o local em 2 ou 3 palavras (ex.: <em>Padaria Estrela</em>, <em>Posto Ipiranga</em>, <em>Uber</em>).
                 </li>
                 <li>
-                  <strong>Contexto estruturado:</strong> Use os campos próprios de <em>Meio de pagamento</em>, <em>Cartão</em>, <em>Viagem</em>, <em>Família</em> ou <em>PF/PJ</em> em vez de misturar isso na descrição.
+                  <strong>Contexto estruturado:</strong> Use os campos próprios de <em>Meio de pagamento</em>, <em>Cartão</em>, <em>Viagem</em>, <em>Família</em> ou <em>Pessoal/Profissional</em> em vez de misturar isso na descrição.
                 </li>
               </ul>
             </div>

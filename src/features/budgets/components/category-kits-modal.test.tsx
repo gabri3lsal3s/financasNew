@@ -55,7 +55,7 @@ describe("CategoryKitsModal", () => {
 
     expect(screen.getByText("Kits de Categorias")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Essencial & Dia a Dia/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Negócio & PJ/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Profissional/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Família & Residência/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Veículos & Mobilidade/i })).toBeInTheDocument();
   });

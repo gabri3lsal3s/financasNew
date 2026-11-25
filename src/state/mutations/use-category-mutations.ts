@@ -12,7 +12,7 @@ import { expensesKey } from "@/state/queries/use-expenses";
 import { incomesKey } from "@/state/queries/use-incomes";
 import { budgetsKey } from "@/state/queries/use-budgets";
 import { incomeGoalsKey } from "@/state/queries/use-income-goals";
-import type { Category, CategoryType, DbUpdate } from "@/types";
+import type { Category, CategoryScope, CategoryType, DbUpdate } from "@/types";
 
 /**
  * Mutations de categorias (CRUD §3.5.1).
@@ -35,6 +35,7 @@ export function useCreateCategory() {
       color?: string | null;
       is_family?: boolean;
       family_id?: string | null;
+      scope?: CategoryScope;
     }) => createCategory(input),
     onSuccess: () => invalidateFinance(queryClient),
   });

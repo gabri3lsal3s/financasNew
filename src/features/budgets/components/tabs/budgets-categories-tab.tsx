@@ -48,7 +48,7 @@ export function BudgetsCategoriesTab({
             onClick={handleKitsClick}
             disabled={isSeeding}
             className="gap-1.5"
-            title="Explorar e instalar kits temáticos de categorias (Essencial, Negócio PJ, Família, Veículos)"
+            title="Explorar e instalar kits temáticos de categorias (Essencial, Profissional, Família, Veículos)"
           >
             <Boxes className="size-4" aria-hidden="true" />
             <span>Kits de categorias</span>
@@ -70,7 +70,7 @@ export function BudgetsCategoriesTab({
         <EmptyState
           icon={<Boxes className="size-6" aria-hidden="true" />}
           title="Nenhuma categoria encontrada"
-          description="Sua conta ainda não possui categorias ativas de receitas e despesas. Explore os kits temáticos prontos (Essencial, Negócio PJ, Família) para começar imediatamente."
+          description="Sua conta ainda não possui categorias ativas de receitas e despesas. Explore os kits temáticos prontos (Essencial, Profissional, Família) para começar imediatamente."
           action={
             <Button
               size="sm"

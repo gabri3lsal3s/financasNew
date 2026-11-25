@@ -210,10 +210,10 @@ function IncomeDetailDialogContent({
       <TransactionDeleteScopeModal
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title={actions.isInternalTransfer ? "Excluir transferência interna pareada PF/PJ?" : "Excluir receita?"}
+        title={actions.isInternalTransfer ? "Excluir transferência interna pareada?" : "Excluir receita?"}
         description={
           actions.isInternalTransfer
-            ? "Esta ação exclui simultaneamente a saída e a entrada correspondentes nos dois caixas (PF e PJ) e não pode ser desfeita."
+            ? "Esta ação exclui simultaneamente a saída e a entrada correspondentes nos dois caixas (Pessoal e Profissional) e não pode ser desfeita."
             : "Esta ação não pode ser desfeita."
         }
         confirmLabel={actions.deletePending ? "Excluindo…" : "Excluir"}

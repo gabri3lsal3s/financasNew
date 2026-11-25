@@ -224,7 +224,7 @@ export function LaunchWizard({
   const cardsForSelect = useMemo(() => {
     const raw = cardsQuery.data;
     if (!raw || !isBusinessModeEnabled) return raw;
-    return raw.map((card) => (card.scope === "business" ? { ...card, name: `${card.name} (PJ)` } : card));
+    return raw.map((card) => (card.scope === "business" ? { ...card, name: `${card.name} (Profissional)` } : card));
   }, [cardsQuery.data, isBusinessModeEnabled]);
 
   const requestClose = () => {

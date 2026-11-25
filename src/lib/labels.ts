@@ -18,26 +18,26 @@ import type {
  */
 
 export const INTERNAL_TRANSFER_KIND_LABELS: Record<InternalTransferKind, string> = {
-  pro_labore: "Pró-Labore (PJ para PF)",
-  capital_injection: "Aporte de Capital (PF para PJ)",
-  card_reimbursement: "Reembolso de Cartão Misto (PJ para PF)",
+  pro_labore: "Pró-Labore (Profissional para Pessoal)",
+  capital_injection: "Aporte de Capital (Pessoal para Profissional)",
+  card_reimbursement: "Reembolso de Cartão Misto (Profissional para Pessoal)",
 };
 
 export const TRANSACTION_SCOPE_LABELS: Record<TransactionScope, string> = {
   personal: "Pessoal",
-  business: "Negócio",
+  business: "Profissional",
 };
 
 export const CREDIT_CARD_SCOPE_LABELS: Record<CreditCardScope, string> = {
-  personal: "Pessoal (PF)",
-  business: "Empresarial (PJ)",
-  mixed: "Uso Misto (PF e PJ)",
+  personal: "Pessoal",
+  business: "Profissional",
+  mixed: "Uso Misto (Pessoal e Profissional)",
 };
 
 export const CATEGORY_SCOPE_LABELS: Record<CategoryScope, string> = {
   personal: "Pessoal",
-  business: "Negócio",
-  both: "Ambos (PF e PJ)",
+  business: "Profissional",
+  both: "Ambos (Pessoal e Profissional)",
 };
 
 export const BUSINESS_PROFILE_LABELS: Record<BusinessProfileKind, string> = {

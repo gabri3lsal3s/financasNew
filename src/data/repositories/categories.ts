@@ -205,8 +205,8 @@ export async function installCategoryKitItems(
     color: item.color,
     is_reserved: false,
     is_active: true,
-    is_family: false,
-    scope: "personal" as CategoryScope,
+    is_family: Boolean(item.is_family),
+    scope: (item.scope ?? "personal") as CategoryScope,
   }));
 
   const { data: inserted, error: insertError } = await supabase

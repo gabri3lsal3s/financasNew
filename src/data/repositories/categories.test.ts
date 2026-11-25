@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
   listCategories,
   createCategory,
+  installCategoryKitItems,
   seedDefaultCategories,
   ensureDefaultCategories,
 } from "./categories";
@@ -216,6 +217,60 @@ describe("categories repository", () => {
       const seeded = await ensureDefaultCategories("user-123");
       expect(seeded).toBe(true);
       expect(mockRpc).toHaveBeenCalledWith("seed_default_categories");
+    });
+  });
+
+  describe("installCategoryKitItems", () => {
+    it("preserva scope='business' e is_family ao instalar itens de kit", async () => {
+      builder = makeBuilder({ data: [], error: null });
+
+      await installCategoryKitItems(
+        [
+          {
+            name: "Prestação de Serviços",
+            type: "income",
+            icon: "salario",
+            color: "#10B981",
+            scope: "business",
+          },
+          {
+            name: "Impostos e Guia DAS",
+            type: "expense",
+            icon: "impostos",
+            color: "#EF4444",
+            scope: "business",
+          },
+          {
+            name: "Dependentes e Filhos",
+            type: "expense",
+            icon: "educacao",
+            color: "#F59E0B",
+            is_family: true,
+          },
+        ],
+        "user-123",
+      );
+
+      expect(builder.insert).toHaveBeenCalledWith([
+        expect.objectContaining({
+          name: "Prestação de Serviços",
+          type: "income",
+          scope: "business",
+          is_family: false,
+        }),
+        expect.objectContaining({
+          name: "Impostos e Guia DAS",
+          type: "expense",
+          scope: "business",
+          is_family: false,
+        }),
+        expect.objectContaining({
+          name: "Dependentes e Filhos",
+          type: "expense",
+          scope: "personal",
+          is_family: true,
+        }),
+      ]);
     });
   });
 });

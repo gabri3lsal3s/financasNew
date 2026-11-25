@@ -23,7 +23,7 @@ export function buildBusinessDreBreakdown(
       operator: "+",
       rawValue: dre.grossRevenueCents,
       unit: "currency",
-      hint: "Entradas com escopo Negócio (excluindo transferências internas PF/PJ)",
+      hint: "Entradas com escopo Profissional (excluindo transferências internas Pessoal/Profissional)",
       tone: "positive",
     },
     {
@@ -31,7 +31,7 @@ export function buildBusinessDreBreakdown(
       operator: "-",
       rawValue: dre.operationalCostsCents,
       unit: "currency",
-      hint: "Inclui despesas operacionais e IOF/encargos de cartão PJ, respeitando report_weight",
+      hint: "Inclui despesas operacionais e IOF/encargos de cartão profissional, respeitando report_weight",
       tone: "negative",
     },
     {
@@ -51,7 +51,7 @@ export function buildBusinessDreBreakdown(
       tone: "negative",
     },
     {
-      label: "Retiradas de Pró-Labore (PJ para PF)",
+      label: "Retiradas de Pró-Labore (Profissional para Pessoal)",
       operator: "-",
       rawValue: dre.proLaboreWithdrawnCents,
       unit: "currency",
@@ -62,7 +62,7 @@ export function buildBusinessDreBreakdown(
 
   return enrichBreakdown({
     id: "business-dre-retained",
-    title: "DRE Simplificado e Lucro Retido PJ",
+    title: "DRE Simplificado e Lucro Retido Profissional",
     description:
       "Demonstra o resultado real da operação do negócio separado das retiradas pessoais do titular.",
     periodLabel,
@@ -71,7 +71,7 @@ export function buildBusinessDreBreakdown(
     unit: "currency",
     steps,
     result: {
-      label: "Lucro Retido no Caixa PJ",
+      label: "Lucro Retido no Caixa Profissional",
       rawValue: dre.retainedEarningsCents,
       unit: "currency",
       tone: dre.retainedEarningsCents >= 0 ? "positive" : "negative",
@@ -79,7 +79,7 @@ export function buildBusinessDreBreakdown(
     },
     notes: [
       "Valores a receber pendentes não integram a receita realizada até o efetivo recebimento.",
-      "Reembolsos de cartão misto e aportes PF não inflam nem reduzem o resultado do DRE.",
+      "Reembolsos de cartão misto e aportes pessoais não inflam nem reduzem o resultado do DRE.",
     ],
   });
 }
@@ -281,7 +281,7 @@ export function buildDerivedCashBreakdown(
       tone: "default",
     },
     {
-      label: "Aportes de Capital (PF para PJ)",
+      label: "Aportes de Capital (Pessoal para Profissional)",
       operator: "+",
       rawValue: components.capitalInjectionsCents,
       unit: "currency",
@@ -307,7 +307,7 @@ export function buildDerivedCashBreakdown(
       tone: "negative",
     },
     {
-      label: "Retiradas de Pró-Labore (PJ para PF)",
+      label: "Retiradas de Pró-Labore (Profissional para Pessoal)",
       operator: "-",
       rawValue: components.proLaboreWithdrawnCents,
       unit: "currency",
@@ -315,7 +315,7 @@ export function buildDerivedCashBreakdown(
       tone: "muted",
     },
     {
-      label: "Reembolsos de Cartão PF Efetivados",
+      label: "Reembolsos de Cartão Pessoal Efetivados",
       operator: "-",
       rawValue: components.cardReimbursementsPaidCents,
       unit: "currency",
@@ -328,7 +328,7 @@ export function buildDerivedCashBreakdown(
     id: "business-derived-cash",
     title: "Caixa Operacional Derivado do Negócio",
     description:
-      "Apurado automaticamente pelo fluxo financeiro do negócio sem exigir conta bancária PJ separada.",
+      "Apurado automaticamente pelo fluxo financeiro profissional sem exigir conta bancária separada.",
     periodLabel,
     formulaExpression:
       "Caixa = Saldo Inicial + Aportes + Receitas Líquidas - Despesas Conta/Pix - Pró-Labore - Reembolsos",
@@ -342,7 +342,7 @@ export function buildDerivedCashBreakdown(
       hint: "Saldo financeiro real pertencente à operação do negócio",
     },
     notes: [
-      "Compras operacionais feitas em cartão de crédito PF só saem do caixa no momento do Reembolso.",
+      "Compras operacionais feitas em cartão de crédito pessoal só saem do caixa no momento do Reembolso.",
       "Em contas bancárias compartilhadas, este valor é protegido e abatido do seu Safe-to-Spend pessoal.",
     ],
   });

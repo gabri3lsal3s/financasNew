@@ -269,5 +269,28 @@ describe("Fase 1A — Quality Gate Duplo, Blindagens #1–#6/#11 e Regressão No
       expect(rawJoined).not.toMatch(/cet|47692302|49680|1\.623,04|1\.452,11/i);
       expect(rows.length).toBeGreaterThanOrEqual(11);
     });
+
+    it("reprova automaticamente com 'merged_columns' quando descrição contém valor + data de coluna vazada", () => {
+      const mergedTx: StatementTransaction = {
+        id: "tx-merged",
+        index: 0,
+        occurrenceIndex: 0,
+        date: "2026-11-02",
+        rawDescription: "Mulvi R$ 112,39 29 Out Filialshopping",
+        cleanDescription: "Mulvi R$ 112,39 29 Out Filialshopping",
+        amountCents: 15650,
+        isRefund: false,
+        isPayment: false,
+        statementHash: "hash-merged",
+        nature: "purchase",
+      };
+      const quality = evaluateStatementExtractionQuality({
+        transactions: [mergedTx],
+        officialTotalCents: 15650,
+      });
+
+      expect(quality.passed).toBe(false);
+      expect(quality.reasons).toContain("merged_columns");
+    });
   });
 });
