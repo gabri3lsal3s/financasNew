@@ -25,7 +25,7 @@ import { CardFormDialog } from "./card-form-dialog";
 import { PaymentDialog } from "./payment-dialog";
 
 const StatementImportDialog = lazy(() =>
-  import("@/features/cards/components/statement-import-dialog").then((m) => ({
+  import("@/features/cards/components/statement-import").then((m) => ({
     default: m.StatementImportDialog,
   })),
 );
@@ -75,10 +75,13 @@ export interface CardsPageModalsProps {
   isReadOnlyMode?: boolean;
   aiExtractionEnabled?: boolean;
   onCompetenceChange?: (newMonth: string) => void;
+  onCardChange?: (newCard: CreditCard) => void;
+  onPayBillNow?: () => void;
 }
 
 /** Hospeda os modais e fluxos auxiliares da página de Cartões. */
 export function CardsPageModals({
+  cards,
   selectedCard,
   cardId,
   effectiveMonth,
@@ -122,6 +125,8 @@ export function CardsPageModals({
   isReadOnlyMode,
   aiExtractionEnabled,
   onCompetenceChange,
+  onCardChange,
+  onPayBillNow,
 }: CardsPageModalsProps) {
   const { user } = useAuth();
   const accountHolder = user?.user_metadata?.full_name ?? user?.email?.split("@")[0] ?? "Titular";
@@ -251,11 +256,14 @@ export function CardsPageModals({
             open={importOpen}
             onOpenChange={onImportOpenChange}
             card={selectedCard}
+            cards={cards}
             competenceMonth={effectiveMonth}
             userId={user?.id ?? null}
             isReadOnlyMode={isReadOnlyMode}
             aiExtractionEnabled={aiExtractionEnabled}
             onCompetenceChange={onCompetenceChange}
+            onCardChange={onCardChange}
+            onPayBillNow={onPayBillNow}
           />
         </Suspense>
       )}

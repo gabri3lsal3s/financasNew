@@ -1,10 +1,12 @@
 import { addMonthsClamped, toISODate } from "@/domain/money/parcelar";
 import { shiftMonth } from "@/domain/cards";
 import { jaccardTokens, tokenize } from "@/domain/predictions";
+import { generateStatementHash } from "./hash";
+import { alignInstallmentDateToCompetence } from "./extractors/type-sniffer";
 import type {
   ExistingExpenseForReconciliation,
   StatementTransaction,
-} from "./types";
+} from "./contracts";
 
 export type InstallmentSeriesState =
   | "state_1_new_series" // 1/N inédita
@@ -22,6 +24,8 @@ export interface InstallmentSeriesAnalysis {
   existingCurrentExpenseId?: string;
   previousExists: boolean;
   previousExpenseId?: string;
+  /** Grupo de parcelamento existente encontrado na série para reutilização contínua (G9). */
+  existingInstallmentGroupId?: string | null;
   futureProjectedCount: number;
   missingFutureInstallments: number[];
   badgeLabel: string;
@@ -36,6 +40,8 @@ export interface ProjectedFutureInstallment {
   valueCents: number;
   description: string;
   categoryId: string;
+  installmentGroupId?: string;
+  statementHash?: string;
   scope?: "personal" | "business";
   isTaxDeductible?: boolean;
 }
@@ -47,11 +53,19 @@ function areDescriptionsSimilar(descA: string, descB: string): boolean {
   return jaccardTokens(tokensA, tokensB) >= 0.3;
 }
 
+function isCompatibleCompetence(
+  expenseBillCompetence: string | undefined,
+  expectedCompetence: string,
+): boolean {
+  if (!expenseBillCompetence) return true;
+  return expenseBillCompetence === expectedCompetence;
+}
+
 /**
  * Classificador puro dos 4 Estados de Séries de Parcelamento.
  *
- * Avalia a transação da fatura contra o universo de despesas conhecidas do cartão,
- * classificando a necessidade e segurança de projeção para competências futuras.
+ * Opera sobre todo o histórico de despesas do cartão (todas as competências — D3 / G9),
+ * classificando a necessidade de projeção exclusiva de parcelas futuras (K+1..N).
  */
 export function detectInstallmentSeriesState(params: {
   transaction: StatementTransaction;
@@ -59,7 +73,7 @@ export function detectInstallmentSeriesState(params: {
   existingExpenses: ExistingExpenseForReconciliation[];
   cardScope?: "personal" | "business" | "mixed";
 }): InstallmentSeriesAnalysis | null {
-  const { transaction, existingExpenses, cardScope } = params;
+  const { transaction, competenceMonth, existingExpenses, cardScope } = params;
   const inst = transaction.installment;
 
   if (!inst || inst.total <= 1) {
@@ -75,7 +89,9 @@ export function detectInstallmentSeriesState(params: {
       ? existingExpenses.filter((e) => !e.scope || e.scope === cardScope)
       : existingExpenses;
 
-  // 1. Verifica se a parcela K já existe no banco
+  let existingInstallmentGroupId: string | null = null;
+
+  // 1. Verifica se a parcela K já existe no banco na competência correspondente
   let currentAlreadyExists = false;
   let existingCurrentExpenseId: string | undefined;
 
@@ -83,47 +99,63 @@ export function detectInstallmentSeriesState(params: {
     const isSameInstallment = exp.installmentNumber === K && exp.installmentsTotal === N;
     const isDiffCentsTolerable = Math.abs(exp.valueCents - transaction.amountCents) <= 5;
     const isDescMatch = areDescriptionsSimilar(exp.description, transaction.cleanDescription);
+    const isCompOk = isCompatibleCompetence(exp.billCompetence, competenceMonth);
 
-    if (isSameInstallment && isDiffCentsTolerable && isDescMatch) {
+    if (isSameInstallment && isDiffCentsTolerable && isDescMatch && isCompOk) {
       currentAlreadyExists = true;
       existingCurrentExpenseId = exp.id;
+      if (exp.installmentGroupId) {
+        existingInstallmentGroupId = exp.installmentGroupId;
+      }
       break;
     }
   }
 
-  // 2. Verifica se a parcela anterior K-1 existe
+  // 2. Verifica se a parcela anterior K-1 existe (na competência anterior M-1 quando disponível)
   let previousExists = false;
   let previousExpenseId: string | undefined;
 
   if (K > 1) {
+    const prevCompetence = shiftMonth(competenceMonth, -1);
     for (const exp of scopedExpenses) {
       const isPrev = exp.installmentNumber === K - 1;
       const isTotalCompatible = exp.installmentsTotal === null || exp.installmentsTotal === N;
       const isDiffCentsTolerable = Math.abs(exp.valueCents - transaction.amountCents) <= 5;
       const isDescMatch = areDescriptionsSimilar(exp.description, transaction.cleanDescription);
+      const isCompOk = isCompatibleCompetence(exp.billCompetence, prevCompetence);
 
-      if (isPrev && isTotalCompatible && isDiffCentsTolerable && isDescMatch) {
+      if (isPrev && isTotalCompatible && isDiffCentsTolerable && isDescMatch && isCompOk) {
         previousExists = true;
         previousExpenseId = exp.id;
+        if (!existingInstallmentGroupId && exp.installmentGroupId) {
+          existingInstallmentGroupId = exp.installmentGroupId;
+        }
         break;
       }
     }
   }
 
-  // 3. Verifica quantas parcelas futuras (K+1 .. N) já estão cadastradas
+  // 3. Verifica exclusivamente quantas parcelas futuras (K+1 .. N) já estão cadastradas
   let futureProjectedCount = 0;
   const missingFutureInstallments: number[] = [];
 
   for (let m = K + 1; m <= N; m++) {
-    const foundFuture = scopedExpenses.some((exp) => {
+    const expectedFutureCompetence = shiftMonth(competenceMonth, m - K);
+    const matchedFuture = scopedExpenses.find((exp) => {
       const isFutureNumber = exp.installmentNumber === m && exp.installmentsTotal === N;
       const isDiffCentsTolerable = Math.abs(exp.valueCents - transaction.amountCents) <= 5;
       const isDescMatch = areDescriptionsSimilar(exp.description, transaction.cleanDescription);
-      return isFutureNumber && isDiffCentsTolerable && isDescMatch;
+      const isGroupOrCompOk = existingInstallmentGroupId && exp.installmentGroupId
+        ? exp.installmentGroupId === existingInstallmentGroupId
+        : isCompatibleCompetence(exp.billCompetence, expectedFutureCompetence);
+      return isFutureNumber && isDiffCentsTolerable && isDescMatch && isGroupOrCompOk;
     });
 
-    if (foundFuture) {
+    if (matchedFuture) {
       futureProjectedCount++;
+      if (!existingInstallmentGroupId && matchedFuture.installmentGroupId) {
+        existingInstallmentGroupId = matchedFuture.installmentGroupId;
+      }
     } else {
       missingFutureInstallments.push(m);
     }
@@ -161,6 +193,7 @@ export function detectInstallmentSeriesState(params: {
     existingCurrentExpenseId,
     previousExists,
     previousExpenseId,
+    existingInstallmentGroupId,
     futureProjectedCount,
     missingFutureInstallments,
     badgeLabel,
@@ -169,11 +202,12 @@ export function detectInstallmentSeriesState(params: {
 }
 
 /**
- * Gera as parcelas futuras a partir de uma parcela do extrato.
+ * Gera exclusivamente as parcelas futuras (K+1..N) a partir de uma parcela do extrato (D3, D13, G9).
  *
  * REGRA CANÔNICA DE ENGENHARIA FINANCEIRA:
- * Utiliza o valor exato da parcela lida no extrato (zero inflação ou distorção de centavos),
- * sem multiplicar e redividir para prevenir erros de arredondamento.
+ * - Utiliza o valor exato da parcela lida no extrato (zero inflação/redivisão de centavos);
+ * - Alinha `baseDate` para `baseCompetence` via regra D13 antes de avançar meses com `addMonthsClamped`;
+ * - Propaga `installmentGroupId` e `statementHash` determinístico por parcela futura quando `cardId` informado.
  */
 export function projectFutureInstallments(params: {
   currentInstallment: number;
@@ -183,6 +217,9 @@ export function projectFutureInstallments(params: {
   baseCompetence: string;
   description: string;
   categoryId: string;
+  installmentGroupId?: string;
+  cardId?: string;
+  missingInstallments?: readonly number[];
   scope?: "personal" | "business";
   isTaxDeductible?: boolean;
 }): ProjectedFutureInstallment[] {
@@ -194,6 +231,9 @@ export function projectFutureInstallments(params: {
     baseCompetence,
     description,
     categoryId,
+    installmentGroupId,
+    cardId,
+    missingInstallments,
     scope,
     isTaxDeductible,
   } = params;
@@ -202,22 +242,47 @@ export function projectFutureInstallments(params: {
     return [];
   }
 
-  const projected: ProjectedFutureInstallment[] = [];
-  const baseDateObj = new Date(`${baseDate}T00:00:00`);
+  // Alinhamento D13: garante que parcelas K >= 2 com data original de mês anterior projetem
+  // datas mensais coerentes a partir da competência da fatura atual (igual ao parcelar() manual).
+  const { effectiveDate: alignedBaseDate } = alignInstallmentDateToCompetence(
+    baseDate,
+    baseCompetence,
+    { current: K, total: N },
+  );
 
-  for (let i = K + 1; i <= N; i++) {
+  const targetNumbers =
+    missingInstallments && missingInstallments.length > 0
+      ? missingInstallments.filter((m) => m > K && m <= N)
+      : Array.from({ length: N - K }, (_, idx) => K + 1 + idx);
+
+  const projected: ProjectedFutureInstallment[] = [];
+  const baseDateObj = new Date(`${alignedBaseDate}T00:00:00`);
+
+  for (const i of targetNumbers) {
     const deltaMonths = i - K;
     const futureDate = toISODate(addMonthsClamped(baseDateObj, deltaMonths));
     const futureCompetence = shiftMonth(baseCompetence, deltaMonths);
+    const statementHash = cardId
+      ? generateStatementHash({
+          cardId,
+          competenceMonth: futureCompetence,
+          date: futureDate,
+          amountCents: installmentValueCents,
+          cleanDescription: `${description} [${i}/${N}]`,
+          occurrenceIndex: 0,
+        })
+      : undefined;
 
     projected.push({
       installmentNumber: i,
       installmentsTotal: N,
       date: futureDate,
       billCompetence: futureCompetence,
-      valueCents: installmentValueCents, // Valor exato da parcela (zero distorção de centavos)
+      valueCents: installmentValueCents,
       description,
       categoryId,
+      installmentGroupId,
+      statementHash,
       scope,
       isTaxDeductible,
     });

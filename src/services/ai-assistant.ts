@@ -24,8 +24,6 @@ import {
   MAX_AI_CATEGORIZE_CATEGORIES,
   MAX_AI_CATEGORIZE_DESCRIPTION_CHARS,
   MAX_AI_IMAGE_BYTES,
-  MAX_AI_LINE_CURATOR_LINES,
-  MAX_AI_LINE_CURATOR_TEXT_CHARS,
   MAX_AI_SINGLE_RECEIPT_TEXT_CHARS,
   MAX_AI_STATEMENT_PDF_TEXT_CHARS,
   normalizeSingleReceiptAiPayload,
@@ -33,16 +31,14 @@ import {
   sanitizeBatchDescriptionForAi,
   Sha256HexSchema,
   validateCategorizeBatchOutput,
-  validateLineCuratorOutput,
   type AiCategorizeBatchOutput,
   type AiFallbackReason,
-  type AiLineCuratorOutput,
   type AiSingleReceiptOutput,
   type AiStatementPdfRowsOutput,
 } from "../../supabase/functions/_shared/ai-schemas";
 
 export const CLIENT_AI_TIMEOUT_MS = 22_000;
-export const CLIENT_AI_BATCH_TIMEOUT_MS = 8_000;
+export const CLIENT_AI_BATCH_TIMEOUT_MS = 4_000;
 const AI_VISION_MAX_DIMENSION = 960;
 const AI_VISION_DEFAULT_QUALITY = 0.70;
 const AI_VISION_FALLBACK_QUALITY = 0.55;
@@ -121,21 +117,6 @@ export type StatementPdfRowsClientResult =
       cached: boolean;
       source: "cache_remote" | "ai_text" | "ai_vision";
       data: AiStatementPdfRowsOutput;
-    }
-  | AiFallbackResult;
-
-export interface CurateStatementLinesAiParams extends AiClientBaseGuards {
-  sha256?: string;
-  lines: readonly { id: number; text: string }[];
-  targetTotalCents?: number;
-}
-
-export type LineCuratorClientResult =
-  | {
-      ok: true;
-      cached: boolean;
-      source: "cache_remote" | "ai_text";
-      data: AiLineCuratorOutput;
     }
   | AiFallbackResult;
 
@@ -714,81 +695,6 @@ export async function categorizeDescriptionsBatchWithAi(
 }
 
 /**
- * Curadoria de linhas extraídas por ID (`line_curator` — Balde 2: `batch_calls`):
- * Acionado quando o motor espacial extrai linhas candidatas mas o Checksum Gate reprova a soma.
- * Zero alucinação numérica: a IA apenas classifica IDs em { keep, ignore }.
- */
-export async function curateStatementLinesWithAi(
-  params: CurateStatementLinesAiParams,
-): Promise<LineCuratorClientResult> {
-  const blocked = checkAiPreconditions(params);
-  if (blocked) return blocked;
-
-  if (!params.lines || params.lines.length === 0) {
-    return { ok: false, reason: "invalid_payload", fallbackToLocal: true };
-  }
-
-  const sanitizedLines = params.lines
-    .slice(0, MAX_AI_LINE_CURATOR_LINES)
-    .map((l) => ({
-      id: l.id,
-      text: maskSensitivePiiForAi(l.text).trim().slice(0, MAX_AI_LINE_CURATOR_TEXT_CHARS),
-    }))
-    .filter((l) => l.text.length > 0);
-
-  if (sanitizedLines.length === 0) {
-    return { ok: false, reason: "invalid_payload", fallbackToLocal: true };
-  }
-
-  const validIds = new Set(sanitizedLines.map((l) => l.id));
-
-  const resolvedSha =
-    params.sha256 && Sha256HexSchema.safeParse(params.sha256).success
-      ? params.sha256
-      : await computeTextSha256(
-          JSON.stringify({
-            lines: sanitizedLines,
-            targetTotalCents: params.targetTotalCents,
-          }),
-        );
-
-  if (!resolvedSha) {
-    return { ok: false, reason: "invalid_payload", fallbackToLocal: true };
-  }
-
-  const flightKey = `${params.userId ?? "anon"}:line_curator:${resolvedSha}`;
-
-  return withInFlightDedup(flightKey, async () => {
-    const httpRes = await invokeAiAssistantHttp(
-      {
-        mode: "line_curator",
-        sha256: resolvedSha,
-        lines: sanitizedLines,
-        targetTotalCents: params.targetTotalCents,
-      },
-      CLIENT_AI_BATCH_TIMEOUT_MS,
-      params.signal,
-    );
-
-    if (!httpRes.ok) {
-      return httpRes;
-    }
-
-    const validated = validateLineCuratorOutput(httpRes.data, validIds);
-    if (!validated.success) {
-      return { ok: false, reason: "invalid_ai_output", fallbackToLocal: true };
-    }
-
-    return {
-      ok: true,
-      cached: httpRes.cached,
-      source: httpRes.source === "cache_remote" ? "cache_remote" : "ai_text",
-      data: validated.data,
-    };
-  });
-}
-
-/**
  * Extrai linhas individuais de uma fatura em PDF multi-coluna onde o parser tabular
  * determinístico não encontrou colunas alinhadas (Balde 2: `batch_calls`).
  * A soma, hash ordinal e conciliação seguem 100% determinísticos no cliente.
@@ -828,23 +734,27 @@ export async function extractStatementPdfRowsWithAi(
   const flightKey = `${params.userId ?? "anon"}:statement_pdf_rows:${resolvedSha}`;
 
   return withInFlightDedup(flightKey, async () => {
-    const httpRes = await invokeAiAssistantHttp({
-      mode: "statement_pdf_rows",
-      sha256: resolvedSha,
-      ...(maskedText ? { text: maskedText } : {}),
-      ...(imagePayload
-        ? {
-            imageBase64: imagePayload.base64,
-            imageMimeType: imagePayload.mimeType,
-          }
-        : {}),
-      ...(typeof params.referenceYear === "number"
-        ? { referenceYear: params.referenceYear }
-        : {}),
-      ...(params.competenceMonth && /^\d{4}-\d{2}$/.test(params.competenceMonth)
-        ? { competenceMonth: params.competenceMonth }
-        : {}),
-    });
+    const httpRes = await invokeAiAssistantHttp(
+      {
+        mode: "statement_pdf_rows",
+        sha256: resolvedSha,
+        ...(maskedText ? { text: maskedText } : {}),
+        ...(imagePayload
+          ? {
+              imageBase64: imagePayload.base64,
+              imageMimeType: imagePayload.mimeType,
+            }
+          : {}),
+        ...(typeof params.referenceYear === "number"
+          ? { referenceYear: params.referenceYear }
+          : {}),
+        ...(params.competenceMonth && /^\d{4}-\d{2}$/.test(params.competenceMonth)
+          ? { competenceMonth: params.competenceMonth }
+          : {}),
+      },
+      CLIENT_AI_TIMEOUT_MS,
+      params.signal,
+    );
 
     if (!httpRes.ok) {
       return httpRes;
@@ -956,5 +866,5 @@ export function formatAiQuotaResetHint(quotaResetAt?: string): string {
   }
 }
 
-export { maskSensitivePiiForAi, sanitizeBatchDescriptionForAi, validateLineCuratorOutput };
+export { maskSensitivePiiForAi, sanitizeBatchDescriptionForAi };
 

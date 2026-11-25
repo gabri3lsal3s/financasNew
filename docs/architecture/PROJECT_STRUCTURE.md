@@ -243,7 +243,11 @@
     │   │                          #     pages/ (share-receipt-page.tsx), wizard/ (step-quick.tsx — lançamento rápido em 1 tela),
     │   │                          #     components/split/ (split-expense-dialog, manage-split-dialog, split-edit-tab, split-public-config-tab)
     │   ├── cards/                 #   Cartões (faturas, pagamentos, estornos, rolagem de saldo vencido, refinanciamento)
-    │   │                          #     components/ (card-invoice-expenses-feed, card-invoice-payments-feed, bill-rollover-dialog, bill-refinance-dialog, statement-import-helpers.ts — orquestração de importação em lotes)
+    │   │                          #     components/ (card-invoice-expenses-feed, card-invoice-payments-feed, bill-rollover-dialog, bill-refinance-dialog,
+    │   │                          #       statement-import/ — pipeline modular <=350 LOC: statement-import-dialog, statement-upload-step, statement-reconcile-step,
+    │   │                          #       statement-mapping-fallback, statement-competence-conflict, statement-summary-header, statement-priority-banner,
+    │   │                          #       statement-transaction-row, statement-app-rows, statement-item-form, statement-success-step, category-pill,
+    │   │                          #       hooks use-statement-{import,ingestion,reconciliation,commit} e runners/pipelines))
     │   ├── debts/                 #   Dívidas (status, quitação com juros/multa/desconto, empréstimos Price/SAC, loan-schedule-dialog, loan-edit-dialog F72, debts-page-demo.test.tsx)
     │   ├── categories/            #   Categorias (/categorias — catálogo de despesas e receitas, cores, ícones e kits temáticos)
     │   │                          #     components/ (category-card, category-form-dialog, category-form-fields, category-kits-modal, delete-category-dialog),
@@ -262,7 +266,7 @@
     │   ├── reminders/             #   Central unificada de notificações & preferências (hooks/use-notification-preferences-form, prefs/{InAppRemindersPrefsCard,DueNotificationsPrefsCard,DailyClosingReminderCard,RemotePushPrefsCard,QuietHoursPrefsCard})
     │   ├── settings/              #   Configurações consolidadas em 6 abas especializadas (incluindo notifications-tab em 5 blocos: reminders-card, device-push-card, dividend-automation-card, banking-assistant-card, email-digest-prefs-card; e security-tab: app-lock-card, session-inactivity-card, two-factor-card, active-devices-card)
     │   ├── admin/                 #   Módulo Administrativo SaaS Isolado (/admin/login, /admin/*)
-    │   │                          #     layouts/ (admin-shell), components/ (user-edit-dialog, feature-toggle-card, telegram-settings-card, ticket-manage-dialog)
+    │   │                          #     layouts/ (admin-shell), components/ (user-edit-dialog, feature-toggle-card, telegram-settings-card, ticket-manage-dialog, statement-blueprints-card)
     │   │                          #     pages: admin-login-page, admin-dashboard-page, admin-users-page, admin-billing-page,
     │   │                          #            admin-settings-page, admin-notifications-page, admin-backups-page, admin-invites-page,
     │   │                          #            admin-tickets-page, admin-security-page
@@ -379,16 +383,15 @@
     │   ├── export/                #   F22: serialização CSV pt-BR (`;`/`,`/BOM — csv.ts)
     │   │                          #     e backup versionado com Zod + integridade
     │   │                          #     referencial (backup.ts, BACKUP_TABLE_KEYS)
-    │   ├── reconciliation/        #   F30 + Motor Resiliente & Autoevolutivo: conciliação de faturas (parsers CSV/OFX/XLSX/PDF Espacial/Texto,
-    │   │                          #     magic-bytes.ts, type-sniffer, hashing ordinal, scoring 0-100),
-    │   │                          #     blueprints/ (receitas declarativas por emissor: types, builtin-blueprints, fingerprint, matcher, learner),
-    │   │                          #     quality-gate.ts (equação contábil dupla cycleNet + statementBalance),
-    │   │                          #     block-clipper.ts (recorte guiado Início-Fim + exclusão pontual sem tokens),
-    │   │                          #     app-duplicates.ts (detecção de duplicatas já lançadas no app),
-    │   │                          #     statement-preprocessor.ts, statement-metadata.ts,
-    │   │                          #     clean.ts (sanitização de descrições e remoção de ruídos bancários),
-    │   │                          #     chunking.ts (teto rígido de 250 itens por lote e chunkArray),
-    │   │                          #     multibank-regression.test.ts, chunking.test.ts, stress.test.ts (estresse com 2.000 linhas)
+    │   ├── reconciliation/        #   F30 + Motor Universal & Autoevolutivo de Faturas:
+    │   │                          #     contracts.ts, normalize-entries.ts (Normalizador Canônico Único + D13 + G1-G5),
+    │   │                          #     extractors/ (magic-bytes.ts, ofx-extractor.ts, csv-extractor.ts, xlsx-extractor.ts, text-extractor.ts, spatial-pdf-extractor.ts),
+    │   │                          #     blueprints/ (types.ts, issuer-profiles.ts, fingerprint.ts, matcher.ts, distiller.ts — 0 PII + Shadow Replay),
+    │   │                          #     quality-gate.ts (equação contábil dupla cycleNet + statementBalance ±5c),
+    │   │                          #     plan-builder.ts (buildStatementReconciliationPlan + toCommitReconciliationPlanPayload),
+    │   │                          #     scorer.ts (matching 1:1 global + piso anti-falso-match), series-detector.ts, app-duplicates.ts,
+    │   │                          #     statement-preprocessor.ts, statement-metadata.ts, clean.ts,
+    │   │                          #     chunking.ts (buildStatementCommitChunks 500 itens por lote + chunkBankStatementBatch 250 itens)
     │   ├── portfolio/             #   ledger, custo médio, valoração, rebalanceamento,
     │   │                          #   point-in-time.ts (F51: reconstrução de custódia ponto-no-tempo por competência),
     │   │                          #   historical-quotes.ts (F51: resolução de cotações de fechamento com cascata defensiva),
@@ -425,7 +428,9 @@
     │   │                          #   export.ts (F22: fetchAllUserData + restoreBackup),
     │   │                          #   onboarding.ts (contagens do primeiro uso),
     │   │                          #   profiles.ts (auto-cura de perfis órfãos),
-    │   │                          #   recurrences.ts (F32: templates + materialização lazy)
+    │   │                          #   recurrences.ts (F32: templates + materialização lazy),
+    │   │                          #   statement-blueprints.ts (catálogo nuvem + curadoria Admin D16),
+    │   │                          #   ai-quotas.ts (leitura de cotas IA e reserva de crédito)
     │   └── rpc/                   #   Wrappers tipados dos RPCs transacionais (D1) modularizados:
     │       ├── client.ts          #     Helper base callRpc e unwrapRpc
     │       ├── transactions.ts    #     Lançamentos, estornos, parcelas e extratos
@@ -442,6 +447,7 @@
     │   │                          #     (estático 5 min, analítico, cotações, transacional)
     │   ├── query-readiness.ts     #   Guards puros de prontidão de queries autenticadas (evita race de auth/session)
     │   ├── queries/               #   useExpenses({month}), useInvoices(cardId), useMacroIndicators (CDI/Selic BCB), use-trips.ts,
+    │   │                          #     use-statement-blueprints.ts (catálogo de layouts nuvem + fila Admin), use-ai-quota.ts (pré-checagem Trial=Pro),
     │   │                          #     use-market-quotes-swr.ts (SWR/cache_miss/post_trade_stale sem botão manual),
     │   │                          #     use-corporate-dividends.ts (+ useUserDividendEvents — B3/EUA + eventos persistidos),
     │   │                          #     use-push-subscriptions.ts (inscrições de Push Remoto do usuário),
@@ -495,8 +501,7 @@
     │   ├── excel-export.ts        #   F44/F80: gerador XML do Caderno Excel multi-abas (Resumo, Custódia, Proventos, DRE, Dívidas, Resgates, Metas/Rebalanceamento)
     │   ├── user-storage.ts        #   Isolamento de localStorage por userId (financas_${userId}_*) + sanitizeLegacyStorage
     │   ├── session-policy.ts      #   Política de inatividade Web por dispositivo (IdleLogoutPolicy) e flag efêmera de computador compartilhado
-    │   ├── statement-blueprint-store.ts # Persistência local validada por Zod de blueprints aprendidos (LRU 50 + self-healing)
-    │   ├── statement-mapping-cache.ts   # Cache estrutural de mapeamento de colunas de extratos CSV/XLSX
+    │   ├── pdf-session.ts         #   Abertura única de DocumentProxy (pdfjs) em memória com suporte a PDF protegido por senha e renderização de páginas
     │   ├── auth-cleanup.ts        #   resetAppState() — cancelamento de queries, purge de cache, reset de stores e DOM
     │   ├── haptics.ts             #   Feedback háptico (navigator.vibrate) (F8)
     │   ├── scroll.ts              #   Serviço canônico de rolagem: scrollToTop (smooth na mesma rota) e resetPageScroll (instantâneo em transições de rota)

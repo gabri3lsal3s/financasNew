@@ -8,6 +8,7 @@ export { TicketRow } from "./ticket-row";
 export type { TicketRowProps } from "./ticket-row";
 export { TelegramSettingsCard } from "./telegram-settings-card";
 export { FeatureUsageSection } from "./feature-usage-section";
+export { StatementBlueprintsCard } from "./statement-blueprints-card";
 export type { TicketManageDialogProps } from "./ticket-manage-dialog";
 
 

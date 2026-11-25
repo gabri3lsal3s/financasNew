@@ -2,7 +2,7 @@ import { Layers, Smartphone } from "lucide-react";
 import { Alert, Badge, EmptyState, Skeleton } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
 import { useAdminFeatures } from "@/state";
-import { FeatureToggleCard, TelegramSettingsCard } from "../components";
+import { FeatureToggleCard, StatementBlueprintsCard, TelegramSettingsCard } from "../components";
 
 export function AdminSettingsPage() {
   const featuresQuery = useAdminFeatures();
@@ -69,6 +69,10 @@ export function AdminSettingsPage() {
 
       <section aria-label="Central de Alertas e Bot Telegram">
         <TelegramSettingsCard />
+      </section>
+
+      <section aria-label="Layouts de Fatura">
+        <StatementBlueprintsCard />
       </section>
 
       <section aria-label="Módulos e Feature Flags" className="flex flex-col gap-4">

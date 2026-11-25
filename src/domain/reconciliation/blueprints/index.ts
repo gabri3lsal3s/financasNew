@@ -1,5 +1,5 @@
 export * from "./types";
 export * from "./fingerprint";
-export * from "./builtin-blueprints";
+export { BUILTIN_STATEMENT_BLUEPRINTS, ISSUER_PROFILES } from "../extractors/issuer-profiles";
 export * from "./matcher";
-export * from "./learner";
+export * from "./distiller";

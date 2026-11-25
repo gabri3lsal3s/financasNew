@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  AI_QUOTA_LIMITS,
   AiAssistantRequestSchema,
   AiSingleReceiptOutputSchema,
   AiStatementPdfRowsOutputSchema,
@@ -159,14 +160,20 @@ describe("ai-schemas (Trava 3 Hard Caps, Trava 5 Whitelist & Ajuste #3 BRT)", ()
     expect(periods.nextDayResetAtIso).toBe("2026-11-24T00:00:00-03:00");
     expect(periods.nextMonthResetAtIso).toBe("2026-12-01T00:00:00-03:00");
 
-    // Ontem estourou o limite diário do Trial (5/5), hoje deve resetar para 0/5!
+    expect(AI_QUOTA_LIMITS.trial).toEqual(AI_QUOTA_LIMITS.pro);
+    expect(AI_QUOTA_LIMITS.pro).toEqual({
+      receipt_calls: { month: 100, day: 15 },
+      batch_calls: { month: 120, day: 30 },
+    });
+
+    // Ontem estourou o limite diário do Trial (15/15), hoje deve resetar para 0/15!
     const rolloverEval = evaluateAiQuotaAllowance({
       planGroup: "trial",
       bucket: "receipt_calls",
       row: {
         period_day: "2026-11-22",
-        receipt_calls_month: 5,
-        receipt_calls_day: 5,
+        receipt_calls_month: 15,
+        receipt_calls_day: 15,
         batch_calls_month: 2,
         batch_calls_day: 2,
       },
@@ -177,18 +184,18 @@ describe("ai-schemas (Trava 3 Hard Caps, Trava 5 Whitelist & Ajuste #3 BRT)", ()
     expect(rolloverEval.allowed).toBe(true);
     if (rolloverEval.allowed) {
       expect(rolloverEval.usedDay).toBe(0);
-      expect(rolloverEval.remainingDay).toBe(5);
-      expect(rolloverEval.remainingMonth).toBe(10);
+      expect(rolloverEval.remainingDay).toBe(15);
+      expect(rolloverEval.remainingMonth).toBe(85);
     }
 
-    // Hoje atingiu limite diário Trial (5/5) -> bloqueado com resetAt diário
+    // Hoje atingiu limite diário Trial (15/15) -> bloqueado com resetAt diário
     const dayExceeded = evaluateAiQuotaAllowance({
       planGroup: "trial",
       bucket: "receipt_calls",
       row: {
         period_day: "2026-11-23",
-        receipt_calls_month: 10,
-        receipt_calls_day: 5,
+        receipt_calls_month: 20,
+        receipt_calls_day: 15,
         batch_calls_month: 0,
         batch_calls_day: 0,
       },
@@ -199,8 +206,8 @@ describe("ai-schemas (Trava 3 Hard Caps, Trava 5 Whitelist & Ajuste #3 BRT)", ()
     expect(dayExceeded).toEqual({
       allowed: false,
       limitScope: "day",
-      usedDay: 5,
-      usedMonth: 10,
+      usedDay: 15,
+      usedMonth: 20,
       resetAt: "2026-11-24T00:00:00-03:00",
     });
 
@@ -497,20 +504,20 @@ describe("ai-schemas (Trava 3 Hard Caps, Trava 5 Whitelist & Ajuste #3 BRT)", ()
     }
   });
 
-  it("reserva PASSIVE_AI_DAILY_RESERVE créditos para chamadas ativas e higieniza metadados semânticos em categorize_batch e single_receipt", () => {
+  it("reserva PASSIVE_AI_DAILY_RESERVE créditos para chamadas ativas no limite diário e mensal e higieniza metadados semânticos em categorize_batch e single_receipt", () => {
     const periods = getBrtQuotaPeriods(new Date("2026-11-23T18:00:00Z"));
-    const proRowWith3BatchCallsToday = {
+    const proRowWith29BatchCallsToday = {
       period_day: "2026-11-23",
       receipt_calls_month: 0,
       receipt_calls_day: 0,
-      batch_calls_month: 3,
-      batch_calls_day: 5 - PASSIVE_AI_DAILY_RESERVE, // 3 de 5 usados no Pro
+      batch_calls_month: 29,
+      batch_calls_day: 30 - PASSIVE_AI_DAILY_RESERVE, // 29 de 30 usados
     };
 
     const passiveEval = evaluateAiQuotaAllowance({
       planGroup: "pro",
       bucket: "batch_calls",
-      row: proRowWith3BatchCallsToday,
+      row: proRowWith29BatchCallsToday,
       todayBrt: periods.periodDay,
       nextDayResetAtIso: periods.nextDayResetAtIso,
       nextMonthResetAtIso: periods.nextMonthResetAtIso,
@@ -521,13 +528,48 @@ describe("ai-schemas (Trava 3 Hard Caps, Trava 5 Whitelist & Ajuste #3 BRT)", ()
     const activeEval = evaluateAiQuotaAllowance({
       planGroup: "pro",
       bucket: "batch_calls",
-      row: proRowWith3BatchCallsToday,
+      row: proRowWith29BatchCallsToday,
       todayBrt: periods.periodDay,
       nextDayResetAtIso: periods.nextDayResetAtIso,
       nextMonthResetAtIso: periods.nextMonthResetAtIso,
       priority: "active",
     });
     expect(activeEval.allowed).toBe(true);
+
+    const proRowNearMonthLimit = {
+      period_day: "2026-11-23",
+      receipt_calls_month: 0,
+      receipt_calls_day: 0,
+      batch_calls_month: 120 - PASSIVE_AI_DAILY_RESERVE,
+      batch_calls_day: 2,
+    };
+    const passiveMonthEval = evaluateAiQuotaAllowance({
+      planGroup: "pro",
+      bucket: "batch_calls",
+      row: proRowNearMonthLimit,
+      todayBrt: periods.periodDay,
+      nextDayResetAtIso: periods.nextDayResetAtIso,
+      nextMonthResetAtIso: periods.nextMonthResetAtIso,
+      priority: "passive",
+    });
+    expect(passiveMonthEval).toEqual({
+      allowed: false,
+      limitScope: "month",
+      usedDay: 2,
+      usedMonth: 119,
+      resetAt: periods.nextMonthResetAtIso,
+    });
+
+    const activeMonthEval = evaluateAiQuotaAllowance({
+      planGroup: "pro",
+      bucket: "batch_calls",
+      row: proRowNearMonthLimit,
+      todayBrt: periods.periodDay,
+      nextDayResetAtIso: periods.nextDayResetAtIso,
+      nextMonthResetAtIso: periods.nextMonthResetAtIso,
+      priority: "active",
+    });
+    expect(activeMonthEval.allowed).toBe(true);
 
     const normalizedBatch = normalizeCategorizeBatchAiPayload({
       items: [

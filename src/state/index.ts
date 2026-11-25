@@ -50,7 +50,23 @@ export {
   type CardBillChargeItem,
   type RolloverCardBillParams,
 } from "./mutations/use-card-mutations";
-export { useImportStatementExpenses } from "./mutations/use-statement-mutations";
+export {
+  useImportStatementExpenses,
+  useCommitStatementReconciliation,
+  useUpsertStatementBlueprint,
+  useRecordStatementBlueprintOutcome,
+  useAdminApproveStatementBlueprint,
+  useAdminSuspendStatementBlueprint,
+  type CommitStatementReconciliationParams,
+  type CommitStatementReconciliationResult,
+} from "./mutations/use-statement-mutations";
+export {
+  statementBlueprintsKey,
+  statementBlueprintsUserQueryKey,
+  adminStatementBlueprintsKey,
+  useStatementBlueprints,
+  useAdminStatementBlueprints,
+} from "./queries/use-statement-blueprints";
 export { useLoans } from "./queries/use-loans";
 export {
   useCreateLoanContract,
@@ -411,6 +427,12 @@ export {
 } from "./mutations/use-billing-mutations";
 export { useDevices, userDevicesKey } from "./queries/use-devices";
 export { useRevokeDevice, useDeleteDevice } from "./mutations/use-device-mutations";
+export {
+  useAiQuota,
+  aiQuotaKey,
+  aiQuotaMonthQueryKey,
+  type UseAiQuotaResult,
+} from "./queries/use-ai-quota";
 export { useMyPushSubscriptions, pushSubscriptionsKey } from "./queries/use-push-subscriptions";
 export {
   useEnableWebPushSubscription,

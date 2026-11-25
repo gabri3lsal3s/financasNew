@@ -1,4 +1,4 @@
-import { BUILTIN_STATEMENT_BLUEPRINTS } from "./builtin-blueprints";
+import { BUILTIN_STATEMENT_BLUEPRINTS } from "../extractors/issuer-profiles";
 import type {
   BlueprintFileKind,
   BlueprintOrigin,
@@ -7,19 +7,19 @@ import type {
   StatementLayoutBlueprint,
 } from "./types";
 
-const ORIGIN_PRECEDENCE: readonly BlueprintOrigin[] = [
-  "user_learned",
-  "ai_learned",
-  "builtin",
+const ORIGIN_TIER_GROUPS: ReadonlyArray<readonly BlueprintOrigin[]> = [
+  ["user_verified", "user_learned"],
+  ["global_active", "ai_learned"],
+  ["builtin"],
 ];
 
 /**
  * Busca o melhor `StatementLayoutBlueprint` aplicável respeitando estritamente:
- * 1) Precedência de origem: `user_learned` -> `ai_learned` -> `builtin`
+ * 1) Precedência de origem: `user_verified` -> `global_active` -> `builtin` (`issuer-profiles.ts`)
  * 2) Busca em 2 níveis dentro de cada origem:
  *    - Nível 1: fingerprint exato (`<kind>:<issuerKey>:<headerTokensHash>`)
  *    - Nível 2: fallback por emissor (`<kind>:<issuerKey>`)
- * 3) Auto-proteção (self-healing): ignora blueprints aprendidos com `consecutiveFailures >= 2`.
+ * 3) Auto-proteção (self-healing): ignora blueprints com `status !== "active"` ou `consecutiveFailures >= 2`.
  */
 export function findBestStatementBlueprint(params: {
   fingerprint: StatementFingerprintResult;
@@ -35,7 +35,9 @@ export function findBestStatementBlueprint(params: {
   } = params;
 
   const healthyLearned = learnedBlueprints.filter(
-    (bp) => bp.stats.consecutiveFailures < 2,
+    (bp) =>
+      bp.stats.consecutiveFailures < 2 &&
+      (!bp.cloudStatus || bp.cloudStatus === "active"),
   );
   const allCandidates: StatementLayoutBlueprint[] = [
     ...healthyLearned,
@@ -43,6 +45,9 @@ export function findBestStatementBlueprint(params: {
   ].filter((bp) => (!fileKind ? true : bp.fileKind === fileKind));
 
   const sortByTrust = (a: StatementLayoutBlueprint, b: StatementLayoutBlueprint): number => {
+    const aDist = a.distinctUsersVerified ?? 0;
+    const bDist = b.distinctUsersVerified ?? 0;
+    if (bDist !== aDist) return bDist - aDist;
     if (b.stats.exactChecksumHits !== a.stats.exactChecksumHits) {
       return b.stats.exactChecksumHits - a.stats.exactChecksumHits;
     }
@@ -52,9 +57,9 @@ export function findBestStatementBlueprint(params: {
     return b.stats.updatedAt.localeCompare(a.stats.updatedAt);
   };
 
-  for (const origin of ORIGIN_PRECEDENCE) {
+  for (const tierOrigins of ORIGIN_TIER_GROUPS) {
     const bucket = allCandidates
-      .filter((bp) => bp.origin === origin)
+      .filter((bp) => tierOrigins.includes(bp.origin))
       .sort(sortByTrust);
     if (bucket.length === 0) continue;
 

@@ -1,14 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
   BUILTIN_STATEMENT_BLUEPRINTS,
+  SHADOW_REPLAY_MIN_SCORE,
+  StructuralMarkerSchema,
   computeStatementFingerprint,
   distillStatementBlueprintDraft,
   findBestStatementBlueprint,
+  fromCloudBlueprintRow,
   sanitizeMarkerPhrase,
+  toCloudBlueprintRules,
   validateBlueprintWithShadowReplay,
   type StatementLayoutBlueprint,
 } from "./index";
-import type { StatementTransaction } from "../types";
+import type { SpatialPdfLine } from "../extractors/spatial-pdf-extractor";
+import type { StatementTransaction } from "../contracts";
 
 function makeTx(
   id: string,
@@ -91,10 +96,82 @@ describe("blueprints — Fingerprint Estável, Catálogo Nativo, Learner e Shado
         "movimento exclusivo cartao ciclo",
       );
     });
+    it("rejeita dígitos, e-mails (@) e URLs no StructuralMarkerSchema (paridade SQL 0156)", () => {
+      expect(StructuralMarkerSchema.safeParse("lancamentos compras").success).toBe(true);
+      expect(StructuralMarkerSchema.safeParse("cpf 123456").success).toBe(false);
+      expect(StructuralMarkerSchema.safeParse("contato@banco.com").success).toBe(false);
+      expect(StructuralMarkerSchema.safeParse("https://banco.com").success).toBe(false);
+    });
+
+    it("converte ida e volta entre row da nuvem (StatementLayoutBlueprintRow) e StatementLayoutBlueprint", () => {
+      const bp = fromCloudBlueprintRow({
+        id: "cloud-uuid-1",
+        fingerprint: "pdf:sicredi:abc12345",
+        issuer_key: "sicredi",
+        issuer_name: "Sicredi",
+        file_kind: "pdf_text",
+        scope: "global",
+        status: "active",
+        rules_json: {
+          startMarkers: ["lancamentos do cartao"],
+          pauseMarkers: ["resumo de encargos"],
+          boletoMarkers: ["ficha de compensacao"],
+          totalLabels: ["total da fatura"],
+          ignoredTotalLabels: ["pagamento minimo"],
+          columnMode: "single",
+          strictStartZone: true,
+          polarity: "positive_purchase",
+          dateFormatHint: "dmy",
+        },
+        exact_checksum_hits: 5,
+        distinct_users_verified: 3,
+        distinct_users_failed: 0,
+        consecutive_failures: 0,
+        updated_at: "2026-11-24T12:00:00.000Z",
+      });
+
+      expect(bp).not.toBeNull();
+      expect(bp?.origin).toBe("global_active");
+      expect(bp?.cloudId).toBe("cloud-uuid-1");
+      expect(bp?.dateFormatHint).toBe("dmy");
+      expect(toCloudBlueprintRules(bp!)).toMatchObject({
+        startMarkers: ["lancamentos do cartao"],
+        dateFormatHint: "dmy",
+        strictStartZone: true,
+      });
+
+      const suspendedBp = fromCloudBlueprintRow({
+        id: "cloud-uuid-2",
+        fingerprint: "pdf:sicredi:abc12345",
+        issuer_key: "sicredi",
+        issuer_name: "Sicredi",
+        file_kind: "pdf_text",
+        scope: "user",
+        status: "suspended",
+        rules_json: {},
+        exact_checksum_hits: 1,
+        distinct_users_verified: 1,
+        distinct_users_failed: 1,
+        consecutive_failures: 2,
+        updated_at: "2026-11-24T12:00:00.000Z",
+      });
+      const fp = computeStatementFingerprint({
+        rawText: "Sicredi\nFatura\nlancamentos",
+        fileKind: "pdf_text",
+      });
+      // Suspended blueprint must NOT be selected
+      expect(
+        findBestStatementBlueprint({
+          fingerprint: fp,
+          learnedBlueprints: suspendedBp ? [suspendedBp] : [],
+          fileKind: "pdf_text",
+        }),
+      ).toBeNull();
+    });
   });
 
   describe("2. Catálogo Nativo e Precedência no Matcher", () => {
-    it("contém blueprints nativos válidos para os 11+ emissores obrigatórios", () => {
+    it("contém blueprints nativos válidos para os 13 emissores obrigatórios", () => {
       const keys = new Set(BUILTIN_STATEMENT_BLUEPRINTS.map((bp) => bp.issuerKey));
       for (const expected of [
         "nomad",
@@ -115,7 +192,7 @@ describe("blueprints — Fingerprint Estável, Catálogo Nativo, Learner e Shado
       }
     });
 
-    it("aplica precedência estrita user_learned -> ai_learned -> builtin e fallback em 2 níveis", () => {
+    it("aplica precedência estrita user_verified -> global_active -> builtin e fallback em 2 níveis", () => {
       const fp = computeStatementFingerprint({
         rawText: "Nomad Cartao de Credito\nExtrato Referente ao mes\nValor da fatura: R$ 100,00",
         fileKind: "pdf_text",
@@ -127,7 +204,7 @@ describe("blueprints — Fingerprint Estável, Catálogo Nativo, Learner e Shado
         issuerKey: "nomad",
         issuerName: "Nomad",
         fileKind: "pdf_text",
-        origin: "ai_learned",
+        origin: "global_active",
         pdfRules: {
           startMarkers: ["extrato referente"],
           pauseMarkers: [],
@@ -139,7 +216,7 @@ describe("blueprints — Fingerprint Estável, Catálogo Nativo, Learner e Shado
           requireExplicitDatePerLine: true,
         },
         polarity: "positive_purchase",
-        dateFormatHint: "dd/mm",
+        dateFormatHint: "dmy",
         currencyStrategy: "brl_rightmost",
         stats: {
           uses: 2,
@@ -152,26 +229,26 @@ describe("blueprints — Fingerprint Estável, Catálogo Nativo, Learner e Shado
       const userBp: StatementLayoutBlueprint = {
         ...base,
         fingerprint: "pdf:nomad:differenthash",
-        origin: "user_learned",
+        origin: "user_verified",
       };
 
-      // user_learned (mesmo por fallback de emissor) vence ai_learned e builtin
+      // user_verified (mesmo por fallback de emissor) vence global_active e builtin
       const matchUser = findBestStatementBlueprint({
         fingerprint: fp,
         learnedBlueprints: [base, userBp],
         fileKind: "pdf_text",
       });
-      expect(matchUser?.blueprint.origin).toBe("user_learned");
+      expect(matchUser?.blueprint.origin).toBe("user_verified");
       expect(matchUser?.matchLevel).toBe("issuer_fallback");
 
-      // Se ai_learned tiver consecutiveFailures >= 2, é ignorado (self-healing) e cai para builtin
-      const failingAiBp: StatementLayoutBlueprint = {
+      // Se global_active tiver consecutiveFailures >= 2, é ignorado (self-healing) e cai para builtin
+      const failingGlobalBp: StatementLayoutBlueprint = {
         ...base,
         stats: { ...base.stats, consecutiveFailures: 2 },
       };
       const matchFallbackBuiltin = findBestStatementBlueprint({
         fingerprint: fp,
-        learnedBlueprints: [failingAiBp],
+        learnedBlueprints: [failingGlobalBp],
         fileKind: "pdf_text",
       });
       expect(matchFallbackBuiltin?.blueprint.origin).toBe("builtin");
@@ -289,7 +366,7 @@ describe("blueprints — Fingerprint Estável, Catálogo Nativo, Learner e Shado
           requireExplicitDatePerLine: true,
         },
         polarity: "positive_purchase",
-        dateFormatHint: "dd/mm",
+        dateFormatHint: "dmy",
         currencyStrategy: "brl_rightmost",
         stats: {
           uses: 1,
@@ -309,7 +386,45 @@ describe("blueprints — Fingerprint Estável, Catálogo Nativo, Learner e Shado
 
       // Vazou a linha de 15.000,00 -> checksum_overflow + outlier -> bloqueado!
       expect(replay.passed).toBe(false);
-      expect(replay.qualityGate.score).toBeLessThan(85);
+      expect(replay.qualityGate.score).toBeLessThan(SHADOW_REPLAY_MIN_SCORE);
+    });
+
+    it("executa Shadow Replay REAL sobre SpatialPdfLine[] preservando pageNumber/fontSize e exige score >= 90", () => {
+      expect(SHADOW_REPLAY_MIN_SCORE).toBe(90);
+
+      const spatialLines: SpatialPdfLine[] = [
+        { y: 780, xStart: 40, xEnd: 300, fontSize: 10, column: 1, pageNumber: 1, text: "Banco Horizonte S.A.", tokens: [] },
+        { y: 760, xStart: 40, xEnd: 300, fontSize: 10, column: 1, pageNumber: 1, text: "Movimento Exclusivo Cartao Titular", tokens: [] },
+        { y: 740, xStart: 40, xEnd: 300, fontSize: 10, column: 1, pageNumber: 1, text: "10/11/2026 Padaria Estrela 120,50", tokens: [] },
+        { y: 720, xStart: 40, xEnd: 300, fontSize: 10, column: 1, pageNumber: 1, text: "12/11/2026 Mercado Central 300,00", tokens: [] },
+        { y: 40, xStart: 40, xEnd: 300, fontSize: 5.5, column: 1, pageNumber: 1, text: "15/11/2026 Nota Rodape Pequena 99,00", tokens: [] },
+      ];
+
+      const distilled = distillStatementBlueprintDraft({
+        rawText: spatialLines.map((l) => l.text).join("\n"),
+        rawLines: spatialLines.map((l) => l.text),
+        extractedTransactions: [
+          makeTx("1", "2026-11-10", "Padaria Estrela", 12050),
+          makeTx("2", "2026-11-12", "Mercado Central", 30000),
+        ],
+        fileKind: "pdf_text",
+        extractionSource: "ai_text",
+        officialTotalCents: 42050,
+      });
+
+      expect(distilled.blueprint).not.toBeNull();
+      const replay = validateBlueprintWithShadowReplay({
+        blueprint: distilled.blueprint!,
+        spatialLines,
+        cardId: "card-horizonte",
+        competenceMonth: "2026-11",
+        officialTotalCents: 42050,
+      });
+
+      // Nota de rodapé (5.5pt) descartada corretamente nas linhas espaciais reais -> score 100 >= 90!
+      expect(replay.passed).toBe(true);
+      expect(replay.qualityGate.score).toBe(100);
+      expect(replay.transactions).toHaveLength(2);
     });
   });
 });

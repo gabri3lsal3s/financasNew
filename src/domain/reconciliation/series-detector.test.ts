@@ -3,7 +3,7 @@ import {
   detectInstallmentSeriesState,
   projectFutureInstallments,
 } from "./series-detector";
-import type { ExistingExpenseForReconciliation, StatementTransaction } from "./types";
+import type { ExistingExpenseForReconciliation, StatementTransaction } from "./contracts";
 
 function createMockTransaction(overrides: Partial<StatementTransaction> = {}): StatementTransaction {
   return {
@@ -218,6 +218,95 @@ describe("series-detector — Classificador dos 4 Estados de Séries de Parcelam
         categoryId: "cat-geral",
       });
       expect(projected).toEqual([]);
+    });
+
+    it("D13 + Histórico Completo: reconhece série já projetada (3..10 em outras competências), isola compras distintas de meses passados e herda existingInstallmentGroupId", () => {
+      const tx = createMockTransaction({
+        id: "stmt-2-10",
+        date: "2026-10-12",
+        rawDescription: "LOJAS RENNER 02/10",
+        cleanDescription: "LOJAS RENNER",
+        amountCents: 10000,
+        installment: { current: 2, total: 10 },
+      });
+
+      // Compra antiga disjunta (2026-08) aparece antes no array, mas não deve colidir com a competência futura 2026-11;
+      // compra atual tem 3..10 projetadas em 2026-11..2027-06 com group-atual.
+      const futureExpenses: ExistingExpenseForReconciliation[] = [
+        {
+          id: "exp-antiga-disjunta",
+          description: "LOJAS RENNER 3/10",
+          valueCents: 10000,
+          date: "2026-08-12",
+          categoryId: "cat-vestuario",
+          installmentNumber: 3,
+          installmentsTotal: 10,
+          billCompetence: "2026-08",
+          installmentGroupId: "group-antigo",
+        },
+        ...Array.from({ length: 8 }, (_, idx) => {
+          const instNum = 3 + idx;
+          const compDate = new Date(Date.UTC(2026, 9 + instNum - 2, 12));
+          const y = compDate.getUTCFullYear();
+          const m = String(compDate.getUTCMonth() + 1).padStart(2, "0");
+          return {
+            id: `exp-future-${instNum}`,
+            description: `LOJAS RENNER ${instNum}/10`,
+            valueCents: 10000,
+            date: `${y}-${m}-12`,
+            categoryId: "cat-vestuario",
+            installmentNumber: instNum,
+            installmentsTotal: 10,
+            billCompetence: `${y}-${m}`,
+            installmentGroupId: "group-atual",
+          };
+        }),
+      ];
+
+      const analysis = detectInstallmentSeriesState({
+        transaction: tx,
+        competenceMonth: "2026-10",
+        existingExpenses: futureExpenses,
+      });
+
+      expect(analysis).not.toBeNull();
+      expect(analysis?.state).toBe("state_4_already_projected");
+      expect(analysis?.existingInstallmentGroupId).toBe("group-atual");
+      expect(analysis?.futureProjectedCount).toBe(8);
+      expect(analysis?.missingFutureInstallments).toEqual([]);
+    });
+
+    it("projeta apenas missingInstallments com groupId compartilhado, baseDate alinhada e statementHash determinístico", () => {
+      const projected = projectFutureInstallments({
+        currentInstallment: 3,
+        totalInstallments: 6,
+        installmentValueCents: 15000,
+        baseDate: "2026-10-15",
+        baseCompetence: "2026-10",
+        description: "Notebook",
+        categoryId: "cat-eletronicos",
+        cardId: "card-abc",
+        installmentGroupId: "group-xyz",
+        missingInstallments: [4, 6],
+      });
+
+      expect(projected).toHaveLength(2);
+      expect(projected[0]).toMatchObject({
+        installmentNumber: 4,
+        installmentsTotal: 6,
+        billCompetence: "2026-11",
+        date: "2026-11-15",
+        installmentGroupId: "group-xyz",
+      });
+      expect(projected[1]).toMatchObject({
+        installmentNumber: 6,
+        installmentsTotal: 6,
+        billCompetence: "2027-01",
+        date: "2027-01-15",
+        installmentGroupId: "group-xyz",
+      });
+      expect(projected[0]?.statementHash).toBeTruthy();
+      expect(projected[0]?.statementHash).not.toBe(projected[1]?.statementHash);
     });
   });
 });

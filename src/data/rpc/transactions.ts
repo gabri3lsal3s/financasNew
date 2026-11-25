@@ -1,6 +1,7 @@
 import { callRpc, unwrapRpc, type FnArgs } from "./client";
 import type {
   ChargeKind,
+  CommitStatementReconciliationResult,
   DebtType,
   InstallmentDeleteMode,
   PaymentMethod,
@@ -463,6 +464,74 @@ export async function importBankTransactions(params: {
     callRpc("import_bank_transactions", {
       p_expenses: params.expenses,
       p_incomes: params.incomes,
+    }),
+  );
+}
+
+export interface CommitStatementExpenseInput {
+  date: string;
+  value: number;
+  category_id: string;
+  description: string;
+  installments_total?: number;
+  installment_number?: number;
+  installment_group_id?: string | null;
+  bill_competence?: string;
+  report_weight?: number;
+  statement_hash?: string | null;
+  charge_kind?: string;
+  scope?: TransactionScope;
+  is_tax_deductible?: boolean;
+  is_projected?: boolean;
+}
+
+export interface CommitStatementLinkAdjustmentInput {
+  expense_id: string;
+  new_value: number;
+  statement_hash?: string | null;
+}
+
+export interface CommitStatementCompetenceMoveInput {
+  expense_id: string;
+  target_competence: string;
+  statement_hash?: string | null;
+}
+
+export interface CommitStatementRefundInput {
+  amount: number;
+  date: string;
+  note?: string | null;
+  competence_month?: string;
+  statement_hash?: string | null;
+}
+
+export interface CommitStatementReconciliationParams {
+  cardId: string;
+  competenceMonth: string;
+  expenses?: readonly CommitStatementExpenseInput[];
+  linkAdjustments?: readonly CommitStatementLinkAdjustmentInput[];
+  competenceMoves?: readonly CommitStatementCompetenceMoveInput[];
+  refunds?: readonly CommitStatementRefundInput[];
+  deleteExpenseIds?: readonly string[];
+}
+
+export type { CommitStatementReconciliationResult };
+
+/**
+ * Executa a conciliação atômica de fatura de cartão em transação única PostgreSQL (Onda 1 / G11).
+ */
+export async function commitStatementReconciliation(
+  params: CommitStatementReconciliationParams,
+): Promise<CommitStatementReconciliationResult> {
+  return unwrapRpc(
+    callRpc("commit_statement_reconciliation", {
+      p_card_id: params.cardId,
+      p_competence_month: params.competenceMonth,
+      p_expenses: params.expenses ? [...params.expenses] : [],
+      p_link_adjustments: params.linkAdjustments ? [...params.linkAdjustments] : [],
+      p_competence_moves: params.competenceMoves ? [...params.competenceMoves] : [],
+      p_refunds: params.refunds ? [...params.refunds] : [],
+      p_delete_expense_ids: params.deleteExpenseIds ? [...params.deleteExpenseIds] : [],
     }),
   );
 }

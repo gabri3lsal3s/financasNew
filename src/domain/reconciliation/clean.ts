@@ -169,64 +169,8 @@ const INVESTMENT_OR_TRANSFER_KEYWORDS = [
   "total da fatura",
 ];
 
-const INFLOW_KEYWORDS = [
-  // Movimentos bancários padrão
-  "pix recebido",
-  "pix recebid",
-  "recebimento pix",
-  "ted recebida",
-  "ted recebido",
-  "doc recebido",
-  "transferencia recebida",
-  "transferência recebida",
-  "credito em conta",
-  "crédito em conta",
-  "crédito recebido",
-  "creditado",
-  "deposito",
-  "depósito",
-  // Remuneração / trabalho
-  "salario",
-  "salário",
-  "folha de pagto",
-  "folha pagto",
-  "folha de pagamento",
-  "pro-labore",
-  "pro labore",
-  "remuneracao",
-  "remuneração",
-  "holerite",
-  // Rendimentos financeiros
-  "rendimento",
-  "dividendos",
-  "juros sobre capital",
-  "jcp",
-  "provento",
-  "proventos",
-  // Frases de linguagem natural (Quick-Paste)
-  "recebi",
-  "recebi de",
-  "recebi via",
-  "recebimento",
-  "recebimento de",
-  "ganhei",
-  "entrou",
-  "renda de",
-  "pagamento recebido",
-  "pagamento recebido de",
-];
-
 /**
- * Identifica se o lançamento de conta corrente é caracterizado como entrada/receita
- * a partir de padrões textuais bancários conhecidos.
- */
-export function isLikelyIncomeDescription(raw: string): boolean {
-  const lower = raw.trim().toLowerCase();
-  return INFLOW_KEYWORDS.some((kw) => lower.includes(kw));
-}
-
-/**
- * Identifica se o lançamento de conta corrente é pagamento de fatura de cartão.
+ * Identifica se o lançamento representa pagamento de fatura de cartão.
  * Previne double-counting das despesas já lançadas no cartão.
  */
 export function isCreditCardPayment(raw: string): boolean {
@@ -340,7 +284,7 @@ export function classifyTransactionNature(params: {
   isPayment: boolean;
   isRefund: boolean;
   hasChargeKind?: boolean;
-}): import("./types").StatementTransactionNature {
+}): import("./contracts").StatementTransactionNature {
   const { rawDescription, isPayment, isRefund, hasChargeKind } = params;
   if (isPayment) return "invoice_payment";
   if (isRefund) return "refund";

@@ -15,7 +15,7 @@ import {
   sniffColumnMapping,
 } from "./index";
 import type { PredictionEntry } from "@/domain/predictions";
-import type { ExistingExpenseForReconciliation, StatementTransaction } from "./types";
+import type { ExistingExpenseForReconciliation, StatementTransaction } from "./contracts";
 
 describe("domain/reconciliation", () => {
   describe("cleanDescription", () => {
@@ -295,15 +295,15 @@ Página 1 de 1
       expect(rows[1]?.cells[1]).toBe("COMPRA CARTAO PADARIA");
     });
 
-    it("detecta entradas financeiras em linguagem natural a partir de verbos de receita", () => {
-      const natural = `
-recebi salário de 5.000,00 no dia 05/08
-ganhei 200 reais de pix da maria
+    it("identifica estornos explícitos de cartão com sinal negativo (-) sem aplicar heurística de receita de conta corrente (G3)", () => {
+      const cardStatementText = `
+estorno loja central -150,00 no dia 05/08
+recebi salário de 5.000,00 no dia 06/08
 `;
-      const rows = parseTextToRows(natural, 2026);
+      const rows = parseTextToRows(cardStatementText, 2026);
       expect(rows).toHaveLength(2);
-      expect(rows[0]?.cells[2]).toContain("+");
-      expect(rows[1]?.cells[2]).toContain("+");
+      expect(rows[0]?.cells[2]).toContain("-");
+      expect(rows[1]?.cells[2]).toBe("5.000,00");
     });
 
     it("converte texto em linguagem natural para transações completas de extrato via parseStatementInput", () => {
@@ -666,7 +666,7 @@ Encargos e Tarifas: R$ 0,00
       expect(reconciled.unmatchedExistingExpenses[0]?.description).toBe("Compra Cancelada / Inexistente");
     });
 
-    it("classifica como exact_match quando valor e data coincidem exatamente, mesmo com texto divergente", () => {
+    it("aplica teto de score 70 (probable_match) quando valor e data coincidem exatamente, mas o texto diverge sem sinal semântico forte (G7)", () => {
       const stmt: StatementTransaction = {
         id: "stmt-exact",
         index: 0,
@@ -681,7 +681,7 @@ Encargos e Tarifas: R$ 0,00
       };
 
       const score = calculateMatchScore(stmt, existing[0]!);
-      expect(score).toBe(85); // 50 (valor) + 35 (data)
+      expect(score).toBe(70); // Guarda G7: teto de 70 quando scoreText === 0 e sem sinal de encargo/parcela
 
       const reconciled = reconcileStatementTransactions({
         statementTransactions: [stmt],
@@ -690,7 +690,7 @@ Encargos e Tarifas: R$ 0,00
         defaultCategoryId: "cat-outros",
       });
 
-      expect(reconciled.items[0]?.status).toBe("exact_match");
+      expect(reconciled.items[0]?.status).toBe("probable_match");
       expect(reconciled.items[0]?.selected).toBe(false);
     });
   });
@@ -1008,8 +1008,9 @@ OFXHEADER:100
         predictedCategoryId: "cat-livros", // Bônus semântico de categoria
       });
 
-      // Score com 1 centavo: 30(valor) + 35(data) + 10(categoria) = 75 pontos
-      expect(score).toBe(75);
+      // Guarda G7: sem token textual (scoreText=0) nem sinal de parcela/encargo,
+      // 30(valor) + 35(data) + 10(categoria) = 75 sofre teto estrito de 70 pontos (probable_match).
+      expect(score).toBe(70);
       expect(score).toBeLessThanOrEqual(79); // Trava estrita
 
       const reconciled = reconcileStatementTransactions({
@@ -1019,10 +1020,11 @@ OFXHEADER:100
         defaultCategoryId: "cat-default",
       });
 
-      // Deve ser classificado como probable_match (não exact_match)
+      // Deve ser classificado como probable_match (não exact_match) e sinal semântico forte ativo
       expect(reconciled.items[0]?.status).toBe("probable_match");
       expect(reconciled.items[0]?.matchedExpenseId).toBe("exp-livros");
       expect(reconciled.items[0]?.suggestedAction).toBe("link_and_adjust_amount");
+      expect(reconciled.items[0]?.hasStrongSemanticSignal).toBe(true);
     });
 
     it("isola estritamente os escopos fiscal PF e PJ no scorer", () => {

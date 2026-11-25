@@ -1,7 +1,7 @@
 import { shiftMonth } from "@/domain/cards";
 import { resolveBillCompetence } from "@/domain/competence";
-import { normalizeDateToISO } from "./parsers/type-sniffer";
-import type { StatementTransaction } from "./types";
+import { normalizeDateToISO } from "./extractors/type-sniffer";
+import type { StatementTransaction } from "./contracts";
 
 export interface CardContextForMetadata {
   id?: string;

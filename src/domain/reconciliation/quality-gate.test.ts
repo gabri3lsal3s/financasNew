@@ -5,13 +5,13 @@ import {
   parseTextToRows,
   sniffColumnMapping,
   type SpatialPdfLine,
-} from "./parsers";
+} from "./extractors";
 import {
   extractPrintedStatementTotalCents,
   extractStatementSummaryAmounts,
 } from "./statement-preprocessor";
 import { detectStatementMetadata } from "./statement-metadata";
-import type { StatementTransaction } from "./types";
+import type { StatementTransaction } from "./contracts";
 
 function makeTx(overrides: Partial<StatementTransaction> = {}): StatementTransaction {
   return {

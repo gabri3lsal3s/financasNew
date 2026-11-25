@@ -773,6 +773,8 @@ export type CardPayment = {
   note: string | null;
   /** Estorno (amount negativo ou nota iniciando em `[REFUND]`). */
   is_refund: boolean;
+  /** Hash determinístico para idempotência de estornos importados (G10). */
+  statement_hash?: string | null;
 };
 
 export type CardBillRolloverKind = "rollover" | "refinance";
@@ -1824,4 +1826,75 @@ export type UserPushSubscription = {
   last_used_at: string | null;
   created_at: string;
   updated_at: string;
+};
+
+// ===========================================================================
+// Cotas FinOps de Micro-IA e Blueprints Globais de Fatura (Onda 1)
+// ===========================================================================
+
+export type UserAiQuotaRow = {
+  user_id: string;
+  period_month: string;
+  period_day: string;
+  receipt_calls_month: number;
+  receipt_calls_day: number;
+  batch_calls_month: number;
+  batch_calls_day: number;
+  updated_at: string;
+};
+
+export type StatementLayoutBlueprintScope = "user" | "global";
+export type StatementLayoutBlueprintStatus = "active" | "suspended" | "pending_review";
+export type StatementLayoutBlueprintFileKind = "pdf_text" | "text";
+
+export type StatementLayoutBlueprintRules = {
+  startMarkers?: string[];
+  pauseMarkers?: string[];
+  boletoMarkers?: string[];
+  totalLabels?: string[];
+  ignoredTotalLabels?: string[];
+  columnMode?: "auto" | "single" | "bimodal";
+  strictStartZone?: boolean;
+  polarity?: "auto" | "positive_purchase" | "negative_purchase";
+  dateFormatHint?: "dmy" | "d_mmm" | "ymd" | "auto";
+};
+
+export type StatementLayoutBlueprintRow = {
+  id: string;
+  fingerprint: string;
+  issuer_key: string;
+  issuer_name: string;
+  file_kind: StatementLayoutBlueprintFileKind;
+  scope: StatementLayoutBlueprintScope;
+  owner_user_id: string | null;
+  status: StatementLayoutBlueprintStatus;
+  rules_json: StatementLayoutBlueprintRules;
+  exact_checksum_hits: number;
+  distinct_users_verified: number;
+  distinct_users_failed: number;
+  consecutive_failures: number;
+  promoted_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type StatementBlueprintOutcomeResult = {
+  success: boolean;
+  blueprint_id: string;
+  scope: StatementLayoutBlueprintScope;
+  status: StatementLayoutBlueprintStatus;
+  distinct_users_verified: number;
+  trusted_users_verified: number;
+  trusted_users_failed: number;
+};
+
+export type CommitStatementReconciliationResult = {
+  success: boolean;
+  inserted_count: number;
+  projected_count: number;
+  skipped_count: number;
+  adjusted_count: number;
+  moved_count: number;
+  refunds_count: number;
+  deleted_count: number;
 };

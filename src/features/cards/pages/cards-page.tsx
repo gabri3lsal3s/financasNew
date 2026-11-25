@@ -250,6 +250,11 @@ export function CardsPage() {
         isReadOnlyMode={state.permission.isReadOnlyMode}
         aiExtractionEnabled={!state.aiPermission.isHidden && state.aiPermission.canWrite}
         onCompetenceChange={state.setMonth}
+        onCardChange={(newCard) => state.selectCard(newCard.id)}
+        onPayBillNow={() => {
+          state.setImportOpen(false);
+          state.handleOpenPayment("payment");
+        }}
       />
 
       <TransactionEducationalGuideModal

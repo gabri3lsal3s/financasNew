@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { detectStatementMetadata } from "./statement-metadata";
-import type { StatementTransaction } from "./types";
+import type { StatementTransaction } from "./contracts";
 
 function mockTx(date: string, amountCents = 5000, isPayment = false): StatementTransaction {
   return {

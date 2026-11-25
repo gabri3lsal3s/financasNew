@@ -65,6 +65,10 @@ import type {
   MonthlyClosingResult,
   UserDevice,
   UserPushSubscription,
+  UserAiQuotaRow,
+  StatementLayoutBlueprintRow,
+  StatementBlueprintOutcomeResult,
+  CommitStatementReconciliationResult,
 } from "./schema";
 
 /**
@@ -130,6 +134,8 @@ export interface Database {
       user_dividend_events: Table<UserDividendEvent>;
       user_devices: Table<UserDevice>;
       user_push_subscriptions: Table<UserPushSubscription>;
+      user_ai_quotas: Table<UserAiQuotaRow>;
+      statement_layout_blueprints: Table<StatementLayoutBlueprintRow>;
     };
 
     Views: Record<string, never>;
@@ -972,6 +978,52 @@ export interface Database {
           p_current_device_id: string;
         };
         Returns: number;
+      };
+      commit_statement_reconciliation: {
+        Args: {
+          p_card_id: string;
+          p_competence_month: string;
+          p_expenses?: unknown;
+          p_link_adjustments?: unknown;
+          p_competence_moves?: unknown;
+          p_refunds?: unknown;
+          p_delete_expense_ids?: string[];
+        };
+        Returns: CommitStatementReconciliationResult;
+      };
+      upsert_statement_layout_blueprint: {
+        Args: {
+          p_fingerprint: string;
+          p_issuer_key: string;
+          p_issuer_name: string;
+          p_file_kind: string;
+          p_rules_json: unknown;
+        };
+        Returns: StatementLayoutBlueprintRow;
+      };
+      record_statement_blueprint_outcome: {
+        Args: {
+          p_blueprint_id: string;
+          p_exact_checksum_hit: boolean;
+        };
+        Returns: StatementBlueprintOutcomeResult;
+      };
+      admin_list_statement_blueprints: {
+        Args: Record<string, never>;
+        Returns: StatementLayoutBlueprintRow[];
+      };
+      admin_approve_statement_blueprint: {
+        Args: {
+          p_blueprint_id: string;
+          p_rules_json?: unknown;
+        };
+        Returns: StatementLayoutBlueprintRow;
+      };
+      admin_suspend_statement_blueprint: {
+        Args: {
+          p_blueprint_id: string;
+        };
+        Returns: StatementLayoutBlueprintRow;
       };
     };
   };

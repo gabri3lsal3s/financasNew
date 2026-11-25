@@ -1,5 +1,4 @@
 import { isStatementNoiseOrSummary } from "./clean";
-import type { StatementTransaction } from "./types";
 
 export const DEFAULT_STATEMENT_AI_CHUNK_MAX_CHARS = 22_000;
 export const MAX_STATEMENT_AI_CHUNKS = 3;
@@ -19,21 +18,9 @@ export interface PreprocessedStatementResult {
   printedTotalCents: number | null;
 }
 
-export interface EvaluateStatementQualityParams {
-  rawText: string;
-  transactions: readonly StatementTransaction[];
-  candidateAmountLineCount: number;
-  printedTotalCents: number | null;
-  isStructuredTabularFile: boolean;
-}
-
-export interface StatementQualityAssessment {
-  isSufficient: boolean;
-  reason?:
-    | "zero_transactions"
-    | "low_line_coverage"
-    | "scrambled_columns"
-    | "total_mismatch";
+export interface StatementSummaryLabelHints {
+  totalLabels?: readonly string[];
+  ignoredTotalLabels?: readonly string[];
 }
 
 const DATE_TOKEN_REGEX =
@@ -84,11 +71,30 @@ function parseBrlTokenToCents(rawAmount: string, allowZero = false): number | nu
   return cents > 0 ? cents : null;
 }
 
+function normalizeSummaryLabelText(text: string): string {
+  return text
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ");
+}
+
+function matchesAnySummaryLabel(line: string, labels?: readonly string[]): boolean {
+  if (!labels || labels.length === 0) return false;
+  const normalizedLine = normalizeSummaryLabelText(line);
+  return labels.some((label) => {
+    const cleanLabel = normalizeSummaryLabelText(label);
+    return cleanLabel.length >= 3 && normalizedLine.includes(cleanLabel);
+  });
+}
+
 function extractAmountNearLabel(
   lines: readonly string[],
   index: number,
   ignoredContext: RegExp,
   allowZero = false,
+  ignoredLabels?: readonly string[],
 ): number | null {
   const amountExtractRegex = /(?:R\$\s*)?(\d{1,3}(?:\.\d{3})+,\d{2}|\d+,\d{2})/;
   const line = lines[index]!;
@@ -100,7 +106,9 @@ function extractAmountNearLabel(
 
   for (let offset = 1; offset <= 2 && index + offset < lines.length; offset++) {
     const nextLine = lines[index + offset]!;
-    if (ignoredContext.test(nextLine)) break;
+    if (ignoredContext.test(nextLine) || matchesAnySummaryLabel(nextLine, ignoredLabels)) {
+      break;
+    }
     const nextMatch = amountExtractRegex.exec(nextLine);
     if (nextMatch?.[1]) {
       const cents = parseBrlTokenToCents(nextMatch[1], allowZero);
@@ -113,11 +121,15 @@ function extractAmountNearLabel(
 
 /**
  * Extrai localmente o "Total da Fatura" impresso no cabeçalho/resumo do PDF ou texto
- * usando hierarquia de 2 níveis:
+ * usando hierarquia em camadas + rótulos estruturais aprendidos (`blueprintHints`):
+ * - Nível 0 (Blueprint): `totalLabels` (excluindo `ignoredTotalLabels`).
  * - Nível 1 (Prioritário): "Valor da fatura", "Total da fatura", "Valor total desta fatura", "Despesas e créditos do mês".
  * - Nível 2 (Fallback): "Total a pagar", bloqueado se próximo a simulações ("1x R$", "CET", "parcelamento", "entrada").
  */
-export function extractPrintedStatementTotalCents(rawText: string): number | null {
+export function extractPrintedStatementTotalCents(
+  rawText: string,
+  hints?: StatementSummaryLabelHints,
+): number | null {
   if (!rawText) return null;
   const lines = rawText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const scanLimit = Math.min(lines.length, 350);
@@ -132,44 +144,93 @@ export function extractPrintedStatementTotalCents(rawText: string): number | nul
   const cycleNetTotalRegex = /\b(?:despesas\s+e\s+cr[eé]ditos\s+do\s+m[eê]s)\b/i;
   const fallbackTotalToPayRegex = /\btotal\s+a\s+pagar\b/i;
 
+  let blueprintTotalCandidate: number | null = null;
   let primaryInvoiceCandidate: number | null = null;
   let cycleNetCandidate: number | null = null;
   let fallbackCandidate: number | null = null;
 
   for (let i = 0; i < scanLimit; i++) {
     const line = lines[i]!;
-    if (ignoredTotalContext.test(line)) continue;
+    if (
+      ignoredTotalContext.test(line) ||
+      matchesAnySummaryLabel(line, hints?.ignoredTotalLabels)
+    ) {
+      continue;
+    }
+
+    if (
+      blueprintTotalCandidate === null &&
+      hints?.totalLabels &&
+      hints.totalLabels.length > 0 &&
+      matchesAnySummaryLabel(line, hints.totalLabels)
+    ) {
+      const cents = extractAmountNearLabel(
+        lines,
+        i,
+        ignoredTotalContext,
+        false,
+        hints.ignoredTotalLabels,
+      );
+      if (cents !== null) blueprintTotalCandidate = cents;
+      continue;
+    }
 
     if (primaryInvoiceCandidate === null && primaryInvoiceTotalRegex.test(line)) {
-      const cents = extractAmountNearLabel(lines, i, ignoredTotalContext);
+      const cents = extractAmountNearLabel(
+        lines,
+        i,
+        ignoredTotalContext,
+        false,
+        hints?.ignoredTotalLabels,
+      );
       if (cents !== null) primaryInvoiceCandidate = cents;
       continue;
     }
 
     if (cycleNetCandidate === null && cycleNetTotalRegex.test(line)) {
-      const cents = extractAmountNearLabel(lines, i, ignoredTotalContext);
+      const cents = extractAmountNearLabel(
+        lines,
+        i,
+        ignoredTotalContext,
+        false,
+        hints?.ignoredTotalLabels,
+      );
       if (cents !== null) cycleNetCandidate = cents;
       continue;
     }
 
     if (fallbackCandidate === null && fallbackTotalToPayRegex.test(line)) {
-      // Bloqueia "Total a pagar" dentro ou imediatamente após cards de simulação de parcelamento
       const contextWindow = lines.slice(Math.max(0, i - 3), i + 2).join(" ");
       if (!installmentSimulationContext.test(contextWindow)) {
-        const cents = extractAmountNearLabel(lines, i, ignoredTotalContext);
+        const cents = extractAmountNearLabel(
+          lines,
+          i,
+          ignoredTotalContext,
+          false,
+          hints?.ignoredTotalLabels,
+        );
         if (cents !== null) fallbackCandidate = cents;
       }
     }
   }
 
-  return primaryInvoiceCandidate ?? cycleNetCandidate ?? fallbackCandidate;
+  return (
+    blueprintTotalCandidate ??
+    primaryInvoiceCandidate ??
+    cycleNetCandidate ??
+    fallbackCandidate
+  );
 }
 
 /**
- * Extrai os componentes estruturais do quadro de resumo da fatura para a Equação Contábil Dupla.
+ * Extrai os componentes estruturais do quadro de resumo da fatura para a Equação Contábil Dupla,
+ * respeitando `totalLabels` e `ignoredTotalLabels` de blueprints quando disponíveis.
  */
-export function extractStatementSummaryAmounts(rawText: string): StatementSummaryAmounts {
-  const invoiceTotalCents = extractPrintedStatementTotalCents(rawText);
+export function extractStatementSummaryAmounts(
+  rawText: string,
+  hints?: StatementSummaryLabelHints,
+): StatementSummaryAmounts {
+  const invoiceTotalCents = extractPrintedStatementTotalCents(rawText, hints);
   if (!rawText) {
     return {
       invoiceTotalCents: null,
@@ -181,7 +242,7 @@ export function extractStatementSummaryAmounts(rawText: string): StatementSummar
 
   const lines = rawText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const scanLimit = Math.min(lines.length, 350);
-  const noStop = /$^/; // não interrompe
+  const noStop = /$^/;
 
   const cycleNetRegex =
     /\b(?:despesas\s+e\s+cr[eé]ditos\s+do\s+m[eê]s|total\s+(?:de\s+)?compras\s+do\s+per[ií]odo|total\s+de\s+lan[çc]amentos(?:\s+do\s+m[eê]s)?)\b/i;
@@ -194,14 +255,35 @@ export function extractStatementSummaryAmounts(rawText: string): StatementSummar
 
   for (let i = 0; i < scanLimit; i++) {
     const line = lines[i]!;
+    if (matchesAnySummaryLabel(line, hints?.ignoredTotalLabels)) {
+      continue;
+    }
     if (cycleNetTargetCents === null && cycleNetRegex.test(line)) {
-      cycleNetTargetCents = extractAmountNearLabel(lines, i, noStop, false);
+      cycleNetTargetCents = extractAmountNearLabel(
+        lines,
+        i,
+        noStop,
+        false,
+        hints?.ignoredTotalLabels,
+      );
     }
     if (previousBalanceCents === null && prevBalanceRegex.test(line)) {
-      previousBalanceCents = extractAmountNearLabel(lines, i, noStop, true);
+      previousBalanceCents = extractAmountNearLabel(
+        lines,
+        i,
+        noStop,
+        true,
+        hints?.ignoredTotalLabels,
+      );
     }
     if (paymentsCents === null && paymentsRegex.test(line)) {
-      paymentsCents = extractAmountNearLabel(lines, i, noStop, true);
+      paymentsCents = extractAmountNearLabel(
+        lines,
+        i,
+        noStop,
+        true,
+        hints?.ignoredTotalLabels,
+      );
     }
   }
 
@@ -344,67 +426,4 @@ export function preprocessStatementTextForAi(
     compactedChars,
     printedTotalCents,
   };
-}
-
-/**
- * Avalia se o parser determinístico local extraiu a fatura com integridade suficiente
- * ou se houve perda parcial/colunas embaralhadas típica de PDFs multi-coluna e colagens complexas.
- */
-export function evaluateDeterministicStatementQuality(
-  params: EvaluateStatementQualityParams,
-): StatementQualityAssessment {
-  const {
-    transactions,
-    candidateAmountLineCount,
-    printedTotalCents,
-    isStructuredTabularFile,
-  } = params;
-
-  if (transactions.length === 0) {
-    return { isSufficient: false, reason: "zero_transactions" };
-  }
-
-  // Arquivos explicitamente estruturados (OFX, CSV, TSV, XLSX, XLS, HTML) com linhas válidas não gastam IA
-  if (isStructuredTabularFile) {
-    return { isSufficient: true };
-  }
-
-  // Detecta colunas embaralhadas onde descrições viram fallback genérico "Transação" ou apenas números/datas
-  const degradedDescCount = transactions.filter((tx) => {
-    const desc = tx.cleanDescription.trim();
-    return (
-      !desc ||
-      desc === "Transação" ||
-      /^[\d\s/.,+-]+$/.test(desc)
-    );
-  }).length;
-
-  if (
-    (transactions.length >= 2 && degradedDescCount / transactions.length >= 0.3) ||
-    (degradedDescCount >= 1 && candidateAmountLineCount >= 3)
-  ) {
-    return { isSufficient: false, reason: "scrambled_columns" };
-  }
-
-  // Detecta falso positivo parcial: documento possui várias linhas com valores R$, mas o parser local aproveitou poucas
-  if (
-    candidateAmountLineCount >= 4 &&
-    transactions.length < Math.max(2, Math.ceil(candidateAmountLineCount * 0.45))
-  ) {
-    return { isSufficient: false, reason: "low_line_coverage" };
-  }
-
-  // Se o total impresso da fatura foi identificado, checa divergência severa indicando colunas/seções perdidas
-  if (printedTotalCents !== null && printedTotalCents >= 5_000) {
-    const netExtractedCents = transactions.reduce((acc, tx) => {
-      if (tx.isPayment) return acc;
-      return tx.isRefund ? acc - tx.amountCents : acc + tx.amountCents;
-    }, 0);
-
-    if (netExtractedCents < printedTotalCents * 0.55) {
-      return { isSufficient: false, reason: "total_mismatch" };
-    }
-  }
-
-  return { isSufficient: true };
 }

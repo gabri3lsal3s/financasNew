@@ -5,10 +5,11 @@ import type {
   CategoryPredictionSource,
   CrossCompetenceMatch,
   ExistingExpenseForReconciliation,
+  ExistingRefundForReconciliation,
   ReconciliationItem,
   ReconciliationResult,
   StatementTransaction,
-} from "./types";
+} from "./contracts";
 
 export interface MatchScoreOptions {
   predictedCategoryId?: string;
@@ -195,6 +196,13 @@ export function calculateMatchScore(
   let totalScore =
     scoreValue + scoreDate + scoreText + bonusCategory + bonusCharge + bonusInstallment;
 
+  // GUARDA G7 — Piso Anti-Falso-Match:
+  // Sem interseção textual (scoreText === 0) e sem encargo ou parcela coincidente,
+  // o score tem teto estrito de 70 (probable_match), impedindo exact_match entre compras distintas de mesmo valor no mesmo dia.
+  if (scoreText === 0 && bonusCharge === 0 && bonusInstallment <= 0) {
+    totalScore = Math.min(70, totalScore);
+  }
+
   // TRAVA ESTRUTURAL ABSOLUTA:
   // Se houver qualquer divergência de centavos (diffCents > 0), o score NUNCA pode ser exact_match (teto 79)
   if (diffCents > 0) {
@@ -202,6 +210,51 @@ export function calculateMatchScore(
   }
 
   return Math.max(0, Math.min(100, Math.round(totalScore)));
+}
+
+/**
+ * Indica se há sinal semântico positivo além da mera coincidência numérica de valor e data (G7).
+ * Utilizado para distinguir microajustes fortes (<= R$ 0,05 opt-out) de matches fracos (opt-in).
+ */
+export function hasStrongMatchSemanticSignal(
+  statement: StatementTransaction,
+  existing: ExistingExpenseForReconciliation,
+  options?: MatchScoreOptions,
+): boolean {
+  const tokensStmt = tokenize(statement.cleanDescription);
+  const tokensExist = tokenize(existing.description);
+  if (jaccardTokens(tokensStmt, tokensExist) > 0) {
+    return true;
+  }
+
+  if (
+    options?.predictedCategoryId &&
+    existing.categoryId &&
+    options.predictedCategoryId === existing.categoryId
+  ) {
+    return true;
+  }
+
+  if (
+    statement.inferredChargeKind &&
+    statement.inferredChargeKind !== "regular" &&
+    existing.chargeKind &&
+    existing.chargeKind !== "regular" &&
+    statement.inferredChargeKind === existing.chargeKind
+  ) {
+    return true;
+  }
+
+  if (
+    statement.installment &&
+    statement.installment.total > 1 &&
+    existing.installmentNumber === statement.installment.current &&
+    existing.installmentsTotal === statement.installment.total
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 /**
@@ -235,49 +288,335 @@ export function predictCategoryForDescription(
   return bestCategoryId;
 }
 
-/**
- * Processa a reconciliação completa de uma lista de transações de extrato
- * contra a lista de despesas já existentes na competência.
- * Retorna os itens reconciliados e as despesas do app que não constam no extrato.
- */
-export function reconcileStatementTransactions(params: {
+export interface ReconcileStatementParams {
   statementTransactions: StatementTransaction[];
   existingExpenses: ExistingExpenseForReconciliation[];
   adjacentExpenses?: ExistingExpenseForReconciliation[];
+  existingRefunds?: ExistingRefundForReconciliation[];
   history: CategoryPredictionSource[];
   defaultCategoryId: string;
+  reservedChargesCategoryId?: string | null;
   cardScope?: "personal" | "business" | "mixed";
-}): ReconciliationResult {
+  /** True quando `qualityGate.effectiveTargetCents !== null && qualityGate.diffCents <= 5` (G8). */
+  officialTotalValidated?: boolean;
+  /** True em lotes de múltiplas imagens onde repetições podem ser overlap visual (G8). */
+  isMultiImageOverlapRisk?: boolean;
+}
+
+interface IndexedExpenseCandidate {
+  txIdx: number;
+  existing: ExistingExpenseForReconciliation;
+  score: number;
+  isHashMatch: boolean;
+  diffCents: number;
+  isStrongSemantic: boolean;
+}
+
+interface IndexedRefundCandidate {
+  txIdx: number;
+  refund: ExistingRefundForReconciliation;
+  score: number;
+  isHashMatch: boolean;
+  diffDays: number;
+}
+
+const AMOUNT_TOLERANCE_CENTS = 5;
+
+function buildExpenseLookupIndexes(list: readonly ExistingExpenseForReconciliation[]): {
+  byHash: Map<string, ExistingExpenseForReconciliation>;
+  byAmountCents: Map<number, ExistingExpenseForReconciliation[]>;
+} {
+  const byHash = new Map<string, ExistingExpenseForReconciliation>();
+  const byAmountCents = new Map<number, ExistingExpenseForReconciliation[]>();
+
+  for (const exp of list) {
+    if (exp.statementHash) {
+      byHash.set(exp.statementHash, exp);
+    }
+    const bucket = byAmountCents.get(exp.valueCents);
+    if (bucket) {
+      bucket.push(exp);
+    } else {
+      byAmountCents.set(exp.valueCents, [exp]);
+    }
+  }
+
+  return { byHash, byAmountCents };
+}
+
+function collectCandidateExpensesForTx(
+  tx: StatementTransaction,
+  indexes: ReturnType<typeof buildExpenseLookupIndexes>,
+): ExistingExpenseForReconciliation[] {
+  const result: ExistingExpenseForReconciliation[] = [];
+  const seenIds = new Set<string>();
+
+  if (tx.statementHash) {
+    const hashHit = indexes.byHash.get(tx.statementHash);
+    if (hashHit) {
+      seenIds.add(hashHit.id);
+      result.push(hashHit);
+    }
+  }
+
+  for (let delta = -AMOUNT_TOLERANCE_CENTS; delta <= AMOUNT_TOLERANCE_CENTS; delta++) {
+    const bucket = indexes.byAmountCents.get(tx.amountCents + delta);
+    if (!bucket) continue;
+    for (const candidate of bucket) {
+      if (!seenIds.has(candidate.id)) {
+        seenIds.add(candidate.id);
+        result.push(candidate);
+      }
+    }
+  }
+
+  return result;
+}
+
+function isChargeKindNonRegular(kind: StatementTransaction["inferredChargeKind"]): boolean {
+  return (
+    kind === "tax" ||
+    kind === "interest" ||
+    kind === "fine" ||
+    kind === "bank_fee"
+  );
+}
+
+/**
+ * Processa a reconciliação completa de uma lista de transações de extrato
+ * contra despesas e estornos já existentes na competência (Matching Global Ótimo 1:1 — G7, G8, G10, D12).
+ */
+export function reconcileStatementTransactions(
+  params: ReconcileStatementParams,
+): ReconciliationResult {
   const {
     statementTransactions,
     existingExpenses,
     adjacentExpenses = [],
+    existingRefunds = [],
     history,
     defaultCategoryId,
+    reservedChargesCategoryId,
     cardScope,
+    officialTotalValidated = false,
+    isMultiImageOverlapRisk = false,
   } = params;
 
-  // Mapa de despesas existentes que já receberam match para evitar duplo match
-  const matchedExistingIds = new Set<string>();
-  const matchedAdjacentIds = new Set<string>();
-
-  // Mapa de ocorrências de assinaturas no próprio lote para detectar duplicidades internas
+  const predictedCategoryIds: string[] = new Array(statementTransactions.length);
+  const isInternalDuplicates: boolean[] = new Array(statementTransactions.length);
+  const occurrencePositionInSignature: number[] = new Array(statementTransactions.length);
   const seenSignatures = new Map<string, number>();
 
-  const items: ReconciliationItem[] = statementTransactions.map((tx) => {
+  for (let i = 0; i < statementTransactions.length; i++) {
+    const tx = statementTransactions[i]!;
     const signature = `${tx.date}|${tx.amountCents}|${tx.cleanDescription.toLowerCase()}`;
-    const previousOccurrences = seenSignatures.get(signature) ?? 0;
-    seenSignatures.set(signature, previousOccurrences + 1);
-    const isInternalDuplicate = previousOccurrences > 0;
+    const prevCount = seenSignatures.get(signature) ?? 0;
+    seenSignatures.set(signature, prevCount + 1);
+    occurrencePositionInSignature[i] = prevCount;
+    isInternalDuplicates[i] = prevCount > 0;
 
-    // Resolução semântica local da categoria executada ANTES do scoring
-    const predictedCatId = predictCategoryForDescription(
-      tx.cleanDescription,
-      history,
-      defaultCategoryId,
+    // D12: Encargos detectados vinculam-se diretamente à categoria reservada "Tarifas e Encargos"
+    if (reservedChargesCategoryId && isChargeKindNonRegular(tx.inferredChargeKind)) {
+      predictedCategoryIds[i] = reservedChargesCategoryId;
+    } else {
+      predictedCategoryIds[i] = predictCategoryForDescription(
+        tx.cleanDescription,
+        history,
+        defaultCategoryId,
+      );
+    }
+  }
+
+  // 1. Matching Global Ótimo 1:1 contra existingExpenses (score DESC — G7)
+  const matchedExpenseByTxIdx = new Map<number, IndexedExpenseCandidate>();
+  const matchedExistingIds = new Set<string>();
+
+  if (existingExpenses.length > 0 && statementTransactions.length > 0) {
+    const expenseIndexes = buildExpenseLookupIndexes(existingExpenses);
+    const allCandidates: IndexedExpenseCandidate[] = [];
+
+    for (let txIdx = 0; txIdx < statementTransactions.length; txIdx++) {
+      const tx = statementTransactions[txIdx]!;
+      if (tx.isPayment || tx.isRefund) continue;
+
+      const predictedCategoryId = predictedCategoryIds[txIdx]!;
+      const nearby = collectCandidateExpensesForTx(tx, expenseIndexes);
+
+      for (const existing of nearby) {
+        const isHashMatch = Boolean(
+          existing.statementHash && existing.statementHash === tx.statementHash,
+        );
+        const diffCents = Math.abs(tx.amountCents - existing.valueCents);
+        const score = isHashMatch
+          ? 100
+          : calculateMatchScore(tx, existing, { predictedCategoryId, cardScope });
+
+        if (score >= 40) {
+          allCandidates.push({
+            txIdx,
+            existing,
+            score,
+            isHashMatch,
+            diffCents,
+            isStrongSemantic:
+              isHashMatch ||
+              hasStrongMatchSemanticSignal(tx, existing, { predictedCategoryId, cardScope }),
+          });
+        }
+      }
+    }
+
+    allCandidates.sort((a, b) => {
+      if (a.isHashMatch !== b.isHashMatch) return a.isHashMatch ? -1 : 1;
+      if (b.score !== a.score) return b.score - a.score;
+      if (a.diffCents !== b.diffCents) return a.diffCents - b.diffCents;
+      return a.txIdx - b.txIdx;
+    });
+
+    for (const cand of allCandidates) {
+      if (matchedExpenseByTxIdx.has(cand.txIdx) || matchedExistingIds.has(cand.existing.id)) {
+        continue;
+      }
+      matchedExpenseByTxIdx.set(cand.txIdx, cand);
+      matchedExistingIds.add(cand.existing.id);
+    }
+  }
+
+  // 2. Conciliação Global Ótima 1:1 de Estornos contra card_payments existentes (G10)
+  const matchedRefundByTxIdx = new Map<number, IndexedRefundCandidate>();
+  const matchedRefundIds = new Set<string>();
+
+  if (existingRefunds.length > 0 && statementTransactions.length > 0) {
+    const refundCandidates: IndexedRefundCandidate[] = [];
+
+    for (let txIdx = 0; txIdx < statementTransactions.length; txIdx++) {
+      const tx = statementTransactions[txIdx]!;
+      if (tx.isPayment || !tx.isRefund) continue;
+
+      const txDateStr = tx.originalDate || tx.date;
+      const txTime = new Date(`${txDateStr}T00:00:00`).getTime();
+
+      for (const refund of existingRefunds) {
+        const isHashMatch = Boolean(
+          refund.statementHash && refund.statementHash === tx.statementHash,
+        );
+
+        if (isHashMatch) {
+          refundCandidates.push({ txIdx, refund, score: 100, isHashMatch: true, diffDays: 0 });
+          continue;
+        }
+
+        if (refund.amountCents !== tx.amountCents) continue;
+
+        const refTime = new Date(`${refund.date}T00:00:00`).getTime();
+        const diffDays =
+          Number.isFinite(txTime) && Number.isFinite(refTime)
+            ? Math.abs(txTime - refTime) / 86_400_000
+            : Number.POSITIVE_INFINITY;
+
+        if (diffDays <= 3) {
+          refundCandidates.push({
+            txIdx,
+            refund,
+            score: Math.round(90 - diffDays * 3),
+            isHashMatch: false,
+            diffDays,
+          });
+        }
+      }
+    }
+
+    refundCandidates.sort((a, b) => {
+      if (a.isHashMatch !== b.isHashMatch) return a.isHashMatch ? -1 : 1;
+      if (b.score !== a.score) return b.score - a.score;
+      if (a.diffDays !== b.diffDays) return a.diffDays - b.diffDays;
+      return a.txIdx - b.txIdx;
+    });
+
+    for (const cand of refundCandidates) {
+      if (matchedRefundByTxIdx.has(cand.txIdx) || matchedRefundIds.has(cand.refund.id)) {
+        continue;
+      }
+      matchedRefundByTxIdx.set(cand.txIdx, cand);
+      matchedRefundIds.add(cand.refund.id);
+    }
+  }
+
+  // 3. Matching Global Ótimo 1:1 contra competências vizinhas (M-1 / M+1) para itens sem match local
+  const matchedAdjacentByTxIdx = new Map<number, IndexedExpenseCandidate>();
+  const matchedAdjacentIds = new Set<string>();
+
+  if (adjacentExpenses.length > 0 && statementTransactions.length > 0) {
+    const adjacentWithComp = adjacentExpenses.filter((a) => Boolean(a.billCompetence));
+    if (adjacentWithComp.length > 0) {
+      const adjIndexes = buildExpenseLookupIndexes(adjacentWithComp);
+      const adjCandidates: IndexedExpenseCandidate[] = [];
+
+      for (let txIdx = 0; txIdx < statementTransactions.length; txIdx++) {
+        const tx = statementTransactions[txIdx]!;
+        if (
+          tx.isPayment ||
+          tx.isRefund ||
+          matchedExpenseByTxIdx.has(txIdx) ||
+          isInternalDuplicates[txIdx]
+        ) {
+          continue;
+        }
+
+        const predictedCategoryId = predictedCategoryIds[txIdx]!;
+        const nearby = collectCandidateExpensesForTx(tx, adjIndexes);
+
+        for (const adj of nearby) {
+          if (adj.valueCents !== tx.amountCents) continue;
+          const isHashMatch = Boolean(adj.statementHash && adj.statementHash === tx.statementHash);
+          const score = isHashMatch
+            ? 100
+            : calculateMatchScore(tx, adj, { predictedCategoryId, cardScope });
+
+          if (score >= 75) {
+            adjCandidates.push({
+              txIdx,
+              existing: adj,
+              score,
+              isHashMatch,
+              diffCents: 0,
+              isStrongSemantic: true,
+            });
+          }
+        }
+      }
+
+      adjCandidates.sort((a, b) => {
+        if (a.isHashMatch !== b.isHashMatch) return a.isHashMatch ? -1 : 1;
+        if (b.score !== a.score) return b.score - a.score;
+        return a.txIdx - b.txIdx;
+      });
+
+      for (const cand of adjCandidates) {
+        if (
+          matchedAdjacentByTxIdx.has(cand.txIdx) ||
+          matchedAdjacentIds.has(cand.existing.id)
+        ) {
+          continue;
+        }
+        matchedAdjacentByTxIdx.set(cand.txIdx, cand);
+        matchedAdjacentIds.add(cand.existing.id);
+      }
+    }
+  }
+
+  // 4. Montagem final dos ReconciliationItem[]
+  const canConfirmRepeatedSameDay = officialTotalValidated && !isMultiImageOverlapRisk;
+
+  const items: ReconciliationItem[] = statementTransactions.map((tx, txIdx) => {
+    const isInternalDuplicate = isInternalDuplicates[txIdx] ?? false;
+    const predictedCatId = predictedCategoryIds[txIdx] ?? defaultCategoryId;
+    const signature = `${tx.date}|${tx.amountCents}|${tx.cleanDescription.toLowerCase()}`;
+    const totalCountForSig = seenSignatures.get(signature) ?? 1;
+    const confirmedRepeated = Boolean(
+      canConfirmRepeatedSameDay && !tx.isPayment && totalCountForSig > 1,
     );
 
-    // Pagamento de fatura: ignorado por padrão
     if (tx.isPayment) {
       return {
         transaction: tx,
@@ -295,61 +634,59 @@ export function reconcileStatementTransactions(params: {
       };
     }
 
-    // Procura o melhor match entre as despesas existentes ainda não vinculadas
-    let bestMatch: ExistingExpenseForReconciliation | null = null;
-    let bestScore = -1;
-
-    for (const existing of existingExpenses) {
-      if (matchedExistingIds.has(existing.id)) continue;
-
-      // Se tiver mesmo statement_hash gravado, é match exato imediato
-      if (existing.statementHash && existing.statementHash === tx.statementHash) {
-        bestMatch = existing;
-        bestScore = 100;
-        break;
-      }
-
-      const score = calculateMatchScore(tx, existing, {
-        predictedCategoryId: predictedCatId,
-        cardScope,
-      });
-
-      if (score > bestScore) {
-        bestScore = score;
-        bestMatch = existing;
-      }
-    }
-
-    // Classificação 1: Match Exato (exige exatidão de centavos AND score >= 75)
-    if (bestMatch && bestScore >= 75 && bestMatch.valueCents === tx.amountCents) {
-      matchedExistingIds.add(bestMatch.id);
+    // Estorno conciliado contra card_payments existente (G10)
+    const refundMatch = matchedRefundByTxIdx.get(txIdx);
+    if (tx.isRefund && refundMatch) {
       return {
         transaction: tx,
-        nature: tx.nature || (tx.isRefund ? "refund" : "purchase"),
+        nature: tx.nature || "refund",
         status: "exact_match",
-        score: bestScore,
-        matchedExpenseId: bestMatch.id,
-        matchedExpenseDescription: bestMatch.description,
-        matchedExpenseDate: bestMatch.date,
-        matchedExpenseValueCents: bestMatch.valueCents,
-        suggestedCategoryId: bestMatch.categoryId,
-        selectedCategoryId: bestMatch.categoryId,
+        score: refundMatch.score,
+        matchedRefundId: refundMatch.refund.id,
+        matchedExpenseDescription: refundMatch.refund.note ?? "Estorno registrado",
+        matchedExpenseDate: refundMatch.refund.date,
+        matchedExpenseValueCents: refundMatch.refund.amountCents,
+        suggestedCategoryId: predictedCatId,
+        selectedCategoryId: predictedCatId,
         selected: false,
         suggestedAction: "link_existing",
+        hasStrongSemanticSignal: true,
         isInternalDuplicate,
         duplicateReason: isInternalDuplicate
-          ? "Lançamento duplicado no arquivo e já cadastrado no app"
+          ? "Estorno duplicado no arquivo e já registrado no app"
           : undefined,
       };
     }
 
-    // Classificação 2: Match Provável (inclui microdiscrepância de centavos ou datas próximas)
-    if (bestMatch && bestScore >= 40) {
-      matchedExistingIds.add(bestMatch.id);
-      const isCentDiff = bestMatch.valueCents !== tx.amountCents;
+    // Match contra despesa existente na competência ativa
+    const expMatch = matchedExpenseByTxIdx.get(txIdx);
+    if (expMatch) {
+      const { existing: bestMatch, score: bestScore, diffCents, isStrongSemantic } = expMatch;
+      if (bestScore >= 75 && bestMatch.valueCents === tx.amountCents) {
+        return {
+          transaction: tx,
+          nature: tx.nature || "purchase",
+          status: "exact_match",
+          score: bestScore,
+          matchedExpenseId: bestMatch.id,
+          matchedExpenseDescription: bestMatch.description,
+          matchedExpenseDate: bestMatch.date,
+          matchedExpenseValueCents: bestMatch.valueCents,
+          suggestedCategoryId: bestMatch.categoryId,
+          selectedCategoryId: bestMatch.categoryId,
+          selected: false,
+          suggestedAction: "link_existing",
+          hasStrongSemanticSignal: isStrongSemantic,
+          isInternalDuplicate,
+          duplicateReason: isInternalDuplicate
+            ? "Lançamento duplicado no arquivo e já cadastrado no app"
+            : undefined,
+        };
+      }
+
       return {
         transaction: tx,
-        nature: tx.nature || (tx.isRefund ? "refund" : "purchase"),
+        nature: tx.nature || "purchase",
         status: "probable_match",
         score: bestScore,
         matchedExpenseId: bestMatch.id,
@@ -359,49 +696,26 @@ export function reconcileStatementTransactions(params: {
         suggestedCategoryId: bestMatch.categoryId,
         selectedCategoryId: bestMatch.categoryId,
         selected: false,
-        suggestedAction: isCentDiff ? "link_and_adjust_amount" : "link_existing",
+        suggestedAction: diffCents > 0 ? "link_and_adjust_amount" : "link_existing",
+        hasStrongSemanticSignal: isStrongSemantic,
         isInternalDuplicate,
         duplicateReason: isInternalDuplicate ? "Lançamento duplicado no arquivo" : undefined,
       };
     }
 
-    // Classificação 3: Novo Lançamento (não encontrado na competência atual)
-    // Verifica antes se existe correspondência forte em competência vizinha (M-1 / M+1)
+    // Correspondência em competência vizinha (M-1 / M+1)
     let crossCompetenceMatch: CrossCompetenceMatch | undefined;
-    if (!tx.isRefund && !isInternalDuplicate && adjacentExpenses.length > 0) {
-      let bestAdj: ExistingExpenseForReconciliation | null = null;
-      let bestAdjScore = -1;
-
-      for (const adj of adjacentExpenses) {
-        if (matchedAdjacentIds.has(adj.id)) continue;
-        if (!adj.billCompetence) continue;
-
-        const adjScore =
-          adj.statementHash && adj.statementHash === tx.statementHash
-            ? 100
-            : calculateMatchScore(tx, adj, {
-                predictedCategoryId: predictedCatId,
-                cardScope,
-              });
-
-        if (adjScore > bestAdjScore) {
-          bestAdjScore = adjScore;
-          bestAdj = adj;
-        }
-      }
-
-      if (bestAdj && bestAdjScore >= 75 && bestAdj.valueCents === tx.amountCents && bestAdj.billCompetence) {
-        matchedAdjacentIds.add(bestAdj.id);
-        crossCompetenceMatch = {
-          expenseId: bestAdj.id,
-          expenseDescription: bestAdj.description,
-          expenseDate: bestAdj.date,
-          expenseValueCents: bestAdj.valueCents,
-          currentBillCompetence: bestAdj.billCompetence,
-          score: bestAdjScore,
-          statementHash: tx.statementHash,
-        };
-      }
+    const adjMatch = matchedAdjacentByTxIdx.get(txIdx);
+    if (adjMatch && adjMatch.existing.billCompetence) {
+      crossCompetenceMatch = {
+        expenseId: adjMatch.existing.id,
+        expenseDescription: adjMatch.existing.description,
+        expenseDate: adjMatch.existing.date,
+        expenseValueCents: adjMatch.existing.valueCents,
+        currentBillCompetence: adjMatch.existing.billCompetence,
+        score: adjMatch.score,
+        statementHash: tx.statementHash,
+      };
     }
 
     const suggestedAction =
@@ -411,6 +725,11 @@ export function reconcileStatementTransactions(params: {
           : "import_single"
         : undefined;
 
+    // G8: Se compra repetida confirmada pela soma oficial, fica selecionada (opt-out)
+    // D2: Estorno inédito também entra pré-selecionado (`selected: true`)
+    const blockedAsUnverifiedDuplicate = isInternalDuplicate && !confirmedRepeated;
+    const shouldSelect = !blockedAsUnverifiedDuplicate && !crossCompetenceMatch;
+
     return {
       transaction: tx,
       nature: tx.nature || (tx.isRefund ? "refund" : "purchase"),
@@ -418,11 +737,16 @@ export function reconcileStatementTransactions(params: {
       score: 0,
       suggestedCategoryId: predictedCatId,
       selectedCategoryId: predictedCatId,
-      selected: !tx.isRefund && !isInternalDuplicate && !crossCompetenceMatch,
+      selected: shouldSelect,
       suggestedAction,
       crossCompetenceMatch,
       isInternalDuplicate,
-      duplicateReason: isInternalDuplicate ? "Lançamento duplicado no mesmo arquivo" : undefined,
+      repeatedSameDayConfirmed: confirmedRepeated || undefined,
+      duplicateReason: confirmedRepeated
+        ? `${totalCountForSig}x no dia (validado pelo total oficial)`
+        : isInternalDuplicate
+          ? "Lançamento duplicado no mesmo arquivo"
+          : undefined,
     };
   });
 

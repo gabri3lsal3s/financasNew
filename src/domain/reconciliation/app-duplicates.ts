@@ -3,7 +3,7 @@ import type {
   AppDuplicateCandidate,
   ExistingExpenseForReconciliation,
   ReconciliationItem,
-} from "./types";
+} from "./contracts";
 
 const MAX_DUPLICATE_DAYS_DIFF = 3;
 

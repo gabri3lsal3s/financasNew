@@ -55,15 +55,14 @@ export interface AiBucketLimit {
   day: number;
 }
 
+const UNIFIED_AI_QUOTA_LIMITS: Record<AiQuotaBucket, AiBucketLimit> = {
+  receipt_calls: { month: 100, day: 15 },
+  batch_calls: { month: 120, day: 30 },
+};
+
 export const AI_QUOTA_LIMITS: Record<AiPlanGroup, Record<AiQuotaBucket, AiBucketLimit>> = {
-  trial: {
-    receipt_calls: { month: 15, day: 5 },
-    batch_calls: { month: 5, day: 2 },
-  },
-  pro: {
-    receipt_calls: { month: 100, day: 15 },
-    batch_calls: { month: 20, day: 5 },
-  },
+  trial: UNIFIED_AI_QUOTA_LIMITS,
+  pro: UNIFIED_AI_QUOTA_LIMITS,
 };
 
 export const AI_FALLBACK_REASONS = [
@@ -122,7 +121,7 @@ export const AI_CUT_TIERS = ["essential", "discretionary", "can_cut"] as const;
 export type AiCutTier = (typeof AI_CUT_TIERS)[number];
 
 export type AiCallPriority = "active" | "passive";
-export const PASSIVE_AI_DAILY_RESERVE = 2;
+export const PASSIVE_AI_DAILY_RESERVE = 1;
 
 export function stripBase64DataPrefix(raw: string): string {
   const trimmed = raw.trim();
@@ -340,6 +339,7 @@ export function evaluateAiQuotaAllowance(params: {
   const reserve =
     priority === "passive" ? (limits.day <= 2 ? 1 : PASSIVE_AI_DAILY_RESERVE) : 0;
   const effectiveDailyLimit = Math.max(1, limits.day - reserve);
+  const effectiveMonthLimit = Math.max(1, limits.month - reserve);
 
   const usedMonth = row
     ? params.bucket === "receipt_calls"
@@ -354,7 +354,7 @@ export function evaluateAiQuotaAllowance(params: {
         : row.batch_calls_day
       : 0;
 
-  if (usedMonth >= limits.month) {
+  if (usedMonth >= effectiveMonthLimit) {
     return {
       allowed: false,
       limitScope: "month",
@@ -379,7 +379,7 @@ export function evaluateAiQuotaAllowance(params: {
     usedDay,
     usedMonth,
     remainingDay: effectiveDailyLimit - usedDay,
-    remainingMonth: limits.month - usedMonth,
+    remainingMonth: effectiveMonthLimit - usedMonth,
   };
 }
 

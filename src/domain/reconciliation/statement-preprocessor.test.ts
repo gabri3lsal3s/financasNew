@@ -1,24 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-  evaluateDeterministicStatementQuality,
   extractPrintedStatementTotalCents,
+  extractStatementSummaryAmounts,
   preprocessStatementTextForAi,
 } from "./statement-preprocessor";
-import type { StatementTransaction } from "./types";
-
-function makeTx(overrides: Partial<StatementTransaction> & { id: string; amountCents: number }): StatementTransaction {
-  return {
-    index: 0,
-    occurrenceIndex: 0,
-    date: "2026-08-15",
-    rawDescription: "Mercado Central",
-    cleanDescription: "Mercado Central",
-    isRefund: false,
-    isPayment: false,
-    statementHash: `hash-${overrides.id}`,
-    ...overrides,
-  };
-}
 
 describe("statement-preprocessor (Poda FinOps & Qualidade de Extração)", () => {
   it("extrai o Total da Fatura impresso (mesma linha ou linha seguinte) ignorando mínimo, limite e parcelamento", () => {
@@ -87,37 +72,22 @@ describe("statement-preprocessor (Poda FinOps & Qualidade de Extração)", () =>
     expect(rejoined).toContain("ESTABELECIMENTO COMERCIAL NUMERO 40");
   });
 
-  it("reprova falso positivo parcial em PDF multi-coluna (low_line_coverage / scrambled_columns) e aprova CSV limpo", () => {
-    const partialPdfQuality = evaluateDeterministicStatementQuality({
-      rawText: "multi coluna",
-      transactions: [makeTx({ id: "1", amountCents: 3500 }), makeTx({ id: "2", amountCents: 4900 })],
-      candidateAmountLineCount: 9,
-      printedTotalCents: 98_000,
-      isStructuredTabularFile: false,
-    });
-    expect(partialPdfQuality.isSufficient).toBe(false);
-    expect(partialPdfQuality.reason).toBe("low_line_coverage");
+  it("honra rótulos customizados de totalLabels e ignoredTotalLabels do blueprint ao extrair resumo", () => {
+    const text = [
+      "Encargos máximos do contrato: R$ 9.999,00",
+      "Consolidado líquido do cartão",
+      "R$ 1.240,50",
+      "Saldo da fatura anterior R$ 300,00",
+      "Pagamentos efetuados R$ 300,00",
+    ].join("\n");
 
-    const scrambledQuality = evaluateDeterministicStatementQuality({
-      rawText: "colunas trocadas",
-      transactions: [
-        makeTx({ id: "1", amountCents: 5000, cleanDescription: "Transação" }),
-        makeTx({ id: "2", amountCents: 7000, cleanDescription: "Transação" }),
-      ],
-      candidateAmountLineCount: 2,
-      printedTotalCents: null,
-      isStructuredTabularFile: false,
+    const summary = extractStatementSummaryAmounts(text, {
+      totalLabels: ["consolidado liquido do cartao"],
+      ignoredTotalLabels: ["encargos maximos do contrato"],
     });
-    expect(scrambledQuality.isSufficient).toBe(false);
-    expect(scrambledQuality.reason).toBe("scrambled_columns");
 
-    const cleanCsvQuality = evaluateDeterministicStatementQuality({
-      rawText: "csv",
-      transactions: [makeTx({ id: "1", amountCents: 3500 })],
-      candidateAmountLineCount: 10,
-      printedTotalCents: null,
-      isStructuredTabularFile: true,
-    });
-    expect(cleanCsvQuality.isSufficient).toBe(true);
+    expect(summary.invoiceTotalCents).toBe(124050);
+    expect(summary.previousBalanceCents).toBe(30000);
+    expect(summary.paymentsCents).toBe(30000);
   });
 });
