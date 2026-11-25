@@ -23,20 +23,20 @@ export function HeroEditorial() {
         <div className="flex flex-col items-center text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 sm:px-4 sm:py-1.5 text-xs sm:text-sm font-semibold text-primary-strong">
             <Layers className="size-3.5 sm:size-4 shrink-0" aria-hidden="true" />
-            <span>Toda sua vida financeira em um só lugar · sem planilhas e sem senhas bancárias</span>
+            <span>Vida pessoal, negócio (MEI/PJ) e investimentos com IA integrada · sem planilhas</span>
           </div>
 
           <h1 className="mt-5 sm:mt-8 max-w-4xl font-display text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-foreground leading-[1.15] md:leading-[1.1]">
             Do gasto do dia a dia aos seus investimentos.{" "}
             <span className="text-primary-strong">
-              Um único app que conecta caixa, cartões, dívidas, grupo e carteira.
+              Um único app com IA que conecta caixa, cartões, negócio e carteira.
             </span>
           </h1>
 
           <p className="mt-4 sm:mt-6 max-w-3xl text-sm sm:text-lg lg:text-xl text-muted-foreground leading-relaxed font-normal">
-            Substitua planilhas, cadernos e aplicativos soltos. Saiba quanto pode gastar hoje, controle
-            o que deve e tem a receber, divida compras em grupo sem atrito e invista com preço teto e
-            memória de cálculo transparente.
+            Substitua planilhas e apps soltos. Leia cupons e faturas com IA, separe finanças pessoais e
+            do negócio (MEI/PJ), divida gastos em grupo e invista com preço teto e memória de
+            cálculo transparente.
           </p>
 
           <div className="mt-7 sm:mt-9 flex flex-col sm:flex-row items-center gap-3 sm:gap-4 w-full sm:w-auto">

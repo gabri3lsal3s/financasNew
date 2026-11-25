@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { UserCheck } from "lucide-react";
-import { Button, ConfirmDialog, Modal, ModalFooter } from "@/components/ui";
+import { Crown, KeyRound, ShieldCheck, UserCheck } from "lucide-react";
+import { Button, ConfirmDialog, Modal, ModalFooter, Tabs } from "@/components/ui";
 import { canManageRole, canManageUserStatus } from "@/domain/admin";
 import { useAuth } from "@/hooks/use-auth";
 import { triggerSensory } from "@/services/sensory";
@@ -33,6 +33,11 @@ export interface UserEditDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+function toDateInputValue(iso?: string | null): string {
+  if (!iso) return "";
+  return iso.slice(0, 10);
+}
+
 /** Diálogo administrativo de edição completa de usuário, plano, permissões e suporte. */
 export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps) {
   if (!user) return null;
@@ -51,6 +56,7 @@ function UserEditDialogContent({ user, open, onOpenChange }: { user: AdminUserRo
   const setModulePermissionMutation = useAdminSetUserModulePermission();
   const removeModulePermissionMutation = useAdminRemoveUserModulePermission();
 
+  const [activeTab, setActiveTab] = useState("plan");
   const [status, setStatus] = useState<UserStatus>((user.status as UserStatus) || "active");
   const [role, setRole] = useState<UserRole>((user.role as UserRole) || "user");
   const [reason, setReason] = useState(user.suspended_reason || "");
@@ -59,11 +65,14 @@ function UserEditDialogContent({ user, open, onOpenChange }: { user: AdminUserRo
   const [overrideTier, setOverrideTier] = useState<SubscriptionTier | null>(null);
   const [overridePlanId, setOverridePlanId] = useState<string | null>(null);
   const [overrideSubStatus, setOverrideSubStatus] = useState<string | null>(null);
+  const [overrideTrialEndsAt, setOverrideTrialEndsAt] = useState<string | undefined>(undefined);
+  const [overridePeriodEnd, setOverridePeriodEnd] = useState<string | undefined>(undefined);
   const [isQuickActionPending, setIsQuickActionPending] = useState(false);
   const [prevKey, setPrevKey] = useState(`${open}:${user.id}`);
 
   if (prevKey !== `${open}:${user.id}`) {
     setPrevKey(`${open}:${user.id}`);
+    setActiveTab("plan");
     setStatus((user.status as UserStatus) || "active");
     setRole((user.role as UserRole) || "user");
     setReason(user.suspended_reason || "");
@@ -71,12 +80,17 @@ function UserEditDialogContent({ user, open, onOpenChange }: { user: AdminUserRo
     setOverrideTier(null);
     setOverridePlanId(null);
     setOverrideSubStatus(null);
+    setOverrideTrialEndsAt(undefined);
+    setOverridePeriodEnd(undefined);
     setIsDeleteDialogOpen(false);
   }
 
   const effectiveTier = overrideTier ?? subscriptionQuery.data?.tier ?? "trial";
   const effectivePlanId = overridePlanId ?? subscriptionQuery.data?.plan_id ?? "trial";
   const effectiveSubStatus = overrideSubStatus ?? subscriptionQuery.data?.status ?? "active";
+  const effectiveTrialEndsAt = overrideTrialEndsAt ?? toDateInputValue(subscriptionQuery.data?.trial_ends_at);
+  const effectivePeriodEnd = overridePeriodEnd ?? toDateInputValue(subscriptionQuery.data?.current_period_end);
+
   const userModulePermissions = useMemo(() => modulePermissionsQuery.data ?? [], [modulePermissionsQuery.data]);
   const coreOverrides = useMemo(() => userModulePermissions.filter((p) => CORE_MODULES.some((c) => c.key === p.module_key)), [userModulePermissions]);
   const modulePermissionsMap = useMemo(() => {
@@ -109,7 +123,18 @@ function UserEditDialogContent({ user, open, onOpenChange }: { user: AdminUserRo
 
   const handleSaveSubscription = async () => {
     try {
-      await setSubscriptionMutation.mutateAsync({ userId: user.id, planId: effectivePlanId, tier: effectiveTier, status: effectiveSubStatus });
+      await setSubscriptionMutation.mutateAsync({
+        userId: user.id,
+        planId: effectivePlanId,
+        tier: effectiveTier,
+        status: effectiveSubStatus,
+        ...(overrideTrialEndsAt !== undefined
+          ? { trialEndsAt: overrideTrialEndsAt ? `${overrideTrialEndsAt}T23:59:59.000Z` : null }
+          : {}),
+        ...(overridePeriodEnd !== undefined
+          ? { currentPeriodEnd: overridePeriodEnd ? `${overridePeriodEnd}T23:59:59.000Z` : null }
+          : {}),
+      });
       if (coreOverrides.length > 0) {
         await Promise.all(coreOverrides.map((p) => removeModulePermissionMutation.mutateAsync({ userId: user.id, moduleKey: p.module_key })));
       }
@@ -150,48 +175,88 @@ function UserEditDialogContent({ user, open, onOpenChange }: { user: AdminUserRo
         </ModalFooter>
       }
     >
-      <form id="user-edit-form" onSubmit={handleSubmit} className="flex flex-col gap-5">
-        <UserPiiAuditVaultCard user={user} revealContact={revealContact} onRevealChange={setRevealContact} />
-        <UserSaasPlanSection
-          currentTier={subscriptionQuery.data?.tier}
-          effectiveTier={effectiveTier}
-          effectiveSubStatus={effectiveSubStatus}
-          isSaving={setSubscriptionMutation.isPending}
-          currentPeriodEnd={subscriptionQuery.data?.current_period_end}
-          trialEndsAt={subscriptionQuery.data?.trial_ends_at}
-          cardLast4={subscriptionQuery.data?.card_last4}
-          asaasSubscriptionId={subscriptionQuery.data?.asaas_subscription_id}
-          onTierChange={(newTier, planId) => { setOverrideTier(newTier); setOverridePlanId(planId); }}
-          onSubStatusChange={setOverrideSubStatus}
-          onSaveSubscription={handleSaveSubscription}
+      <form id="user-edit-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          fullWidth
+          forceMount
+          ariaLabel="Seções de edição do usuário"
+          items={[
+            {
+              value: "plan",
+              label: "Resumo & Plano",
+              shortLabel: "Plano",
+              icon: <Crown aria-hidden="true" />,
+              content: (
+                <div className="flex flex-col gap-4">
+                  <UserPiiAuditVaultCard user={user} revealContact={revealContact} onRevealChange={setRevealContact} />
+                  <UserSaasPlanSection
+                    currentTier={subscriptionQuery.data?.tier}
+                    effectiveTier={effectiveTier}
+                    effectiveSubStatus={effectiveSubStatus}
+                    isSaving={setSubscriptionMutation.isPending}
+                    currentPeriodEnd={subscriptionQuery.data?.current_period_end}
+                    trialEndsAt={subscriptionQuery.data?.trial_ends_at}
+                    effectiveTrialEndsAt={effectiveTrialEndsAt}
+                    effectivePeriodEnd={effectivePeriodEnd}
+                    cardLast4={subscriptionQuery.data?.card_last4}
+                    asaasSubscriptionId={subscriptionQuery.data?.asaas_subscription_id}
+                    onTierChange={(newTier, planId) => { setOverrideTier(newTier); setOverridePlanId(planId); }}
+                    onSubStatusChange={setOverrideSubStatus}
+                    onTrialEndsAtChange={setOverrideTrialEndsAt}
+                    onPeriodEndChange={setOverridePeriodEnd}
+                    onSaveSubscription={handleSaveSubscription}
+                  />
+                </div>
+              ),
+            },
+            {
+              value: "permissions",
+              label: "Permissões",
+              icon: <KeyRound aria-hidden="true" />,
+              content: (
+                <UserModulePermissionsMatrix
+                  effectiveSubStatus={effectiveSubStatus}
+                  hasAnyModuleOverride={userModulePermissions.length > 0}
+                  hasCoreOverrides={coreOverrides.length > 0}
+                  modulePermissionsMap={modulePermissionsMap}
+                  isQuickActionPending={isQuickActionPending}
+                  isMutating={setModulePermissionMutation.isPending || removeModulePermissionMutation.isPending}
+                  onSetModulePermission={(moduleKey, accessLevel: ModuleAccessLevel) => void setModulePermissionMutation.mutateAsync({ userId: user.id, moduleKey, accessLevel })}
+                  onRemoveModulePermission={(moduleKey) => void removeModulePermissionMutation.mutateAsync({ userId: user.id, moduleKey })}
+                  onQuickOnlyInvestments={() => void runQuickPreset(() => Promise.all(INVESTMENT_ONLY_PRESET.map((item) => setModulePermissionMutation.mutateAsync({ userId: user.id, moduleKey: item.moduleKey, accessLevel: item.accessLevel }))), "Apenas Investimentos configurado", `Usuário ${displayName} configurado em Apenas Investimentos. Modo Viagem e Familiar restritos; relatórios de carteira liberados.`)}
+                  onQuickRestorePlanDefaults={() => userModulePermissions.length > 0 && void runQuickPreset(() => Promise.all(userModulePermissions.map((p) => removeModulePermissionMutation.mutateAsync({ userId: user.id, moduleKey: p.module_key }))), "Padrão do plano restaurado", `Todas as permissões modulares de ${displayName} foram restauradas ao plano base.`)}
+                />
+              ),
+            },
+            {
+              value: "account",
+              label: "Conta & Suporte",
+              shortLabel: "Conta",
+              icon: <ShieldCheck aria-hidden="true" />,
+              content: (
+                <div className="flex flex-col gap-4">
+                  <UserAccountStatusSection
+                    status={status}
+                    reason={reason}
+                    role={role}
+                    canEditStatus={canEditStatus}
+                    canEditRole={canEditRole}
+                    canDeleteUser={isSuperadminActor && !isSelf}
+                    isSuperadminActor={isSuperadminActor}
+                    isDeletePending={deleteUserMutation.isPending}
+                    onStatusChange={setStatus}
+                    onReasonChange={setReason}
+                    onRoleChange={setRole}
+                    onOpenDeleteConfirm={() => setIsDeleteDialogOpen(true)}
+                  />
+                  {isSuperadminActor && <UserSuperadminSupportActions user={user} revealContact={revealContact} />}
+                </div>
+              ),
+            },
+          ]}
         />
-        <UserModulePermissionsMatrix
-          effectiveSubStatus={effectiveSubStatus}
-          hasAnyModuleOverride={userModulePermissions.length > 0}
-          hasCoreOverrides={coreOverrides.length > 0}
-          modulePermissionsMap={modulePermissionsMap}
-          isQuickActionPending={isQuickActionPending}
-          isMutating={setModulePermissionMutation.isPending || removeModulePermissionMutation.isPending}
-          onSetModulePermission={(moduleKey, accessLevel: ModuleAccessLevel) => void setModulePermissionMutation.mutateAsync({ userId: user.id, moduleKey, accessLevel })}
-          onRemoveModulePermission={(moduleKey) => void removeModulePermissionMutation.mutateAsync({ userId: user.id, moduleKey })}
-          onQuickOnlyInvestments={() => void runQuickPreset(() => Promise.all(INVESTMENT_ONLY_PRESET.map((item) => setModulePermissionMutation.mutateAsync({ userId: user.id, moduleKey: item.moduleKey, accessLevel: item.accessLevel }))), "Apenas Investimentos configurado", `Usuário ${displayName} configurado em Apenas Investimentos. Modo Viagem e Familiar restritos; relatórios de carteira liberados.`)}
-          onQuickRestorePlanDefaults={() => userModulePermissions.length > 0 && void runQuickPreset(() => Promise.all(userModulePermissions.map((p) => removeModulePermissionMutation.mutateAsync({ userId: user.id, moduleKey: p.module_key }))), "Padrão do plano restaurado", `Todas as permissões modulares de ${displayName} foram restauradas ao plano base.`)}
-        />
-        <UserAccountStatusSection
-          status={status}
-          reason={reason}
-          role={role}
-          canEditStatus={canEditStatus}
-          canEditRole={canEditRole}
-          canDeleteUser={isSuperadminActor && !isSelf}
-          isSuperadminActor={isSuperadminActor}
-          isDeletePending={deleteUserMutation.isPending}
-          onStatusChange={setStatus}
-          onReasonChange={setReason}
-          onRoleChange={setRole}
-          onOpenDeleteConfirm={() => setIsDeleteDialogOpen(true)}
-        />
-        {isSuperadminActor && <UserSuperadminSupportActions user={user} revealContact={revealContact} />}
       </form>
       <ConfirmDialog
         open={isDeleteDialogOpen}

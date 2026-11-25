@@ -22,6 +22,8 @@ export interface OnboardingCounts {
   portfolioAssets?: number;
   /** Lançamentos / operações registradas na carteira de investimentos. */
   portfolioTransactions?: number;
+  /** Perfis de negócio (MEI / PJ) configurados pelo usuário. */
+  businessProfiles?: number;
   /** Leitor automático de notificações bancárias ativado (Android / nativo). */
   notificationsEnabled?: boolean;
 }
@@ -32,6 +34,7 @@ export type OnboardingStepId =
   | "card"
   | "portfolio-asset"
   | "portfolio-transaction"
+  | "business-profile"
   | "bank-notifications";
 
 export interface OnboardingStep {
@@ -78,6 +81,12 @@ export const ALL_ONBOARDING_STEPS: readonly StepDefinition[] = [
     featureKey: "investments",
     isCore: false,
     isDone: (c) => (c.portfolioTransactions ?? 0) > 0,
+  },
+  {
+    id: "business-profile",
+    featureKey: "transactions",
+    isCore: false,
+    isDone: (c) => (c.businessProfiles ?? 0) > 0,
   },
   {
     id: "bank-notifications",
@@ -142,8 +151,11 @@ export function coreOnboardingSteps(
   if (!allowFinances) return [];
 
   let orderedIds: OnboardingStepId[];
+  const allowBusiness = !hasFeature || hasFeature("business");
   if (initialGoal === "investments" && allowInvestments) {
     orderedIds = ["portfolio-asset", "cash-checkpoint", "first-transaction"];
+  } else if (initialGoal === "business" && allowBusiness) {
+    orderedIds = ["business-profile", "cash-checkpoint", "first-transaction"];
   } else if (initialGoal === "cards") {
     orderedIds = ["card", "cash-checkpoint", "first-transaction"];
   } else {

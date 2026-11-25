@@ -22,6 +22,7 @@ export const TOUR_CATEGORY_LABELS: Record<TourTrackCategory, string> = {
   settings: "Configurações",
   native: "App Nativo",
   shared: "Compartilhadas",
+  business: "Modo Negócio",
 } as const;
 
 /**
@@ -38,6 +39,8 @@ export const TOUR_CATEGORY_DESCRIPTIONS: Record<TourTrackCategory, string> = {
     "Recursos acelerados e inteligência bancária exclusivos para smartphones.",
   shared:
     "Racha de despesas com Pix, vaquinha coletiva e gestão colaborativa familiar.",
+  business:
+    "Gestão MEI/PJ separada das finanças pessoais, DAS e pró-labore.",
 } as const;
 
 /**
@@ -53,6 +56,8 @@ export const TOUR_TRACK_CATEGORY_LABELS: Record<AnyTourTrackId, string> = {
   finances_debts: "Finanças Diárias",
   finances_budgets: "Finanças Diárias",
   finances_insights: "Finanças Diárias",
+  finances_ai_import: "Finanças Diárias",
+  finances_categories: "Finanças Diárias",
 
   // Investimentos e Rebalanceamento
   investments: "Investimentos",
@@ -73,6 +78,9 @@ export const TOUR_TRACK_CATEGORY_LABELS: Record<AnyTourTrackId, string> = {
   finances_family: "Compartilhadas",
   finances_goals: "Compartilhadas",
   finances_trips: "Compartilhadas",
+  business: "Modo Negócio",
+  business_overview: "Modo Negócio",
+  business_tax_mei: "Modo Negócio",
 } as const;
 
 /**
@@ -87,6 +95,8 @@ export const TOUR_TRACK_CONTEXTUAL_LABELS: Record<AnyTourTrackId, string> = {
   finances_debts: "Finanças · Contas & Dívidas",
   finances_budgets: "Finanças · Orçamentos",
   finances_insights: "Finanças · Insights",
+  finances_ai_import: "Finanças · Leitura com IA",
+  finances_categories: "Finanças · Categorias",
 
   // Investimentos e Rebalanceamento
   investments: "Investimentos",
@@ -107,6 +117,9 @@ export const TOUR_TRACK_CONTEXTUAL_LABELS: Record<AnyTourTrackId, string> = {
   finances_family: "Compartilhadas · Modo Família",
   finances_goals: "Compartilhadas · Metas Coletivas",
   finances_trips: "Compartilhadas · Modo Viagem",
+  business: "Modo Negócio",
+  business_overview: "Negócio · Visão Geral",
+  business_tax_mei: "Negócio · Teto MEI & DAS",
 } as const;
 
 /**
@@ -121,6 +134,8 @@ export const TOUR_TRACK_TITLES: Record<AnyTourTrackId, string> = {
   finances_debts: "Contas, Dívidas e Contratos",
   finances_budgets: "Categorias e Tetos de Gastos",
   finances_insights: "Smart Advisor e Relatórios",
+  finances_ai_import: "Leitura de Cupons & Faturas com IA",
+  finances_categories: "Categorias Personalizadas",
 
   // Investimentos e Rebalanceamento
   investments: "Investimentos & Rebalanceamento",
@@ -141,6 +156,9 @@ export const TOUR_TRACK_TITLES: Record<AnyTourTrackId, string> = {
   finances_family: "Modo Família Multi-Contas",
   finances_goals: "Metas Coletivas & Vaquinha Pix",
   finances_trips: "Modo Viagem & Rateio em Grupo",
+  business: "Modo Negócio (MEI & PJ)",
+  business_overview: "DRE do Negócio & Pró-Labore",
+  business_tax_mei: "Teto MEI & Guia DAS",
 } as const;
 
 /**
@@ -155,6 +173,8 @@ export const TOUR_TRACK_SHORT_TITLES: Record<AnyTourTrackId, string> = {
   finances_debts: "Contas & Dívidas",
   finances_budgets: "Tetos & Orçamentos",
   finances_insights: "Advisor & Insights",
+  finances_ai_import: "Leitura IA",
+  finances_categories: "Categorias",
 
   // Investimentos e Rebalanceamento
   investments: "Investimentos Completo",
@@ -175,6 +195,9 @@ export const TOUR_TRACK_SHORT_TITLES: Record<AnyTourTrackId, string> = {
   finances_family: "Modo Família",
   finances_goals: "Metas Coletivas",
   finances_trips: "Modo Viagem",
+  business: "Modo Negócio",
+  business_overview: "DRE PJ",
+  business_tax_mei: "Teto MEI & DAS",
 } as const;
 
 /**
@@ -196,6 +219,10 @@ export const TOUR_TRACK_DESCRIPTIONS: Record<AnyTourTrackId, string> = {
     "Definição de tetos por categoria e alertas automáticos de ritmo de consumo.",
   finances_insights:
     "Recomendações automáticas de economia, radar de assinaturas e fechamento mensal.",
+  finances_ai_import:
+    "Extração automática de cupons fiscais, boletos e faturas via IA multimodal.",
+  finances_categories:
+    "Organização flexível de categorias e kits prontos para receitas e despesas.",
 
   // Investimentos e Rebalanceamento
   investments:
@@ -228,6 +255,12 @@ export const TOUR_TRACK_DESCRIPTIONS: Record<AnyTourTrackId, string> = {
     "Vaquinha colaborativa com termômetro em tempo real, chave Pix para arrecadação e prestação de contas pública.",
   finances_trips:
     "Controle compartilhado de viagens com amigos, múltiplos pagadores, compensação mínima de saldos e acerto via Pix sem atrito.",
+  business:
+    "Separação completa PF/PJ com DRE empresarial, ponto de equilíbrio e transferência de pró-labore.",
+  business_overview:
+    "Visão consolidada de faturamento, custos fixos e resultado líquido do negócio.",
+  business_tax_mei:
+    "Acompanhamento do teto anual MEI, provisão mensal do DAS e alertas preventivos.",
 } as const;
 
 /**

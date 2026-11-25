@@ -1469,7 +1469,7 @@ describe("Teste Manual de Conclusão: Conclusão dos Tours Completos e Encerrame
 
     const allTrackIds = Object.keys(TOUR_TRACK_METAS) as TourTrackId[];
     const microTours = allTrackIds.filter((t) => !isCompleteTourTrack(t) && getTourSteps(t).length > 0);
-    expect(microTours).toHaveLength(15);
+    expect(microTours).toHaveLength(19);
 
     for (const trackId of microTours) {
       vi.clearAllMocks();

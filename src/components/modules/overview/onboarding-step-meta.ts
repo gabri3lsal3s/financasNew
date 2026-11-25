@@ -34,6 +34,12 @@ export const ONBOARDING_STEP_META: Record<
     href: "/investments?novo=investimento",
     icon: TrendingUp,
   },
+  "business-profile": {
+    label: "Configurar perfil do negócio (MEI/PJ)",
+    description: "Separe finanças pessoais e da empresa com DRE, DAS e Teto MEI.",
+    href: "/negocio",
+    icon: Briefcase,
+  },
   "bank-notifications": {
     label: "Ativar leitor automático de notificações",
     description: "Captura prática de compras no cartão e Pix no celular.",

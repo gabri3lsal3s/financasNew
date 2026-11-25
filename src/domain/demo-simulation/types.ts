@@ -31,6 +31,7 @@ import type {
 export type TourTrackCategory =
   | "native"
   | "finances"
+  | "business"
   | "investments"
   | "settings"
   | "shared";
@@ -38,7 +39,7 @@ export type TourTrackCategory =
 /**
  * Trilhas consolidadas originais mantidas para compatibilidade retroativa.
  */
-export type LegacyTourTrackId = "finances" | "investments";
+export type LegacyTourTrackId = "finances" | "business" | "investments";
 
 /**
  * Catálogo de micro-tours específicos sob demanda.
@@ -50,6 +51,10 @@ export type MicroTourTrackId =
   | "finances_debts"
   | "finances_budgets"
   | "finances_insights"
+  | "finances_ai_import"
+  | "finances_categories"
+  | "business_overview"
+  | "business_tax_mei"
   | "investments_overview"
   | "investments_assets"
   | "investments_targets"
@@ -99,7 +104,9 @@ export type TourIconName =
   | "users"
   | "share-2"
   | "coins"
-  | "plane";
+  | "plane"
+  | "cpu"
+  | "layers";
 
 /**
  * Metadados descritivos canônicos de cada micro-tour ou trilha.

@@ -19,6 +19,7 @@ const empty: OnboardingCounts = {
   transactions: 0,
   portfolioAssets: 0,
   portfolioTransactions: 0,
+  businessProfiles: 0,
   notificationsEnabled: false,
 };
 
@@ -30,19 +31,21 @@ const full: OnboardingCounts = {
   transactions: 1,
   portfolioAssets: 1,
   portfolioTransactions: 1,
+  businessProfiles: 1,
   notificationsEnabled: true,
 };
 
 describe("onboardingSteps — checklist derivado das contagens", () => {
-  it("conta vazia sem filtro de feature retorna os 6 passos reais (sem categorias pré-criadas)", () => {
+  it("conta vazia sem filtro de feature retorna os 7 passos reais (sem categorias pré-criadas)", () => {
     const steps = onboardingSteps(empty);
-    expect(steps).toHaveLength(6);
+    expect(steps).toHaveLength(7);
     expect(steps.map((s) => s.id)).toEqual([
       "cash-checkpoint",
       "first-transaction",
       "card",
       "portfolio-asset",
       "portfolio-transaction",
+      "business-profile",
       "bank-notifications",
     ]);
     expect(steps.every((step) => !step.done)).toBe(true);
@@ -60,8 +63,8 @@ describe("onboardingSteps — checklist derivado das contagens", () => {
     const hasFinances = (key: string) =>
       key === "budgets" || key === "cards" || key === "transactions";
     const steps = onboardingSteps(empty, hasFinances);
-    expect(steps).toHaveLength(3);
-    expect(steps.map((s) => s.id)).toEqual(["cash-checkpoint", "first-transaction", "card"]);
+    expect(steps).toHaveLength(4);
+    expect(steps.map((s) => s.id)).toEqual(["cash-checkpoint", "first-transaction", "card", "business-profile"]);
   });
 
   it("cada passo fica done quando há dados do tipo correspondente", () => {
@@ -86,14 +89,14 @@ describe("onboardingSteps — checklist derivado das contagens", () => {
 
   it("conta completa deixa todos os passos done", () => {
     const steps = onboardingSteps(full);
-    expect(steps).toHaveLength(6);
+    expect(steps).toHaveLength(7);
     expect(steps.every((step) => step.done)).toBe(true);
   });
 });
 
 describe("onboardingProgress", () => {
-  it("progresso 0/6 para conta vazia sem filtro", () => {
-    expect(onboardingProgress(empty)).toEqual({ done: 0, total: 6 });
+  it("progresso 0/7 para conta vazia sem filtro", () => {
+    expect(onboardingProgress(empty)).toEqual({ done: 0, total: 7 });
   });
 
   it("progresso de usuário que só tem investimentos (1/2)", () => {
@@ -102,8 +105,8 @@ describe("onboardingProgress", () => {
     expect(onboardingProgress(counts, hasOnlyInvestments)).toEqual({ done: 1, total: 2 });
   });
 
-  it("progresso 6/6 para conta completa", () => {
-    expect(onboardingProgress(full)).toEqual({ done: 6, total: 6 });
+  it("progresso 7/7 para conta completa", () => {
+    expect(onboardingProgress(full)).toEqual({ done: 7, total: 7 });
   });
 });
 

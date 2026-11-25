@@ -97,6 +97,56 @@ export const TOUR_TRACK_METAS: Record<AnyTourTrackId, TourTrackMeta> = {
     startRoute: "/relatorios",
     badgeLabel: "3 passos",
   },
+  finances_ai_import: {
+    id: "finances_ai_import",
+    title: "Micro-IA: Importação de Faturas & Vision",
+    shortTitle: "IA & Faturas",
+    description:
+      "Leitura de cupons e Pix por câmera, importação de faturas PDF com senha/XLS/CSV e conciliação inteligente.",
+    category: "finances",
+    stepsCount: 3,
+    iconName: "cpu",
+    startRoute: "/cartoes",
+    badgeLabel: "3 passos",
+  },
+  finances_categories: {
+    id: "finances_categories",
+    title: "Categorias & Kits Prontos",
+    shortTitle: "Kits de Categorias",
+    description:
+      "Organize suas categorias pessoais, de família ou de negócio em 1 clique com kits estruturados.",
+    category: "finances",
+    stepsCount: 2,
+    iconName: "layers",
+    startRoute: "/categorias",
+    badgeLabel: "2 passos",
+  },
+
+  // Trilha: Modo Negócio (MEI & PJ)
+  business_overview: {
+    id: "business_overview",
+    title: "Modo Negócio: DRE & Ponto de Equilíbrio",
+    shortTitle: "DRE & Equilíbrio",
+    description:
+      "Separe receitas e despesas da empresa sem misturar com o pessoal e acompanhe o ponto de equilíbrio.",
+    category: "business",
+    stepsCount: 3,
+    iconName: "briefcase",
+    startRoute: "/negocio",
+    badgeLabel: "3 passos",
+  },
+  business_tax_mei: {
+    id: "business_tax_mei",
+    title: "Tax Shield (DAS) & Teto Anual MEI",
+    shortTitle: "DAS & Teto MEI",
+    description:
+      "Reserva automática de impostos, monitoramento do teto anual MEI e reembolso de compras PJ no cartão PF.",
+    category: "business",
+    stepsCount: 2,
+    iconName: "shield",
+    startRoute: "/negocio",
+    badgeLabel: "2 passos",
+  },
 
   // Trilha 2: Finanças Compartilhadas, Modo Família & Metas Coletivas (Micro-tours)
   finances_split: {
@@ -226,6 +276,18 @@ export const TOUR_TRACK_METAS: Record<AnyTourTrackId, TourTrackMeta> = {
     startRoute: "/",
     badgeLabel: "5 passos",
   },
+  business: {
+    id: "business",
+    title: "Modo Negócio (MEI, PJ & Autônomos)",
+    shortTitle: "Modo Negócio",
+    description:
+      "Jornada completa de gestão empresarial: separação PF/PJ, DRE gerencial, Tax Shield (DAS), Teto MEI e Ponto de Equilíbrio.",
+    category: "business",
+    stepsCount: 3,
+    iconName: "briefcase",
+    startRoute: "/negocio",
+    badgeLabel: "3 passos",
+  },
   shared_finances: {
     id: "shared_finances",
     title: "Finanças Compartilhadas & Modo Família",
@@ -272,14 +334,28 @@ export const TOUR_TRACK_GROUPS: readonly TourTrackGroup[] = [
     description:
       "Gestão de despesas, receitas, faturas de cartões e tetos de gastos.",
     iconName: "wallet",
-    badgeLabel: "6 micro-tours",
+    badgeLabel: "8 micro-tours",
     tracks: [
       TOUR_TRACK_METAS.finances_overview,
       TOUR_TRACK_METAS.finances_wizard,
       TOUR_TRACK_METAS.finances_cards,
+      TOUR_TRACK_METAS.finances_ai_import,
       TOUR_TRACK_METAS.finances_debts,
       TOUR_TRACK_METAS.finances_budgets,
+      TOUR_TRACK_METAS.finances_categories,
       TOUR_TRACK_METAS.finances_insights,
+    ],
+  },
+  {
+    category: "business",
+    title: "Modo Negócio (MEI & PJ)",
+    description:
+      "Separação PF/PJ, DRE gerencial, reserva de imposto (DAS) e Teto MEI.",
+    iconName: "briefcase",
+    badgeLabel: "2 micro-tours",
+    tracks: [
+      TOUR_TRACK_METAS.business_overview,
+      TOUR_TRACK_METAS.business_tax_mei,
     ],
   },
   {

@@ -2,7 +2,9 @@ import {
   Briefcase,
   Calculator,
   Coins,
+  Cpu,
   CreditCard,
+  Layers,
   Lightbulb,
   PieChart,
   Plane,
@@ -66,6 +68,17 @@ export const PRIMARY_DEMO_TRACKS: readonly TrackOptionMeta[] = [
     badgeVariant: "default",
   },
   {
+    id: "business",
+    title: "Modo Negócio (MEI & PJ)",
+    description:
+      "Separação PF/PJ, DRE gerencial, reserva do DAS (Tax Shield), Teto MEI e Ponto de Equilíbrio.",
+    icon: Briefcase,
+    iconColorClass: "text-primary-strong",
+    isPrimary: true,
+    badge: "3 passos",
+    badgeVariant: "muted",
+  },
+  {
     id: "shared_finances",
     title: "Família, Viagens & Racha Pix",
     description:
@@ -127,11 +140,49 @@ export const DEMO_TRACK_CATEGORIES: readonly TourCategoryMeta[] = [
         iconColorClass: "text-negative-strong",
       },
       {
+        id: "finances_ai_import",
+        title: "Micro-IA: Faturas PDF/XLS & Vision",
+        description: "Leitura inteligente de cupons, Pix e faturas de qualquer banco com conciliação.",
+        icon: Cpu,
+        iconColorClass: "text-primary-strong",
+      },
+      {
+        id: "finances_categories",
+        title: "Categorias & Kits Prontos",
+        description: "Instale kits estruturados para finanças pessoais, família ou negócio em 1 clique.",
+        icon: Layers,
+        iconColorClass: "text-muted-foreground",
+      },
+      {
         id: "finances_insights",
         title: "Smart Advisor e Relatórios",
         description: "Alertas de economia, radar de assinaturas e fechamento mensal DRE.",
         icon: Lightbulb,
         iconColorClass: "text-primary-strong",
+      },
+    ],
+  },
+  {
+    value: "business",
+    label: "Modo Negócio",
+    shortLabel: "Negócio",
+    icon: Briefcase,
+    iconClass: "text-primary-strong",
+    primaryTrack: PRIMARY_DEMO_TRACKS[1]!,
+    microTracks: [
+      {
+        id: "business_overview",
+        title: "DRE Gerencial & Ponto de Equilíbrio",
+        description: "Lucro líquido da empresa separado do pessoal e meta mínima de faturamento.",
+        icon: Briefcase,
+        iconColorClass: "text-primary-strong",
+      },
+      {
+        id: "business_tax_mei",
+        title: "Tax Shield (DAS) & Teto MEI",
+        description: "Reserva automática de impostos e acompanhamento do teto anual do MEI.",
+        icon: Calculator,
+        iconColorClass: "text-warning-strong",
       },
     ],
   },
@@ -142,7 +193,7 @@ export const DEMO_TRACK_CATEGORIES: readonly TourCategoryMeta[] = [
     icon: Users,
     iconClass: "text-primary-strong",
     microHeaderBadge: "Finanças Compartilhadas",
-    primaryTrack: PRIMARY_DEMO_TRACKS[1]!,
+    primaryTrack: PRIMARY_DEMO_TRACKS[3]!,
     microTracks: [
       {
         id: "finances_split",
@@ -184,7 +235,7 @@ export const DEMO_TRACK_CATEGORIES: readonly TourCategoryMeta[] = [
     shortLabel: "Investimentos",
     icon: TrendingUp,
     iconClass: "text-portfolio",
-    primaryTrack: PRIMARY_DEMO_TRACKS[2]!,
+    primaryTrack: PRIMARY_DEMO_TRACKS[3]!,
     microTracks: [
       {
         id: "investments_assets",

@@ -1,3 +1,5 @@
+import { AlertCircle } from "lucide-react";
+import { Button, EmptyState } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
 import { useAdminBroadcastNotifications, useAdminSendBroadcast } from "@/state";
 import { BroadcastComposerForm } from "../components/broadcast-composer-form";
@@ -9,10 +11,10 @@ export function AdminNotificationsPage() {
   const broadcasts = broadcastsQuery.data ?? [];
 
   return (
-    <div className="flex flex-col gap-8 w-full min-w-0">
+    <div className="flex flex-col gap-6 w-full min-w-0">
       <PageHeader
-        title="Notificações & Push"
-        description="Comunicados em tempo real para os usuários"
+        title="Comunicados & Push"
+        description="Disparo e gestão de avisos em tempo real"
       />
 
       <BroadcastComposerForm
@@ -22,10 +24,29 @@ export function AdminNotificationsPage() {
         }}
       />
 
-      <BroadcastHistoryList
-        broadcasts={broadcasts}
-        isLoading={broadcastsQuery.isLoading}
-      />
+      {broadcastsQuery.isError ? (
+        <EmptyState
+          icon={<AlertCircle className="size-10 text-critical-strong" aria-hidden="true" />}
+          tone="negative"
+          title="Não foi possível carregar os comunicados"
+          description="Ocorreu um erro ao buscar o histórico de mensagens enviadas. Tente novamente."
+          action={
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void broadcastsQuery.refetch()}
+            >
+              Tentar novamente
+            </Button>
+          }
+        />
+      ) : (
+        <BroadcastHistoryList
+          broadcasts={broadcasts}
+          isLoading={broadcastsQuery.isLoading}
+        />
+      )}
     </div>
   );
 }

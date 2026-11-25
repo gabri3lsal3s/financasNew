@@ -18,13 +18,18 @@ vi.mock("@/data/client", () => ({
               error: null,
             });
           }
-          return {
-            limit: () =>
+          const auditChain = {
+            ilike: () => auditChain,
+            eq: () => auditChain,
+            gte: () => auditChain,
+            lte: () => auditChain,
+            range: () =>
               Promise.resolve({
                 data: [{ id: "log-1", action: "UPDATE_STATUS" }],
                 error: null,
               }),
           };
+          return auditChain;
         },
       }),
     }),

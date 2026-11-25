@@ -1,17 +1,20 @@
 import { useState } from "react";
 import {
   BarChart3,
+  Briefcase,
   Calculator,
   CheckCircle2,
+  Cpu,
   CreditCard,
   FileSpreadsheet,
   Landmark,
-  ReceiptText,
   ShieldCheck,
   Sparkles,
   TrendingUp,
   Users,
+  type LucideIcon,
 } from "lucide-react";
+import { PRO_BENEFITS_CATALOG, type ProBenefitIconKey } from "@/domain/subscription";
 import { Badge, Button, Modal, ModalFooter } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { useUserSubscription } from "@/state";
@@ -28,56 +31,23 @@ export interface UpgradeDialogProps {
   onProceedToCheckout: (plan: SubscriptionPlan) => void;
 }
 
-const BENEFITS = [
-  {
-    icon: Landmark,
-    title: "Caixa Real & Saldo Livre Diário",
-    description:
-      "Saiba quanto pode gastar hoje já descontando faturas, contas do mês, reserva e alertas de vencimento.",
-  },
-  {
-    icon: ReceiptText,
-    title: "Captura Inteligente: OCR, Pix & Bancos",
-    description:
-      "Leitura de cupons NFC-e, boletos, comprovantes Pix com memória de categoria e notificações bancárias.",
-  },
-  {
-    icon: CreditCard,
-    title: "Multi-Cartões & Parcelas em até 60x",
-    description:
-      "Melhor dia de compra, fechamento automático, conciliação e projeção completa de faturas futuras.",
-  },
-  {
-    icon: Calculator,
-    title: "Contas a Pagar/Receber, Contratos & Dívidas",
-    description:
-      "Controle de recebíveis, financiamentos Price/SAC e planos de quitação Bola de Neve e Avalanche.",
-  },
-  {
-    icon: Users,
-    title: "Modo Família, Viagens & Racha Pix",
-    description:
-      "Orçamento proporcional do lar, grupos de viagem, vaquinhas e racha de parcelas via link público sem cadastro.",
-  },
-  {
-    icon: TrendingUp,
-    title: "Carteira Multi-Ativos & Aportes sem Vendas",
-    description:
-      "Ações, FIIs, Renda Fixa (CDI/IPCA+) e Exterior (PTAX) com proventos e rebalanceamento inteligente.",
-  },
-  {
-    icon: BarChart3,
-    title: "Preço Teto & Valuation Multimodelo",
-    description:
-      "Calcule preço teto e margem de segurança por Bazin, Graham, Gordon e P/VP com nota de tese.",
-  },
-  {
-    icon: FileSpreadsheet,
-    title: "7 Relatórios A4/PDF, Excel & Memória de Cálculo",
-    description:
-      "DRE Pessoal, Balanço 360°, Dossiê da Carteira e planilha de 5 abas (.xlsx) com todas as fórmulas abertas.",
-  },
-] as const;
+const BENEFIT_ICON_MAP: Record<ProBenefitIconKey, LucideIcon> = {
+  landmark: Landmark,
+  cpu: Cpu,
+  briefcase: Briefcase,
+  "credit-card": CreditCard,
+  calculator: Calculator,
+  users: Users,
+  "trending-up": TrendingUp,
+  "bar-chart": BarChart3,
+  "file-spreadsheet": FileSpreadsheet,
+};
+
+const BENEFITS = PRO_BENEFITS_CATALOG.map((item) => ({
+  icon: BENEFIT_ICON_MAP[item.iconKey],
+  title: item.title,
+  description: item.description,
+}));
 
 /**
  * Diálogo de upgrade / paywall com valor integral das funcionalidades Pro.

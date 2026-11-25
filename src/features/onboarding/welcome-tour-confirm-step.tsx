@@ -27,8 +27,8 @@ export function WelcomeTourConfirmStep({ activeGoal }: WelcomeTourConfirmStepPro
       <div className="flex items-start gap-2.5 rounded-xl border border-border/80 bg-muted/50 p-3 text-xs text-muted-foreground">
         <ShieldCheck className="size-4 shrink-0 text-positive-strong mt-0.5" aria-hidden="true" />
         <p className="leading-relaxed">
-          Você pode fazer o tour interativo de 1 minuto para conhecer o fluxo completo com dados
-          simulados, ou entrar direto na sua conta.
+          Você pode fazer o tour interativo de 1 minuto (incluindo Finanças, Modo Negócio,
+          Micro-IA e Investimentos) com dados simulados, ou entrar direto na sua conta.
         </p>
       </div>
     </div>

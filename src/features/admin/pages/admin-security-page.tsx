@@ -1,133 +1,262 @@
 import { useState } from "react";
-import { FileText, History, Lock, ShieldCheck, UserX } from "lucide-react";
-import { Badge, EmptyState, SearchInput, SkeletonList } from "@/components/ui";
+import { AlertCircle, ChevronLeft, ChevronRight, Download, History } from "lucide-react";
+import { Badge, Button, DatePicker, EmptyState, SearchInput, Select, SkeletonList } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
 import { formatDateTimeBR } from "@/lib/date";
+import { pushToast } from "@/services/toast";
 import { useAdminAuditLogs } from "@/state";
+import type { AuditEvent } from "@/types";
+
+const PAGE_SIZE = 50;
+
+function downloadTextFile(filename: string, content: string, mimeType: string) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+function toCsvRow(values: string[]): string {
+  return values.map((v) => `"${v.replace(/"/g, '""')}"`).join(",");
+}
 
 export function AdminSecurityPage() {
-  const [search, setSearch] = useState("");
-  const auditQuery = useAdminAuditLogs(100);
-  const logs = auditQuery.data ?? [];
+  const [actionFilter, setActionFilter] = useState("");
+  const [entityType, setEntityType] = useState("all");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [page, setPage] = useState(0);
 
-  const filteredLogs = logs.filter((log) => {
-    if (!search.trim()) return true;
-    const term = search.trim().toLowerCase();
-    return (
-      log.action.toLowerCase().includes(term) ||
-      log.entity_type.toLowerCase().includes(term) ||
-      (log.entity_id && log.entity_id.toLowerCase().includes(term))
-    );
+  const auditQuery = useAdminAuditLogs({
+    limit: PAGE_SIZE,
+    offset: page * PAGE_SIZE,
+    action: actionFilter.trim() ? actionFilter.trim() : null,
+    entityType: entityType !== "all" ? entityType : null,
+    fromDate: fromDate || null,
+    toDate: toDate || null,
   });
 
+  const logs: AuditEvent[] = auditQuery.data ?? [];
+  const hasNextPage = logs.length === PAGE_SIZE;
+
+  const handleExportCsv = () => {
+    if (logs.length === 0) return;
+    const header = toCsvRow(["id", "created_at", "action", "entity_type", "entity_id", "user_id", "payload"]);
+    const rows = logs.map((log) =>
+      toCsvRow([
+        log.id,
+        log.created_at,
+        log.action,
+        log.entity_type,
+        log.entity_id ?? "",
+        log.user_id ?? "",
+        JSON.stringify(log.payload ?? {}),
+      ]),
+    );
+    downloadTextFile(`auditoria-${new Date().toISOString().slice(0, 10)}.csv`, [header, ...rows].join("\n"), "text/csv;charset=utf-8");
+    pushToast({ title: "CSV exportado", description: `${logs.length} registros exportados.`, variant: "success" });
+  };
+
+  const handleExportJson = () => {
+    if (logs.length === 0) return;
+    downloadTextFile(
+      `auditoria-${new Date().toISOString().slice(0, 10)}.json`,
+      JSON.stringify(logs, null, 2),
+      "application/json;charset=utf-8",
+    );
+    pushToast({ title: "JSON exportado", description: `${logs.length} registros exportados.`, variant: "success" });
+  };
+
   return (
-    <div className="flex flex-col gap-8 w-full min-w-0">
+    <div className="flex flex-col gap-6 w-full min-w-0">
       <PageHeader
-        title="Segurança & LGPD"
-        description="Trilha de eventos administrativos e console DPO"
+        title="Auditoria"
+        description="Trilha de eventos administrativos e exportação de logs"
+        actions={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={logs.length === 0}
+              onClick={handleExportCsv}
+            >
+              <Download aria-hidden="true" />
+              <span>Exportar CSV</span>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={logs.length === 0}
+              onClick={handleExportJson}
+            >
+              <Download aria-hidden="true" />
+              <span>Exportar JSON</span>
+            </Button>
+          </>
+        }
       />
 
-      <section
-        aria-label="Console DPO"
-        className="rounded-xl border border-border/80 bg-surface p-5 shadow-xs flex flex-col gap-4"
-      >
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="size-4 text-positive-strong" aria-hidden="true" />
-          <h2 className="text-sm font-bold text-foreground">
-            Console de Proteção de Dados (LGPD Art. 18 &amp; 19)
-          </h2>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <SearchInput
+          value={actionFilter}
+          onChange={(e) => {
+            setActionFilter(e.target.value);
+            setPage(0);
+          }}
+          onClear={() => {
+            setActionFilter("");
+            setPage(0);
+          }}
+          placeholder="Filtrar por ação…"
+          aria-label="Filtrar por ação"
+        />
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="p-3.5 rounded-xl bg-surface-raised flex flex-col gap-1.5">
-            <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-              <UserX className="size-3.5 text-critical-strong" aria-hidden="true" />
-              <span>Direito ao Esquecimento</span>
-            </div>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Expurgo topológico atômico em cascata reversa via <code>delete_current_user_account()</code>, eliminando despesas, cartões, viagens e auth.users.
-            </p>
-          </div>
+        <Select
+          value={entityType}
+          onValueChange={(val) => {
+            setEntityType(val);
+            setPage(0);
+          }}
+          ariaLabel="Filtrar por entidade"
+          options={[
+            { value: "all", label: "Entidade: Todas" },
+            { value: "profile", label: "Perfil (profile)" },
+            { value: "user_subscription", label: "Assinatura" },
+            { value: "system_feature", label: "Feature Flag" },
+            { value: "access_invite", label: "Convite" },
+            { value: "support_ticket", label: "Chamado" },
+            { value: "broadcast_notification", label: "Comunicado" },
+          ]}
+        />
 
-          <div className="p-3.5 rounded-xl bg-surface-raised flex flex-col gap-1.5">
-            <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-              <FileText className="size-3.5 text-primary-strong" aria-hidden="true" />
-              <span>Portabilidade dos Dados</span>
-            </div>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Download do histórico patrimonial e transacional integral em JSON versionado e CSV Excel com trava biométrica e confirmação modal.
-            </p>
-          </div>
+        <DatePicker
+          value={fromDate}
+          onValueChange={(val) => {
+            setFromDate(val);
+            setPage(0);
+          }}
+          placeholder="Data inicial"
+          ariaLabel="Data inicial"
+        />
 
-          <div className="p-3.5 rounded-xl bg-surface-raised flex flex-col gap-1.5">
-            <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-              <Lock className="size-3.5 text-warning-strong" aria-hidden="true" />
-              <span>Sigilo de PII &amp; Cofre</span>
-            </div>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              CPF e Telefone com leitura revogada para clientes e revelação sob demanda com auditoria compulsória no cofre administrativo.
-            </p>
-          </div>
-        </div>
-      </section>
+        <DatePicker
+          value={toDate}
+          onValueChange={(val) => {
+            setToDate(val);
+            setPage(0);
+          }}
+          placeholder="Data final"
+          ariaLabel="Data final"
+        />
+      </div>
 
       <section aria-label="Logs de Auditoria" className="flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <History className="size-4 text-muted-foreground" aria-hidden="true" />
             <h2 className="text-base font-bold text-foreground">Trilha de Auditoria do Sistema</h2>
           </div>
-
-          <SearchInput
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onClear={() => setSearch("")}
-            placeholder="Filtrar por ação ou entidade…"
-            aria-label="Filtrar por ação ou entidade"
-            className="w-full sm:w-64"
-          />
+          <Badge variant="muted" size="xs">
+            Página {page + 1}
+          </Badge>
         </div>
 
-        {auditQuery.isLoading ? (
+        {auditQuery.isError ? (
+          <EmptyState
+            icon={<AlertCircle className="size-10 text-critical-strong" aria-hidden="true" />}
+            tone="negative"
+            title="Não foi possível carregar os logs"
+            description="Ocorreu um erro ao buscar a trilha de auditoria. Tente novamente."
+            action={
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void auditQuery.refetch()}
+              >
+                Tentar novamente
+              </Button>
+            }
+          />
+        ) : auditQuery.isLoading ? (
           <div className="rounded-xl border border-border/80 bg-surface shadow-xs overflow-hidden">
-            <SkeletonList rows={3} className="p-6" />
+            <SkeletonList rows={4} className="p-6" />
           </div>
-        ) : filteredLogs.length === 0 ? (
+        ) : logs.length === 0 ? (
           <EmptyState
             title="Nenhum evento localizado"
             description="Nenhuma ação corresponde aos filtros informados."
           />
         ) : (
-          <div className="rounded-xl border border-border/80 bg-surface shadow-xs overflow-hidden divide-y divide-border/80">
-            {filteredLogs.map((log) => (
-              <div
-                key={log.id}
-                className="p-4 flex flex-col gap-2 hover:bg-surface-hover/20 transition-colors text-xs"
-              >
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <Badge variant="muted" size="xs" className="font-mono">
-                    {log.action}
-                  </Badge>
-                  <span className="text-muted-foreground text-[11px] font-mono">
-                    {formatDateTimeBR(log.created_at)}
-                  </span>
-                </div>
+          <>
+            <div className="rounded-xl border border-border/80 bg-surface shadow-xs overflow-hidden divide-y divide-border/80">
+              {logs.map((log) => (
+                <div
+                  key={log.id}
+                  className="p-4 flex flex-col gap-2 hover:bg-surface-hover/20 transition-colors text-xs"
+                >
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <Badge variant="muted" size="xs" className="font-mono">
+                      {log.action}
+                    </Badge>
+                    <span className="text-muted-foreground text-[11px] font-mono">
+                      {formatDateTimeBR(log.created_at)}
+                    </span>
+                  </div>
 
-                <div className="flex items-center gap-2 text-muted-foreground font-mono text-[11px] flex-wrap">
-                  <span>
-                    Entidade: <strong className="text-foreground">{log.entity_type}</strong>
-                  </span>
-                  {log.entity_id && <span className="truncate">ID: {log.entity_id}</span>}
-                </div>
+                  <div className="flex items-center gap-2 text-muted-foreground font-mono text-[11px] flex-wrap">
+                    <span>
+                      Entidade: <strong className="text-foreground">{log.entity_type}</strong>
+                    </span>
+                    {log.entity_id && <span className="truncate">ID: {log.entity_id}</span>}
+                  </div>
 
-                {log.payload && Object.keys(log.payload).length > 0 && (
-                  <pre className="p-2.5 rounded-lg bg-surface-raised border border-border/80 font-mono text-[11px] text-muted-foreground overflow-x-auto whitespace-pre-wrap">
-                    {JSON.stringify(log.payload, null, 2)}
-                  </pre>
-                )}
+                  {log.payload && Object.keys(log.payload).length > 0 && (
+                    <pre className="p-2.5 rounded-lg bg-surface-raised border border-border/80 font-mono text-[11px] text-muted-foreground overflow-x-auto whitespace-pre-wrap">
+                      {JSON.stringify(log.payload, null, 2)}
+                    </pre>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {(page > 0 || hasNextPage) && (
+              <div className="flex items-center justify-between gap-3 pt-1">
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  Página {page + 1}
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={page === 0 || auditQuery.isLoading}
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  >
+                    <ChevronLeft aria-hidden="true" />
+                    <span>Anterior</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={!hasNextPage || auditQuery.isLoading}
+                    onClick={() => setPage((p) => p + 1)}
+                  >
+                    <span>Próxima</span>
+                    <ChevronRight aria-hidden="true" />
+                  </Button>
+                </div>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </section>
     </div>

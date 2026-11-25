@@ -47,6 +47,18 @@ const FAQS: FaqItem[] = [
   },
   {
     value: "faq-6",
+    question: "Como funciona a Inteligência Artificial (Micro-IA) e meus dados ficam privados?",
+    answer:
+      "A Micro-IA atua de forma silenciosa na leitura de cupons e comprovantes Pix (Vision), na importação de faturas (inclusive PDFs com senha e planilhas .xls/.csv), na categorização inteligente e na busca em linguagem natural. Antes de qualquer análise, dados sensíveis são mascarados automaticamente no seu dispositivo e as cotas mensais já estão incluídas no Teste de 30 Dias e no Plano Pro sem custo extra.",
+  },
+  {
+    value: "faq-7",
+    question: "O Axir também serve para quem tem MEI ou pequeno negócio (PJ)?",
+    answer:
+      "Sim. O Modo Negócio mantém sua vida pessoal e empresarial organizadas no mesmo app sem misturar os saldos: você acompanha DRE gerencial, separa a reserva do DAS (Tax Shield), monitora o Teto Anual do MEI, calcula o Ponto de Equilíbrio e registra reembolsos entre cartão pessoal e caixa da empresa.",
+  },
+  {
+    value: "faq-8",
     question: "Posso cancelar minha assinatura quando quiser?",
     answer:
       "Sim, em 1 clique dentro das configurações da sua conta. Sem fidelidade, sem multa e sem precisar falar com suporte, mantendo o acesso completo até o fim do ciclo vigente.",

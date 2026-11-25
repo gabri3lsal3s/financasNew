@@ -58,8 +58,8 @@ describe("WelcomeModal — Acolhimento e Escolha de Partida (§3.1)", () => {
     expect(screen.getByText("Sem Cartão")).toBeInTheDocument();
 
     // 3 Pilares com ícones
-    expect(screen.getByText("Fluxo & Cartões")).toBeInTheDocument();
-    expect(screen.getByText("Captura Inteligente")).toBeInTheDocument();
+    expect(screen.getByText("Dia a Dia & Negócio")).toBeInTheDocument();
+    expect(screen.getByText("Micro-IA Integrada")).toBeInTheDocument();
     expect(screen.getByText("Patrimônio & Metas")).toBeInTheDocument();
 
     // Categorias essenciais

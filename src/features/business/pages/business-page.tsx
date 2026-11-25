@@ -121,7 +121,7 @@ export function BusinessPage() {
 
   if (!isBusinessModeEnabled) {
     return (
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-6" data-tour="business-content">
         <PageHeader
           title="Meu Negócio"
           description="Separe finanças pessoais e do negócio"
@@ -306,7 +306,7 @@ function BusinessDashboardContent({
   const profileBadgeLabel = BUSINESS_PROFILE_LABELS[effectiveProfile.profileKind] ?? "Profissional";
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6" data-tour="business-content">
       <PageHeader
         title={pageTitle}
         description="Operação profissional e transferências com a conta pessoal"

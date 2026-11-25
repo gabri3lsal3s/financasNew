@@ -58,7 +58,7 @@ describe("CategoriesPage", () => {
     renderCategoriesPage();
 
     expect(screen.getByRole("heading", { level: 1, name: "Categorias" })).toBeInTheDocument();
-    expect(screen.getByText(/Personalize suas categorias de despesas e receitas/i)).toBeInTheDocument();
+    expect(screen.getByText(/Organize categorias de receitas e despesas/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Ver tetos e orçamentos/i })).toHaveAttribute("href", "/orcamentos");
 
     // Abas

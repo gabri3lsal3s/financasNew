@@ -1,41 +1,35 @@
 import {
+  Briefcase,
   Calendar,
+  Cpu,
   CreditCard,
   FileSpreadsheet,
-  Layers,
+  Landmark,
   QrCode,
   ShieldCheck,
   TrendingUp,
   Users,
+  type LucideIcon,
 } from "lucide-react";
+import { PRO_SUCCESS_HIGHLIGHTS, type ProBenefitIconKey } from "@/domain/subscription";
 import { Badge, Card, CardContent, MoneyText } from "@/components/ui";
 
-const PRO_BENEFITS = [
-  {
-    title: "Caixa Real, Cartões até 60x & Captura OCR/Pix",
-    description:
-      "Saldo livre para gastar hoje, faturas futuras, contas a pagar/receber e leitura de comprovantes sem digitação.",
-    icon: Layers,
-  },
-  {
-    title: "Modo Família, Viagens & Racha Pix",
-    description:
-      "Teto familiar proporcional, grupos de viagem, vaquinhas e divisão de parcelas com link público sem exigir cadastro.",
-    icon: Users,
-  },
-  {
-    title: "Carteira Multi-Ativos, Preço Teto & Aportes",
-    description:
-      "Ações, FIIs, Renda Fixa e Exterior com Valuation (Bazin, Graham, Gordon, P/VP) e rebalanceamento sem vendas.",
-    icon: TrendingUp,
-  },
-  {
-    title: "7 Relatórios Executivos A4/PDF & Excel (.xlsx)",
-    description:
-      "DRE Pessoal, Balanço 360°, Dossiê da Carteira e planilha auditável de 5 abas com memória de cálculo aberta.",
-    icon: FileSpreadsheet,
-  },
-] as const;
+const ICON_MAP: Record<ProBenefitIconKey, LucideIcon> = {
+  landmark: Landmark,
+  cpu: Cpu,
+  briefcase: Briefcase,
+  "credit-card": CreditCard,
+  calculator: CreditCard,
+  users: Users,
+  "trending-up": TrendingUp,
+  "bar-chart": TrendingUp,
+  "file-spreadsheet": FileSpreadsheet,
+};
+
+const PRO_BENEFITS = PRO_SUCCESS_HIGHLIGHTS.map((item) => ({
+  ...item,
+  icon: ICON_MAP[item.iconKey],
+}));
 
 export interface SuccessReceiptCardProps {
   planTitle: string;

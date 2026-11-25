@@ -1,5 +1,5 @@
 import { Crown, Sparkles } from "lucide-react";
-import { Badge, Button, FormField, Select } from "@/components/ui";
+import { Badge, Button, DatePicker, FormField, Select } from "@/components/ui";
 import type { SubscriptionTier } from "@/types";
 
 export interface UserSaasPlanSectionProps {
@@ -9,10 +9,14 @@ export interface UserSaasPlanSectionProps {
   isSaving: boolean;
   currentPeriodEnd?: string | null;
   trialEndsAt?: string | null;
+  effectiveTrialEndsAt?: string;
+  effectivePeriodEnd?: string;
   cardLast4?: string | null;
   asaasSubscriptionId?: string | null;
   onTierChange: (tier: SubscriptionTier, planId: string) => void;
   onSubStatusChange: (status: string) => void;
+  onTrialEndsAtChange?: (date: string) => void;
+  onPeriodEndChange?: (date: string) => void;
   onSaveSubscription: () => void;
 }
 
@@ -24,7 +28,7 @@ function mapTierToPlanId(tier: SubscriptionTier): string {
 }
 
 /**
- * Seção de gestão do plano SaaS e status de assinatura do usuário.
+ * Seção de gestão do plano SaaS, status de assinatura e datas de vigência do usuário.
  */
 export function UserSaasPlanSection({
   currentTier,
@@ -33,10 +37,14 @@ export function UserSaasPlanSection({
   isSaving,
   currentPeriodEnd,
   trialEndsAt,
+  effectiveTrialEndsAt,
+  effectivePeriodEnd,
   cardLast4,
   asaasSubscriptionId,
   onTierChange,
   onSubStatusChange,
+  onTrialEndsAtChange,
+  onPeriodEndChange,
   onSaveSubscription,
 }: UserSaasPlanSectionProps) {
   return (
@@ -110,6 +118,26 @@ export function UserSaasPlanSection({
               { value: "canceled", label: "Cancelada (canceled)" },
               { value: "read_only_expired", label: "Modo Leitura (read_only_expired)" },
             ]}
+          />
+        </FormField>
+
+        <FormField label="Fim do Trial (opcional)" htmlFor="target-trial-ends">
+          <DatePicker
+            id="target-trial-ends"
+            value={effectiveTrialEndsAt ?? ""}
+            onValueChange={(val) => onTrialEndsAtChange?.(val)}
+            placeholder="Sem data de trial"
+            ariaLabel="Fim do Trial"
+          />
+        </FormField>
+
+        <FormField label="Vigência do Período (opcional)" htmlFor="target-period-end">
+          <DatePicker
+            id="target-period-end"
+            value={effectivePeriodEnd ?? ""}
+            onValueChange={(val) => onPeriodEndChange?.(val)}
+            placeholder="Sem data de vigência"
+            ariaLabel="Vigência do Período"
           />
         </FormField>
       </div>

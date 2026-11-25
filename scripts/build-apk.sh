@@ -169,10 +169,10 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Redesign do Hero Card de Liquidez, Gasto Diario Seguro & Memoria de Calculo",
-    "Grade simetrica 1x3 no Hero Card: Sobra do Ciclo, Proximas Faturas em acumulacao (+ futuras) e Gasto Diario Seguro",
-    "Motor puro de Gasto Diario Seguro baseado na media mensal de receitas operacionais do ano e margem de sobra de 10%",
-    "Padronizacao visual dos botoes de Memoria de Calculo (?) entre desktop, PWA e Android"
+    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Consolidacao do Console Admin, SSOT de Beneficios Pro & 4 Novas Trilhas Demo",
+    "Console Administrativo (/admin) refatorado com navegacao agrupada, abas em Configuracoes/Usuarios, paginacao e exportacao CSV/JSON",
+    "SSOT de beneficios Pro (benefits.ts) unificando Landing Page, Upgrade, Checkout, Recibo e Welcome Modal",
+    "Catalogo expandido para 19 trilhas guiadas de demonstracao e passo de perfil MEI/PJ no onboarding"
   ]
 }
 EOF

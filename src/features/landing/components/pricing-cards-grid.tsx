@@ -1,27 +1,16 @@
 import { Link } from "react-router";
 import { ArrowRight, Check, ShieldCheck, Sparkles } from "lucide-react";
 import { Badge, Card, buttonVariants } from "@/components/ui";
+import { PRO_BENEFITS_CATALOG, PRO_TRIAL_HIGHLIGHTS } from "@/domain/subscription";
 import { cn } from "@/lib/utils";
 import { ScrollReveal } from "./scroll-reveal";
 
-const TRIAL_FEATURES = [
-  "Acesso 100% liberado a todos os módulos do Plano Pro por 30 dias",
-  "Caixa Real, Saldo Livre para gastar hoje e Cartões em até 60x",
-  "Captura sem digitação (OCR de cupons/boletos, Pix e notificações)",
-  "Contas a pagar/receber, Modo Família, Viagens e Racha Pix",
-  "Carteira Multi-Ativos, Preço Teto & Valuation e 7 Relatórios A4/Excel",
-];
+const TRIAL_FEATURES = PRO_TRIAL_HIGHLIGHTS;
 
-const PRO_FEATURES = [
-  { bold: "Lançamentos, cartões, ativos e histórico", rest: " 100% ilimitados" },
-  { bold: "Caixa Real & Saldo Livre Diário", rest: " + Radar Preventivo de vencimentos" },
-  { bold: "Captura sem digitação:", rest: " Leitor OCR (NFC-e/boletos), Pix e notificações" },
-  { bold: "Cartões até 60x", rest: " + A Pagar, A Receber & Contratos Price/SAC" },
-  { bold: "Modo Família, Viagens, Vaquinhas", rest: " & Racha Pix sem exigir cadastro" },
-  { bold: "Carteira Multi-Ativos", rest: " (Ações, FIIs, RF CDI/IPCA+ e Exterior) & Proventos" },
-  { bold: "Preço Teto & Valuation", rest: " (Bazin, Graham, Gordon, P/VP) & Aportes sem vender" },
-  { bold: "7 Relatórios Executivos A4/PDF, Excel (.xlsx)", rest: " & Memória de Cálculo" },
-];
+const PRO_FEATURES = PRO_BENEFITS_CATALOG.map((item) => ({
+  bold: item.pricingBold,
+  rest: item.pricingRest,
+}));
 
 export interface PricingCardsGridProps {
   isAnnual: boolean;

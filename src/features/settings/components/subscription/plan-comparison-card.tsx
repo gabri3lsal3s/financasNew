@@ -6,22 +6,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui";
+import { PLAN_COMPARISON_ROWS } from "@/domain/subscription";
 import { cn } from "@/lib/utils";
 
-const COMPARISON_ROWS = [
-  { feature: "Consulta de histórico, saldos, extratos e gráficos", readOnly: true, pro: true },
-  { feature: "Exportação de backup e dados brutos (.csv / .json)", readOnly: true, pro: true },
-  { feature: "Novos lançamentos, cartões, ativos e aportes ilimitados", readOnly: false, pro: true },
-  { feature: "Caixa Real, Saldo Livre para gastar hoje e Tetos de Orçamento", readOnly: false, pro: true },
-  { feature: "Captura sem digitação: Leitor OCR de cupons/boletos, Pix e Bancos", readOnly: false, pro: true },
-  { feature: "Multi-Cartões em até 60x, melhor dia de compra e faturas futuras", readOnly: false, pro: true },
-  { feature: "Contas a Pagar e a Receber, Contratos (Price/SAC) e Quitação de Dívidas", readOnly: false, pro: true },
-  { feature: "Modo Família compartilhado e Racha de Despesas/Parcelas via Pix", readOnly: false, pro: true },
-  { feature: "Modo Viagem e Vaquinhas Coletivas com link público (sem exigir cadastro)", readOnly: false, pro: true },
-  { feature: "Carteira Multi-Ativos (Ações, FIIs, Renda Fixa CDI/IPCA+ e Exterior) e Proventos", readOnly: false, pro: true },
-  { feature: "Preço Teto & Valuation (Bazin, Graham, Gordon, P/VP) e Aportes sem vendas", readOnly: false, pro: true },
-  { feature: "7 Relatórios Executivos A4/PDF, Excel (.xlsx) e Memória de Cálculo aberta", readOnly: false, pro: true },
-] as const;
+const COMPARISON_ROWS = PLAN_COMPARISON_ROWS;
 
 export interface PlanComparisonCardProps {
   isFullAccess: boolean;

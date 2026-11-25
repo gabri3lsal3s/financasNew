@@ -115,7 +115,7 @@ describe("OnboardingBanner — banner compacto de configuração inicial (§5.7)
       ...screen.queryAllByRole("link", { name: "Configurar" }),
       ...screen.queryAllByRole("button", { name: "Configurar" }),
     ];
-    expect(configurarActions.length).toBeLessThan(3);
+    expect(configurarActions.length).toBeLessThan(4);
   });
 
   it("ativa permissões de notificação ao clicar em Configurar no passo de notificações", () => {

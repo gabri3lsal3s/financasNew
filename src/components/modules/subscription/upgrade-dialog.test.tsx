@@ -32,10 +32,11 @@ describe("UpgradeDialog component", () => {
 
     expect(screen.getByText("Ativar Plano Pro")).toBeInTheDocument();
     expect(screen.getByText("Caixa Real & Saldo Livre Diário")).toBeInTheDocument();
-    expect(screen.getByText("Captura Inteligente: OCR, Pix & Bancos")).toBeInTheDocument();
+    expect(screen.getByText("Micro-IA Financeira Integrada")).toBeInTheDocument();
+    expect(screen.getByText("Modo Negócio (MEI & PJ)")).toBeInTheDocument();
     expect(screen.getByText("Multi-Cartões & Parcelas em até 60x")).toBeInTheDocument();
     expect(screen.getByText("Modo Família, Viagens & Racha Pix")).toBeInTheDocument();
-    expect(screen.getByText("Preço Teto & Valuation Multimodelo")).toBeInTheDocument();
+    expect(screen.getByText("Carteira Multi-Ativos, Preço Teto & Aportes")).toBeInTheDocument();
     expect(
       screen.getByText("7 Relatórios A4/PDF, Excel & Memória de Cálculo"),
     ).toBeInTheDocument();

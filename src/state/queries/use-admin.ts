@@ -8,10 +8,12 @@ import {
   listAuditEvents,
   listBroadcastNotifications,
   listSystemBackups,
+  listAdminSubscriptions,
   listSystemFeatures,
   listUserFeatureOverrides,
   getMyBroadcastNotifications,
   type AdminListUsersParams,
+  type ListAuditEventsParams,
 } from "@/data/repositories/admin";
 import {
   getPlans,
@@ -32,6 +34,7 @@ export const ADMIN_BACKUPS_KEY = ["admin_backups"] as const;
 export const ADMIN_BROADCASTS_KEY = ["admin_broadcasts"] as const;
 export const ADMIN_USER_CONTACT_KEY = ["admin_user_contact"] as const;
 export const ADMIN_PAST_DUE_KEY = ["admin_past_due"] as const;
+export const ADMIN_SUBSCRIPTIONS_KEY = ["admin_subscriptions"] as const;
 export const MY_BROADCASTS_KEY = ["my_broadcasts"] as const;
 
 export function useAdminMetrics() {
@@ -66,10 +69,18 @@ export function useAdminInvites() {
   });
 }
 
-export function useAdminAuditLogs(limit = 100) {
+export function useAdminAuditLogs(params: number | ListAuditEventsParams = 100) {
   return useQuery({
-    queryKey: [...ADMIN_AUDIT_KEY, limit],
-    queryFn: () => listAuditEvents(limit),
+    queryKey: [...ADMIN_AUDIT_KEY, params],
+    queryFn: () => listAuditEvents(params),
+    staleTime: 1000 * 30,
+  });
+}
+
+export function useAdminSubscriptions(limit = 200) {
+  return useQuery({
+    queryKey: [...ADMIN_SUBSCRIPTIONS_KEY, limit],
+    queryFn: () => listAdminSubscriptions(limit),
     staleTime: 1000 * 30,
   });
 }

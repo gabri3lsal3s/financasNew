@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  Briefcase,
   Camera,
   Coins,
   PieChart,
@@ -15,9 +16,10 @@ import { SharedFinancesShowcase } from "./shared-finances-showcase";
 import { PainCashPreview } from "./pain-previews/pain-cash-preview";
 import { PainCapturePreview } from "./pain-previews/pain-capture-preview";
 import { PainDebtsPreview } from "./pain-previews/pain-debts-preview";
+import { PainBusinessPreview } from "./pain-previews/pain-business-preview";
 import { PainInvestPreview } from "./pain-previews/pain-invest-preview";
 
-export type PainKey = "cash" | "capture" | "debts" | "shared" | "invest";
+export type PainKey = "cash" | "capture" | "business" | "debts" | "shared" | "invest";
 
 interface PainOption {
   key: PainKey;
@@ -38,9 +40,16 @@ const PAIN_OPTIONS: readonly PainOption[] = [
   {
     key: "capture",
     title: "Desisto de anotar gastos na segunda semana",
-    shortLabel: "Preguiça de anotar",
-    subtitle: "Digitar tudo na mão cansa e a planilha acaba abandonada.",
+    shortLabel: "Captura com IA",
+    subtitle: "Digitar tudo na mão cansa; deixe a IA ler cupons, Pix e faturas por você.",
     icon: Camera,
+  },
+  {
+    key: "business",
+    title: "Misturo o dinheiro da empresa com a conta pessoal",
+    shortLabel: "PF & PJ",
+    subtitle: "Não sei o lucro real do negócio, quanto reservar para o DAS nem o limite do MEI.",
+    icon: Briefcase,
   },
   {
     key: "debts",
@@ -184,6 +193,7 @@ export function FinancialPainPointsSection({
           <div key={activePain} className="lg:col-span-7 min-w-0 w-full animate-fade-slide-in">
             {activePain === "cash" ? <PainCashPreview /> : null}
             {activePain === "capture" ? <PainCapturePreview /> : null}
+            {activePain === "business" ? <PainBusinessPreview /> : null}
             {activePain === "debts" ? <PainDebtsPreview /> : null}
             {activePain === "shared" ? <SharedFinancesShowcase /> : null}
             {activePain === "invest" ? (

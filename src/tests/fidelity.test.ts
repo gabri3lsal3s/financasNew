@@ -631,9 +631,10 @@ describe("§5.7 — Onboarding de primeiro uso (derivação por dados)", () => {
       notificationsEnabled: true,
       portfolioAssets: 1,
       portfolioTransactions: 1,
+      businessProfiles: 1,
     });
-    expect(progress.done).toBe(6);
-    expect(progress.total).toBe(6);
+    expect(progress.done).toBe(7);
+    expect(progress.total).toBe(7);
     expect(
       isFirstUse({
         expenseCategories: 0,

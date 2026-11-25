@@ -14,9 +14,13 @@ describe("tour-catalog — Catálogo Canônico de Micro-Tours e Grupos", () => {
     "finances_overview",
     "finances_wizard",
     "finances_cards",
+    "finances_ai_import",
     "finances_debts",
     "finances_budgets",
+    "finances_categories",
     "finances_insights",
+    "business_overview",
+    "business_tax_mei",
     "finances_split",
     "finances_family",
     "finances_goals",
@@ -26,13 +30,14 @@ describe("tour-catalog — Catálogo Canônico de Micro-Tours e Grupos", () => {
     "investments_aporte",
     "settings_support",
     "finances",
+    "business",
     "shared_finances",
     "investments",
   ];
 
   describe("TOUR_TRACK_METAS", () => {
-    it("contém metadados válidos para todos os 19 identificadores de trilha", () => {
-      expect(Object.keys(TOUR_TRACK_METAS)).toHaveLength(19);
+    it("contém metadados válidos para todos os 24 identificadores de trilha", () => {
+      expect(Object.keys(TOUR_TRACK_METAS)).toHaveLength(24);
 
       for (const trackId of allTrackIds) {
         const meta = TOUR_TRACK_METAS[trackId];
@@ -101,22 +106,24 @@ describe("tour-catalog — Catálogo Canônico de Micro-Tours e Grupos", () => {
   });
 
   describe("TOUR_TRACK_GROUPS", () => {
-    it("contém 5 macro-grupos estruturados", () => {
-      expect(TOUR_TRACK_GROUPS).toHaveLength(5);
+    it("contém 6 macro-grupos estruturados", () => {
+      expect(TOUR_TRACK_GROUPS).toHaveLength(6);
       const categories = TOUR_TRACK_GROUPS.map((g) => g.category);
       expect(categories).toEqual([
         "native",
         "finances",
+        "business",
         "shared",
         "investments",
         "settings",
       ]);
     });
 
-    it("distribui os micro-tours corretamente por categoria incluindo finanças compartilhadas", () => {
+    it("distribui os micro-tours corretamente por categoria incluindo negócios e finanças compartilhadas", () => {
       const [
         nativeGroup,
         financesGroup,
+        businessGroup,
         sharedGroup,
         investmentsGroup,
         settingsGroup,
@@ -127,9 +134,15 @@ describe("tour-catalog — Catálogo Canônico de Micro-Tours e Grupos", () => {
         "finances_overview",
         "finances_wizard",
         "finances_cards",
+        "finances_ai_import",
         "finances_debts",
         "finances_budgets",
+        "finances_categories",
         "finances_insights",
+      ]);
+      expect(businessGroup?.tracks.map((t) => t.id)).toEqual([
+        "business_overview",
+        "business_tax_mei",
       ]);
       expect(sharedGroup?.tracks.map((t) => t.id)).toEqual([
         "finances_split",
@@ -193,9 +206,10 @@ describe("tour-catalog — Catálogo Canônico de Micro-Tours e Grupos", () => {
         expect(group.isNativeOnly).toBeFalsy();
         expect(group.tracks.some((t) => t.isNativeOnly)).toBe(false);
       }
-      expect(groups).toHaveLength(4);
+      expect(groups).toHaveLength(5);
       expect(groups.map((g) => g.category)).toEqual([
         "finances",
+        "business",
         "shared",
         "investments",
         "settings",
@@ -205,13 +219,14 @@ describe("tour-catalog — Catálogo Canônico de Micro-Tours e Grupos", () => {
     it("inclui o grupo nativo quando isNativeApp for true", () => {
       const groups = getTourTrackGroups(true);
       expect(groups.some((g) => g.category === "native")).toBe(true);
-      expect(groups).toHaveLength(5);
+      expect(groups).toHaveLength(6);
     });
   });
 
   describe("getTourTracksByCategory", () => {
     it("retorna a lista de trilhas correspondente a cada categoria", () => {
-      expect(getTourTracksByCategory("finances")).toHaveLength(6);
+      expect(getTourTracksByCategory("finances")).toHaveLength(8);
+      expect(getTourTracksByCategory("business")).toHaveLength(2);
       expect(getTourTracksByCategory("shared")).toHaveLength(4);
       expect(getTourTracksByCategory("investments")).toHaveLength(4);
       expect(getTourTracksByCategory("settings")).toHaveLength(1);

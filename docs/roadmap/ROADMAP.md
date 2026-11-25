@@ -8230,3 +8230,15 @@ flowchart TD
 >   - `calculateSafeDailySpending`: projeta o horizonte até o fechamento do próximo mês (`Sobra do Ciclo + Renda Média - Próximas Faturas - Contas do Próximo Mês - Margem de Sobra 10%`), expondo também `breakEvenDailyCents` (zero a zero) na Memória de Cálculo (`buildSafeDailySpendingBreakdown`).
 > - **Padronização da Memória de Cálculo (`CalculationMemoryTrigger`):**
 >   - Unificada a cor base de `priority="p0"` e `priority="p1"` (`text-muted-foreground/60 hover:text-foreground`) e aplicados gatilhos `p0` nos três indicadores do Hero Card.
+
+---
+
+### Fase 132 — Refatoração, Responsividade & Consolidação do Console Administrativo (/admin) (v3.30.0)
+
+> **Status:** Concluída em Código e Testes (`v3.30.0`):
+> - **Navegação & Shell (`admin-nav-config.ts`, `admin-shell.tsx`, `admin-mobile-drawer.tsx`):**
+>   - Menu reorganizado em 3 grupos (`Operação Diária`, `Receita & Crescimento`, `Plataforma & Governança`) com badges dinâmicos (`pendingUsers`, `openTickets`, `pastDue`, `pendingBlueprints`), indicador real de saúde da API e correção de `top-16 pt-safe` no drawer móvel.
+> - **Padronização & Ergonomia (`PageHeader`, `KpiGrid`, `AdminSettingsPage`, `UserEditDialog`):**
+>   - Tratamento de `isError` com retry em todas as telas administrativas, `AdminSettingsPage` consolidada em 4 abas (`Módulos & Kill-Switches`, `APK Beta`, `Bot Telegram`, `Layouts de Fatura`) e `UserEditDialog` organizado em abas.
+> - **Funcionalidades de Produção:**
+>   - Paginação e filtros em `AdminUsersPage`, edição de `trialEndsAt`/`currentPeriodEnd` em `UserSaasPlanSection`, KPIs SaaS reais e listagem filtrável em `AdminBillingPage`, encerramento/exclusão de comunicados em `BroadcastHistoryList` e filtros/paginação/exportação CSV+JSON em `AdminSecurityPage`.

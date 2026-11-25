@@ -266,9 +266,9 @@
     │   ├── reminders/             #   Central unificada de notificações & preferências (hooks/use-notification-preferences-form, prefs/{InAppRemindersPrefsCard,DueNotificationsPrefsCard,DailyClosingReminderCard,RemotePushPrefsCard,QuietHoursPrefsCard})
     │   ├── settings/              #   Configurações consolidadas em 6 abas especializadas (incluindo notifications-tab em 5 blocos: reminders-card, device-push-card, dividend-automation-card, banking-assistant-card, email-digest-prefs-card; e security-tab: app-lock-card, session-inactivity-card, two-factor-card, active-devices-card)
     │   ├── admin/                 #   Módulo Administrativo SaaS Isolado (/admin/login, /admin/*)
-    │   │                          #     layouts/ (admin-shell), components/ (user-edit-dialog, feature-toggle-card, telegram-settings-card, ticket-manage-dialog, statement-blueprints-card)
+    │   │                          #     layouts/ (admin-shell, admin-nav-config, admin-mobile-drawer), components/ (user-edit-dialog em abas, feature-toggle-card, telegram-settings-card, ticket-manage-dialog, statement-blueprints-card)
     │   │                          #     pages: admin-login-page, admin-dashboard-page, admin-users-page, admin-billing-page,
-    │   │                          #            admin-settings-page, admin-notifications-page, admin-backups-page, admin-invites-page,
+    │   │                          #            admin-settings-page (4 abas), admin-notifications-page, admin-invites-page,
     │   │                          #            admin-tickets-page, admin-security-page
     │   │                          #     forensics/ (Laboratório Forense de Auditoria Quantitativa, Sintética e Contínua /admin/laboratorio-forense):
     │   │                          #       core/ (núcleo isomórfico puro TS: personas determinísticas, motor de invariantes, relatórios, runner)
@@ -295,8 +295,8 @@
     │   ├── demo-tour/             #   Spotlight guiado e catálogo de 19 trilhas (demo-tour-spotlight, demo-track-select-modal, track-option-card)
     │   ├── landing/               #   Landing Page pública de apresentação & planos (/apresentacao, /precos, /planos, /landing)
     │                              #     components: hero-section, unified-ecosystem-section (Bento 6 pilares),
-    │                              #       financial-pain-points-section + pain-previews/ (caixa, captura, dívidas, investimentos),
-    │                              #       deep-dive-tabs-section + deep-dive-previews/ (valuation, carteira, 7 relatórios A4, radar & privacidade),
+    │                              #       financial-pain-points-section + pain-previews/ (caixa, captura, dívidas, investimentos, negócio),
+    │                              #       deep-dive-tabs-section + deep-dive-previews/ (micro-ia, modo negócio, valuation, carteira, 7 relatórios A4, radar & privacidade),
     │                              #       minimal-wealth-simulator, tools-showcase, pricing-section, platform-comparison, faq-section, final-cta-section
     │
     │   ├── legal/                 #   Páginas Legais e Regulatórias (/termos, /privacidade, LGPD, Decreto 7.962/2013)
@@ -408,7 +408,7 @@
     │   │                          #   dividend-deduplication.ts, dividend-suggester.ts, provisioned-dividends.ts,
     │   │                          #   class-breakdown.ts (F85: decomposição holística dos 4 pilares FIIs/RF/Ações/Internacional e benchmarks IBOV/IFIX/CDI/S&P500),
     │   │                          #   tickers-catalog.ts (catálogo ampliado de tickers e inferência setorial, macroestratégia e risco)
-    │   └── subscription/          #   Regras puras de planos, trial 30 dias (trial.ts), precificação, CDC 7 dias, estorno pró-rata (plans.ts) e adaptadores agnósticos de faturamento SaaS (billing.ts)
+    │   └── subscription/          #   Regras puras de planos, SSOT de benefícios Pro (benefits.ts), trial 30 dias (trial.ts), precificação, CDC 7 dias, estorno pró-rata (plans.ts) e adaptadores agnósticos de faturamento SaaS (billing.ts)
     │
 
     ├── data/                      # INTEGRAÇÃO REMOTA

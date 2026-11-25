@@ -199,8 +199,8 @@ describe("getTourHandoffDestination", () => {
     const microTours = allTrackIds.filter((t) => !isCompleteTourTrack(t));
     const completeTours = allTrackIds.filter((t) => isCompleteTourTrack(t));
 
-    it("valida que todos os micro-tours (15 trilhas) encerram com URL 100% limpa sem nenhum parâmetro invasivo", () => {
-      expect(microTours).toHaveLength(15);
+    it("valida que todos os micro-tours (19 trilhas) encerram com URL 100% limpa sem nenhum parâmetro invasivo", () => {
+      expect(microTours).toHaveLength(19);
 
       const dirtyQueryString = INVASIVE_QUERY_PARAMS.map((param, i) => `${param}=val_${i}`).join("&");
       const sampleDirtyUrl = `/painel?tab=geral&${dirtyQueryString}`;
@@ -219,14 +219,16 @@ describe("getTourHandoffDestination", () => {
       }
     });
 
-    it("valida que todos os tours completos (4 trilhas) direcionam para seus modais de partida de conta real", () => {
-      expect(completeTours).toHaveLength(4);
+    it("valida que todos os tours completos (5 trilhas) direcionam para seus modais de partida de conta real", () => {
+      expect(completeTours).toHaveLength(5);
 
       for (const trackId of completeTours) {
         const destination = getTourHandoffDestination(trackId, "/qualquer-rota-previa");
 
         if (trackId === "finances") {
           expect(destination).toBe("/?novo=despesa");
+        } else if (trackId === "business") {
+          expect(destination).toBe("/negocio");
         } else if (trackId === "shared_finances") {
           expect(destination).toBe("/familia");
         } else if (trackId === "investments") {
@@ -237,8 +239,8 @@ describe("getTourHandoffDestination", () => {
       }
     });
 
-    it("assegura que 100% das 19 trilhas do catálogo possuem tratamento determinístico em getTourHandoffDestination", () => {
-      expect(allTrackIds).toHaveLength(19);
+    it("assegura que 100% das 24 trilhas do catálogo possuem tratamento determinístico em getTourHandoffDestination", () => {
+      expect(allTrackIds).toHaveLength(24);
 
       for (const trackId of allTrackIds) {
         const destFromRoot = getTourHandoffDestination(trackId, "/");

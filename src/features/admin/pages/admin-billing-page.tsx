@@ -1,82 +1,264 @@
-import { AlertTriangle, ExternalLink, LifeBuoy, Receipt, Zap } from "lucide-react";
-import { Badge, MoneyText, NumberTicker, Skeleton, buttonVariants } from "@/components/ui";
+import { useMemo, useState } from "react";
+import { AlertCircle, AlertTriangle, Clock, Crown, ExternalLink, Receipt, TrendingUp } from "lucide-react";
+import { Badge, Button, EmptyState, MoneyText, Select, Skeleton, buttonVariants } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
-import { useAdminMetrics, useAdminPlans } from "@/state";
-import { cn } from "@/lib/utils";
+import { KpiCard, KpiGrid } from "@/components/modules";
+import { formatDateBR } from "@/lib/date";
+import { useAdminPastDueSubscriptions, useAdminPlans, useAdminSubscriptions } from "@/state";
 import { PastDueManagementCard } from "../components/past-due-management-card";
 
+const SUB_STATUS_LABELS: Record<string, string> = {
+  active: "Ativa",
+  trialing: "Em Teste",
+  past_due: "Inadimplente",
+  canceled: "Cancelada",
+  read_only_expired: "Somente Leitura",
+};
+
+function resolveSubBadgeVariant(status: string): "positive" | "warning" | "critical" | "muted" {
+  if (status === "active") return "positive";
+  if (status === "trialing") return "warning";
+  if (status === "past_due") return "critical";
+  return "muted";
+}
+
 export function AdminBillingPage() {
-  const metricsQuery = useAdminMetrics();
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [nowMs] = useState(() => Date.now());
+  const subscriptionsQuery = useAdminSubscriptions(200);
+  const pastDueQuery = useAdminPastDueSubscriptions();
   const plansQuery = useAdminPlans();
-  const metrics = metricsQuery.data;
-  const plans = plansQuery.data ?? [];
+
+  const subscriptions = useMemo(() => subscriptionsQuery.data ?? [], [subscriptionsQuery.data]);
+  const plans = useMemo(() => plansQuery.data ?? [], [plansQuery.data]);
+
+  const { estimatedMrrCents, activeSubscribersCount, activeTrialsCount, expiringTrialsCount, pastDueCount } = useMemo(() => {
+    const planMap = new Map(plans.map((p) => [p.id, p]));
+    let mrr = 0;
+    let activePaid = 0;
+    let trials = 0;
+    let expiring = 0;
+    let pastDue = 0;
+
+    for (const sub of subscriptions) {
+      if (sub.status === "past_due") {
+        pastDue += 1;
+      }
+      if (sub.status === "trialing" || (sub.status === "active" && sub.tier === "trial")) {
+        trials += 1;
+        if (sub.trial_ends_at) {
+          const diff = new Date(sub.trial_ends_at).getTime() - nowMs;
+          if (diff > 0 && diff <= 3 * 86_400_000) expiring += 1;
+        }
+        continue;
+      }
+      if (sub.status === "active" && sub.tier !== "read_only") {
+        activePaid += 1;
+        const plan = planMap.get(sub.plan_id) ?? planMap.get(sub.tier);
+        if (plan && plan.price_cents > 0) {
+          if (plan.billing_interval === "year") {
+            mrr += Math.round(plan.price_cents / 12);
+          } else if (plan.billing_interval === "month") {
+            mrr += plan.price_cents;
+          }
+        }
+      }
+    }
+
+    return {
+      estimatedMrrCents: mrr,
+      activeSubscribersCount: activePaid,
+      activeTrialsCount: trials,
+      expiringTrialsCount: expiring,
+      pastDueCount: Math.max(pastDue, (pastDueQuery.data ?? []).length),
+    };
+  }, [subscriptions, plans, pastDueQuery.data, nowMs]);
+
+  const filteredSubscriptions = useMemo(() => {
+    if (statusFilter === "all") return subscriptions;
+    return subscriptions.filter((s) => s.status === statusFilter);
+  }, [subscriptions, statusFilter]);
+
+  const hasError = subscriptionsQuery.isError || plansQuery.isError;
 
   return (
-    <div className="flex flex-col gap-8 w-full min-w-0">
+    <div className="flex flex-col gap-6 w-full min-w-0">
       <PageHeader
         title="Faturamento SaaS"
-        description="Receitas recorrentes, pagamentos e conciliação"
+        description="Receita recorrente, inadimplência e catálogo de planos"
         actions={
           <a
             href="https://www.asaas.com"
             target="_blank"
             rel="noopener noreferrer"
-            className={cn(
-              buttonVariants({ variant: "outline", size: "sm" }),
-              "gap-1.5 text-xs font-semibold",
-            )}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
           >
-            <ExternalLink className="size-3.5" aria-hidden="true" />
+            <ExternalLink aria-hidden="true" />
             <span>Painel Asaas</span>
           </a>
         }
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="rounded-xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs flex flex-col justify-between gap-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">Usuários Ativos</span>
-            <Receipt className="size-4 text-primary-strong" aria-hidden="true" />
-          </div>
-          {metricsQuery.isLoading ? (
-            <Skeleton className="h-8 w-20" />
-          ) : (
-            <div className="tabular-nums text-2xl font-bold text-foreground">
-              <NumberTicker value={metrics?.active_users ?? 0} />
+      {hasError ? (
+        <EmptyState
+          icon={<AlertCircle className="size-10 text-critical-strong" aria-hidden="true" />}
+          tone="negative"
+          title="Não foi possível carregar o faturamento"
+          description="Ocorreu um erro ao buscar assinaturas ou planos. Tente novamente."
+          action={
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                void subscriptionsQuery.refetch();
+                void plansQuery.refetch();
+              }}
+            >
+              Tentar novamente
+            </Button>
+          }
+        />
+      ) : subscriptionsQuery.isLoading || plansQuery.isLoading ? (
+        <KpiGrid columns={4}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="rounded-2xl border border-border/80 bg-surface p-3 sm:p-4 lg:p-5 shadow-xs flex flex-col justify-between gap-3 h-24"
+            >
+              <Skeleton className="h-3.5 w-24" />
+              <Skeleton className="h-7 w-20" />
             </div>
-          )}
-        </div>
-
-        <div className="rounded-xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs flex flex-col justify-between gap-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">Cadastros Pendentes</span>
-            <Zap className="size-4 text-warning-strong" aria-hidden="true" />
-          </div>
-          {metricsQuery.isLoading ? (
-            <Skeleton className="h-8 w-20" />
-          ) : (
-            <div className="tabular-nums text-2xl font-bold text-warning-strong">
-              <NumberTicker value={metrics?.pending_users ?? 0} />
-            </div>
-          )}
-        </div>
-
-        <div className="rounded-xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs flex flex-col justify-between gap-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">Contas Suspensas</span>
-            <AlertTriangle className="size-4 text-critical-strong" aria-hidden="true" />
-          </div>
-          {metricsQuery.isLoading ? (
-            <Skeleton className="h-8 w-20" />
-          ) : (
-            <div className="tabular-nums text-2xl font-bold text-critical-strong">
-              <NumberTicker value={metrics?.suspended_users ?? 0} />
-            </div>
-          )}
-        </div>
-      </div>
+          ))}
+        </KpiGrid>
+      ) : (
+        <KpiGrid columns={4}>
+          <KpiCard
+            label="MRR Estimado"
+            cents={estimatedMrrCents}
+            tone="positive"
+            icon={<TrendingUp className="size-4 text-positive-strong" aria-hidden="true" />}
+          />
+          <KpiCard
+            label="Assinantes Ativos"
+            value={String(activeSubscribersCount)}
+            tone="portfolio"
+            icon={<Crown className="size-4 text-portfolio" aria-hidden="true" />}
+          />
+          <KpiCard
+            label="Trials Ativos"
+            value={String(activeTrialsCount)}
+            hint={expiringTrialsCount > 0 ? `${expiringTrialsCount} expirando em 3d` : undefined}
+            icon={<Clock className="size-4 text-muted-foreground" aria-hidden="true" />}
+          />
+          <KpiCard
+            label="Inadimplentes"
+            value={String(pastDueCount)}
+            tone={pastDueCount > 0 ? "negative" : "default"}
+            icon={<AlertTriangle className="size-4 text-critical-strong" aria-hidden="true" />}
+          />
+        </KpiGrid>
+      )}
 
       <PastDueManagementCard />
+
+      <section aria-label="Assinaturas da Plataforma" className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Receipt className="size-4 text-muted-foreground" aria-hidden="true" />
+            <h2 className="text-base font-bold text-foreground">Assinaturas</h2>
+            <Badge variant="muted" size="xs">
+              {filteredSubscriptions.length}
+            </Badge>
+          </div>
+          <div className="w-full sm:w-56">
+            <Select
+              value={statusFilter}
+              onValueChange={setStatusFilter}
+              ariaLabel="Filtrar assinaturas por status"
+              options={[
+                { value: "all", label: "Status: Todos" },
+                { value: "active", label: "Ativa" },
+                { value: "trialing", label: "Em Teste" },
+                { value: "past_due", label: "Inadimplente" },
+                { value: "canceled", label: "Cancelada" },
+                { value: "read_only_expired", label: "Somente Leitura" },
+              ]}
+            />
+          </div>
+        </div>
+
+        {subscriptionsQuery.isLoading ? (
+          <Skeleton className="h-36 w-full rounded-xl" />
+        ) : filteredSubscriptions.length === 0 ? (
+          <EmptyState
+            title="Nenhuma assinatura localizada"
+            description="Nenhuma assinatura corresponde ao filtro selecionado."
+          />
+        ) : (
+          <div className="rounded-xl border border-border/80 bg-surface shadow-xs overflow-hidden">
+            <div className="flex flex-col divide-y divide-border/80 md:hidden">
+              {filteredSubscriptions.slice(0, 50).map((sub) => (
+                <div key={sub.id} className="p-4 flex flex-col gap-2 text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-foreground font-semibold truncate">
+                      {sub.user_id.slice(0, 8)}…
+                    </span>
+                    <Badge variant={resolveSubBadgeVariant(sub.status)} size="xs">
+                      {SUB_STATUS_LABELS[sub.status] ?? sub.status}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <span>Plano: <strong className="text-foreground">{sub.tier}</strong></span>
+                    <span>{sub.asaas_subscription_id ? "Asaas" : "Direto"}</span>
+                  </div>
+                  {(sub.current_period_end || sub.trial_ends_at) && (
+                    <span className="text-[11px] text-muted-foreground font-mono">
+                      Vigência: {formatDateBR(sub.current_period_end ?? sub.trial_ends_at ?? "")}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="hidden md:block overflow-x-auto no-scrollbar scroll-smooth">
+              <table className="w-full min-w-[600px] text-left text-xs">
+                <thead className="bg-surface-raised border-b border-border/80 text-muted-foreground font-semibold">
+                  <tr>
+                    <th className="py-3 px-4">Usuário ID</th>
+                    <th className="py-3 px-4">Tier / Plano</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Vigência</th>
+                    <th className="py-3 px-4 text-right">Gateway</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/80">
+                  {filteredSubscriptions.slice(0, 50).map((sub) => (
+                    <tr key={sub.id} className="hover:bg-surface-hover/20 transition-colors">
+                      <td className="py-3 px-4 font-mono text-[11px] text-foreground">
+                        {sub.user_id}
+                      </td>
+                      <td className="py-3 px-4 font-medium text-foreground">{sub.tier}</td>
+                      <td className="py-3 px-4">
+                        <Badge variant={resolveSubBadgeVariant(sub.status)} size="xs">
+                          {SUB_STATUS_LABELS[sub.status] ?? sub.status}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-4 font-mono text-[11px] text-muted-foreground">
+                        {sub.current_period_end || sub.trial_ends_at
+                          ? formatDateBR(sub.current_period_end ?? sub.trial_ends_at ?? "")
+                          : "—"}
+                      </td>
+                      <td className="py-3 px-4 text-right text-muted-foreground">
+                        {sub.asaas_subscription_id ? "Asaas" : "Direto"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </section>
 
       <section aria-label="Catálogo de Planos" className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
@@ -100,7 +282,7 @@ export function AdminBillingPage() {
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex flex-col min-w-0">
-                    <span className="font-semibold text-foreground text-sm truncate">{p.name}</span>
+                    <span className="font-semibold text-foreground text-sm line-clamp-2 break-words">{p.name}</span>
                     <span className="text-[11px] text-muted-foreground">
                       {p.description || "Sem descrição"}
                     </span>
@@ -124,38 +306,6 @@ export function AdminBillingPage() {
               </div>
             ))
           )}
-        </div>
-      </section>
-
-      <section
-        aria-label="Contingências do Runbook"
-        className="rounded-xl border border-border/80 bg-surface p-5 shadow-xs flex flex-col gap-4"
-      >
-        <div className="flex items-center gap-2">
-          <LifeBuoy className="size-4 text-primary-strong" aria-hidden="true" />
-          <h2 className="text-sm font-bold text-foreground">
-            Procedimentos de Contingência (Founder Runbook)
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="p-4 rounded-xl bg-surface-raised flex flex-col gap-2">
-            <span className="text-xs font-bold text-foreground">
-              1. Cliente Pagou mas Webhook Atrasou
-            </span>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Nunca deixe o cliente esperando na fila: acesse a aba <strong>Gestão de Usuários</strong>, clique em <strong>Gerenciar</strong> no usuário e altere o Plano para <strong>Pro Mensal</strong> ou <strong>Anual</strong> com status <strong>Ativo</strong>. A liberação tem efeito instantâneo sem necessidade de relogar.
-            </p>
-          </div>
-
-          <div className="p-4 rounded-xl bg-surface-raised flex flex-col gap-2">
-            <span className="text-xs font-bold text-foreground">
-              2. Cancelamento e Reembolso em até 7 Dias (CDC Art. 49)
-            </span>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              O cliente pode solicitar reembolso autônomo no app. Em caso de solicitação direta de suporte: acesse o Painel Asaas &gt; Cobranças &gt; Mais Ações &gt; Estornar Cobrança. O Asaas envia o webhook <code>PAYMENT_REFUNDED</code> e o banco rebaixa automaticamente o acesso para <code>read_only</code>.
-            </p>
-          </div>
         </div>
       </section>
     </div>

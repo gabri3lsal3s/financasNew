@@ -1,13 +1,15 @@
 import { useState } from "react";
-import { FileBarChart2, Layers, PieChart, ShieldCheck } from "lucide-react";
+import { Briefcase, Cpu, FileBarChart2, Layers, PieChart, ShieldCheck } from "lucide-react";
 import { Tabs, type TabItem } from "@/components/ui";
 import { triggerSensory } from "@/services/sensory";
 import { ScrollReveal } from "./scroll-reveal";
 import { InvestmentsProPreview } from "./deep-dive-previews/investments-pro-preview";
 import { ReportsSuitePreview } from "./deep-dive-previews/reports-suite-preview";
+import { AiIntelligencePreview } from "./deep-dive-previews/ai-intelligence-preview";
+import { BusinessModePreview } from "./deep-dive-previews/business-mode-preview";
 import { SecurityAndRadarPreview } from "./deep-dive-previews/security-and-radar-preview";
 
-export type DeepDiveTabKey = "investments" | "reports" | "security";
+export type DeepDiveTabKey = "investments" | "business" | "ai" | "reports" | "security";
 
 export interface DeepDiveTabsSectionProps {
   activeTab?: DeepDiveTabKey;
@@ -35,6 +37,20 @@ export function DeepDiveTabsSection({
       shortLabel: "Investimentos",
       icon: <PieChart className="size-4" aria-hidden="true" />,
       content: <InvestmentsProPreview />,
+    },
+    {
+      value: "business",
+      label: "Modo Negócio (MEI & PJ)",
+      shortLabel: "Negócio",
+      icon: <Briefcase className="size-4" aria-hidden="true" />,
+      content: <BusinessModePreview />,
+    },
+    {
+      value: "ai",
+      label: "Micro-IA Integrada",
+      shortLabel: "Micro-IA",
+      icon: <Cpu className="size-4" aria-hidden="true" />,
+      content: <AiIntelligencePreview />,
     },
     {
       value: "reports",
@@ -67,8 +83,8 @@ export function DeepDiveTabsSection({
             Simples no primeiro minuto. Profundo quando você quiser evoluir.
           </h2>
           <p className="mt-3 sm:mt-4 text-sm sm:text-lg text-muted-foreground leading-relaxed">
-            Explore por assunto a inteligência de investimentos, a suíte executiva de relatórios com
-            memória de cálculo e a camada de segurança e radar preventivo.
+            Explore por assunto a inteligência de investimentos, o Modo Negócio (MEI/PJ), a Micro-IA
+            integrada, a suíte executiva de relatórios e a camada de segurança.
           </p>
         </ScrollReveal>
 

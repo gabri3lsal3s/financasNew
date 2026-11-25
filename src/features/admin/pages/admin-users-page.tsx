@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
-import { UserPlus } from "lucide-react";
-import { Badge, Button, SearchInput, Select } from "@/components/ui";
+import { AlertCircle, ChevronLeft, ChevronRight, UserPlus } from "lucide-react";
+import { Badge, Button, EmptyState, SearchInput, Select } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
 import { ROLE_LABELS, STATUS_LABELS } from "@/domain/admin";
 import { useAdminUsers, useUserAccess } from "@/state";
@@ -10,6 +10,7 @@ import { AdminUsersList } from "../components/admin-users-list";
 import type { AdminUserRow } from "@/types";
 
 const VALID_STATUS_FILTERS = new Set(["all", "active", "pending_approval", "suspended", "banned"]);
+const PAGE_SIZE = 25;
 
 export function AdminUsersPage() {
   const { role: currentUserRole } = useUserAccess();
@@ -21,10 +22,12 @@ export function AdminUsersPage() {
 
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
+  const [page, setPage] = useState(0);
   const [selectedUser, setSelectedUser] = useState<AdminUserRow | null>(null);
   const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
 
   const handleStatusFilterChange = (nextStatus: string) => {
+    setPage(0);
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
@@ -43,17 +46,20 @@ export function AdminUsersPage() {
     search: search.trim() ? search.trim() : null,
     status: statusFilter && statusFilter !== "all" ? statusFilter : null,
     role: roleFilter && roleFilter !== "all" ? roleFilter : null,
-    limit: 100,
+    limit: PAGE_SIZE,
+    offset: page * PAGE_SIZE,
   });
 
   const users = usersQuery.data ?? [];
+  const totalCount = users[0]?.total_count ?? users.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   return (
     <div className="flex flex-col gap-6 w-full min-w-0">
       <PageHeader
         title="Gestão de Usuários"
         description="Cadastro, planos e permissões modulares"
-        badge={<Badge variant="muted" size="sm">{users.length} usuários</Badge>}
+        badge={<Badge variant="muted" size="sm">{totalCount} usuários</Badge>}
         actions={
           isSuperadmin ? (
             <Button
@@ -62,10 +68,9 @@ export function AdminUsersPage() {
               size="sm"
               sensoryIntent="selection"
               onClick={() => setIsCreateUserOpen(true)}
-              className="gap-1.5 text-xs"
             >
-              <UserPlus className="size-3.5" aria-hidden="true" />
-              <span>Adicionar Usuário</span>
+              <UserPlus aria-hidden="true" />
+              <span>Adicionar usuário</span>
             </Button>
           ) : undefined
         }
@@ -74,8 +79,14 @@ export function AdminUsersPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <SearchInput
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onClear={() => setSearch("")}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(0);
+          }}
+          onClear={() => {
+            setSearch("");
+            setPage(0);
+          }}
           placeholder="Buscar por nome ou e-mail…"
           aria-label="Buscar por nome ou e-mail"
         />
@@ -96,7 +107,10 @@ export function AdminUsersPage() {
 
         <Select
           value={roleFilter}
-          onValueChange={setRoleFilter}
+          onValueChange={(nextRole) => {
+            setRoleFilter(nextRole);
+            setPage(0);
+          }}
           ariaLabel="Filtrar por cargo"
           placeholder="Cargo: Todos"
           options={[
@@ -108,11 +122,62 @@ export function AdminUsersPage() {
         />
       </div>
 
-      <AdminUsersList
-        users={users}
-        isLoading={usersQuery.isLoading}
-        onSelectUser={setSelectedUser}
-      />
+      {usersQuery.isError ? (
+        <EmptyState
+          icon={<AlertCircle className="size-10 text-critical-strong" aria-hidden="true" />}
+          tone="negative"
+          title="Não foi possível carregar os usuários"
+          description="Ocorreu um erro ao buscar a lista de usuários. Tente novamente."
+          action={
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void usersQuery.refetch()}
+            >
+              Tentar novamente
+            </Button>
+          }
+        />
+      ) : (
+        <>
+          <AdminUsersList
+            users={users}
+            isLoading={usersQuery.isLoading}
+            onSelectUser={setSelectedUser}
+          />
+
+          {totalCount > PAGE_SIZE && (
+            <div className="flex items-center justify-between gap-3 pt-1">
+              <span className="text-xs text-muted-foreground tabular-nums">
+                Página {page + 1} de {totalPages}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={page === 0 || usersQuery.isLoading}
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                >
+                  <ChevronLeft aria-hidden="true" />
+                  <span>Anterior</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={page + 1 >= totalPages || usersQuery.isLoading}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  <span>Próxima</span>
+                  <ChevronRight aria-hidden="true" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       {selectedUser && (
         <UserEditDialog

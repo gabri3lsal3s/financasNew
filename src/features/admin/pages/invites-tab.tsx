@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { KeyRound, Plus } from "lucide-react";
+import { AlertCircle, KeyRound, Plus } from "lucide-react";
 import { Button, ConfirmDialog, EmptyState, Skeleton } from "@/components/ui";
 import { useAdminInvites, useAdminRevokeInvite } from "@/state";
 import { CreateInviteDialog } from "../components";
@@ -79,7 +79,24 @@ export function InvitesTab() {
         </Button>
       </div>
 
-      {invitesQuery.isLoading ? (
+      {invitesQuery.isError ? (
+        <EmptyState
+          icon={<AlertCircle className="size-10 text-critical-strong" aria-hidden="true" />}
+          tone="negative"
+          title="Não foi possível carregar os convites"
+          description="Ocorreu um erro ao buscar a lista de convites. Tente novamente."
+          action={
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void invitesQuery.refetch()}
+            >
+              Tentar novamente
+            </Button>
+          }
+        />
+      ) : invitesQuery.isLoading ? (
         <div
           className="rounded-xl border border-border/80 bg-surface shadow-xs p-4 sm:p-5 divide-y divide-border/80"
           aria-hidden="true"

@@ -54,6 +54,7 @@ export function isCompleteTourTrack(
   if (!track) return false;
   return (
     track === "finances" ||
+    track === "business" ||
     track === "investments" ||
     track === "settings" ||
     track === "settings_support" ||
@@ -92,6 +93,11 @@ export function getTourHandoffDestination(
   // Trilha 1 Completa: Finanças Diárias & Cartões Consolidado
   if (track === "finances") {
     return "/?novo=despesa";
+  }
+
+  // Trilha Completa: Modo Negócio (MEI & PJ)
+  if (track === "business") {
+    return "/negocio";
   }
 
   // Trilha 2 Completa: Finanças Compartilhadas & Modo Família
@@ -135,6 +141,15 @@ export function getBlockHandoffInfo(
     return {
       actionLabel: "Lançar na Conta Real",
       actionDestination: "/?novo=despesa",
+      nextTrackId: "shared_finances",
+      nextTrackLabel: "Finanças Compartilhadas",
+    };
+  }
+
+  if (track === "business") {
+    return {
+      actionLabel: "Configurar Meu Negócio",
+      actionDestination: "/negocio",
       nextTrackId: "shared_finances",
       nextTrackLabel: "Finanças Compartilhadas",
     };

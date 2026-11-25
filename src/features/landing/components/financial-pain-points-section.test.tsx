@@ -20,18 +20,22 @@ describe("FinancialPainPointsSection", () => {
     expect(invoiceCheckbox).toHaveAttribute("aria-checked", "false");
   });
 
-  it("permite alternar entre os 5 cenários financeiros e interagir com cada widget", async () => {
+  it("permite alternar entre os 6 cenários financeiros e interagir com cada widget", async () => {
     const user = userEvent.setup();
     const onExploreInvestments = vi.fn();
     render(<FinancialPainPointsSection onExploreInvestments={onExploreInvestments} />);
 
     // 2. Captura sem fricção + aprovação de despesa
-    await user.click(screen.getByRole("tab", { name: /Preguiça de anotar/i }));
+    await user.click(screen.getByRole("tab", { name: /Captura com IA/i }));
     expect(screen.getByTestId("pain-preview-capture")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /Aprovar Despesa/i }));
     expect(screen.getByText("Lançamento confirmado")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Aprovada \(desfazer\)/i })).toBeInTheDocument();
+
+    // 3. Separação PF & PJ (Modo Negócio)
+    await user.click(screen.getByRole("tab", { name: /PF & PJ/i }));
+    expect(screen.getByTestId("pain-preview-business")).toBeInTheDocument();
 
     // 3. Parcelas, Contas a Receber & Dívidas (Price / SAC)
     await user.click(screen.getByRole("tab", { name: /Parcelas & Dívidas/i }));

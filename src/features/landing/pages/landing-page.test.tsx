@@ -41,7 +41,7 @@ describe("LandingPage", () => {
       screen.getByRole("heading", { name: /Do gasto do dia a dia aos seus investimentos/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Toda sua vida financeira em um só lugar/i),
+      screen.getByText(/Vida pessoal, negócio \(MEI\/PJ\) e investimentos com IA integrada/i),
     ).toBeInTheDocument();
     expect(screen.getAllByText(/30 dias grátis sem cartão de crédito/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Caixa Real Disponível").length).toBeGreaterThan(0);
@@ -59,7 +59,7 @@ describe("LandingPage", () => {
     expect(screen.getByTestId("hero-calculation-memory")).toBeInTheDocument();
   });
 
-  it("renderiza o ecossistema unificado de 6 nós e permite saltar diretamente para o palco de dores", async () => {
+  it("renderiza o ecossistema unificado de 8 nós e permite saltar diretamente para o palco de dores", async () => {
     const user = userEvent.setup();
     const scrollIntoViewMock = vi.fn();
     window.HTMLElement.prototype.scrollIntoView = scrollIntoViewMock;
@@ -68,7 +68,7 @@ describe("LandingPage", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: /Um único aplicativo no lugar de 6 controles espalhados/i,
+        name: /Um único aplicativo no lugar de 8 controles espalhados/i,
       }),
     ).toBeInTheDocument();
     expect(screen.getByText("Gasto Diário & Caixa Real")).toBeInTheDocument();
@@ -77,6 +77,8 @@ describe("LandingPage", () => {
     expect(screen.getByText("Racha de Parcelas & Viagens")).toBeInTheDocument();
     expect(screen.getByText("Finanças da Família")).toBeInTheDocument();
     expect(screen.getByText("Investimentos, Preço Teto & Relatórios")).toBeInTheDocument();
+    expect(screen.getByText("Modo Negócio (MEI, PJ & Autônomos)")).toBeInTheDocument();
+    expect(screen.getByText("Micro-IA Financeira Integrada")).toBeInTheDocument();
 
     // Clica no nó de Racha de Parcelas & Viagens -> ativa o card compartilhado
     await user.click(

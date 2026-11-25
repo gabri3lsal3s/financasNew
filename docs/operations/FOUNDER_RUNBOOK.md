@@ -203,7 +203,7 @@ O script executará automaticamente:
   2. Confirme os últimos 4 dígitos do telefone cadastrado e o nome completo do titular;
   3. Para planos Pro pagos, confirme a data e valor aproximado da última transação no Asaas.
 - **Procedimento Direto no Painel Superadmin (1 Clique — Recomendado):**
-  1. Acesse o **Painel Administrativo** (`/admin/users`);
+  1. Acesse o **Painel Administrativo** (`/admin/usuarios`);
   2. Localize o usuário e clique no botão **Gerenciar**;
   3. Na seção **Ações de Suporte do Superadmin**, clique no botão **Resetar 2FA**;
   4. Confirme no diálogo. O sistema remove atomicamente todos os fatores TOTP em `auth.mfa_factors` via RPC/Edge Function auditada e registra a ação em `audit_events`.
@@ -224,7 +224,7 @@ O script executará automaticamente:
 - **Cenário:** O fundador deseja criar uma conta completa para um cliente ou parceiro VIP sem que o cliente precise passar pelo fluxo público de cadastro.
 - **Regra de Ouro da LGPD:** O administrador **NUNCA** cria nem digita a senha do cliente.
 - **Procedimento:**
-  1. No painel de usuários (`/admin/users`), clique no botão **Adicionar Usuário** no cabeçalho;
+  1. No painel de usuários (`/admin/usuarios`), clique no botão **Adicionar usuário** no cabeçalho;
   2. Preencha o Nome Completo, E-mail, Telefone (opcional), Cargo administrativo inicial e Plano SaaS (Free, Pro ou Lifetime);
   3. Clique em **Cadastrar e Gerar Link**;
   4. O sistema cria o usuário de forma atômica no banco, configura a assinatura e perfil, grava o evento de auditoria e gera um **Link Soberano de Ativação**;
@@ -258,25 +258,25 @@ O ecossistema administrativo do Áxis Finance foi completamente isolado da aplic
 
 ### 8.2 Controle de Acesso ao Aplicativo Nativo (APK Android Beta)
 Para gerenciar o beta fechado com precisão cirúrgica sem necessidade de compilar novas versões:
-1. Acesse o **Console Admin** → **Sistema & Configurações** (`/admin/settings`);
+1. Acesse o **Console Admin** → **Configurações** (`/admin/configuracoes`, aba **APK Beta**);
 2. Localize a seção **Controle de Acesso ao Aplicativo Nativo (APK Android)**;
 3. Alterne as chaves:
    - `apk_access_free`: Libera o login pelo APK nativo para usuários do plano Free;
    - `apk_access_pro`: Libera o login pelo APK nativo para assinantes do plano Pro;
 4. **Comportamento no Dispositivo:** Caso o acesso ao APK esteja desligado para o plano do usuário, o aplicativo Android exibe um modal bloqueador amigável convidando o cliente a usar o Áxis via navegador móvel (PWA/Web). Operadores com perfil `admin`/`superadmin` possuem passe livre irrestrito para homologação.
 
-### 8.3 Central de Notificações & Broadcast Push (`/admin/notifications`)
+### 8.3 Central de Notificações & Broadcast Push (`/admin/notificacoes`)
 Permite despachar comunicados instantâneos na barra de alertas do aplicativo dos clientes:
 - **Públicos Selecionáveis:** Todos os usuários (`all`), apenas assinantes Pro (`pro`), contas gratuitas (`free`) ou um usuário específico por ID UUID (`specific_user`);
 - **Tipos Semânticos:** Informativo (`info`), Sucesso (`success`), Alerta Operacional (`warning`) ou Manutenção Crítica (`critical`);
 - **Ações Clicáveis:** Suporte a links internos (ex: `/ferramentas`, `/configuracoes`) com rastreamento de leitura individual em `user_notification_reads`.
 
-### 8.4 Central de Backups & Disaster Recovery (DRP) (`/admin/backups`)
-1. **Geração de Snapshot:** Clique em **Gerar Snapshot Agora**. O console compila todos os registros públicos e metadados, calcula o checksum SHA-256 no cliente e registra o evento na tabela `system_backups`;
-2. **Download Seguro:** O arquivo `.json` versionado pode ser baixado e arquivado em cofre seguro;
-3. **Verificação de Integridade:** Na ferramenta de validação, cole o hash SHA-256 de qualquer backup histórico para atestar se o arquivo não sofreu corrupção ou adulteração de dados.
+### 8.4 Backups, Auditoria (`/admin/seguranca`) e Faturamento (`/admin/faturamento`)
+- **Backups & DRP:** Backups PITR e snapshots de banco de dados são gerenciados diretamente no **Supabase Dashboard** (a rota legada `/admin/backups` foi removida do menu principal para evitar duplicidade).
+- **Auditoria (`/admin/seguranca`):** Permite filtrar eventos em `audit_events` por ação, entidade e período, paginar resultados e exportar logs em CSV ou JSON.
+- **Faturamento (`/admin/faturamento`):** Exibe KPIs SaaS em tempo real (MRR estimado, assinantes ativos, trials expirando e inadimplentes `past_due`), listagem filtrável de assinaturas e gestão de carência.
 
-### 8.5 Cofre de Contato Auditado (LGPD) (`/admin/users`)
+### 8.5 Cofre de Contato Auditado (LGPD) (`/admin/usuarios`)
 - O telefone/WhatsApp e o CPF dos clientes não são expostos em listagens públicas nem no REST do Supabase (`REVOKE SELECT`).
 - Na tela de edição de usuário, o operador clica em **Revelar Telefone & CPF (Auditado)**.
 - A visualização invoca a RPC `admin_get_user_contact_details`, que registra compulsoriamente a auditoria em `audit_events` com timestamp, ID do operador e ID do cliente, assegurando total conformidade com a LGPD e link direto para WhatsApp de suporte.

@@ -1,20 +1,10 @@
 import { CheckCircle2, ShieldCheck, Sparkles } from "lucide-react";
 import { Badge, MoneyText } from "@/components/ui";
-import { PLAN_CONFIGS, type BillingScheduleResult } from "@/domain/subscription";
+import { PLAN_CONFIGS, PRO_CHECKOUT_BENEFITS, type BillingScheduleResult } from "@/domain/subscription";
 import { cn } from "@/lib/utils";
 import type { SubscriptionPlan } from "@/types";
 
-const BENEFITS = [
-  "Lançamentos, cartões, ativos e histórico 100% ilimitados",
-  "Caixa Real e Saldo Livre para gastar hoje sem comprometer o mês",
-  "Captura sem digitação: Leitor OCR de cupons/boletos, Pix e notificações",
-  "Multi-Cartões em até 60x, melhor dia de compra e faturas futuras",
-  "Contas a Pagar e a Receber, Contratos (Price/SAC) e Quitação de Dívidas",
-  "Modo Família, Viagens, Vaquinhas e Racha Pix com link público sem cadastro",
-  "Carteira Multi-Ativos (Ações, FIIs, Renda Fixa CDI/IPCA+ e Exterior) e Proventos",
-  "Preço Teto & Valuation (Bazin, Graham, Gordon, P/VP) e Aportes sem vendas",
-  "7 Relatórios Executivos A4/PDF, Excel (.xlsx) e Memória de Cálculo aberta",
-] as const;
+const BENEFITS = PRO_CHECKOUT_BENEFITS;
 
 export interface CheckoutPlanSummarySidebarProps {
   plan: SubscriptionPlan;

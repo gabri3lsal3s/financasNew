@@ -41,7 +41,7 @@ describe("AdminForensicsPage & Route Guard (Fase 1)", () => {
     );
 
     expect(screen.getByText("Portal de Login Administrativo")).toBeInTheDocument();
-    expect(screen.queryByText("Laboratório Forense de Auditoria")).not.toBeInTheDocument();
+    expect(screen.queryByText("Laboratório Forense")).not.toBeInTheDocument();
   });
 
   it("renderiza o painel com sucesso para operadores com perfil admin", async () => {
@@ -68,11 +68,11 @@ describe("AdminForensicsPage & Route Guard (Fase 1)", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("Laboratório Forense de Auditoria")).toBeInTheDocument();
-    expect(screen.getByText("Laboratório Forense Pronto para Disparo")).toBeInTheDocument();
+    expect(screen.getByText("Laboratório Forense")).toBeInTheDocument();
+    expect(screen.getByText("Motor Forense de Invariantes")).toBeInTheDocument();
 
     const user = userEvent.setup();
-    const triggerBtn = screen.getByRole("button", { name: /Disparar Auditoria Agora/i });
+    const triggerBtn = screen.getByRole("button", { name: /^Disparar Auditoria$/i });
     await user.click(triggerBtn);
 
     await waitFor(() => {

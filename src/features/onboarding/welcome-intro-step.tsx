@@ -1,4 +1,4 @@
-import { Camera, CreditCard, Layers, Sparkles, TrendingUp } from "lucide-react";
+import { Briefcase, Cpu, Layers, Sparkles, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui";
 
 /**
@@ -26,18 +26,18 @@ export function WelcomeIntroStep() {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
         <div className="rounded-xl border border-border/80 bg-surface p-3 shadow-xs">
-          <CreditCard className="size-4 text-muted-foreground mb-1.5" aria-hidden="true" />
-          <h4 className="text-xs font-semibold text-foreground">Fluxo &amp; Cartões</h4>
+          <Briefcase className="size-4 text-muted-foreground mb-1.5" aria-hidden="true" />
+          <h4 className="text-xs font-semibold text-foreground">Dia a Dia &amp; Negócio</h4>
           <p className="mt-1 text-[11px] text-muted-foreground leading-snug">
-            Faturas automáticas, melhor dia de compra e saldo Safe-to-Spend diário.
+            Caixa Real, cartões em até 60x e separação PF/PJ com DRE, DAS e Teto MEI.
           </p>
         </div>
 
         <div className="rounded-xl border border-border/80 bg-surface p-3 shadow-xs">
-          <Camera className="size-4 text-muted-foreground mb-1.5" aria-hidden="true" />
-          <h4 className="text-xs font-semibold text-foreground">Captura Inteligente</h4>
+          <Cpu className="size-4 text-primary-strong mb-1.5" aria-hidden="true" />
+          <h4 className="text-xs font-semibold text-foreground">Micro-IA Integrada</h4>
           <p className="mt-1 text-[11px] text-muted-foreground leading-snug">
-            Leitura de cupons e comprovantes sem digitação com privacidade total.
+            Leitura Vision de cupons e Pix, importação de faturas PDF/XLS e busca natural.
           </p>
         </div>
 

@@ -18,7 +18,7 @@ describe("HeroEditorial", () => {
 
     expect(
       screen.getByText(
-        "Toda sua vida financeira em um só lugar · sem planilhas e sem senhas bancárias",
+        "Vida pessoal, negócio (MEI/PJ) e investimentos com IA integrada · sem planilhas",
       ),
     ).toBeInTheDocument();
 

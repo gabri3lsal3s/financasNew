@@ -40,14 +40,14 @@ describe("SubscriptionSuccessPage Component", () => {
     );
 
     expect(
-      screen.getByText("Caixa Real, Cartões até 60x & Captura OCR/Pix"),
+      screen.getByText("Caixa Real, Cartões até 60x & Micro-IA Vision"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Modo Negócio (MEI & PJ) & Separação PF/PJ"),
     ).toBeInTheDocument();
     expect(screen.getByText("Modo Família, Viagens & Racha Pix")).toBeInTheDocument();
     expect(
-      screen.getByText("Carteira Multi-Ativos, Preço Teto & Aportes"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("7 Relatórios Executivos A4/PDF & Excel (.xlsx)"),
+      screen.getByText("Carteira Multi-Ativos, Preço Teto & 7 Relatórios"),
     ).toBeInTheDocument();
   });
 

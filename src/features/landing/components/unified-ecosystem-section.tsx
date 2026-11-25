@@ -1,5 +1,7 @@
 import {
   ArrowRight,
+  Briefcase,
+  Cpu,
   CreditCard,
   HandCoins,
   HeartHandshake,
@@ -12,8 +14,8 @@ import { Badge, Card } from "@/components/ui";
 import { ScrollReveal } from "./scroll-reveal";
 
 export type EcosystemDestination =
-  | { section: "dores"; key: "cash" | "capture" | "debts" | "shared" | "invest" }
-  | { section: "profundidade"; key: "investments" | "reports" | "security" };
+  | { section: "dores"; key: "cash" | "capture" | "business" | "debts" | "shared" | "invest" }
+  | { section: "profundidade"; key: "investments" | "business" | "ai" | "reports" | "security" };
 
 export interface UnifiedEcosystemSectionProps {
   onSelectDestination?: (destination: EcosystemDestination) => void;
@@ -90,6 +92,26 @@ const ECOSYSTEM_NODES: readonly EcosystemNode[] = [
     destination: { section: "profundidade", key: "investments" },
     actionLabel: "Explorar investimentos",
   },
+  {
+    step: "07",
+    title: "Modo Negócio (MEI, PJ & Autônomos)",
+    replaces: "No lugar de misturar conta pessoal e empresa",
+    description:
+      "DRE gerencial, reserva automática do DAS (Tax Shield), Teto MEI anual, Ponto de Equilíbrio e reembolso PF/PJ.",
+    icon: Briefcase,
+    destination: { section: "profundidade", key: "business" },
+    actionLabel: "Ver Modo Negócio",
+  },
+  {
+    step: "08",
+    title: "Micro-IA Financeira Integrada",
+    replaces: "No lugar de digitar cupons e faturas na mão",
+    description:
+      "Leitura Vision de cupons e Pix, importação de faturas PDF com senha/XLS, categorização automática e busca natural.",
+    icon: Cpu,
+    destination: { section: "profundidade", key: "ai" },
+    actionLabel: "Ver Micro-IA em ação",
+  },
 ];
 
 export function UnifiedEcosystemSection({ onSelectDestination }: UnifiedEcosystemSectionProps) {
@@ -111,7 +133,7 @@ export function UnifiedEcosystemSection({ onSelectDestination }: UnifiedEcosyste
             <span>Consolidação de Ponta a Ponta</span>
           </div>
           <h2 className="mt-3 sm:mt-4 font-display text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-foreground">
-            Um único aplicativo no lugar de 6 controles espalhados
+            Um único aplicativo no lugar de 8 controles espalhados
           </h2>
           <p className="mt-3 sm:mt-4 text-sm sm:text-lg text-muted-foreground leading-relaxed">
             Em vez de pular entre aplicativo de banco, planilha de cartão, caderno de quem te deve e

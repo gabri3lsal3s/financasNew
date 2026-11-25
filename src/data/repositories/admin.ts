@@ -30,6 +30,7 @@ import type {
   UserFeatureOverride,
   SystemBackup,
   AdminBroadcastNotification,
+  SubscriptionTier,
 } from "@/types";
 
 /**
@@ -89,16 +90,46 @@ export async function listAccessInvites(): Promise<AccessInvite[]> {
   return data ?? [];
 }
 
+export interface ListAuditEventsParams {
+  limit?: number;
+  offset?: number;
+  action?: string | null;
+  entityType?: string | null;
+  fromDate?: string | null;
+  toDate?: string | null;
+}
+
 /**
- * Consulta logs de auditoria recentes do sistema.
+ * Consulta logs de auditoria do sistema com filtros e paginação.
  */
-export async function listAuditEvents(limit = 100): Promise<AuditEvent[]> {
+export async function listAuditEvents(
+  paramsOrLimit: number | ListAuditEventsParams = 100,
+): Promise<AuditEvent[]> {
+  const params: ListAuditEventsParams =
+    typeof paramsOrLimit === "number" ? { limit: paramsOrLimit } : paramsOrLimit;
+  const limit = params.limit ?? 100;
+  const offset = params.offset ?? 0;
+
+  let query = getSupabase()
+    .from("audit_events")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (params.action) {
+    query = query.ilike("action", `%${params.action}%`);
+  }
+  if (params.entityType) {
+    query = query.eq("entity_type", params.entityType);
+  }
+  if (params.fromDate) {
+    query = query.gte("created_at", `${params.fromDate}T00:00:00.000Z`);
+  }
+  if (params.toDate) {
+    query = query.lte("created_at", `${params.toDate}T23:59:59.999Z`);
+  }
+
   const { data, error } = await resolveQuery<AuditEvent[]>(
-    getSupabase()
-      .from("audit_events")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(limit),
+    query.range(offset, offset + limit - 1),
   );
 
   if (error) {
@@ -321,6 +352,74 @@ export async function adminSendPastDueReminder(params: {
   }
 
   return { message: data.message as string };
+}
+
+
+export interface AdminSubscriptionSummaryRow {
+  id: string;
+  user_id: string;
+  plan_id: string;
+  tier: SubscriptionTier;
+  status: string;
+  trial_ends_at: string | null;
+  current_period_end: string | null;
+  asaas_subscription_id: string | null;
+  updated_at: string;
+  created_at: string;
+}
+
+/**
+ * Lista assinaturas da plataforma para visão consolidada de faturamento.
+ */
+export async function listAdminSubscriptions(limit = 200): Promise<AdminSubscriptionSummaryRow[]> {
+  const { data, error } = await resolveQuery<AdminSubscriptionSummaryRow[]>(
+    getSupabase()
+      .from("user_subscriptions")
+      .select("id, user_id, plan_id, tier, status, trial_ends_at, current_period_end, asaas_subscription_id, updated_at, created_at")
+      .order("updated_at", { ascending: false })
+      .limit(limit),
+  );
+
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+
+  return data ?? [];
+}
+
+/**
+ * Encerra imediatamente um comunicado broadcast definindo expires_at para agora.
+ */
+export async function adminExpireBroadcastNotification(notificationId: string): Promise<void> {
+  const { error } = await resolveQuery<unknown>(
+    getSupabase()
+      .from("admin_broadcast_notifications")
+      .update({ expires_at: new Date().toISOString() } as never)
+      .eq("id", notificationId),
+  );
+
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+}
+
+/**
+ * Exclui permanentemente um comunicado broadcast.
+ */
+export async function adminDeleteBroadcastNotification(notificationId: string): Promise<void> {
+  const { error } = await resolveQuery<unknown>(
+    getSupabase()
+      .from("admin_broadcast_notifications")
+      .delete()
+      .eq("id", notificationId),
+  );
+
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
 }
 
 // Re-export das operações administrativas transacionais

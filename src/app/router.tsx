@@ -155,9 +155,6 @@ const AdminTicketsPage = lazy(() =>
 const AdminInvitesPage = lazy(() =>
   import("@/features/admin/pages/admin-invites-page").then((m) => ({ default: m.AdminInvitesPage })),
 );
-const AdminBackupsPage = lazy(() =>
-  import("@/features/admin/pages/admin-backups-page").then((m) => ({ default: m.AdminBackupsPage })),
-);
 const AdminSecurityPage = lazy(() =>
   import("@/features/admin/pages/admin-security-page").then((m) => ({ default: m.AdminSecurityPage })),
 );
@@ -374,7 +371,7 @@ export function AppRouter() {
               <Route path="/admin/faturamento" element={<AdminBillingPage />} />
               <Route path="/admin/chamados" element={<AdminTicketsPage />} />
               <Route path="/admin/convites" element={<AdminInvitesPage />} />
-              <Route path="/admin/backups" element={<AdminBackupsPage />} />
+              <Route path="/admin/backups" element={<Navigate to="/admin/seguranca" replace />} />
               <Route path="/admin/seguranca" element={<AdminSecurityPage />} />
               <Route path="/admin/laboratorio-forense" element={<AdminForensicsPage />} />
               <Route path="/admin/configuracoes" element={<AdminSettingsPage />} />

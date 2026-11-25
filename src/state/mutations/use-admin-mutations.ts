@@ -9,6 +9,8 @@ import {
   adminToggleGlobalFeature,
   adminUpdateUserStatus,
   adminSendBroadcastNotification,
+  adminExpireBroadcastNotification,
+  adminDeleteBroadcastNotification,
   adminLogSystemBackup,
   markBroadcastAsRead,
   dismissBroadcastNotification,
@@ -669,3 +671,51 @@ export function useAdminSendPastDueReminder() {
 }
 
 
+
+export function useAdminExpireBroadcast() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (notificationId: string) => adminExpireBroadcastNotification(notificationId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ADMIN_BROADCASTS_KEY });
+      void queryClient.invalidateQueries({ queryKey: MY_BROADCASTS_KEY });
+      pushToast({
+        title: "Comunicado encerrado",
+        description: "O aviso foi marcado como expirado e não será mais exibido.",
+        variant: "success",
+      });
+    },
+    onError: (err) => {
+      pushToast({
+        title: "Erro ao encerrar comunicado",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useAdminDeleteBroadcast() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (notificationId: string) => adminDeleteBroadcastNotification(notificationId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ADMIN_BROADCASTS_KEY });
+      void queryClient.invalidateQueries({ queryKey: MY_BROADCASTS_KEY });
+      pushToast({
+        title: "Comunicado excluído",
+        description: "O registro do comunicado foi removido com sucesso.",
+        variant: "success",
+      });
+    },
+    onError: (err) => {
+      pushToast({
+        title: "Erro ao excluir comunicado",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    },
+  });
+}

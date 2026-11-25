@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { BellRing } from "lucide-react";
-import { Badge, EmptyState, Skeleton } from "@/components/ui";
+import { BellRing, Clock, Trash2 } from "lucide-react";
+import { Badge, Button, ConfirmDialog, EmptyState, Skeleton } from "@/components/ui";
 import { formatDateTimeBR } from "@/lib/date";
+import { useAdminDeleteBroadcast, useAdminExpireBroadcast } from "@/state";
 import type { AdminBroadcastNotification } from "@/types";
 
 export interface BroadcastHistoryListProps {
@@ -14,6 +15,9 @@ export interface BroadcastHistoryListProps {
  */
 export function BroadcastHistoryList({ broadcasts, isLoading }: BroadcastHistoryListProps) {
   const [nowMs] = useState(() => Date.now());
+  const [deleteTarget, setDeleteTarget] = useState<AdminBroadcastNotification | null>(null);
+  const expireMutation = useAdminExpireBroadcast();
+  const deleteMutation = useAdminDeleteBroadcast();
 
   return (
     <section aria-label="Histórico de Comunicados" className="flex flex-col gap-4">
@@ -70,7 +74,7 @@ export function BroadcastHistoryList({ broadcasts, isLoading }: BroadcastHistory
               >
                 <div className="flex flex-col min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-semibold text-foreground truncate">{b.title}</span>
+                    <span className="text-sm font-semibold text-foreground line-clamp-2 break-words">{b.title}</span>
                     <Badge variant="muted" size="xs" className="font-mono">
                       {audienceLabel}
                     </Badge>
@@ -90,14 +94,62 @@ export function BroadcastHistoryList({ broadcasts, isLoading }: BroadcastHistory
                   )}
                 </div>
 
-                <div className="shrink-0 text-right text-xs text-muted-foreground font-mono">
-                  {formatDateTimeBR(b.created_at)}
+                <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
+                  <span className="text-xs text-muted-foreground font-mono">
+                    {formatDateTimeBR(b.created_at)}
+                  </span>
+                  {!isExpired && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={expireMutation.isPending}
+                      onClick={() => expireMutation.mutate(b.id)}
+                    >
+                      <Clock aria-hidden="true" />
+                      <span>Encerrar</span>
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-critical-strong hover:text-critical-strong"
+                    aria-label={`Excluir comunicado ${b.title}`}
+                    disabled={deleteMutation.isPending}
+                    onClick={() => setDeleteTarget(b)}
+                  >
+                    <Trash2 aria-hidden="true" />
+                  </Button>
                 </div>
               </div>
             );
           })}
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title="Excluir comunicado?"
+        description={
+          deleteTarget
+            ? `O comunicado "${deleteTarget.title}" será removido permanentemente do histórico.`
+            : undefined
+        }
+        confirmLabel="Excluir"
+        cancelLabel="Cancelar"
+        variant="destructive"
+        confirmPending={deleteMutation.isPending}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          const targetId = deleteTarget.id;
+          setDeleteTarget(null);
+          deleteMutation.mutate(targetId);
+        }}
+      />
     </section>
   );
 }

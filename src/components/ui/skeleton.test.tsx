@@ -60,7 +60,7 @@ describe("Skeleton por contexto (F12 — polimento)", () => {
     const root = screen.getByLabelText("Carregando Visão Geral");
     expect(root).toBeInTheDocument();
     // 4 KPIs em grid de 4 colunas no desktop + 2 gráficos em grid de 2 colunas
-    const kpiGrid = container.querySelector(".lg\\:grid-cols-4");
+    const kpiGrid = container.querySelector(".xl\\:grid-cols-4");
     expect(kpiGrid?.children).toHaveLength(4);
     const chartGrid = container.querySelector(".lg\\:grid-cols-2");
     expect(chartGrid?.children).toHaveLength(2);

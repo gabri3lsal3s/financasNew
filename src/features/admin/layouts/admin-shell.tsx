@@ -1,22 +1,31 @@
-import { useLayoutEffect, useState } from "react";
+import { useLayoutEffect, useMemo, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import {
   Activity,
   ExternalLink,
   LogOut,
   Menu,
-  ShieldCheck,
   X,
 } from "lucide-react";
 import { Badge, Button, buttonVariants } from "@/components/ui";
 import { BrandLogo, ThemeToggle } from "@/components/layout";
 import { useAuth } from "@/hooks/use-auth";
 import { useSignOut } from "@/hooks/use-sign-out";
-import { useUserAccess } from "@/state";
+import {
+  useAdminMetrics,
+  useAdminPastDueSubscriptions,
+  useAdminStatementBlueprints,
+  useAdminSupportTickets,
+  useUserAccess,
+} from "@/state";
 import { cn } from "@/lib/utils";
 import { resetPageScroll } from "@/services/scroll";
 import { triggerSensory } from "@/services/sensory";
-import { ADMIN_NAV_ITEMS } from "./admin-nav-config";
+import {
+  ADMIN_FORENSICS_NAV_ITEM,
+  ADMIN_NAV_GROUPS,
+  type AdminNavBadgeKey,
+} from "./admin-nav-config";
 import { AdminMobileDrawer } from "./admin-mobile-drawer";
 
 export function AdminShell() {
@@ -27,6 +36,28 @@ export function AdminShell() {
   const { profile, role, isSuperAdmin } = useUserAccess(session?.user?.id);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const metricsQuery = useAdminMetrics();
+  const ticketsQuery = useAdminSupportTickets();
+  const pastDueQuery = useAdminPastDueSubscriptions();
+  const blueprintsQuery = useAdminStatementBlueprints();
+
+  const navBadges = useMemo<Partial<Record<AdminNavBadgeKey, number>>>(() => {
+    const openTickets = (ticketsQuery.data ?? []).filter(
+      (t) => t.status === "open" || t.status === "in_progress",
+    ).length;
+    const pendingBlueprints = (blueprintsQuery.data ?? []).filter(
+      (b) => b.status === "pending_review",
+    ).length;
+    return {
+      pendingUsers: metricsQuery.data?.pending_users ?? 0,
+      openTickets,
+      pastDue: (pastDueQuery.data ?? []).length,
+      pendingBlueprints,
+    };
+  }, [metricsQuery.data?.pending_users, ticketsQuery.data, pastDueQuery.data, blueprintsQuery.data]);
+
+  const apiHealthy = !metricsQuery.isError;
+
   useLayoutEffect(() => {
     resetPageScroll({ containerId: "admin-main-content" });
   }, [location.pathname]);
@@ -35,6 +66,8 @@ export function AdminShell() {
     await signOut();
     navigate("/admin/login", { replace: true });
   };
+
+  const ForensicsIcon = ADMIN_FORENSICS_NAV_ITEM.icon;
 
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
@@ -72,9 +105,22 @@ export function AdminShell() {
 
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <div className="hidden lg:flex items-center gap-2 rounded-full border border-border/80 bg-background/60 px-3 py-1 text-xs text-muted-foreground">
-            <span className="flex size-2 rounded-full bg-positive-strong" />
-            <Activity className="size-3.5 text-positive-strong" aria-hidden="true" />
-            <span className="font-mono text-[11px]">Banco &amp; Serviços Operacionais</span>
+            <span
+              className={cn(
+                "flex size-2 rounded-full",
+                apiHealthy ? "bg-positive-strong" : "bg-critical-strong",
+              )}
+            />
+            <Activity
+              className={cn(
+                "size-3.5",
+                apiHealthy ? "text-positive-strong" : "text-critical-strong",
+              )}
+              aria-hidden="true"
+            />
+            <span className="font-mono text-[11px]">
+              {apiHealthy ? "API Conectada" : "Falha na API"}
+            </span>
           </div>
 
           <Link
@@ -120,44 +166,67 @@ export function AdminShell() {
 
       <div className="flex flex-1 w-full min-w-0">
         <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-border/80 bg-surface/50 p-4">
-          <div className="flex items-center gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            <ShieldCheck className="size-3.5 text-primary-strong" aria-hidden="true" />
-            <span>Navegação Operacional</span>
-          </div>
+          <nav className="flex flex-col gap-4" aria-label="Navegação administrativa">
+            {ADMIN_NAV_GROUPS.map((group) => (
+              <div key={group.id} className="flex flex-col gap-1">
+                <span className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+                  {group.label}
+                </span>
+                {group.items.map(({ to, label, icon: Icon, badgeKey }) => {
+                  const count = badgeKey ? (navBadges[badgeKey] ?? 0) : 0;
+                  return (
+                    <NavLink
+                      key={to}
+                      to={to}
+                      onClick={() => triggerSensory("selection")}
+                      className={({ isActive }) =>
+                        cn(
+                          "flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-xs font-medium transition-colors",
+                          isActive
+                            ? "bg-primary/10 font-semibold text-primary-strong border border-primary/20"
+                            : "text-muted-foreground hover:bg-surface-hover hover:text-foreground",
+                        )
+                      }
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Icon className="size-4 shrink-0" aria-hidden="true" />
+                        <span className="truncate">{label}</span>
+                      </div>
+                      {count > 0 && (
+                        <Badge variant="warning" size="xs">
+                          {count}
+                        </Badge>
+                      )}
+                    </NavLink>
+                  );
+                })}
+              </div>
+            ))}
+          </nav>
 
-          <nav className="flex flex-col gap-1 mt-2" aria-label="Navegação administrativa">
-            {ADMIN_NAV_ITEMS.map(({ to, label, icon: Icon, badge }) => (
+          <div className="mt-auto pt-4 border-t border-border/80 flex flex-col gap-2">
+            {isSuperAdmin && (
               <NavLink
-                key={to}
-                to={to}
+                to={ADMIN_FORENSICS_NAV_ITEM.to}
                 onClick={() => triggerSensory("selection")}
                 className={({ isActive }) =>
                   cn(
-                    "flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-xs font-medium transition-colors",
+                    "flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium transition-colors",
                     isActive
                       ? "bg-primary/10 font-semibold text-primary-strong border border-primary/20"
                       : "text-muted-foreground hover:bg-surface-hover hover:text-foreground",
                   )
                 }
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <Icon className="size-4 shrink-0" aria-hidden="true" />
-                  <span className="truncate">{label}</span>
-                </div>
-                {badge && (
-                  <Badge variant="muted" size="xs">
-                    {badge}
-                  </Badge>
-                )}
+                <ForensicsIcon className="size-4 shrink-0" aria-hidden="true" />
+                <span className="truncate">{ADMIN_FORENSICS_NAV_ITEM.label}</span>
               </NavLink>
-            ))}
-          </nav>
+            )}
 
-          <div className="mt-auto pt-4 border-t border-border/80 flex flex-col gap-2">
             <div className="rounded-xl bg-surface-raised p-3 text-xs text-muted-foreground flex flex-col gap-1">
               <span className="font-semibold text-foreground">Ambiente Seguro</span>
               <p className="text-[11px] leading-relaxed">
-                Todas as ações administrativas geram registros imutáveis em trilha de auditoria (LGPD).
+                Ações administrativas geram registros imutáveis em trilha de auditoria.
               </p>
             </div>
           </div>
@@ -167,6 +236,8 @@ export function AdminShell() {
           open={mobileMenuOpen}
           onClose={() => setMobileMenuOpen(false)}
           onSignOut={handleSignOut}
+          isSuperAdmin={isSuperAdmin}
+          badges={navBadges}
         />
 
         <main

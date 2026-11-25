@@ -50,7 +50,7 @@ export function LandingPage() {
       : {
           title: "Axir — Toda Sua Vida Financeira em Um Único App",
           description:
-            "Do gasto do dia a dia aos seus investimentos. Conecte caixa real, cartões, contas a pagar e receber, racha em grupo, Modo Família, preço teto e relatórios com memória de cálculo.",
+            "Do gasto do dia a dia ao seu negócio e investimentos. Conecte caixa real, cartões, Modo Negócio (MEI/PJ), Micro-IA para faturas e cupons, Modo Família, preço teto e relatórios com memória de cálculo.",
           canonicalPath: "/",
         },
   );
