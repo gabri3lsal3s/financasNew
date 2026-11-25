@@ -2245,7 +2245,83 @@ export function useStatementImport({
   const handleConfirmImport = async () => {
     const toImport = reconciledItems.filter((it) => it.selected);
     const hasLinkedAdjustments = pendingLinkAdjustments.size > 0;
-    if (toImport.length === 0 && !hasLinkedAdjustments) return;
+
+    if (isReadOnlyMode) {
+      const msg = "Modo somente leitura ativo. Não é possível importar lançamentos.";
+      triggerSensory("error");
+      setError(msg);
+      pushToast({
+        variant: "destructive",
+        title: "Importação indisponível",
+        description: msg,
+      });
+      return;
+    }
+
+    if (toImport.length === 0 && !hasLinkedAdjustments) {
+      // Se tudo já está conciliado/ignorado, conclui a conferência com feedback claro e Shadow Replay
+      const draftSession = draftBlueprintRef.current;
+      if (draftSession) {
+        try {
+          const replay = validateBlueprintWithShadowReplay({
+            blueprint: draftSession.blueprint,
+            rawLines: draftSession.rawLines,
+            cardId: card.id,
+            competenceMonth: activeCompetenceMonth,
+            officialTotalCents: draftSession.officialTotalCents,
+            cycleNetTargetCents: draftSession.cycleNetTargetCents,
+            previousBalanceCents: draftSession.previousBalanceCents,
+            paymentsCents: draftSession.paymentsCents,
+          });
+          if (replay.passed) {
+            saveStatementBlueprint(draftSession.blueprint);
+          }
+        } catch {
+          // Não bloqueia conclusão da conferência
+        }
+        draftBlueprintRef.current = null;
+      }
+
+      triggerSensory("success");
+      pushToast({
+        variant: "default",
+        title: "Conferência concluída",
+        description: "Todos os lançamentos desta fatura já estão conciliados no aplicativo.",
+      });
+      onClose();
+      return;
+    }
+
+    const validToImport = toImport.filter(
+      (it) => !it.transaction.isRefund && it.transaction.amountCents > 0,
+    );
+    const skippedInvalidCount = toImport.length - validToImport.length;
+
+    if (validToImport.length === 0 && !hasLinkedAdjustments) {
+      const msg =
+        "Nenhum lançamento de compra válido para importar. Para estornos, use o botão Registrar Estorno.";
+      triggerSensory("error");
+      setError(msg);
+      pushToast({
+        variant: "destructive",
+        title: "Nenhum lançamento válido selecionado",
+        description: msg,
+      });
+      return;
+    }
+
+    if (validToImport.length > 0 && categories.length === 0) {
+      const msg =
+        "Nenhuma categoria de despesa foi encontrada. Crie ao menos uma categoria de despesa antes de importar a fatura.";
+      triggerSensory("error");
+      setError(msg);
+      pushToast({
+        variant: "destructive",
+        title: "Categoria obrigatória",
+        description: msg,
+      });
+      return;
+    }
 
     setError(null);
     try {
@@ -2270,12 +2346,12 @@ export function useStatementImport({
       // 2. Importa lançamentos selecionados da competência corrente
       let totalInserted = 0;
       let totalSkipped = 0;
-      if (toImport.length > 0) {
+      if (validToImport.length > 0) {
         const result = await executeChunkedStatementImport({
           cardId: card.id,
           cardScope: card.scope,
           competenceMonth: activeCompetenceMonth,
-          items: toImport,
+          items: validToImport,
           fallbackCategoryId: defaultCategoryId || categories[0]?.id || "",
           onProgress: setImportProgress,
           mutateChunk: (input) => importMutation.mutateAsync(input),
@@ -2291,7 +2367,7 @@ export function useStatementImport({
         projected: ReturnType<typeof projectFutureInstallments>;
       }> = [];
 
-      for (const it of toImport) {
+      for (const it of validToImport) {
         if (
           it.projectSeries &&
           it.transaction.installment &&
@@ -2355,64 +2431,92 @@ export function useStatementImport({
         }
       }
 
-      // 4. Salva cache declarativo de colunas usando a linha real de cabeçalho
-      if (columnMapping && parsedRows.length > 0) {
-        const headerCells = extractHeaderCellsForCache(parsedRows, columnMapping);
-        if (headerCells.length > 0) {
-          setCachedColumnMapping(headerCells, columnMapping);
+      // 4. Salva cache declarativo de colunas usando a linha real de cabeçalho (não bloqueante)
+      try {
+        if (columnMapping && parsedRows.length > 0) {
+          const headerCells = extractHeaderCellsForCache(parsedRows, columnMapping);
+          if (headerCells.length > 0) {
+            setCachedColumnMapping(headerCells, columnMapping);
+          }
         }
+      } catch {
+        // Cache local não deve bloquear fechamento após importação no banco
       }
 
       // 4b. Auto-aprendizado blindado (Camada 4): executa Shadow Replay determinístico antes de persistir
-      // Só salva o blueprint se o dry-run atingir score >= 85 e Checksum válido no próprio documento.
-      const draftSession = draftBlueprintRef.current;
-      if (draftSession) {
-        const replay = validateBlueprintWithShadowReplay({
-          blueprint: draftSession.blueprint,
-          rawLines: draftSession.rawLines,
-          cardId: card.id,
-          competenceMonth: activeCompetenceMonth,
-          officialTotalCents: draftSession.officialTotalCents,
-          cycleNetTargetCents: draftSession.cycleNetTargetCents,
-          previousBalanceCents: draftSession.previousBalanceCents,
-          paymentsCents: draftSession.paymentsCents,
-        });
-        if (replay.passed) {
-          saveStatementBlueprint(draftSession.blueprint);
+      try {
+        const draftSession = draftBlueprintRef.current;
+        if (draftSession) {
+          const replay = validateBlueprintWithShadowReplay({
+            blueprint: draftSession.blueprint,
+            rawLines: draftSession.rawLines,
+            cardId: card.id,
+            competenceMonth: activeCompetenceMonth,
+            officialTotalCents: draftSession.officialTotalCents,
+            cycleNetTargetCents: draftSession.cycleNetTargetCents,
+            previousBalanceCents: draftSession.previousBalanceCents,
+            paymentsCents: draftSession.paymentsCents,
+          });
+          if (replay.passed) {
+            saveStatementBlueprint(draftSession.blueprint);
+          }
+          draftBlueprintRef.current = null;
         }
+      } catch {
         draftBlueprintRef.current = null;
       }
 
       // 5. Precedência Humana: grava em merchant-learning apenas o que foi confirmado pelo usuário
-      for (const it of toImport) {
-        if (it.selectedCategoryId) {
-          autoLearnExpenseCategory(
-            it.transaction.cleanDescription,
-            it.selectedCategoryId,
-            undefined,
-            it.transaction.rawDescription,
-          );
+      try {
+        for (const it of validToImport) {
+          if (it.selectedCategoryId) {
+            autoLearnExpenseCategory(
+              it.transaction.cleanDescription,
+              it.selectedCategoryId,
+              undefined,
+              it.transaction.rawDescription,
+            );
+          }
         }
+      } catch {
+        // Aprendizado local não deve bloquear fechamento
       }
 
       triggerSensory("success");
       const totalAdjusted = pendingLinkAdjustments.size;
       const futureCount = seriesToProject.reduce((acc, s) => acc + s.projected.length, 0);
 
-      pushToast({
-        variant: "default",
-        title: `Fatura importada com sucesso: ${totalInserted} ${
-          totalInserted === 1 ? "lançamento criado" : "lançamentos criados"
-        }${totalSkipped > 0 ? ` (${totalSkipped} duplicatas ignoradas)` : ""}${
-          totalAdjusted > 0 ? ` · ${totalAdjusted} despesa(s) vinculada(s)` : ""
-        }${
-          futureCount > 0 ? ` · ${futureCount} parcelas futuras projetadas` : ""
-        }.`,
-      });
+      if (validToImport.length > 0 && totalInserted === 0 && totalSkipped > 0 && totalAdjusted === 0) {
+        pushToast({
+          variant: "default",
+          title: `Nenhum novo lançamento criado (${totalSkipped} ${
+            totalSkipped === 1 ? "já existia" : "já existiam"
+          } no aplicativo).`,
+        });
+      } else {
+        pushToast({
+          variant: "default",
+          title: `Fatura importada com sucesso: ${totalInserted} ${
+            totalInserted === 1 ? "lançamento criado" : "lançamentos criados"
+          }${totalSkipped > 0 ? ` (${totalSkipped} duplicatas ignoradas)` : ""}${
+            skippedInvalidCount > 0 ? ` · ${skippedInvalidCount} item(ns) sem valor positivo ignorado(s)` : ""
+          }${
+            totalAdjusted > 0 ? ` · ${totalAdjusted} despesa(s) vinculada(s)` : ""
+          }${
+            futureCount > 0 ? ` · ${futureCount} parcelas futuras projetadas` : ""
+          }.`,
+        });
+      }
       onClose();
     } catch (err) {
+      const msg = getErrorMessage(err);
       triggerSensory("error");
-      setError(getErrorMessage(err));
+      setError(msg);
+      pushToast({
+        variant: "destructive",
+        title: "Não foi possível importar a fatura",
+        description: msg,
+      });
     } finally {
       setImportProgress(null);
     }
@@ -2439,6 +2543,7 @@ export function useStatementImport({
     importProgress,
     categories,
     selectedCount,
+    pendingLinkAdjustmentsCount: pendingLinkAdjustments.size,
     isReadingFile,
     readingStatusMessage,
     isReanalyzingWithAi,

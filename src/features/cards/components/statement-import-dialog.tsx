@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   AlertCircle,
   ArrowRight,
@@ -53,6 +53,7 @@ function StatementImportContent({
 }: StatementImportContentProps) {
   const mappingFormId = useId();
   const clipperFormId = useId();
+  const errorAlertRef = useRef<HTMLDivElement>(null);
   const [confirmBackDiscard, setConfirmBackDiscard] = useState(false);
   const state = useStatementImport({
     card,
@@ -63,6 +64,12 @@ function StatementImportContent({
     onClose: () => onOpenChange(false),
     onCompetenceChange,
   });
+
+  useEffect(() => {
+    if (state.error) {
+      errorAlertRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
+    }
+  }, [state.error]);
 
   const handleBackFromReconcile = () => {
     if (state.hasUnsavedChanges && !confirmBackDiscard) {
@@ -138,7 +145,18 @@ function StatementImportContent({
             <Button
               type="button"
               sensoryIntent={false}
-              disabled={state.selectedCount === 0 || state.isPending}
+              disabled={
+                state.isPending ||
+                (state.selectedCount === 0 &&
+                  state.pendingLinkAdjustmentsCount === 0 &&
+                  state.reconciledItems.some(
+                    (it) =>
+                      it.status === "unmatched_new" &&
+                      !it.ignoredByDefault &&
+                      !it.transaction.isRefund &&
+                      !it.crossCompetenceMatch,
+                  ))
+              }
               onClick={() => void state.handleConfirmImport()}
             >
               {state.isPending ? (
@@ -147,12 +165,35 @@ function StatementImportContent({
                 ) : (
                   "Importando..."
                 )
+              ) : state.selectedCount > 0 ? (
+                <>
+                  <Check className="size-4" aria-hidden="true" />
+                  <span>
+                    Importar {state.selectedCount}{" "}
+                    {state.selectedCount === 1 ? "Lançamento" : "Lançamentos"}
+                  </span>
+                </>
+              ) : state.pendingLinkAdjustmentsCount > 0 ? (
+                <>
+                  <Check className="size-4" aria-hidden="true" />
+                  <span>
+                    Salvar {state.pendingLinkAdjustmentsCount}{" "}
+                    {state.pendingLinkAdjustmentsCount === 1 ? "Vínculo" : "Vínculos"}
+                  </span>
+                </>
               ) : (
                 <>
                   <Check className="size-4" aria-hidden="true" />
                   <span>
-                    Importar {state.selectedCount > 0 ? state.selectedCount : ""}{" "}
-                    {state.selectedCount === 1 ? "Lançamento" : "Lançamentos"}
+                    {state.reconciledItems.some(
+                      (it) =>
+                        it.status === "unmatched_new" &&
+                        !it.ignoredByDefault &&
+                        !it.transaction.isRefund &&
+                        !it.crossCompetenceMatch,
+                    )
+                      ? "Selecione ao menos 1 item"
+                      : "Concluir conferência"}
                   </span>
                 </>
               )}
@@ -188,12 +229,14 @@ function StatementImportContent({
     >
       <div className="space-y-4">
         {state.error ? (
-          <Alert variant="error">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
-              <span>{state.error}</span>
-            </div>
-          </Alert>
+          <div ref={errorAlertRef}>
+            <Alert variant="error">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+                <span>{state.error}</span>
+              </div>
+            </Alert>
+          </div>
         ) : null}
 
         {state.aiStatusNotice ? (

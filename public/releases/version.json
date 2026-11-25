@@ -1,13 +1,13 @@
 {
   "version": "3.26.0",
-  "versionCode": 111,
-  "releaseDate": "2026-11-24T23:28:37Z",
+  "versionCode": 112,
+  "releaseDate": "2026-11-25T02:56:03Z",
   "minSupportedVersion": "3.26.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "586eb2daa5212be3971b66b90b8a808a6728ecfcaed7fc07e638ae06b3c8151c",
-  "fileSizeBytes": 13500149,
+  "sha256": "5350fb5c2840f75ae24b2421f7fa5232287feea8625d8bf4db33dfc0195afc8d",
+  "fileSizeBytes": 13500765,
   "changelog": [
-    "Axir v3.26.0 (Build 111): Conciliacao Inteligente, Cross-Competencia & PDF com Senha na IA Vision",
+    "Axir v3.26.0 (Build 112): Conciliacao Inteligente, Cross-Competencia & PDF com Senha na IA Vision",
     "Deteccao e exclusao segura de duplicatas ja cadastradas no app dentro da aba Duplicatas sem falso alerta em Conciliados",
     "Conciliacao cross-competencia (M-1/M+1) com movimentacao individual ou em lote para mudancas de fechamento",
     "Suporte a PDFs protegidos por senha na escalada visual (IA Vision) com senha mantida apenas em memoria volatil"

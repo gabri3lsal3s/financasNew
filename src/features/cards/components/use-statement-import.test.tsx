@@ -7,6 +7,7 @@ import { sanitizeDescriptionForStatementMicroAi } from "./statement-import-helpe
 import * as aiAssistantService from "@/services/ai-assistant";
 import * as merchantLearningService from "@/services/merchant-learning";
 import * as receiptExtractorService from "@/services/native/receipt-extractor";
+import * as toastService from "@/services/toast";
 
 const mockCard: CreditCard = {
   id: "card-micro-ai",
@@ -515,6 +516,105 @@ describe("Etapa 4 — Micro-IA Semântica Deduplicada (useStatementImport)", () 
       expect(result.current.reconciledItems).toHaveLength(1);
       expect(result.current.reconciledItems[0]?.transaction.cleanDescription).toBe("Padaria Protegida");
       expect(result.current.reconciledItems[0]?.transaction.amountCents).toBe(4590);
+    });
+  });
+
+  describe("4.8 Confirmação de Importação, Erros Visíveis e Conferência Já Conciliada", () => {
+    it("conclui conferência quando todas as despesas já estão conciliadas (selectedCount === 0)", async () => {
+      const onCloseMock = vi.fn();
+      const toastSpy = vi.spyOn(toastService, "pushToast");
+
+      mockExistingExpenses = [
+        {
+          id: "exp-1",
+          user_id: "user-1",
+          card_id: mockCard.id,
+          category_id: "cat-food",
+          payment_method: "credit_card",
+          value: 25,
+          base_amount: 25,
+          report_weight: 1,
+          date: "2026-08-10",
+          bill_competence: "2026-08",
+          description: "Padaria Estrela",
+          installments_total: 1,
+          installment_number: 1,
+          statement_hash: null,
+          imported_from_statement: false,
+          is_paid: false,
+          created_at: "",
+          updated_at: "",
+        } as unknown as Expense,
+      ];
+
+      const { result } = renderHook(() =>
+        useStatementImport({
+          card: mockCard,
+          competenceMonth: "2026-08",
+          onClose: onCloseMock,
+        }),
+      );
+
+      await act(async () => {
+        await result.current.handleFileSelect(
+          new File(["Data\tDescricao\tValor\n10/08/2026\tPadaria Estrela\t25,00"], "fatura.csv", {
+            type: "text/csv",
+          }),
+        );
+      });
+
+      await waitFor(() => {
+        expect(result.current.step).toBe("reconcile");
+      });
+      expect(result.current.selectedCount).toBe(0);
+
+      await act(async () => {
+        await result.current.handleConfirmImport();
+      });
+
+      expect(onCloseMock).toHaveBeenCalledTimes(1);
+      expect(toastSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Conferência concluída",
+        }),
+      );
+    });
+
+    it("exibe pushToast destrutivo além do alert quando o RPC de importação falha (sem erro silencioso)", async () => {
+      const toastSpy = vi.spyOn(toastService, "pushToast");
+      mutateImportAsyncMock.mockRejectedValueOnce(new Error("Falha de rede no Supabase"));
+
+      const { result } = renderHook(() =>
+        useStatementImport({
+          card: mockCard,
+          competenceMonth: "2026-08",
+          onClose: vi.fn(),
+        }),
+      );
+
+      await act(async () => {
+        await result.current.handleFileSelect(
+          new File(["Data\tDescricao\tValor\n10/08/2026\tMercado Novo\t80,00"], "fatura.csv", {
+            type: "text/csv",
+          }),
+        );
+      });
+
+      await waitFor(() => {
+        expect(result.current.step).toBe("reconcile");
+      });
+
+      await act(async () => {
+        await result.current.handleConfirmImport();
+      });
+
+      expect(result.current.error).toContain("Falha de rede no Supabase");
+      expect(toastSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant: "destructive",
+          title: "Não foi possível importar a fatura",
+        }),
+      );
     });
   });
 });
