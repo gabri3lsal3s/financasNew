@@ -58,6 +58,8 @@ export interface ParsedBankTransaction {
   status?: "completed" | "scheduled";
   isScheduled?: boolean;
   scheduledFor?: string;
+  dueDate?: string;
+  documentStatus?: "paid" | "pending_due";
   txId?: string;
   taxId?: string;
   pixKey?: string;

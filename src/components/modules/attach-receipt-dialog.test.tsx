@@ -1,8 +1,17 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AttachReceiptDialog } from "./attach-receipt-dialog";
-import { computeEMVCRC16, getReceiptKindLabel } from "@/domain/notifications";
+import {
+  computeEMVCRC16,
+  formatDigitableLine,
+  getReceiptKindLabel,
+  modulo10,
+  modulo11Febraban,
+} from "@/domain/notifications";
 import * as clipboardService from "@/services/clipboard";
+import { PdfPasswordProtectedError } from "@/services/native/receipt-extractor";
+import * as pdfSessionService from "@/services/pdf-session";
 import { clearLocalReceiptScanCache } from "@/services/receipt-resolution";
 import { pushToast } from "@/services/toast";
 import type { CreditCard } from "@/types/schema";
@@ -393,5 +402,97 @@ describe("AttachReceiptDialog", () => {
     fireEvent.click(redirectBtn);
     expect(onOpenChange).toHaveBeenCalledWith(false);
     expect(onNavigateToStatementImport).toHaveBeenCalledTimes(1);
+  });
+
+  it("permite colar linha digitável de boleto na aba 'Colar texto ou código'", async () => {
+    const user = userEvent.setup();
+    const free25 = "1234567890123456789012345";
+    const factor = "1642";
+    const amt = "0000031500";
+    const base43 = `3419${factor}${amt}${free25}`;
+    const dvG = modulo11Febraban(base43);
+    const c1 = `3419${free25.slice(0, 5)}`;
+    const c2 = free25.slice(5, 15);
+    const c3 = free25.slice(15, 25);
+    const line = formatDigitableLine(
+      `${c1}${modulo10(c1)}${c2}${modulo10(c2)}${c3}${modulo10(c3)}${dvG}${factor}${amt}`,
+    );
+
+    render(<AttachReceiptDialog open={true} onOpenChange={onOpenChange} onParsed={onParsed} />);
+
+    await user.click(screen.getByRole("tab", { name: /Colar texto ou código/i }));
+    const textarea = await screen.findByLabelText(/Conteúdo colado do comprovante ou boleto/i);
+    fireEvent.change(textarea, { target: { value: line } });
+    await user.click(screen.getByRole("button", { name: /Reconhecer dados/i }));
+
+    await waitFor(() => {
+      expect(onParsed).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amountCents: 31500,
+          documentStatus: "pending_due",
+          receiptKind: "bank_slip_payment",
+        }),
+      );
+    });
+  });
+
+  it("exibe desbloqueio inline quando PDF está protegido por senha e retoma leitura ao enviar senha", async () => {
+    const disposeMock = vi.fn().mockResolvedValue(undefined);
+    const openSpy = vi
+      .spyOn(pdfSessionService, "openPdfDocumentSession")
+      .mockRejectedValueOnce(new PdfPasswordProtectedError())
+      .mockResolvedValueOnce({
+        fileName: "condominio.pdf",
+        sha256: null,
+        totalPages: 1,
+        getTotalPages: () => 1,
+        getBuffer: () => new ArrayBuffer(16),
+        extractPageTexts: async () => [
+          "Comprovante de Pagamento de Boleto\nBeneficiário: Condomínio Parque\nValor Pago: R$ 540,00\nData: 20/11/2026",
+        ],
+        extractSpatialPages: async () => ({
+          usedTwoColumnMode: false,
+          totalPages: 1,
+          lines: [
+            {
+              text: "Comprovante de Pagamento de Boleto\nBeneficiário: Condomínio Parque\nValor Pago: R$ 540,00\nData: 20/11/2026",
+              y: 700,
+              xStart: 40,
+              xEnd: 400,
+              fontSize: 10,
+              column: 1,
+              pageNumber: 1,
+              tokens: [],
+            },
+          ],
+        }),
+        renderPageToBlob: async () => null,
+        dispose: disposeMock,
+      });
+
+    render(<AttachReceiptDialog open={true} onOpenChange={onOpenChange} onParsed={onParsed} />);
+
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const protectedPdf = new File(["%PDF-1.4 locked"], "condominio.pdf", {
+      type: "application/pdf",
+    });
+    fireEvent.change(fileInput, { target: { files: [protectedPdf] } });
+
+    const passwordInput = await screen.findByLabelText(/Senha do arquivo PDF/i);
+    expect(screen.getByText(/Boleto ou comprovante em PDF protegido/i)).toBeInTheDocument();
+
+    fireEvent.change(passwordInput, { target: { value: "012345" } });
+    fireEvent.click(screen.getByRole("button", { name: /Desbloquear e continuar/i }));
+
+    await waitFor(() => {
+      expect(openSpy).toHaveBeenCalledTimes(2);
+      expect(onParsed).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amountCents: 54000,
+          receiptKind: "bank_slip_payment",
+        }),
+      );
+    });
+    openSpy.mockRestore();
   });
 });

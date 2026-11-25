@@ -148,5 +148,26 @@ describe("bank-slip-parser — Parser Especializado de Boletos e Tributos (Taref
       expect(parsed?.amountCents).toBe(20000);
       expect(parsed?.barcodeOrDigitableLine).toBe("00190000090123456780201234567802189010000020000");
     });
+
+    it("detecta boleto em aberto (Ficha de Compensação) usando vencimento e marcando pending_due", () => {
+      const openSlip = `
+        BANCO ITAÚ S.A.
+        RECIBO DO PAGADOR / FICHA DE COMPENSAÇÃO
+        Pagável em qualquer banco até o vencimento
+        Beneficiário: Escola Horizonte Ltda
+        Vencimento: 12/12/2026
+        Nosso Número: 109/00012345-6
+        Valor do Documento: R$ 980,00
+        34191.09008 12345.678901 23456.789012 1 16420000098000
+      `;
+
+      const parsed = parseBankSlipReceipt(openSlip);
+      expect(parsed).not.toBeNull();
+      expect(parsed?.documentStatus).toBe("pending_due");
+      expect(parsed?.isScheduled).toBe(true);
+      expect(parsed?.dueDate).toBe("2026-12-12");
+      expect(parsed?.date).toBe("2026-12-12");
+      expect(parsed?.amountCents).toBe(98000);
+    });
   });
 });

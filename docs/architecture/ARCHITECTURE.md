@@ -709,10 +709,11 @@ O Assistente Passivo opera em modelo híbrido entre o cliente Android nativo e o
    - Trava de idempotência temporal de 5 minutos por hash de evento (`packageName + title + amount + 5m_window`).
 
 ### 14.4 Integração de UI, Lançamento Rápido & Auto-Cadastro Transacional (Fases 4 e 5)
-1. **Modal de Anexo Rico (`src/components/modules/attach-receipt-dialog.tsx`)**:
-   - Suporte a anexo por arquivo (PDF ou imagem) e captura por câmera nativa/web.
-   - Card de feedback rico exibindo o tipo de comprovante identificado com badge e descrição amigável.
-   - Pré-resolução de cartão, método de pagamento e categoria sugerida antes do encaminhamento ao formulário.
+1. **Modal de Anexo Rico (`src/components/modules/attach-receipt-dialog.tsx` & `src/services/receipts/`)**:
+   - Arquitetura modular em `src/services/receipts/` (`receipt-file-loader.ts`, `receipt-qr-decoder.ts`, `receipt-vision-runner.ts`, `receipt-pipeline.ts`, `receipt-cache.ts`, `use-receipt-ingestion.ts`), mantendo `src/services/receipt-resolution.ts` como fachada compatível.
+   - Suporte a anexo por arquivo (PDF digital/escaneado ou imagem com detecção por magic bytes e compressão adaptativa para cupons longos), captura por câmera nativa/web, leitura local de QR Code (`BarcodeDetector` para Pix/NFC-e) e aba dedicada para colar Pix Copia e Cola, chave Pix ou linha digitável de boleto (47/48 dígitos).
+   - Abertura única de PDF via `openPdfDocumentSession` com leitura espacial (`receipt-spatial-normalizer.ts`), desbloqueio inline de PDF protegido por senha (`PdfPasswordProtectedError`) e cancelamento real via `AbortController` — harmonizado com `StatementUploadStep`.
+   - Decodificador puro de linha digitável Febraban e guias de arrecadação (`src/domain/notifications/bank-slip-barcode.ts`) com distinção entre boleto pago e em aberto (`pending_due`).
 2. **Auto-Preenchimento no LaunchWizard (`src/features/transactions/wizard/launch-wizard.tsx`)**:
    - Preenchimento transparente de natureza (despesa vs receita), valor, data, forma de pagamento, parcelamento e cartão resolvido.
    - Aplicação automática do dia de fechamento (`closing_day`) do cartão selecionado para definição precisa da competência de fatura em compras parceladas a prazo.

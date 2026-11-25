@@ -524,6 +524,10 @@ function sanitizeAiCategoriesInput(
 async function performSingleReceiptAiCall(
   params: ExtractSingleReceiptAiParams,
 ): Promise<AiSingleReceiptClientResult> {
+  if (params.signal?.aborted) {
+    return { ok: false, reason: "upstream_unavailable", fallbackToLocal: true };
+  }
+
   const maskedText = params.text
     ? maskSensitivePiiForAi(params.text).trim().slice(0, MAX_AI_SINGLE_RECEIPT_TEXT_CHARS)
     : "";
@@ -538,6 +542,9 @@ async function performSingleReceiptAiCall(
     if (!sourceBlob && params.pdfFile) {
       try {
         const buffer = await params.pdfFile.arrayBuffer();
+        if (params.signal?.aborted) {
+          return { ok: false, reason: "upstream_unavailable", fallbackToLocal: true };
+        }
         const { renderScannedPdfPageToBlob } = await import("@/services/native/receipt-extractor");
         sourceBlob = await renderScannedPdfPageToBlob(buffer);
       } catch {
@@ -545,9 +552,13 @@ async function performSingleReceiptAiCall(
       }
     }
 
-    if (sourceBlob) {
+    if (sourceBlob && !params.signal?.aborted) {
       imagePayload = await compressBlobForAiVision(sourceBlob);
     }
+  }
+
+  if (params.signal?.aborted) {
+    return { ok: false, reason: "upstream_unavailable", fallbackToLocal: true };
   }
 
   if (maskedText.length < MIN_AI_TEXT_LENGTH && !imagePayload) {
@@ -558,21 +569,25 @@ async function performSingleReceiptAiCall(
   const allowedCategoryIds =
     cleanCategories.length > 0 ? new Set(cleanCategories.map((c) => c.id)) : undefined;
 
-  const httpRes = await invokeAiAssistantHttp({
-    mode: "single_receipt",
-    sha256: params.sha256,
-    ...(maskedText.length > 0 ? { text: maskedText } : {}),
-    ...(imagePayload
-      ? {
-          imageBase64: imagePayload.base64,
-          imageMimeType: imagePayload.mimeType,
-        }
-      : {}),
-    ...(params.userFullName?.trim()
-      ? { userFullName: params.userFullName.trim().slice(0, 120) }
-      : {}),
-    ...(cleanCategories.length > 0 ? { categories: cleanCategories } : {}),
-  });
+  const httpRes = await invokeAiAssistantHttp(
+    {
+      mode: "single_receipt",
+      sha256: params.sha256,
+      ...(maskedText.length > 0 ? { text: maskedText } : {}),
+      ...(imagePayload
+        ? {
+            imageBase64: imagePayload.base64,
+            imageMimeType: imagePayload.mimeType,
+          }
+        : {}),
+      ...(params.userFullName?.trim()
+        ? { userFullName: params.userFullName.trim().slice(0, 120) }
+        : {}),
+      ...(cleanCategories.length > 0 ? { categories: cleanCategories } : {}),
+    },
+    CLIENT_AI_TIMEOUT_MS,
+    params.signal,
+  );
 
   if (!httpRes.ok) {
     return httpRes;

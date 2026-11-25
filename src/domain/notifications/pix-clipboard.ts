@@ -6,9 +6,10 @@
  * 3. Comprovantes bancários formais inequívocos (`PIX_RECEIPT`, sem fallback genérico frouxo).
  */
 
+import { parseBankSlipDigitableLine } from "./bank-slip-barcode";
 import { isBankSlipReceipt } from "./bank-slip-parser";
 import { isCardSlipReceipt } from "./card-slip-parser";
-import { isDanfeNfcReceipt } from "./danfe-nfc-parser";
+import { isDanfeNfcReceipt, parseNfceQrCodeUrl } from "./danfe-nfc-parser";
 import { parsePixEMVPayload } from "./pix-emv-parser";
 import { isPixReceipt } from "./pix-receipt-parser";
 import { detectPixKey, extractPixKeyFromReceiptText, type PixKeyType } from "./pix-text-parser";
@@ -91,6 +92,53 @@ export function parseClipboardTransactionCandidate(rawText?: string | null): Cli
       confidence: "medium",
       rawText: trimmed,
     };
+  }
+
+  // 2b. Linha digitável de boleto/arrecadação colada isolada (47/48 dígitos com dígitos verificadores válidos)
+  const barcodeOnlyDigits = trimmed.replace(/\D/g, "");
+  if (
+    (barcodeOnlyDigits.length === 47 || barcodeOnlyDigits.length === 48) &&
+    /^[0-9.\-\s]+$/.test(trimmed)
+  ) {
+    const decodedSlip = parseBankSlipDigitableLine(trimmed);
+    if (decodedSlip && decodedSlip.isValidChecksum) {
+      const slipLabel = decodedSlip.bankName
+        ? `Boleto (${decodedSlip.bankName})`
+        : decodedSlip.segmentLabel
+          ? `Boleto: ${decodedSlip.segmentLabel}`
+          : "Boleto Bancário";
+      return {
+        kind: "PIX_RECEIPT",
+        valueCents: decodedSlip.amountCents ?? 0,
+        description: slipLabel,
+        merchant: decodedSlip.bankName || decodedSlip.segmentLabel,
+        nature: "expense",
+        paymentMethod: "boleto",
+        confidence: decodedSlip.amountCents && decodedSlip.amountCents > 0 ? "high" : "medium",
+        date: decodedSlip.dueDate,
+        rawText: trimmed,
+      };
+    }
+  }
+
+  // 2c. URL de QR Code NFC-e / SAT com chave fiscal válida
+  if (/^https?:\/\//i.test(trimmed)) {
+    const nfceQr = parseNfceQrCodeUrl(trimmed);
+    if (nfceQr) {
+      return {
+        kind: "PIX_RECEIPT",
+        valueCents: nfceQr.amountCents,
+        description: nfceQr.description,
+        merchant: nfceQr.merchantOrBeneficiary,
+        recipientName: nfceQr.merchantOrBeneficiary,
+        taxId: nfceQr.taxId,
+        nature: "expense",
+        paymentMethod: "other",
+        confidence: nfceQr.amountCents > 0 ? "high" : "medium",
+        date: nfceQr.date,
+        rawText: trimmed,
+      };
+    }
   }
 
   // 3. Comprovante bancário formal inequívoco (proibido fallback genérico em textos aleatórios)

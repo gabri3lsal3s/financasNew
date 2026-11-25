@@ -63,6 +63,9 @@ export const WIZARD_STEPS = ["Valor", "Categoria", "Detalhes", "Revisão"] as co
 
 export interface ReceiptMeta {
   merchant?: string;
+  receiptKind?: string;
+  dueDate?: string;
+  documentStatus?: "paid" | "pending_due";
   cardLastDigits?: string;
   taxId?: string;
   packageName?: string;

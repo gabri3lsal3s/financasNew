@@ -1,64 +1,12 @@
 import { inferBusinessTaxDeductibility } from "@/domain/business";
-import { todayISO } from "@/domain/debts";
 import {
   inferCategoryKeyword,
   matchCategoryBySlug,
-  parseClipboardTransactionCandidate,
   type CanonicalCategorySlug,
-  type ParsedBankTransaction,
 } from "@/domain/notifications";
 import type { ResolvedReceiptResult } from "@/services/receipt-resolution";
 import type { Category, CreditCard } from "@/types";
 import type { EntryType, LaunchState } from "./wizard-types";
-
-export function buildClipboardCandidateTransaction(
-  candidate: NonNullable<ReturnType<typeof parseClipboardTransactionCandidate>>,
-  rawText: string,
-): ParsedBankTransaction {
-  const hasCounterparty = Boolean(candidate.recipientName || candidate.merchant);
-  const amountConfidence = candidate.valueCents > 0 ? "high" : "low";
-  const counterpartyConfidence = hasCounterparty
-    ? "high"
-    : candidate.kind === "PIX_KEY"
-      ? "medium"
-      : "low";
-  const overallConfidence =
-    candidate.kind === "PIX_BRCODE" && candidate.valueCents > 0
-      ? "high"
-      : candidate.kind === "PIX_KEY"
-        ? "medium"
-        : candidate.confidence;
-
-  return {
-    id: `pix_clip_${Date.now()}`,
-    bankName: "Pix",
-    nature: candidate.nature,
-    type: candidate.nature,
-    amountCents: candidate.valueCents,
-    description: candidate.description,
-    merchant: candidate.merchant,
-    recipientName: candidate.recipientName,
-    pixKey: candidate.pixKey,
-    taxId: candidate.taxId,
-    date: candidate.date || todayISO(),
-    paymentMethod:
-      candidate.paymentMethod === "debit_card"
-        ? "debit"
-        : candidate.paymentMethod === "boleto"
-          ? "other"
-          : candidate.paymentMethod,
-    timestamp: Date.now(),
-    rawText,
-    confidence: overallConfidence,
-    fieldConfidence: {
-      amount: amountConfidence,
-      counterparty: counterpartyConfidence,
-      nature: "high",
-      date: candidate.date ? "high" : "low",
-    },
-    extractionSource: "local_deterministic",
-  };
-}
 
 export function applyResolvedReceiptToLaunchState(
   prev: LaunchState,

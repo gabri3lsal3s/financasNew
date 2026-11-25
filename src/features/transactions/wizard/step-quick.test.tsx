@@ -396,4 +396,22 @@ describe("StepQuick (Lançamento Rápido em Tela Única)", () => {
     await user.click(deductibleSwitch);
     expect(onTaxDeductibleChange).toHaveBeenCalledWith(true);
   });
+
+  it("exibe aviso calmo de vencimento quando boleto em aberto (pending_due) é importado", () => {
+    render(
+      <StepQuick
+        {...defaultProps}
+        receiptMeta={{
+          merchant: "Escola Horizonte",
+          receiptKind: "bank_slip_payment",
+          documentStatus: "pending_due",
+          dueDate: "2026-12-12",
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByText(/Boleto em aberto identificado com vencimento em 12\/12\/2026/i),
+    ).toBeInTheDocument();
+  });
 });

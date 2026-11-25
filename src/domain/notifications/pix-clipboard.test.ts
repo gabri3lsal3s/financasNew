@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { formatDigitableLine, modulo10, modulo11Febraban } from "./bank-slip-barcode";
 import { parseClipboardTransactionCandidate } from "./pix-clipboard";
 import { computeEMVCRC16 } from "./pix-emv-parser";
 
@@ -84,5 +85,36 @@ describe("parseClipboardTransactionCandidate (Golden Dataset G1, G2 e G3)", () =
     expect(parsed?.kind).toBe("PIX_RECEIPT");
     expect(parsed?.valueCents).toBe(12840);
     expect(parsed?.pixKey).toBe("financeiro@mercadobompreco.com.br");
+  });
+
+  it("reconhece linha digitável Febraban válida colada isoladamente como boleto", () => {
+    const free25 = "1234567890123456789012345";
+    const factor = "1642";
+    const amt = "0000045000";
+    const base43 = `3419${factor}${amt}${free25}`;
+    const dvG = modulo11Febraban(base43);
+    const c1 = `3419${free25.slice(0, 5)}`;
+    const c2 = free25.slice(5, 15);
+    const c3 = free25.slice(15, 25);
+    const line = formatDigitableLine(
+      `${c1}${modulo10(c1)}${c2}${modulo10(c2)}${c3}${modulo10(c3)}${dvG}${factor}${amt}`,
+    );
+
+    const parsed = parseClipboardTransactionCandidate(line);
+    expect(parsed).not.toBeNull();
+    expect(parsed?.kind).toBe("PIX_RECEIPT");
+    expect(parsed?.paymentMethod).toBe("boleto");
+    expect(parsed?.valueCents).toBe(45000);
+    expect(parsed?.merchant).toBe("Itaú");
+  });
+
+  it("reconhece URL de QR Code de NFC-e (SEFAZ) com chave de 44 dígitos", () => {
+    const nfceUrl =
+      "https://www.nfce.fazenda.sp.gov.br/NFCeConsultaPublica/Paginas/ConsultaQRCode.aspx?p=35261147508411000156650010000123451009876543|2|1|1|ABC123&vNF=125.90";
+    const parsed = parseClipboardTransactionCandidate(nfceUrl);
+    expect(parsed).not.toBeNull();
+    expect(parsed?.kind).toBe("PIX_RECEIPT");
+    expect(parsed?.valueCents).toBe(12590);
+    expect(parsed?.taxId).toBe("47508411000156");
   });
 });

@@ -20,6 +20,7 @@ import {
 import { getBankAssistantPreferences } from "@/services/native";
 import { consumeCurrentDetectedPix } from "@/services/pix-clipboard-store";
 import {
+  buildClipboardCandidateParsedTransaction,
   resolveAndScanReceiptFile,
   resolveReceiptFromText,
   resolveReceiptTransaction,
@@ -28,10 +29,7 @@ import {
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import type { Category, CreditCard } from "@/types";
-import {
-  applyResolvedReceiptToLaunchState,
-  buildClipboardCandidateTransaction,
-} from "./wizard-mappers";
+import { applyResolvedReceiptToLaunchState } from "./wizard-mappers";
 import type { LaunchState, ReceiptMeta, WizardMode } from "./wizard-types";
 
 export interface UseReceiptAutofillParams {
@@ -175,6 +173,9 @@ export function useReceiptAutofill({
 
       setReceiptMeta({
         merchant: identity.friendlyName || enriched.description,
+        receiptKind: enriched.receiptKind,
+        dueDate: enriched.dueDate,
+        documentStatus: enriched.documentStatus,
         cardLastDigits: enriched.cardLastDigits,
         taxId: enriched.taxId || identity.taxId,
         packageName,
@@ -265,8 +266,13 @@ export function useReceiptAutofill({
       if (!trimmed) return false;
 
       const candidate = parseClipboardTransactionCandidate(trimmed);
-      if (candidate && (candidate.kind === "PIX_BRCODE" || candidate.kind === "PIX_KEY")) {
-        handleReceiptParsed(buildClipboardCandidateTransaction(candidate, trimmed));
+      if (
+        candidate &&
+        (candidate.kind === "PIX_BRCODE" ||
+          candidate.kind === "PIX_KEY" ||
+          candidate.paymentMethod === "boleto")
+      ) {
+        handleReceiptParsed(buildClipboardCandidateParsedTransaction(candidate, trimmed));
         consumeCurrentDetectedPix(trimmed, userId);
         return true;
       }
@@ -337,7 +343,7 @@ export function useReceiptAutofill({
           detectedPix.candidate.valueCents > 0)
       ) {
         handleReceiptParsed(
-          buildClipboardCandidateTransaction(detectedPix.candidate, detectedPix.rawText),
+          buildClipboardCandidateParsedTransaction(detectedPix.candidate, detectedPix.rawText),
         );
         clearDetectedPix();
         return;

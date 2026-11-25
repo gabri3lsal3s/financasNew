@@ -464,3 +464,75 @@ export function parseDanfeNfcReceipt(rawText: string): UniversalReceiptData | nu
     rawCleanText: rawText,
   };
 }
+
+/**
+ * Decodifica metadados estruturados da URL de QR Code de uma NFC-e / SAT (SEFAZ).
+ * Extrai chave de acesso (44 dígitos), CNPJ emitente, catálogo canônico e valor (`vNF`) quando presente.
+ */
+export function parseNfceQrCodeUrl(rawUrl?: string | null): UniversalReceiptData | null {
+  if (!rawUrl || typeof rawUrl !== "string") return null;
+  const trimmed = rawUrl.trim();
+  if (!/^https?:\/\//i.test(trimmed)) return null;
+
+  let accessKey: string | undefined;
+  let amountCents = 0;
+
+  try {
+    const url = new URL(trimmed);
+    const paramP = url.searchParams.get("p") ?? "";
+    const chNfe = url.searchParams.get("chNFe") ?? "";
+    const rawCandidate = paramP.split("|")[0] || chNfe || trimmed;
+    const keyMatch = /(\d{44})/.exec(rawCandidate);
+    if (keyMatch && keyMatch[1]) {
+      accessKey = keyMatch[1];
+    }
+
+    const vNf = url.searchParams.get("vNF");
+    if (vNf) {
+      const parsedVal = extractCentsFromText(vNf.replace(".", ","));
+      if (parsedVal && parsedVal > 0) {
+        amountCents = parsedVal;
+      }
+    }
+  } catch {
+    const keyMatch = /(\d{44})/.exec(trimmed);
+    if (keyMatch && keyMatch[1]) {
+      accessKey = keyMatch[1];
+    }
+  }
+
+  if (!accessKey) return null;
+
+  const modelCode = accessKey.slice(20, 22);
+  if (modelCode !== "65" && modelCode !== "55" && modelCode !== "59") {
+    return null;
+  }
+
+  const taxId = accessKey.slice(6, 20);
+  const catalogMatch = findCanonicalMerchant(taxId);
+  const issuer = catalogMatch?.friendlyName || "";
+  const description = issuer || "Cupom Fiscal (QR Code)";
+
+  return {
+    id: `danfe_qr_${accessKey.slice(-12)}`,
+    kind: "invoice_danfe",
+    nature: "expense",
+    amountCents,
+    date: toISODate(new Date()),
+    description,
+    paymentMethod: "other",
+    merchantOrBeneficiary: issuer || undefined,
+    taxId,
+    nfeAccessKey: accessKey,
+    rawCleanText: trimmed,
+    confidence: amountCents > 0 ? "high" : "medium",
+    confidenceScore: amountCents > 0 ? 0.9 : 0.65,
+    fieldConfidence: {
+      amount: amountCents > 0 ? "high" : "low",
+      counterparty: issuer ? "high" : "low",
+      nature: "high",
+      date: "low",
+    },
+    extractionSource: "local_deterministic",
+  };
+}

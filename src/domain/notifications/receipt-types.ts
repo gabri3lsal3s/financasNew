@@ -85,6 +85,7 @@ export interface UniversalReceiptData {
   pixKey?: string;
   barcodeOrDigitableLine?: string;
   dueDate?: string;
+  documentStatus?: "paid" | "pending_due";
   nfeAccessKey?: string;
   items?: ReceiptItem[];
   discountCents?: number;

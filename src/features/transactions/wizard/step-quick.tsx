@@ -111,6 +111,14 @@ export function StepQuick(props: StepQuickProps) {
         </Alert>
       ) : null}
 
+      {receiptMeta?.documentStatus === "pending_due" && receiptMeta.dueDate ? (
+        <Alert variant="info">
+          Boleto em aberto identificado com vencimento em{" "}
+          {receiptMeta.dueDate.split("-").reverse().join("/")}. Data preenchida com o vencimento
+          para conferência.
+        </Alert>
+      ) : null}
+
       <div className="flex flex-col gap-1.5">
         {natureNeedsReview ? (
           <div className="flex items-center justify-between">

@@ -17,6 +17,7 @@ import {
   isBlacklistedReceipt,
   resolveBankName,
 } from "./bank-parser";
+import { parseBankSlipDigitableLine } from "./bank-slip-barcode";
 import { extractSovereignReceiptAmountCents } from "./receipt-amount-scorer";
 import { isPixReceipt } from "./pix-receipt-parser";
 import { extractDetailedInstallments } from "./installment-extractor";
@@ -24,7 +25,8 @@ import { cleanCorporateSuffixes } from "./danfe-nfc-parser";
 import type { UniversalReceiptData } from "./receipt-types";
 
 /**
- * Verifica se o texto possui marcadores característicos de comprovante de boleto / tributo.
+ * Verifica se o texto possui marcadores característicos de comprovante de boleto / tributo
+ * ou ficha de compensação de boleto em aberto.
  */
 export function isBankSlipReceipt(text: string): boolean {
   if (!text) return false;
@@ -40,6 +42,7 @@ export function isBankSlipReceipt(text: string): boolean {
     /\bcomprovante\s+(?:de\s+pagamento\s+de\s+|de\s+liquida[çc][ãa]o\s+de\s+)?(?:boleto|t[íi]tulo|concession[áa]ria|conv[êe]nio|arrecada[çc][ãa]o|carn[êe])\b/i,
     /\bpagamento\s+(?:de\s+)?(?:boleto|t[íi]tulo|concession[áa]ria|conv[êe]nio|tributo|darf|gps|das|carn[êe])\b/i,
     /\b(?:linha\s+digit[áa]vel|c[óo]digo\s+de\s+barras)\b/i,
+    /\b(?:ficha\s+de\s+compensa[çc][ãa]o|recibo\s+do\s+(?:sacado|pagador)|pag[áa]vel\s+em\s+qualquer\s+banco|nosso\s+n[úu]mero)\b/i,
     /\b(?:comprovante\s+de\s+pagamento\s*-\s*darf|documento\s+de\s+arrecada[çc][ãa]o\s+de\s+receitas\s+federais)\b/i,
     /\b(?:guia\s+da\s+previd[êe]ncia\s+social|comprovante\s+gps)\b/i,
     /\b(?:benefici[áa]rio|cedente)\s*(?:original)?:\s*[^\n\r]+/i,
@@ -58,7 +61,15 @@ export function isBankSlipReceipt(text: string): boolean {
           lower.includes("carnê") ||
           lower.includes("carne") ||
           lower.includes("linha digitável") ||
+          lower.includes("linha digitavel") ||
           lower.includes("código de barras") ||
+          lower.includes("codigo de barras") ||
+          lower.includes("ficha de compensação") ||
+          lower.includes("ficha de compensacao") ||
+          lower.includes("recibo do sacado") ||
+          lower.includes("recibo do pagador") ||
+          lower.includes("nosso número") ||
+          lower.includes("nosso numero") ||
           lower.includes("darf") ||
           lower.includes("gps") ||
           lower.includes("tributo") ||
@@ -73,11 +84,14 @@ export function isBankSlipReceipt(text: string): boolean {
   }
 
   // Detecção por linha digitável padrão Febraban de 47/48 dígitos
-  if (/\b\d{5}[.-]?\d{5}\s+\d{5}[.-]?\d{6}\s+\d{5}[.-]?\d{6}\s+\d\s+\d{14}\b/.test(text)) {
+  if (/\b\d{5}[.-]?\d{5}\s+\d{5}[.-]?\d{6}\s+\d{5}[.-]?\d{6}\s+\d\s+\d{10,14}\b/.test(text)) {
     return true;
   }
   // Linha digitável de concessionárias (4 blocos de 11 ou 12 dígitos)
   if (/\b\d{11,12}[-\s]?\d{11,12}[-\s]?\d{11,12}[-\s]?\d{11,12}\b/.test(text)) {
+    return true;
+  }
+  if (/\b\d{47,48}\b/.test(text)) {
     return true;
   }
 
@@ -215,33 +229,67 @@ export function extractBankSlipDueDate(text: string): string | undefined {
   return undefined;
 }
 
+const PAID_SLIP_MARKERS_REGEX =
+  /\b(?:comprovante\s+de\s+(?:pagamento|liquida[çc][ãa]o)|valor\s+pago|data\s+(?:do\s+|de\s+)?pagamento|pagamento\s+(?:efetuado|realizado)|autentica[çc][ãa]o(?:\s+banc[áa]ria)?|liquidado|pago\s+em)\b/i;
+
+const OPEN_SLIP_MARKERS_REGEX =
+  /\b(?:ficha\s+de\s+compensa[çc][ãa]o|recibo\s+do\s+(?:sacado|pagador)|pag[áa]vel\s+em\s+qualquer\s+banco|n[ãa]o\s+receber\s+ap[óo]s|instru[çc][õo]es\s+de\s+responsabilidade\s+do\s+benefici[áa]rio|nosso\s+n[úu]mero)\b/i;
+
+function detectBankSlipDocumentStatus(text: string): "paid" | "pending_due" {
+  if (PAID_SLIP_MARKERS_REGEX.test(text)) {
+    return "paid";
+  }
+  if (OPEN_SLIP_MARKERS_REGEX.test(text)) {
+    return "pending_due";
+  }
+  return "paid";
+}
+
 /**
- * Executa o parsing especializado de um comprovante de pagamento de boleto / tributo.
+ * Executa o parsing especializado de um comprovante de pagamento ou ficha de boleto / tributo.
  */
 export function parseBankSlipReceipt(rawText: string): UniversalReceiptData | null {
   if (!rawText || typeof rawText !== "string") return null;
 
   if (isBlacklistedReceipt(rawText)) return null;
 
-  const cents = extractSovereignReceiptAmountCents(rawText);
+  const documentStatus = detectBankSlipDocumentStatus(rawText);
+  const digitableLine = extractDigitableLine(rawText);
+  const decodedBarcode = digitableLine ? parseBankSlipDigitableLine(digitableLine) : null;
+  const textAmountCents = extractSovereignReceiptAmountCents(rawText);
+
+  const cents =
+    documentStatus === "pending_due" &&
+    decodedBarcode?.isValidChecksum &&
+    decodedBarcode.amountCents &&
+    decodedBarcode.amountCents > 0
+      ? decodedBarcode.amountCents
+      : textAmountCents && textAmountCents > 0
+        ? textAmountCents
+        : decodedBarcode?.amountCents ?? null;
+
   if (!cents || cents <= 0) return null;
 
-  // Extrai data de pagamento (efetivação)
+  // Extrai data de pagamento (efetivação) e vencimento (texto ou fator Febraban)
   const { date: paymentDate } = extractDateFromReceipt(rawText, false);
-  const dueDate = extractBankSlipDueDate(rawText);
+  const dueDate = extractBankSlipDueDate(rawText) ?? decodedBarcode?.dueDate;
 
   // Beneficiário e Pagador
-  const beneficiary = extractBankSlipBeneficiary(rawText);
+  const beneficiary =
+    extractBankSlipBeneficiary(rawText) ||
+    (decodedBarcode?.kind === "arrecadacao" ? decodedBarcode.segmentLabel ?? "" : "");
   const payer = extractBankSlipPayer(rawText);
   const taxId = extractTaxId(rawText);
-  const digitableLine = extractDigitableLine(rawText);
   const installments = extractDetailedInstallments(rawText, cents);
 
   // Resolução do banco processador / arrecadador
   const headerLines = rawText.split(/[\r\n]+/).slice(0, 4).join(" ");
   let bankName = resolveBankName(undefined, undefined, headerLines);
   if (!bankName) {
-    bankName = resolveBankName(undefined, undefined, rawText) || "Boleto Bancário";
+    bankName =
+      resolveBankName(undefined, undefined, rawText) ||
+      decodedBarcode?.bankName ||
+      "Boleto Bancário";
   }
 
   // Descrição limpa e informativa
@@ -266,6 +314,11 @@ export function parseBankSlipReceipt(rawText: string): UniversalReceiptData | nu
         : `Pagamento de Boleto (${bankName})`;
   }
 
+  const effectiveDate =
+    documentStatus === "pending_due" && dueDate
+      ? dueDate
+      : paymentDate || dueDate || toISODate(new Date());
+
   const idSuffix = digitableLine
     ? digitableLine.replace(/[^0-9]/g, "").slice(-12)
     : `${Date.now()}_${cents}`;
@@ -276,8 +329,12 @@ export function parseBankSlipReceipt(rawText: string): UniversalReceiptData | nu
     kind: "bank_slip_payment",
     nature: "expense",
     amountCents: cents,
-    date: paymentDate || toISODate(new Date()),
+    date: effectiveDate,
     dueDate,
+    documentStatus,
+    ...(documentStatus === "pending_due" && dueDate
+      ? { isScheduled: true, scheduledFor: dueDate }
+      : {}),
     description,
     paymentMethod: "other",
     merchantOrBeneficiary: beneficiary || undefined,
