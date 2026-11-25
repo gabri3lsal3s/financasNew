@@ -1,13 +1,13 @@
 {
-  "version": "3.27.0",
-  "versionCode": 113,
-  "releaseDate": "2026-11-25T03:28:57Z",
-  "minSupportedVersion": "3.27.0",
+  "version": "3.28.0",
+  "versionCode": 114,
+  "releaseDate": "2026-11-25T13:52:20Z",
+  "minSupportedVersion": "3.28.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "7c1e12515992683e1fe758633fee78372c8c446503d1981a8f23adf339446c70",
-  "fileSizeBytes": 13502005,
+  "sha256": "0314a05de040cb5f6e89993d14785fb21724969b59fb18c323c9488730b49698",
+  "fileSizeBytes": 13511204,
   "changelog": [
-    "Axir v3.27.0 (Build 113): Redesign do Hero Card de Liquidez, Gasto Diario Seguro & Memoria de Calculo",
+    "Axir v3.28.0 (Build 114): Redesign do Hero Card de Liquidez, Gasto Diario Seguro & Memoria de Calculo",
     "Grade simetrica 1x3 no Hero Card: Sobra do Ciclo, Proximas Faturas em acumulacao (+ futuras) e Gasto Diario Seguro",
     "Motor puro de Gasto Diario Seguro baseado na media mensal de receitas operacionais do ano e margem de sobra de 10%",
     "Padronizacao visual dos botoes de Memoria de Calculo (?) entre desktop, PWA e Android"
