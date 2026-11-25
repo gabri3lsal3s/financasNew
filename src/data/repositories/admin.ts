@@ -4,6 +4,7 @@ import {
   adminCreateInvite as adminCreateInviteRpc,
   adminDeleteUser as adminDeleteUserRpc,
   adminGetMetrics as adminGetMetricsRpc,
+  adminListPastDueSubscriptions,
   adminListUsers as adminListUsersRpc,
   adminRemoveFeatureOverride as adminRemoveFeatureOverrideRpc,
   adminRevokeInvite as adminRevokeInviteRpc,
@@ -250,11 +251,84 @@ export async function adminGenerateRecoveryLink(
   return data.actionLink as string;
 }
 
+/**
+ * Configura a política de tolerância (manual vs. bloqueio automático em N dias) e lembretes semanais.
+ */
+export async function adminSetPastDuePolicy(params: {
+  userId: string;
+  graceMode: "manual" | "auto";
+  autoBlockDays?: number | null;
+  remindersEnabled?: boolean;
+}): Promise<{ message: string }> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.functions.invoke("admin-super-action", {
+    body: {
+      action: "set_past_due_policy",
+      target_user_id: params.userId,
+      grace_mode: params.graceMode,
+      auto_block_days: params.autoBlockDays ?? null,
+      reminders_enabled: params.remindersEnabled,
+    },
+  });
+
+  if (error || !data?.success) {
+    const errorMsg = data?.error || error?.message || "Falha ao atualizar política de carência.";
+    throw new AppError("network", errorMsg);
+  }
+
+  return { message: data.message as string };
+}
+
+/**
+ * Força o bloqueio imediato de uma assinatura em atraso para modo somente-leitura.
+ */
+export async function adminBlockPastDueNow(userId: string): Promise<{ message: string }> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.functions.invoke("admin-super-action", {
+    body: {
+      action: "block_past_due_now",
+      target_user_id: userId,
+    },
+  });
+
+  if (error || !data?.success) {
+    const errorMsg = data?.error || error?.message || "Falha ao bloquear conta em atraso.";
+    throw new AppError("network", errorMsg);
+  }
+
+  return { message: data.message as string };
+}
+
+/**
+ * Envia um aviso oficial do aplicativo (template pré-pronto) para usuário em atraso.
+ */
+export async function adminSendPastDueReminder(params: {
+  userId: string;
+  preset: "friendly" | "update_card" | "final_warning";
+}): Promise<{ message: string }> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.functions.invoke("admin-super-action", {
+    body: {
+      action: "send_past_due_reminder",
+      target_user_id: params.userId,
+      preset: params.preset,
+    },
+  });
+
+  if (error || !data?.success) {
+    const errorMsg = data?.error || error?.message || "Falha ao enviar lembrete oficial.";
+    throw new AppError("network", errorMsg);
+  }
+
+  return { message: data.message as string };
+}
+
 // Re-export das operações administrativas transacionais
 export {
   adminCreateInviteRpc as adminCreateInvite,
   adminDeleteUserRpc as adminDeleteUser,
   adminGetMetricsRpc as adminGetMetrics,
+  adminListPastDueSubscriptions,
   adminListUsersRpc as adminListUsers,
   adminRemoveFeatureOverrideRpc as adminRemoveFeatureOverride,
   adminRevokeInviteRpc as adminRevokeInvite,

@@ -16,6 +16,9 @@ import {
   adminResetUserMFA,
   adminRevokeUserSessions,
   adminGenerateRecoveryLink,
+  adminSetPastDuePolicy,
+  adminBlockPastDueNow,
+  adminSendPastDueReminder,
   type AdminProvisionUserParams,
 } from "@/data/repositories/admin";
 import {
@@ -33,6 +36,7 @@ import {
   ADMIN_USER_MODULE_PERMISSIONS_KEY,
   ADMIN_USER_OVERRIDES_KEY,
   ADMIN_USER_SUBSCRIPTION_KEY,
+  ADMIN_PAST_DUE_KEY,
   ADMIN_BACKUPS_KEY,
   ADMIN_BROADCASTS_KEY,
   MY_BROADCASTS_KEY,
@@ -576,6 +580,87 @@ export function useAdminGenerateRecoveryLink() {
     onError: (err) => {
       pushToast({
         title: "Erro ao gerar link de recuperação",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useAdminSetPastDuePolicy() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: {
+      userId: string;
+      graceMode: "manual" | "auto";
+      autoBlockDays?: number | null;
+      remindersEnabled?: boolean;
+    }) => adminSetPastDuePolicy(params),
+    onSuccess: (res) => {
+      void queryClient.invalidateQueries({ queryKey: ADMIN_PAST_DUE_KEY });
+      void queryClient.invalidateQueries({ queryKey: ADMIN_AUDIT_KEY });
+      pushToast({
+        title: "Política atualizada",
+        description: res.message,
+        variant: "success",
+      });
+    },
+    onError: (err) => {
+      pushToast({
+        title: "Erro ao configurar carência",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useAdminBlockPastDueNow() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (userId: string) => adminBlockPastDueNow(userId),
+    onSuccess: (res) => {
+      void queryClient.invalidateQueries({ queryKey: ADMIN_PAST_DUE_KEY });
+      void queryClient.invalidateQueries({ queryKey: ADMIN_USERS_KEY });
+      void queryClient.invalidateQueries({ queryKey: ADMIN_AUDIT_KEY });
+      pushToast({
+        title: "Conta bloqueada",
+        description: res.message,
+        variant: "success",
+      });
+    },
+    onError: (err) => {
+      pushToast({
+        title: "Erro ao bloquear conta",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useAdminSendPastDueReminder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: {
+      userId: string;
+      preset: "friendly" | "update_card" | "final_warning";
+    }) => adminSendPastDueReminder(params),
+    onSuccess: (res) => {
+      void queryClient.invalidateQueries({ queryKey: ADMIN_PAST_DUE_KEY });
+      void queryClient.invalidateQueries({ queryKey: ADMIN_AUDIT_KEY });
+      pushToast({
+        title: "Aviso enviado",
+        description: res.message,
+        variant: "success",
+      });
+    },
+    onError: (err) => {
+      pushToast({
+        title: "Erro ao enviar aviso",
         description: getErrorMessage(err),
         variant: "destructive",
       });

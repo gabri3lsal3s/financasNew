@@ -208,3 +208,10 @@ A modelagem de dados da tabela `public.user_subscriptions` foi migrada para camp
 
 As colunas legadas (`asaas_customer_id`, `asaas_subscription_id`, `asaas_payment_id`) são preservadas com retrocompatibilidade garantida, assegurando operação contínua e sem quebra de integrações legadas.
 
+### 9.6 Tolerância Flexível à Inadimplência (`past_due`) e Lembretes Semanais
+
+Assinantes pagantes (`billing_start_at IS NOT NULL`) que sofrem falha de renovação (`PAYMENT_OVERDUE`) entram em `status = 'past_due'` com **tolerância manual por padrão** (`past_due_grace_mode = 'manual'`, `past_due_block_at = NULL`), preservando a escrita sem bloqueio abrupto:
+- O Admin recebe alerta imediato no Telegram e acompanha os casos em `/admin/faturamento` (`PastDueManagementCard`).
+- O Admin pode alternar entre **Tolerância Manual** ou **Bloqueio Automático em N dias** (7, 15 ou 30 dias via `past_due_block_at`), forçar o bloqueio imediato para `read_only`, ou disparar avisos oficiais do app com modelos pré-prontos (`friendly`, `update_card`, `final_warning`).
+- Enquanto `past_due_reminders_enabled = true`, o `billing-lifecycle-cron` envia lembretes automáticos semanais (e-mail via Resend + push via `push-dispatcher`) até que o pagamento seja regularizado (`PAYMENT_CONFIRMED` / `PAYMENT_RECEIVED`) ou a conta seja movida para somente-leitura.
+

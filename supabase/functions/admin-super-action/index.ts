@@ -1,6 +1,7 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import {
   cancelAsaasSubscription,
+  formatBrtDisplayDate,
   isAsaasAlreadyCanceledError,
   sanitizePaymentLog,
 } from "../_shared/asaas.ts";
@@ -10,6 +11,11 @@ import {
   maskEmailForLog,
   safeErrorResponse,
 } from "../_shared/http.ts";
+import { sendTransactionalEmail } from "../_shared/resend.ts";
+import {
+  renderPastDueWeeklyReminderEmail,
+  type PastDueReminderPreset,
+} from "../_shared/email-templates.ts";
 
 interface ProvisionUserPayload {
   name: string;
@@ -456,6 +462,246 @@ Deno.serve(async (req: Request) => {
         success: true,
         asaasCanceled,
         message: "Assinatura do usuário atualizada com sucesso.",
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // AÇÃO 6: CONFIGURAR POLÍTICA DE TOLERÂNCIA PAST_DUE (MANUAL VS AUTO N DIAS)
+    // -------------------------------------------------------------------------
+    if (action === "set_past_due_policy") {
+      const {
+        target_user_id: targetUserId,
+        grace_mode: graceMode,
+        auto_block_days: autoBlockDays,
+        reminders_enabled: remindersEnabled,
+      } = body as {
+        target_user_id?: string;
+        grace_mode?: "manual" | "auto";
+        auto_block_days?: number | null;
+        reminders_enabled?: boolean;
+      };
+
+      if (!targetUserId) {
+        return jsonResponse(req, { error: "ID de usuário é obrigatório." }, 400);
+      }
+
+      const mode = graceMode === "auto" ? "auto" : "manual";
+      const days =
+        mode === "auto"
+          ? Math.max(1, Math.min(90, Math.round(Number(autoBlockDays) || 7)))
+          : null;
+      const now = new Date();
+      const nowIso = now.toISOString();
+      const blockAtIso =
+        mode === "auto" && days !== null
+          ? new Date(now.getTime() + days * 24 * 60 * 60 * 1000).toISOString()
+          : null;
+
+      const updateFields: Record<string, unknown> = {
+        past_due_grace_mode: mode,
+        past_due_block_at: blockAtIso,
+        updated_at: nowIso,
+      };
+      if (typeof remindersEnabled === "boolean") {
+        updateFields.past_due_reminders_enabled = remindersEnabled;
+      }
+
+      const { data: updated, error: updErr } = await adminClient
+        .from("user_subscriptions")
+        .update(updateFields)
+        .eq("user_id", targetUserId)
+        .eq("status", "past_due")
+        .select("id, past_due_grace_mode, past_due_block_at, past_due_reminders_enabled")
+        .maybeSingle();
+
+      if (updErr) {
+        return safeErrorResponse(req, 500, "Falha ao atualizar política de carência.", updErr);
+      }
+      if (!updated) {
+        return jsonResponse(req, { error: "Assinatura em atraso não encontrada para este usuário." }, 404);
+      }
+
+      await adminClient.from("audit_events").insert({
+        user_id: callerUser.id,
+        entity_type: "user_subscriptions",
+        entity_id: updated.id,
+        action: "ADMIN_SET_PAST_DUE_POLICY",
+        payload: {
+          target_user_id: targetUserId,
+          grace_mode: mode,
+          auto_block_days: days,
+          past_due_block_at: blockAtIso,
+          reminders_enabled: updated.past_due_reminders_enabled,
+        },
+      });
+
+      return jsonResponse(req, {
+        success: true,
+        policy: updated,
+        message:
+          mode === "auto" && blockAtIso
+            ? `Bloqueio automático agendado para ${formatBrtDisplayDate(blockAtIso)}.`
+            : "Tolerância manual ativada (sem bloqueio automático).",
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // AÇÃO 7: FORÇAR BLOQUEIO IMEDIATO PARA SOMENTE-LEITURA (PAST_DUE -> READ_ONLY)
+    // -------------------------------------------------------------------------
+    if (action === "block_past_due_now") {
+      const { target_user_id: targetUserId } = body as { target_user_id?: string };
+      if (!targetUserId) {
+        return jsonResponse(req, { error: "ID de usuário é obrigatório." }, 400);
+      }
+
+      const nowIso = new Date().toISOString();
+      const { data: blocked, error: blockErr } = await adminClient
+        .from("user_subscriptions")
+        .update({
+          tier: "read_only",
+          status: "read_only_expired",
+          past_due_block_at: nowIso,
+          past_due_reminders_enabled: false,
+          updated_at: nowIso,
+        })
+        .eq("user_id", targetUserId)
+        .eq("status", "past_due")
+        .select("id")
+        .maybeSingle();
+
+      if (blockErr) {
+        return safeErrorResponse(req, 500, "Falha ao bloquear assinatura em atraso.", blockErr);
+      }
+      if (!blocked) {
+        return jsonResponse(req, { error: "Assinatura em atraso não encontrada." }, 404);
+      }
+
+      await adminClient.from("audit_events").insert({
+        user_id: callerUser.id,
+        entity_type: "user_subscriptions",
+        entity_id: blocked.id,
+        action: "ADMIN_BLOCK_PAST_DUE_NOW",
+        payload: { target_user_id: targetUserId, blocked_at: nowIso },
+      });
+
+      return jsonResponse(req, {
+        success: true,
+        message: "Conta movida imediatamente para o modo somente-leitura.",
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // AÇÃO 8: DISPARAR AVISO OFICIAL DO APP (TEMPLATE PRÉ-PRONTO) PARA INADIMPLENTE
+    // -------------------------------------------------------------------------
+    if (action === "send_past_due_reminder") {
+      const { target_user_id: targetUserId, preset } = body as {
+        target_user_id?: string;
+        preset?: PastDueReminderPreset;
+      };
+      if (!targetUserId) {
+        return jsonResponse(req, { error: "ID de usuário é obrigatório." }, 400);
+      }
+
+      const validPreset: PastDueReminderPreset =
+        preset === "update_card" || preset === "final_warning" ? preset : "friendly";
+
+      const { data: subRow, error: subFetchErr } = await adminClient
+        .from("user_subscriptions")
+        .select("id, tier, status, past_due_block_at, past_due_reminder_count")
+        .eq("user_id", targetUserId)
+        .eq("status", "past_due")
+        .maybeSingle();
+
+      if (subFetchErr || !subRow) {
+        return jsonResponse(req, { error: "Assinatura em atraso não encontrada." }, 404);
+      }
+
+      const { data: targetProfile } = await adminClient
+        .from("profiles")
+        .select("name, email")
+        .eq("id", targetUserId)
+        .maybeSingle();
+
+      if (!targetProfile?.email) {
+        return jsonResponse(req, { error: "E-mail do usuário não localizado." }, 400);
+      }
+
+      const appUrl = (Deno.env.get("PUBLIC_APP_URL") || "https://axir.com.br").replace(/\/+$/, "");
+      const blockDateFormatted = subRow.past_due_block_at
+        ? formatBrtDisplayDate(subRow.past_due_block_at)
+        : null;
+      const planName = subRow.tier === "pro_annual" ? "Plano Pro Anual" : "Plano Pro Mensal";
+
+      const emailData = renderPastDueWeeklyReminderEmail({
+        name: targetProfile.name || "Cliente",
+        planName,
+        preset: validPreset,
+        blockDateFormatted,
+        manageUrl: `${appUrl}/assinatura`,
+      });
+
+      const nowIso = new Date().toISOString();
+      const emailRes = await sendTransactionalEmail(adminClient, {
+        to: targetProfile.email,
+        subject: emailData.subject,
+        template: `past_due_admin_${validPreset}`,
+        html: emailData.html,
+        text: emailData.text,
+        userId: targetUserId,
+        idempotencyKey: `past_due_manual_${targetUserId}_${Date.now()}`,
+      });
+
+      if (!emailRes.success) {
+        return safeErrorResponse(req, 502, emailRes.error || "Falha ao enviar e-mail de lembrete.");
+      }
+
+      await adminClient
+        .from("user_subscriptions")
+        .update({
+          past_due_last_reminded_at: nowIso,
+          past_due_reminder_count: (subRow.past_due_reminder_count ?? 0) + 1,
+          updated_at: nowIso,
+        })
+        .eq("id", subRow.id);
+
+      const cronSecret = Deno.env.get("CRON_SECRET") || supabaseServiceKey;
+      try {
+        await fetch(`${supabaseUrl}/functions/v1/push-dispatcher`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${cronSecret}`,
+          },
+          body: JSON.stringify({
+            eventType: "past_due_reminder",
+            targetUserIds: [targetUserId],
+            title: "Aviso de assinatura Axir PRO",
+            body:
+              validPreset === "final_warning" && blockDateFormatted
+                ? `Regularize até ${blockDateFormatted} para evitar pausa nos lançamentos.`
+                : "Identificamos pendência na sua assinatura. Clique para regularizar.",
+            url: "/assinatura",
+            tag: `past_due_${targetUserId}`,
+            severity: validPreset === "final_warning" ? "P0" : "P1",
+            idempotencyKey: `push_past_due_manual_${targetUserId}_${Date.now()}`,
+            respectQuietHours: false,
+          }),
+        });
+      } catch {
+        // Falha de push não bloqueia o envio oficial por e-mail
+      }
+
+      await adminClient.from("audit_events").insert({
+        user_id: callerUser.id,
+        entity_type: "user_subscriptions",
+        entity_id: subRow.id,
+        action: "ADMIN_SEND_PAST_DUE_REMINDER",
+        payload: { target_user_id: targetUserId, preset: validPreset },
+      });
+
+      return jsonResponse(req, {
+        success: true,
+        message: "Aviso oficial do aplicativo enviado com sucesso.",
       });
     }
 

@@ -2,6 +2,7 @@ import { getSupabase } from "@/data/client";
 import { callRpc, unwrapRpc } from "./client";
 import type {
   AdminContactDetails,
+  AdminPastDueSubscriptionRow,
   BroadcastAudience,
   BroadcastType,
   UserBroadcastNotification,
@@ -461,4 +462,13 @@ export async function adminLogSystemBackup(params: {
       p_notes: params.notes ?? null,
     } as never),
   );
+}
+
+/**
+ * Lista todas as assinaturas em atraso (past_due) para gestão de carência no Admin.
+ */
+export async function adminListPastDueSubscriptions(): Promise<AdminPastDueSubscriptionRow[]> {
+  return unwrapRpc(
+    callRpc("admin_list_past_due_subscriptions" as never, {} as never),
+  ) as Promise<AdminPastDueSubscriptionRow[]>;
 }

@@ -847,3 +847,80 @@ export function renderSundayDigestEmail(
 
   return { subject, html, text: textParts.join(" ") };
 }
+
+// -----------------------------------------------------------------------------
+// 9. Template: Lembrete Automático / Oficial de Pendência de Pagamento (Past Due)
+// -----------------------------------------------------------------------------
+export type PastDueReminderPreset = "friendly" | "update_card" | "final_warning";
+
+export function renderPastDueWeeklyReminderEmail(params: {
+  name: string;
+  planName: string;
+  preset?: PastDueReminderPreset;
+  blockDateFormatted?: string | null;
+  manageUrl: string;
+}): { subject: string; html: string; text: string } {
+  const firstName = params.name ? params.name.split(" ")[0] || "Cliente" : "Cliente";
+  const safeName = escapeHtmlText(firstName);
+  const safePlanName = escapeHtmlText(params.planName);
+  const safeManageUrl = sanitizeSafeEmailUrl(params.manageUrl);
+  const safeBlockDate = params.blockDateFormatted ? escapeHtmlText(params.blockDateFormatted) : null;
+  const preset: PastDueReminderPreset = params.preset ?? "friendly";
+
+  let subject = "Lembrete: regularize o pagamento da sua assinatura Axir PRO";
+  let badge = "Aviso de Pagamento";
+  let heading = "Sua assinatura Axir PRO está com pagamento pendente";
+  let alertTone: "warning" | "critical" = "warning";
+  let introText = `Identificamos que a renovação do seu <strong style="color: #142531;">${safePlanName}</strong> ainda está pendente. Mantivemos seu acesso completo liberado para não atrapalhar seu controle financeiro.`;
+  let ctaText = "Regularizar Pagamento";
+
+  if (preset === "update_card") {
+    subject = "Atualize seu cartão para manter sua assinatura Axir PRO em dia";
+    heading = "Renovação aguardando atualização do cartão";
+    introText = `A cobrança recorrente do seu <strong style="color: #142531;">${safePlanName}</strong> não foi compensada. Você pode atualizar os dados do seu cartão ou optar pelo Plano Anual via PIX em menos de 1 minuto.`;
+    ctaText = "Atualizar Forma de Pagamento";
+  } else if (preset === "final_warning") {
+    subject = "Aviso importante: sua conta Axir entrará em modo somente-leitura";
+    badge = "Último Aviso";
+    heading = "Prazo final para regularização do Axir PRO";
+    alertTone = "critical";
+    introText = `O pagamento do seu <strong style="color: #142531;">${safePlanName}</strong> segue em aberto. Para evitar a transição para o modo somente-leitura, regularize sua assinatura pelo link abaixo.`;
+    ctaText = "Manter Meu Acesso PRO";
+  }
+
+  const deadlineBox = safeBlockDate
+    ? `<div style="background-color: #FEF2F2; border: 1px solid #FECACA; border-left: 4px solid #E76F51; padding: 14px 16px; border-radius: 8px; margin: 20px 0;">
+        <p style="margin: 0; font-size: 13px; color: #991B1B;">
+          Sem a confirmação do pagamento, sua conta entrará em modo somente-leitura em <strong style="font-family: 'IBM Plex Mono', monospace;">${safeBlockDate}</strong>. Seus dados permanecem 100% preservados.
+        </p>
+      </div>`
+    : `<div style="background-color: #FFFBEB; border: 1px solid #FDE68A; border-left: 4px solid #DDA726; padding: 14px 16px; border-radius: 8px; margin: 20px 0;">
+        <p style="margin: 0; font-size: 13px; color: #92400E;">
+          Seu acesso continua liberado temporariamente. Assim que o pagamento for confirmado, a cobrança volta ao ciclo normal automaticamente.
+        </p>
+      </div>`;
+
+  const bodyHtml = `
+    <p style="margin: 0 0 16px 0;">Olá, <strong style="color: #142531;">${safeName}</strong>,</p>
+    <p style="margin: 0 0 16px 0;">${introText}</p>
+    ${deadlineBox}
+    <p style="margin: 0;">
+      Se você já realizou o pagamento hoje, pode desconsiderar este aviso automático.
+    </p>
+  `;
+
+  const html = renderAxirEmailShell({
+    title: subject,
+    badge,
+    heading,
+    bodyHtml,
+    ctaText,
+    ctaUrl: safeManageUrl,
+    themeVariant: "pro",
+    alertTone,
+  });
+
+  const text = `Olá, ${firstName}. O pagamento do seu ${params.planName} no Axir PRO está pendente.${safeBlockDate ? ` Sem regularização, a conta entrará em modo somente-leitura em ${params.blockDateFormatted}.` : ""} Regularize em: ${safeManageUrl}`;
+
+  return { subject, html, text };
+}

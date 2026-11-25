@@ -356,6 +356,10 @@ Deno?.serve?.(async (req: Request) => {
         .update({
           current_period_end: decision.newPeriodEnd,
           asaas_sync_status: asaasSyncSuccess || !userSub.asaas_subscription_id ? "synced" : "pending_resync",
+          past_due_since: null,
+          past_due_block_at: null,
+          past_due_last_reminded_at: null,
+          past_due_reminder_count: 0,
           updated_at: nowIso,
         })
         .eq("id", userSub.id);
@@ -518,6 +522,10 @@ Deno?.serve?.(async (req: Request) => {
         scheduled_first_charge_at: null,
         pending_plan_id: null,
         pending_plan_effective_at: null,
+        past_due_since: null,
+        past_due_block_at: null,
+        past_due_last_reminded_at: null,
+        past_due_reminder_count: 0,
         asaas_sync_status: "synced",
         updated_at: nowIso,
       };
@@ -624,7 +632,16 @@ Deno?.serve?.(async (req: Request) => {
     if (decision.action === "mark_past_due") {
       const { error: pastDueErr } = await supabase
         .from("user_subscriptions")
-        .update({ status: "past_due", updated_at: nowIso })
+        .update({
+          status: "past_due",
+          past_due_since: nowIso,
+          past_due_grace_mode: "manual",
+          past_due_block_at: null,
+          past_due_reminders_enabled: true,
+          past_due_last_reminded_at: nowIso,
+          past_due_reminder_count: 0,
+          updated_at: nowIso,
+        })
         .eq("id", userSub.id);
 
       if (pastDueErr) {
@@ -637,7 +654,7 @@ Deno?.serve?.(async (req: Request) => {
         entity_type: "user_subscription",
         entity_id: userSub.id,
         action: "marked_past_due",
-        payload: { payment_id: paymentId, subscription_id: subscriptionId },
+        payload: { payment_id: paymentId, subscription_id: subscriptionId, grace_mode: "manual" },
       });
 
       try {
@@ -647,8 +664,24 @@ Deno?.serve?.(async (req: Request) => {
           .eq("id", userSub.user_id)
           .maybeSingle();
 
+        const appUrl = Deno?.env?.get ? Deno.env.get("PUBLIC_APP_URL") || "https://axir.com.br" : "https://axir.com.br";
+        const safeName = escapeTelegramHtml(String(profile?.name || "Assinante"));
+        const safeEmail = escapeTelegramHtml(
+          profile?.email ? maskEmailForLog(String(profile.email)) : "—",
+        );
+        const safePlan = escapeTelegramHtml(
+          userSub.tier === "pro_annual" ? "Plano Pro Anual" : "Plano Pro Mensal",
+        );
+        const tgText = [
+          `<b>[AXIR] ASSINATURA EM ATRASO (PAST DUE)</b>`,
+          `<b>Cliente:</b> ${safeName} (${safeEmail})`,
+          `<b>Plano:</b> ${safePlan}`,
+          `<b>Status:</b> Tolerância manual ativa (sem bloqueio automático)`,
+          `<b>Gerenciar:</b> ${escapeTelegramHtml(appUrl)}/admin/faturamento`,
+        ].join("\n");
+        await sendAdminTelegramAlert(tgText);
+
         if (profile?.email) {
-          const appUrl = Deno?.env?.get ? Deno.env.get("PUBLIC_APP_URL") || "https://axir.com.br" : "https://axir.com.br";
           const emailData = renderPaymentFailedEmail({
             name: profile.name || "Cliente",
             planName: userSub.tier === "pro_annual" ? "Plano Pro Anual" : "Plano Pro Mensal",
@@ -666,7 +699,7 @@ Deno?.serve?.(async (req: Request) => {
           });
         }
       } catch (emailErr) {
-        console.warn("[asaas-webhook] Aviso ao enviar e-mail de falha no pagamento:", sanitizePaymentLog(emailErr));
+        console.warn("[asaas-webhook] Aviso ao notificar inadimplência:", sanitizePaymentLog(emailErr));
       }
 
       return json({ received: true, event: eventType, status: "past_due" });

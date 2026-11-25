@@ -41,7 +41,7 @@ export function TrialEndingBanner({
     if (onActivatePro) {
       onActivatePro();
     } else if (hasAutoRenew) {
-      navigate("/configuracoes?tab=assinatura");
+      navigate("/configuracoes?tab=subscription");
     } else {
       navigate(buildCheckoutUrl({ plan: "annual" }));
     }

@@ -9,6 +9,9 @@ export type {
   SubscriptionPlan,
   SubscriptionStatus,
   ModuleAccessLevel,
+  PastDueGraceMode,
+  PastDueReminderPreset,
+  AdminPastDueSubscriptionRow,
 } from "./subscription";
 export * from "./billing";
 export * from "./app-update";

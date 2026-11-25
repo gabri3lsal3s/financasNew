@@ -3,6 +3,7 @@ import { Badge, MoneyText, NumberTicker, Skeleton, buttonVariants } from "@/comp
 import { PageHeader } from "@/components/layout";
 import { useAdminMetrics, useAdminPlans } from "@/state";
 import { cn } from "@/lib/utils";
+import { PastDueManagementCard } from "../components/past-due-management-card";
 
 export function AdminBillingPage() {
   const metricsQuery = useAdminMetrics();
@@ -74,6 +75,8 @@ export function AdminBillingPage() {
           )}
         </div>
       </div>
+
+      <PastDueManagementCard />
 
       <section aria-label="Catálogo de Planos" className="flex flex-col gap-4">
         <div className="flex items-center justify-between">

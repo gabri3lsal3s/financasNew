@@ -107,4 +107,30 @@ export type SubscriptionStatus = {
 
   /** Mapeamento de permissões individuais por módulo. */
   moduleAccess?: Record<string, ModuleAccessLevel>;
+
+  /** Governança de carência em atraso (past_due). */
+  pastDueSince?: string | null;
+  pastDueGraceMode?: PastDueGraceMode;
+  pastDueBlockAt?: string | null;
+  pastDueRemindersEnabled?: boolean;
 };
+
+export type PastDueGraceMode = "manual" | "auto";
+export type PastDueReminderPreset = "friendly" | "update_card" | "final_warning";
+
+export interface AdminPastDueSubscriptionRow {
+  subscription_id: string;
+  user_id: string;
+  user_name: string | null;
+  user_email: string | null;
+  tier: SubscriptionTier;
+  status: string;
+  billing_start_at: string | null;
+  current_period_end: string | null;
+  past_due_since: string | null;
+  past_due_grace_mode: PastDueGraceMode;
+  past_due_block_at: string | null;
+  past_due_reminders_enabled: boolean;
+  past_due_last_reminded_at: string | null;
+  past_due_reminder_count: number;
+}

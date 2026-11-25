@@ -12,9 +12,11 @@ import {
 } from "../_shared/http.ts";
 import { sendTransactionalEmail } from "../_shared/resend.ts";
 import {
+  renderPastDueWeeklyReminderEmail,
   renderTrialEndingReminderEmail,
   renderTrialExpiredReadOnlyEmail,
 } from "../_shared/email-templates.ts";
+import { formatBrtDisplayDate } from "../_shared/asaas.ts";
 import { escapeTelegramHtml, sendTelegramNotification } from "../_shared/telegram.ts";
 
 declare const Deno: {
@@ -303,6 +305,104 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // 4b. Lembretes semanais automáticos para assinaturas past_due com tolerância ativa
+    const sevenDaysAgoIso = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: pastDueSubs, error: pastDueQueryErr } = await supabaseAdmin
+      .from("user_subscriptions")
+      .select(
+        "id, user_id, tier, past_due_block_at, past_due_last_reminded_at, past_due_reminder_count, profiles!inner(id, email, name, status)",
+      )
+      .eq("status", "past_due")
+      .eq("past_due_reminders_enabled", true)
+      .eq("profiles.status", "active");
+
+    if (pastDueQueryErr) {
+      console.error("[billing-lifecycle-cron] Erro ao buscar assinaturas past_due:", pastDueQueryErr);
+    }
+
+    let pastDueRemindersSent = 0;
+    const cronToken = cronSecret || supabaseServiceKey;
+    for (const sub of pastDueSubs || []) {
+      if (sub.past_due_block_at && new Date(sub.past_due_block_at) <= now) {
+        continue;
+      }
+      if (sub.past_due_last_reminded_at && sub.past_due_last_reminded_at > sevenDaysAgoIso) {
+        continue;
+      }
+
+      const profile = Array.isArray(sub.profiles) ? sub.profiles[0] : sub.profiles;
+      if (!profile?.email) continue;
+
+      try {
+        const blockDateFormatted = sub.past_due_block_at
+          ? formatBrtDisplayDate(sub.past_due_block_at)
+          : null;
+        const planName = sub.tier === "pro_annual" ? "Plano Pro Anual" : "Plano Pro Mensal";
+        const preset = blockDateFormatted ? "final_warning" : "friendly";
+        const emailData = renderPastDueWeeklyReminderEmail({
+          name: profile.name || "Cliente",
+          planName,
+          preset,
+          blockDateFormatted,
+          manageUrl: `${appUrl}/assinatura`,
+        });
+
+        const weekBucket = Math.floor(now.getTime() / (7 * 24 * 60 * 60 * 1000));
+        const emailRes = await sendTransactionalEmail(supabaseAdmin, {
+          to: profile.email,
+          subject: emailData.subject,
+          template: "past_due_weekly_reminder",
+          html: emailData.html,
+          text: emailData.text,
+          userId: sub.user_id,
+          idempotencyKey: `past_due_weekly_${sub.user_id}_${weekBucket}`,
+        });
+
+        if (emailRes.success && !emailRes.skipped) {
+          pastDueRemindersSent++;
+          await supabaseAdmin
+            .from("user_subscriptions")
+            .update({
+              past_due_last_reminded_at: now.toISOString(),
+              past_due_reminder_count: (sub.past_due_reminder_count ?? 0) + 1,
+              updated_at: now.toISOString(),
+            })
+            .eq("id", sub.id);
+
+          // Push remoto complementar (fail-safe)
+          try {
+            await fetch(`${supabaseUrl}/functions/v1/push-dispatcher`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${cronToken}`,
+              },
+              body: JSON.stringify({
+                eventType: "past_due_reminder",
+                targetUserIds: [sub.user_id],
+                title: "Pagamento pendente no Axir PRO",
+                body: blockDateFormatted
+                  ? `Regularize até ${blockDateFormatted} para manter seus lançamentos liberados.`
+                  : "Seu pagamento está pendente. Atualize sua forma de pagamento quando puder.",
+                url: "/assinatura",
+                tag: `past_due_${sub.user_id}`,
+                severity: "P1",
+                idempotencyKey: `push_past_due_${sub.user_id}_${weekBucket}`,
+                respectQuietHours: true,
+              }),
+            });
+          } catch {
+            // Não interrompe cron por falha de push
+          }
+        }
+      } catch (err: unknown) {
+        console.warn(
+          `[billing-lifecycle-cron] Falha ao enviar lembrete semanal past_due para ${sub.user_id}:`,
+          sanitizePaymentLog(err),
+        );
+      }
+    }
+
     // 5. Rotina de TTL LGPD (D-18): expurga logs antigos de webhook (>90d) e e-mail (>180d)
     const webhookCutoffIso = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString();
     const emailCutoffIso = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000).toISOString();
@@ -330,6 +430,7 @@ Deno.serve(async (req: Request) => {
       resyncedSubscriptions: resyncedCount,
       expiringTrialsNotified: remindersSent,
       expiredTrialsNotified: expiredNoticesSent,
+      pastDueRemindersSent,
       purgedWebhookLogs: purgedWebhookLogs ?? 0,
       purgedEmailLogs: purgedEmailLogs ?? 0,
     });

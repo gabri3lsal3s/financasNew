@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   adminGetMetrics,
   adminGetUserContactDetails,
+  adminListPastDueSubscriptions,
   adminListUsers,
   listAccessInvites,
   listAuditEvents,
@@ -30,6 +31,7 @@ export const ADMIN_USER_MODULE_PERMISSIONS_KEY = ["admin_user_module_permissions
 export const ADMIN_BACKUPS_KEY = ["admin_backups"] as const;
 export const ADMIN_BROADCASTS_KEY = ["admin_broadcasts"] as const;
 export const ADMIN_USER_CONTACT_KEY = ["admin_user_contact"] as const;
+export const ADMIN_PAST_DUE_KEY = ["admin_past_due"] as const;
 export const MY_BROADCASTS_KEY = ["my_broadcasts"] as const;
 
 export function useAdminMetrics() {
@@ -129,6 +131,14 @@ export function useAdminUserContact(userId: string | null | undefined, enabled =
     queryFn: () => (userId ? adminGetUserContactDetails(userId) : Promise.resolve(null)),
     enabled: Boolean(userId) && enabled,
     staleTime: 1000 * 60, // 1 min
+  });
+}
+
+export function useAdminPastDueSubscriptions() {
+  return useQuery({
+    queryKey: ADMIN_PAST_DUE_KEY,
+    queryFn: adminListPastDueSubscriptions,
+    staleTime: 1000 * 30,
   });
 }
 
