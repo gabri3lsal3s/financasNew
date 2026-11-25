@@ -8197,3 +8197,17 @@ flowchart TD
 
 
 
+
+---
+
+### Fase 131 — Redesign Simétrico do Hero Card de Liquidez, Gasto Diário Seguro & Padronização da Memória de Cálculo (v3.27.0)
+
+> **Status:** Concluída em Código e Testes (`v3.27.0`), Versionamento v3.27.0 e APK Build 113:
+> - **Hero Card de Liquidez (`RealCashHeroCard`):**
+>   - Grade simétrica `1×3` (`Sobra do Ciclo` | `Próximas Faturas` | `Gasto Diário Seguro`) com `A receber previsto` movido para o subtítulo do saldo principal;
+>   - Remoção de duplicidade de nomenclatura (`Saldo Livre Real` / `Livre para gastar` -> `Sobra do Ciclo` + `Gasto Diário Seguro`).
+> - **Motor Puro de Gasto Diário Seguro (`src/domain/cash/cash-ledger.ts`, `cycle-obligations.ts`, `use-real-cash-balance.ts`):**
+>   - `calculateAverageMonthlyIncomeCents`: média mensal das receitas operacionais do ano corrente (excluindo estornos `[REFUND]`), com fallback para o mês atual;
+>   - `calculateSafeDailySpending`: projeta o horizonte até o fechamento do próximo mês (`Sobra do Ciclo + Renda Média - Próximas Faturas - Contas do Próximo Mês - Margem de Sobra 10%`), expondo também `breakEvenDailyCents` (zero a zero) na Memória de Cálculo (`buildSafeDailySpendingBreakdown`).
+> - **Padronização da Memória de Cálculo (`CalculationMemoryTrigger`):**
+>   - Unificada a cor base de `priority="p0"` e `priority="p1"` (`text-muted-foreground/60 hover:text-foreground`) e aplicados gatilhos `p0` nos três indicadores do Hero Card.

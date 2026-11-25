@@ -11,6 +11,7 @@
  * Motor 100% puro — testável isoladamente sem Supabase ou dependências de UI.
  */
 
+import { todayISO } from "@/domain/debts";
 import { numberToCents } from "@/domain/money";
 
 export interface CashCheckpointData {
@@ -419,5 +420,170 @@ export function calculateSafeToSpend(params: SafeToSpendParams): SafeToSpendResu
     totalUpcomingCardInvoicesCents,
     safeToSpendAfterNextInvoicesCents,
     freeToSpendCents,
+  };
+}
+
+export type IncomeAverageSource = "year_average" | "current_month" | "none";
+
+export interface AverageMonthlyIncomeResult {
+  averageMonthlyIncomeCents: number;
+  monthsCount: number;
+  source: IncomeAverageSource;
+  year: string;
+}
+
+/**
+ * Calcula a média mensal de receitas operacionais recebidas nos meses anteriores do ano corrente
+ * (excluindo estornos `[REFUND]`), com fallback para o mês atual caso ainda não haja meses anteriores.
+ */
+export function calculateAverageMonthlyIncomeCents(
+  incomes: readonly { date: string; value: number; tax_withheld?: number | null; source_ref?: string | null }[],
+  referenceDate: string = todayISO(),
+): AverageMonthlyIncomeResult {
+  const year = referenceDate.slice(0, 4);
+  const currentMonthStr = referenceDate.slice(0, 7);
+
+  const priorByMonth = new Map<string, number>();
+  let currentMonthCents = 0;
+
+  for (const inc of incomes) {
+    if (inc.source_ref?.startsWith("[REFUND]")) continue;
+    if (!inc.date || !inc.date.startsWith(`${year}-`)) continue;
+    const gross = numberToCents(inc.value);
+    const withheld = inc.tax_withheld ? Math.max(0, numberToCents(inc.tax_withheld)) : 0;
+    const netCents = Math.max(0, gross - withheld);
+    if (netCents <= 0) continue;
+
+    const m = inc.date.slice(0, 7);
+    if (m < currentMonthStr) {
+      priorByMonth.set(m, (priorByMonth.get(m) ?? 0) + netCents);
+    } else if (m === currentMonthStr) {
+      currentMonthCents += netCents;
+    }
+  }
+
+  const priorValues = [...priorByMonth.values()].filter((v) => v > 0);
+  if (priorValues.length > 0) {
+    const sum = priorValues.reduce((acc, v) => acc + v, 0);
+    return {
+      averageMonthlyIncomeCents: Math.round(sum / priorValues.length),
+      monthsCount: priorValues.length,
+      source: "year_average",
+      year,
+    };
+  }
+
+  if (currentMonthCents > 0) {
+    return {
+      averageMonthlyIncomeCents: currentMonthCents,
+      monthsCount: 1,
+      source: "current_month",
+      year,
+    };
+  }
+
+  return {
+    averageMonthlyIncomeCents: 0,
+    monthsCount: 0,
+    source: "none",
+    year,
+  };
+}
+
+export interface SafeDailySpendingParams {
+  referenceDate?: string;
+  safeToSpendCents: number;
+  averageMonthlyIncomeCents: number;
+  incomeMonthsCount?: number;
+  incomeSource?: IncomeAverageSource;
+  nextCycleInvoicesCents?: number;
+  futureInvoicesCents?: number;
+  nextMonthPayableDebtsCents?: number;
+  /** Fração da renda média reservada como margem de lucro/poupança (default: 0.10 = 10%). */
+  savingsMarginRate?: number;
+}
+
+export interface SafeDailySpendingResult {
+  hasIncomeBase: boolean;
+  incomeSource: IncomeAverageSource;
+  incomeMonthsCount: number;
+  horizonDays: number;
+  safeToSpendCents: number;
+  averageMonthlyIncomeCents: number;
+  nextCycleInvoicesCents: number;
+  futureInvoicesCents: number;
+  nextMonthPayableDebtsCents: number;
+  savingsMarginRate: number;
+  savingsMarginCents: number;
+  netBeforeMarginCents: number;
+  netAfterMarginCents: number;
+  /** Valor seguro para gastar por dia mantendo margem de sobra (null se sem base de renda). */
+  safeDailyCents: number | null;
+  /** Valor por dia para fechar exatamente no zero a zero sem margem de sobra. */
+  breakEvenDailyCents: number | null;
+}
+
+/**
+ * Calcula o Gasto Diário Seguro até o fechamento do próximo ciclo, cruzando:
+ * Sobra do Ciclo Atual + Renda Média Mensal - Próximas Faturas - Contas do Próximo Mês - Margem de Sobra.
+ */
+export function calculateSafeDailySpending(
+  params: SafeDailySpendingParams,
+): SafeDailySpendingResult {
+  const {
+    referenceDate = todayISO(),
+    safeToSpendCents,
+    averageMonthlyIncomeCents,
+    incomeMonthsCount = 0,
+    incomeSource = "none",
+    nextCycleInvoicesCents = 0,
+    futureInvoicesCents = 0,
+    nextMonthPayableDebtsCents = 0,
+    savingsMarginRate = 0.1,
+  } = params;
+
+  const [yStr, mStr, dStr] = referenceDate.split("-");
+  const y = Number(yStr) || 2026;
+  const m = Number(mStr) || 1; // 1..12
+  const d = Number(dStr) || 1;
+  const daysInCurrentMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const daysRemainingCurrent = Math.max(1, daysInCurrentMonth - d + 1);
+  const daysInNextMonth = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  const horizonDays = daysRemainingCurrent + daysInNextMonth;
+
+  const safeIncome = Math.max(0, averageMonthlyIncomeCents);
+  const safeNextInvoices = Math.max(0, nextCycleInvoicesCents);
+  const safeFutureInvoices = Math.max(0, futureInvoicesCents);
+  const safeNextDebts = Math.max(0, nextMonthPayableDebtsCents);
+  const effectiveMarginRate = Math.max(0, Math.min(0.5, savingsMarginRate));
+
+  const hasIncomeBase = safeIncome > 0;
+  const totalResourcesCents = safeToSpendCents + safeIncome;
+  const totalCommitmentsCents = safeNextInvoices + safeNextDebts;
+  const netBeforeMarginCents = totalResourcesCents - totalCommitmentsCents;
+  const savingsMarginCents = hasIncomeBase ? Math.round(safeIncome * effectiveMarginRate) : 0;
+  const netAfterMarginCents = netBeforeMarginCents - savingsMarginCents;
+
+  const safeDailyCents =
+    hasIncomeBase && horizonDays > 0 ? Math.max(0, Math.floor(netAfterMarginCents / horizonDays)) : null;
+  const breakEvenDailyCents =
+    hasIncomeBase && horizonDays > 0 ? Math.max(0, Math.floor(netBeforeMarginCents / horizonDays)) : null;
+
+  return {
+    hasIncomeBase,
+    incomeSource,
+    incomeMonthsCount,
+    horizonDays,
+    safeToSpendCents,
+    averageMonthlyIncomeCents: safeIncome,
+    nextCycleInvoicesCents: safeNextInvoices,
+    futureInvoicesCents: safeFutureInvoices,
+    nextMonthPayableDebtsCents: safeNextDebts,
+    savingsMarginRate: effectiveMarginRate,
+    savingsMarginCents,
+    netBeforeMarginCents,
+    netAfterMarginCents,
+    safeDailyCents,
+    breakEvenDailyCents,
   };
 }

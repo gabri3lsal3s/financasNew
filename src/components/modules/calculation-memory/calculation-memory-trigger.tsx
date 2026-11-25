@@ -81,8 +81,8 @@ export function CalculationMemoryTrigger({
 
   const visibilityClass =
     priority === "p0"
-      ? "inline-flex text-muted-foreground/50 hover:text-foreground md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 focus-visible:opacity-100 hover:opacity-100 transition-opacity duration-150"
-      : "hidden md:inline-flex md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 focus-visible:opacity-100 hover:opacity-100 transition-opacity duration-150";
+      ? "inline-flex text-muted-foreground/60 hover:text-foreground md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 focus-visible:opacity-100 hover:opacity-100 transition-opacity duration-150"
+      : "hidden md:inline-flex text-muted-foreground/60 hover:text-foreground md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 focus-visible:opacity-100 hover:opacity-100 transition-opacity duration-150";
 
   if (children) {
     return (

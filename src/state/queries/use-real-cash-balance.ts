@@ -9,11 +9,14 @@ import {
 } from "@/domain/business";
 import { shiftMonth } from "@/lib/date";
 import {
+  calculateAverageMonthlyIncomeCents,
   calculateRealCashBalance,
+  calculateSafeDailySpending,
   calculateSafeToSpend,
   breakdownCycleObligations,
   type CashCheckpointData,
   type RealCashBalanceResult,
+  type SafeDailySpendingResult,
   type SafeToSpendResult,
   type CycleObligationsBreakdown,
 } from "@/domain/cash";
@@ -36,6 +39,7 @@ export interface BusinessCashBreakdownResult {
 export interface UseRealCashBalanceResult {
   cashBalance: RealCashBalanceResult;
   safeToSpend: SafeToSpendResult;
+  safeDailySpending?: SafeDailySpendingResult;
   cycleBreakdown: CycleObligationsBreakdown;
   businessCashBreakdown?: BusinessCashBreakdownResult | null;
   activeScope?: ViewScope;
@@ -60,9 +64,12 @@ export function useRealCashBalance(
   const checkpoint = checkpointQuery.data;
   const startDate = checkpoint?.date ?? "1970-01-01";
   const currentMonthStr = referenceDate.slice(0, 7);
+  const currentYear = referenceDate.slice(0, 4);
+  const yearStartDate = `${currentYear}-01-01`;
   const endDate = `${shiftMonth(currentMonthStr, 1)}-01`;
 
   const incomesQuery = useIncomesByRange(startDate, endDate);
+  const yearIncomesQuery = useIncomesByRange(yearStartDate, endDate);
   const expensesQuery = useExpensesByRange(startDate, endDate);
   const cardsQuery = useCreditCards();
   const cardPaymentsQuery = useAllCardPayments();
@@ -233,10 +240,39 @@ export function useRealCashBalance(
     businessCashDerived.derivedCashBalanceCents,
   ]);
 
+  const safeDailySpending = useMemo(() => {
+    const scopedYearIncomes = filterIncomesByViewScope(
+      yearIncomesQuery.data ?? incomesQuery.data ?? [],
+      activeScope,
+      { mode: "cashflow" },
+    );
+    const avgIncome = calculateAverageMonthlyIncomeCents(scopedYearIncomes, referenceDate);
+    return calculateSafeDailySpending({
+      referenceDate,
+      safeToSpendCents: safeToSpend.safeToSpendCents,
+      averageMonthlyIncomeCents: avgIncome.averageMonthlyIncomeCents,
+      incomeMonthsCount: avgIncome.monthsCount,
+      incomeSource: avgIncome.source,
+      nextCycleInvoicesCents: cycleBreakdown.nextCycleInvoicesCents ?? 0,
+      futureInvoicesCents: cycleBreakdown.futureInvoicesCents ?? 0,
+      nextMonthPayableDebtsCents: cycleBreakdown.nextMonthPayableDebtsCents ?? 0,
+    });
+  }, [
+    yearIncomesQuery.data,
+    incomesQuery.data,
+    activeScope,
+    referenceDate,
+    safeToSpend.safeToSpendCents,
+    cycleBreakdown.nextCycleInvoicesCents,
+    cycleBreakdown.futureInvoicesCents,
+    cycleBreakdown.nextMonthPayableDebtsCents,
+  ]);
+
   const refetch = async () => {
     await Promise.all([
       checkpointQuery.refetch(),
       incomesQuery.refetch(),
+      yearIncomesQuery.refetch(),
       expensesQuery.refetch(),
       cardsQuery.refetch(),
       cardPaymentsQuery.refetch(),
@@ -250,6 +286,7 @@ export function useRealCashBalance(
   return {
     cashBalance,
     safeToSpend,
+    safeDailySpending,
     cycleBreakdown,
     businessCashBreakdown,
     activeScope,

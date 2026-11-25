@@ -651,7 +651,7 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
 
   it("exibe valor bruto como padrão no card de caixa e detalha obrigações de ciclo", () => {
     render(<OverviewPage />);
-    expect(screen.getByText("Faturas e contas a pagar do ciclo (bruto):")).toBeInTheDocument();
+    expect(screen.getByText(/Vence este mês:/)).toBeInTheDocument();
   });
 
   it("abre o diálogo de Raio-X ao clicar em uma categoria no gráfico ou na legenda", async () => {

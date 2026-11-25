@@ -92,10 +92,12 @@ describe("RealCashHeroCard", () => {
     const content = document.body.textContent?.replace(/\u00a0/g, " ");
     expect(content).toContain("5.420,00");
     expect(screen.getByText("Aferido em 20/08/2026")).toBeInTheDocument();
-    expect(screen.getByText("Faturas e contas a pagar do ciclo (bruto):")).toBeInTheDocument();
+    expect(screen.getByText(/Vence este mês:/)).toBeInTheDocument();
     expect(content).toContain("1.500,00");
-    expect(screen.getByText("Saldo Livre Real:")).toBeInTheDocument();
+    expect(screen.getByText("Sobra do Ciclo")).toBeInTheDocument();
     expect(content).toContain("3.920,00");
+    expect(screen.getByText("Próximas Faturas")).toBeInTheDocument();
+    expect(screen.getByText("Gasto Diário Seguro")).toBeInTheDocument();
   });
 
   it("abre o diálogo de detalhamento das obrigações do ciclo ao clicar no botão de obrigações", () => {
@@ -162,7 +164,12 @@ describe("RealCashHeroCard", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", {
-        name: "Ver memória de cálculo de Saldo Livre Real (Safe-to-Spend)",
+        name: "Ver memória de cálculo de Sobra do Ciclo (Safe-to-Spend)",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Ver memória de cálculo de Gasto Diário Seguro",
       }),
     ).toBeInTheDocument();
   });
@@ -184,7 +191,7 @@ describe("RealCashHeroCard", () => {
     expect(screen.getByText(/1\.000,00/)).toBeInTheDocument();
   });
 
-  it("exibe Próximas faturas e Livre para gastar zerado com memória de cálculo quando há faturas futuras em acumulação", () => {
+  it("exibe Próximas Faturas e Gasto Diário Seguro com memória de cálculo quando há faturas futuras e renda média", () => {
     const withUpcomingCardsData: UseRealCashBalanceResult = {
       cashBalance: {
         ...mockRealCashData.cashBalance,
@@ -205,6 +212,23 @@ describe("RealCashHeroCard", () => {
         totalUpcomingCardInvoicesCents: 438364,
         safeToSpendAfterNextInvoicesCents: -135723,
         freeToSpendCents: 0,
+      },
+      safeDailySpending: {
+        hasIncomeBase: true,
+        incomeSource: "year_average",
+        incomeMonthsCount: 10,
+        horizonDays: 38,
+        safeToSpendCents: 29359,
+        averageMonthlyIncomeCents: 350000,
+        nextCycleInvoicesCents: 165082,
+        futureInvoicesCents: 273282,
+        nextMonthPayableDebtsCents: 0,
+        savingsMarginRate: 0.1,
+        savingsMarginCents: 35000,
+        netBeforeMarginCents: 214277,
+        netAfterMarginCents: 179277,
+        safeDailyCents: 4717,
+        breakEvenDailyCents: 5638,
       },
       cycleBreakdown: {
         invoices: [],
@@ -254,15 +278,16 @@ describe("RealCashHeroCard", () => {
 
     render(<RealCashHeroCard realCashData={withUpcomingCardsData} />);
 
-    expect(screen.getByText("Próximas faturas:")).toBeInTheDocument();
-    expect(screen.getByText("Livre para gastar:")).toBeInTheDocument();
+    expect(screen.getByText("Próximas Faturas")).toBeInTheDocument();
+    expect(screen.getByText("Gasto Diário Seguro")).toBeInTheDocument();
+    expect(screen.getByText("Base: renda média (10 meses)")).toBeInTheDocument();
     const content = document.body.textContent?.replace(/\u00a0/g, " ");
     expect(content).toContain("1.650,82");
     expect(content).toContain("2.732,82");
-    expect(content).toContain("0,00");
+    expect(content).toContain("47,17/dia");
     expect(
       screen.getByRole("button", {
-        name: "Ver memória de cálculo de Livre para Gastar (Após Próximas Faturas)",
+        name: "Ver memória de cálculo de Gasto Diário Seguro",
       }),
     ).toBeInTheDocument();
 

@@ -6,7 +6,7 @@
  */
 
 import { formatDateBR } from "@/lib/date";
-import type { CashCheckpointData } from "@/domain/cash";
+import type { CashCheckpointData, SafeDailySpendingResult } from "@/domain/cash";
 import type { SurplusAllocationIntent } from "@/domain/overview";
 import type { CashGapAnalysisResult } from "@/domain/projection";
 import { formatCentsAsBRL } from "@/services/masks/money";
@@ -253,10 +253,10 @@ export function buildSafeToSpendBreakdown(params: SafeToSpendBreakdownParams): C
   const breakdown: CalculationBreakdown = {
     id: "dash-safe-to-spend",
     title: isOptimistic
-      ? "Saldo Livre Real (com Recebíveis)"
-      : "Saldo Livre Real (Safe-to-Spend)",
+      ? "Sobra do Ciclo (com Recebíveis)"
+      : "Sobra do Ciclo (Safe-to-Spend)",
     description:
-      "Quantia verdadeiramente disponível para gastar ou investir sem comprometer as contas e faturas contratadas do ciclo.",
+      "Quanto sobra do saldo bancário atual após quitar apenas faturas e boletos que vencem neste mês civil.",
     periodLabel: "Ciclo Mensal Corrente",
     formulaExpression: isOptimistic
       ? businessCashReservation > 0
@@ -268,13 +268,13 @@ export function buildSafeToSpendBreakdown(params: SafeToSpendBreakdownParams): C
     unit: "currency",
     steps,
     result: {
-      label: isOptimistic ? "Saldo Livre Potencial" : "Saldo Livre Real",
+      label: isOptimistic ? "Sobra Potencial do Ciclo" : "Sobra do Ciclo",
       rawValue: finalValue,
       unit: "currency",
       tone: finalValue >= 0 ? "positive" : "negative",
       hint:
         !isOptimistic && hasReceivables
-          ? `Você possui valores a receber previstos que não foram antecipados nesta conta conservadora.`
+          ? "Você possui valores a receber previstos que não foram antecipados nesta conta conservadora."
           : undefined,
     },
     inclusions: [
@@ -707,6 +707,157 @@ export function buildWeeklyRadarBreakdown(
       unit: "currency",
       tone: freeBalanceCents < 0 ? "negative" : "positive",
     },
+  };
+
+  return enrichBreakdown(breakdown);
+}
+
+/**
+ * Constrói a memória de cálculo do Gasto Diário Seguro considerando a média
+ * de receitas operacionais do ano, a sobra do ciclo atual e as próximas faturas.
+ */
+export function buildSafeDailySpendingBreakdown(
+  result: SafeDailySpendingResult,
+): CalculationBreakdown {
+  const {
+    hasIncomeBase,
+    incomeSource,
+    incomeMonthsCount,
+    horizonDays,
+    safeToSpendCents,
+    averageMonthlyIncomeCents,
+    nextCycleInvoicesCents,
+    futureInvoicesCents,
+    nextMonthPayableDebtsCents,
+    savingsMarginRate,
+    savingsMarginCents,
+    netAfterMarginCents,
+    safeDailyCents,
+    breakEvenDailyCents,
+  } = result;
+
+  const incomeHint =
+    incomeSource === "year_average"
+      ? `Média de ${incomeMonthsCount} ${incomeMonthsCount === 1 ? "mês anterior" : "meses anteriores"} com receita neste ano (exclui estornos)`
+      : incomeSource === "current_month"
+        ? "Baseada nas receitas já recebidas neste mês (sem histórico anterior no ano)"
+        : "Cadastre suas receitas para projetar o limite diário";
+
+  const steps: BreakdownStep[] = [
+    {
+      label: "Sobra do Ciclo Atual",
+      operator: "+",
+      rawValue: safeToSpendCents,
+      hint: "Saldo disponível hoje descontadas as obrigações vencendo ainda neste mês",
+      tone: safeToSpendCents >= 0 ? "positive" : "negative",
+    },
+    {
+      label:
+        incomeSource === "year_average"
+          ? `Renda Média Mensal (${incomeMonthsCount} meses)`
+          : "Renda Mensal Estimada",
+      operator: "+",
+      rawValue: averageMonthlyIncomeCents,
+      hint: incomeHint,
+      tone: "positive",
+    },
+  ];
+
+  if (nextCycleInvoicesCents > 0) {
+    steps.push({
+      label: "Próximas Faturas em Acumulação",
+      operator: "-",
+      rawValue: nextCycleInvoicesCents,
+      hint: "Faturas já acumuladas para vencer no próximo ciclo",
+      tone: "negative",
+      actionLink: {
+        to: "/cartoes",
+        label: "Ver faturas",
+      },
+    });
+  }
+
+  if (nextMonthPayableDebtsCents > 0) {
+    steps.push({
+      label: "Contas a Pagar do Próximo Mês",
+      operator: "-",
+      rawValue: nextMonthPayableDebtsCents,
+      hint: "Boletos e dívidas já agendados para o mês seguinte",
+      tone: "negative",
+    });
+  }
+
+  if (savingsMarginCents > 0) {
+    const pctLabel = Math.round(savingsMarginRate * 100);
+    steps.push({
+      label: `Margem de Sobra / Reserva (${pctLabel}%)`,
+      operator: "-",
+      rawValue: savingsMarginCents,
+      hint: "Reserva automática sobre a renda média para fechar o próximo ciclo no lucro",
+      tone: "portfolio",
+    });
+  }
+
+  steps.push({
+    label: "Saldo Líquido para Consumo no Horizonte",
+    operator: "=",
+    rawValue: Math.max(0, netAfterMarginCents),
+    hint: `Distribuído ao longo de ${horizonDays} dias (restante deste mês + próximo mês)`,
+    tone: netAfterMarginCents > 0 ? "positive" : "negative",
+    emphasis: "subtotal",
+  });
+
+  steps.push({
+    label: "Dias no Horizonte (Hoje até Fim do Próximo Mês)",
+    operator: "/",
+    rawValue: horizonDays,
+    unit: "count",
+    tone: "default",
+  });
+
+  const notes: string[] = [];
+  if (hasIncomeBase && breakEvenDailyCents !== null && savingsMarginCents > 0) {
+    notes.push(
+      `No zero a zero (sem reservar os ${Math.round(savingsMarginRate * 100)}% de margem), seu limite seria de ${formatCentsAsBRL(breakEvenDailyCents)}/dia.`,
+    );
+  }
+  if (futureInvoicesCents > 0) {
+    notes.push(
+      `Faturas posteriores além do próximo ciclo somam ${formatCentsAsBRL(futureInvoicesCents)} e serão cobertas pelas rendas dos meses seguintes.`,
+    );
+  }
+
+  const breakdown: CalculationBreakdown = {
+    id: "dash-safe-daily-spending",
+    title: "Gasto Diário Seguro",
+    description:
+      "Mostra quanto você pode gastar por dia daqui até o fim do próximo mês considerando sua renda média, a sobra deste ciclo, as próximas faturas e uma margem de reserva.",
+    periodLabel: `Horizonte de ${horizonDays} dias`,
+    formulaExpression:
+      "(Sobra do Ciclo + Renda Média - Próximas Faturas - Contas Próx. Mês - Margem 10%) / Dias",
+    unit: "currency",
+    steps,
+    result: {
+      label: "Limite Diário Seguro",
+      rawValue: safeDailyCents ?? 0,
+      unit: "currency",
+      tone: !hasIncomeBase ? "muted" : (safeDailyCents ?? 0) > 0 ? "positive" : "negative",
+      hint: hasIncomeBase
+        ? `Equivale a ${formatCentsAsBRL(safeDailyCents ?? 0)} por dia durante ${horizonDays} dias.`
+        : "Aguardando histórico de receitas para estimar o gasto diário.",
+    },
+    inclusions: [
+      "Sobra do Ciclo Atual em conta",
+      "Média mensal de receitas operacionais do ano",
+      "Próximas faturas de cartão em acumulação e contas do próximo mês",
+      "Margem prudencial de 10% para reserva/lucro",
+    ],
+    exclusions: [
+      futureInvoicesCents > 0
+        ? `Parcelamentos posteriores além do próximo mês (${formatCentsAsBRL(futureInvoicesCents)})`
+        : "Parcelamentos posteriores além do próximo mês",
+    ],
+    notes: notes.length > 0 ? notes : undefined,
   };
 
   return enrichBreakdown(breakdown);

@@ -50,6 +50,8 @@ export interface CycleObligationsBreakdown {
   totalUpcomingCardInvoicesCents?: number;
   payableDebts: CycleDebtItem[];
   payableDebtsCents: number;
+  /** Dívidas/boletos a pagar já cadastrados para o próximo mês civil (centavos). */
+  nextMonthPayableDebtsCents?: number;
   committedObligationsCents: number;
   receivableDebts: CycleDebtItem[];
   receivablePendingCents: number;
@@ -110,6 +112,7 @@ export function breakdownCycleObligations(
   const currentMonthStr = referenceDate.slice(0, 7);
   const nextMonthStr = shiftMonth(currentMonthStr, 1);
   const currentMonthRangeEnd = `${nextMonthStr}-01`;
+  const nextMonthRangeEnd = `${shiftMonth(nextMonthStr, 1)}-01`;
 
   // 1. Apuração em 3 camadas de faturas de cartão de crédito em aberto (SSOT):
   //    (a) Ciclo atual (vencidas ou vencendo até o fim deste mês civil);
@@ -165,6 +168,7 @@ export function breakdownCycleObligations(
 
   let futureDebtsCount = 0;
   let futureDebtsCents = 0;
+  let nextMonthPayableDebtsCents = 0;
 
   for (const debt of debts) {
     if (debt.paid_at !== null) continue;
@@ -185,6 +189,9 @@ export function breakdownCycleObligations(
       } else {
         futureDebtsCount += 1;
         futureDebtsCents += amountCents;
+        if (debt.due_date < nextMonthRangeEnd) {
+          nextMonthPayableDebtsCents += amountCents;
+        }
       }
     } else if (debt.type === "receivable") {
       if (debt.due_date <= currentMonthRangeEnd) {
@@ -217,6 +224,7 @@ export function breakdownCycleObligations(
     totalUpcomingCardInvoicesCents,
     payableDebts,
     payableDebtsCents,
+    nextMonthPayableDebtsCents,
     committedObligationsCents,
     receivableDebts,
     receivablePendingCents,

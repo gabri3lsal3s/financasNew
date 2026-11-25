@@ -4,6 +4,7 @@ import {
   buildCashGapBreakdown,
   buildFreeToSpendBreakdown,
   buildRealCashBreakdown,
+  buildSafeDailySpendingBreakdown,
   buildSafeToSpendBreakdown,
   buildSurplusCapacityBreakdown,
   buildWeeklyRadarBreakdown,
@@ -270,6 +271,31 @@ describe("Builders de Memória de Cálculo: Cash", () => {
       expect(breakdown.id).toBe("dash-weekly-radar");
       expect(breakdown.result.rawValue).toBe(14359);
       expect(breakdown.steps[1]?.hint).toContain("1 compromisso(s) vencido(s)");
+    });
+
+    it("buildSafeDailySpendingBreakdown detalha renda média, margem de 10%, zero a zero e faturas futuras", () => {
+      const breakdown = buildSafeDailySpendingBreakdown({
+        hasIncomeBase: true,
+        incomeSource: "year_average",
+        incomeMonthsCount: 2,
+        horizonDays: 38,
+        safeToSpendCents: 29359,
+        averageMonthlyIncomeCents: 350000,
+        nextCycleInvoicesCents: 165082,
+        futureInvoicesCents: 273439,
+        nextMonthPayableDebtsCents: 0,
+        savingsMarginRate: 0.1,
+        savingsMarginCents: 35000,
+        netBeforeMarginCents: 214277,
+        netAfterMarginCents: 179277,
+        safeDailyCents: 4717,
+        breakEvenDailyCents: 5638,
+      });
+
+      expect(breakdown.id).toBe("dash-safe-daily-spending");
+      expect(breakdown.result.rawValue).toBe(4717);
+      expect(breakdown.notes?.[0]).toContain("56,38/dia");
+      expect(breakdown.notes?.[1]).toContain("2.734,39");
     });
   });
 });

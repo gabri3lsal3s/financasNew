@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  calculateAverageMonthlyIncomeCents,
   calculateRealCashBalance,
+  calculateSafeDailySpending,
   calculateSafeToSpend,
   type CashCheckpointData,
 } from "./cash-ledger";
@@ -350,5 +352,38 @@ describe("Safe-to-Spend Forecast — calculateSafeToSpend", () => {
     expect(res.safeToSpendAfterNextInvoicesCents).toBe(29359 - 165082);
     // Para gasto livre discricionário, o valor é zerado
     expect(res.freeToSpendCents).toBe(0);
+  });
+
+  it("calcula média mensal de receitas operacionais do ano e Gasto Diário Seguro no horizonte até o próximo ciclo", () => {
+    const avg = calculateAverageMonthlyIncomeCents(
+      [
+        { date: "2026-09-05", value: 3400 },
+        { date: "2026-10-05", value: 3600 },
+        { date: "2026-10-12", value: 200, source_ref: "[REFUND]p1" }, // estorno ignorado
+        { date: "2026-11-05", value: 3500 }, // mês atual ignorado quando há meses anteriores
+      ],
+      "2026-11-24",
+    );
+
+    expect(avg.source).toBe("year_average");
+    expect(avg.monthsCount).toBe(2);
+    expect(avg.averageMonthlyIncomeCents).toBe(350000); // (3400 + 3600) / 2
+
+    const daily = calculateSafeDailySpending({
+      referenceDate: "2026-11-24", // 7 dias restantes em nov + 31 dias em dez = 38 dias
+      safeToSpendCents: 29359, // R$ 293,59
+      averageMonthlyIncomeCents: avg.averageMonthlyIncomeCents,
+      incomeMonthsCount: avg.monthsCount,
+      incomeSource: avg.source,
+      nextCycleInvoicesCents: 165082, // R$ 1.650,82
+      futureInvoicesCents: 273439, // R$ 2.734,39
+    });
+
+    expect(daily.horizonDays).toBe(38);
+    expect(daily.savingsMarginCents).toBe(35000); // 10% de R$ 3.500,00
+    // (29359 + 350000 - 165082 - 35000) / 38 = 179277 / 38 = 4717 centavos = R$ 47,17/dia
+    expect(daily.safeDailyCents).toBe(4717);
+    // Sem margem (zero a zero): (29359 + 350000 - 165082) / 38 = 214277 / 38 = 5638 centavos = R$ 56,38/dia
+    expect(daily.breakEvenDailyCents).toBe(5638);
   });
 });
