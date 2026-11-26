@@ -8242,3 +8242,12 @@ flowchart TD
 >   - Tratamento de `isError` com retry em todas as telas administrativas, `AdminSettingsPage` consolidada em 4 abas (`Módulos & Kill-Switches`, `APK Beta`, `Bot Telegram`, `Layouts de Fatura`) e `UserEditDialog` organizado em abas.
 > - **Funcionalidades de Produção:**
 >   - Paginação e filtros em `AdminUsersPage`, edição de `trialEndsAt`/`currentPeriodEnd` em `UserSaasPlanSection`, KPIs SaaS reais e listagem filtrável em `AdminBillingPage`, encerramento/exclusão de comunicados em `BroadcastHistoryList` e filtros/paginação/exportação CSV+JSON em `AdminSecurityPage`.
+
+### Fase 133 — Hardening Integral de Segurança (F-01 a F-11), Otimização de Queries & Release Android Pro (v3.30.1 — Build 119)
+
+> **Status:** Concluída em Código, Testes, Produção Supabase & R2 (`v3.30.1`, Build `119`):
+> - **Remediação da Auditoria de Segurança (`9037f358`):**
+>   - Banco Supabase (`20260101000158_security_audit_remediation_v2.sql`): convergência das políticas administrativas (`support_tickets`, `admin_telegram_settings`, `app_analytics_events`, `billing_webhook_logs`, `billing_intents`) para `(select auth.uid()) IS NOT NULL AND (select public.is_admin())`, `FORCE ROW LEVEL SECURITY` em tabelas sensíveis, proteção AAL2 + `is_superadmin()` via `assert_active_superadmin_aal2` nas RPCs `admin_delete_user` e `admin_reset_user_mfa`, exigência de `can_current_user_write_module('cards')` em blueprints de faturas e criação de `trip_passcode_rate_limits` + `verify_trip_passcode_guarded` (5 tentativas/15 min, bcrypt-only) com validação `https://` para comprovantes em viagens públicas.
+>   - Edge Functions, Crons & Frontend: isolamento por `.eq("user_id", callerUserId)` em `quotes` (`v221`), invocação via `userClient` em `admin-super-action` (`v53`), migração dos 6 jobs ativos de `pg_cron` para `CRON_SECRET`, guarda `<RequireSuperAdmin />` em `/admin/laboratorio-forense`, função compartilhada `isSafeApkDownloadUrl()` e exportação segura anti-DDE em `AdminSecurityPage` via `toCsv()`.
+> - **Otimização de Queries (`9eebb2a7`):** gating explícito de queries dependentes ou desabilitadas por feature flags nos hooks da Home, Orçamentos, Metas, Insights, Relatórios, Recorrências e Carteira.
+> - **Distribuição Android Pro (`v3.30.1` — `versionCode: 119`):** APK compilado, assinado, versionado (`sha256: 113600e8db7b08010269a06833c15857ba5b14d2efee2c50f6a15f1f54e6dc49`, `13.540.074` bytes) e publicado no Cloudflare R2 (`public/releases/version.json`).

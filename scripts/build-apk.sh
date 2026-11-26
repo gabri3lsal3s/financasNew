@@ -169,10 +169,10 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Consolidacao do Console Admin, SSOT de Beneficios Pro & 4 Novas Trilhas Demo",
-    "Console Administrativo (/admin) refatorado com navegacao agrupada, abas em Configuracoes/Usuarios, paginacao e exportacao CSV/JSON",
-    "SSOT de beneficios Pro (benefits.ts) unificando Landing Page, Upgrade, Checkout, Recibo e Welcome Modal",
-    "Catalogo expandido para 19 trilhas guiadas de demonstracao e passo de perfil MEI/PJ no onboarding"
+    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Hardening Integral de Seguranca (F-01 a F-11) & Otimizacao de Queries",
+    "Blindagem de banco (migracao 0158): RLS administrativo ativo, FORCE RLS, protecao AAL2 em RPCs de superadmin e rate limit em viagens publicas",
+    "Edge Functions e crons endurecidos com isolamento por user_id em quotes e autenticacao dedicada via CRON_SECRET",
+    "Validacao estrita de URLs de atualizacao APK, guarda RequireSuperAdmin, exportacao CSV segura e otimizacao de queries da Home e relatorios"
   ]
 }
 EOF
