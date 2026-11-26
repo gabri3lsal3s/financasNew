@@ -47,6 +47,19 @@ function mapAsset(row: PortfolioAsset): PortfolioAsset {
   };
 }
 
+const PORTFOLIO_ASSET_COLUMNS =
+  "id, user_id, ticker, asset_class, sector, currency, quantity, average_price, accumulated_dividends, estimated_monthly_dividend_per_share, fixed_income_metadata, is_family, family_id, family_share_mode, family_share_percentage, notes, score, allocation_status, score_criteria, last_reviewed_at, review_frequency_months, thesis_summary, ceiling_price, ceiling_method, ceiling_metadata, total_cost_brl, average_cost_brl, fx_rate_at_purchase, dividends_start_date, created_at, updated_at";
+const PORTFOLIO_SNAPSHOT_COLUMNS =
+  "id, user_id, month, total_value, total_cost, auto_total_value, auto_total_cost, manual_total_value, manual_total_cost, is_manually_calibrated, calibrated_at, status, closing_date, closed_at, created_at, updated_at";
+const PORTFOLIO_CONTRIBUTION_COLUMNS =
+  "id, user_id, asset_id, date, amount, notes, batch_id, created_at";
+const PORTFOLIO_DIVIDEND_COLUMNS =
+  "id, user_id, asset_id, ticker, date, amount, notes, sync_cash, cash_amount, source_event_id, request_id, entry_origin, created_at";
+const PORTFOLIO_TRANSACTION_COLUMNS =
+  "id, user_id, asset_id, type, date, quantity, price, total, fx_rate, total_cost_brl, notes, batch_id, linked_dividend_id, request_id, cost_basis_realized, iof_withheld, ir_withheld, net_realized_amount, gross_realized_pnl, net_realized_pnl";
+const USER_DIVIDEND_EVENT_COLUMNS =
+  "id, user_id, corporate_dividend_id, asset_id, ticker, type, status, com_date, payment_date, quantity_on_com_date, gross_rate, net_rate, tax_rate_pct, gross_amount, net_amount, currency, fx_rate_applied, settled_dividend_id, is_manual, is_type_uncertain, settlement_origin, manual_review_required, dismiss_reason, notes, revision, created_at, updated_at";
+
 function mapTransaction(row: PortfolioTransaction): PortfolioTransaction {
   return {
     ...row,
@@ -101,7 +114,7 @@ export async function listPortfolioAssets(confirmedUserId?: string): Promise<Por
   const { data, error } = await resolveQuery<PortfolioAsset[]>(
     getSupabase()
       .from("portfolio_assets")
-      .select("*")
+      .select(PORTFOLIO_ASSET_COLUMNS)
       .eq("user_id", user_id)
       .order("ticker"),
   );
@@ -250,7 +263,7 @@ export async function listPortfolioSnapshots(): Promise<PortfolioSnapshot[]> {
   const { data, error } = await resolveQuery<PortfolioSnapshot[]>(
     getSupabase()
       .from("portfolio_snapshots")
-      .select("*")
+      .select(PORTFOLIO_SNAPSHOT_COLUMNS)
       .eq("user_id", user_id)
       .order("month"),
   );
@@ -398,7 +411,7 @@ export async function listPortfolioContributions(): Promise<PortfolioContributio
   const { data, error } = await resolveQuery<PortfolioContribution[]>(
     getSupabase()
       .from("portfolio_contributions")
-      .select("*")
+      .select(PORTFOLIO_CONTRIBUTION_COLUMNS)
       .eq("user_id", user_id)
       .order("date", { ascending: false }),
   );
@@ -539,7 +552,7 @@ export async function listPortfolioDividends(): Promise<PortfolioDividend[]> {
   const { data, error } = await resolveQuery<PortfolioDividend[]>(
     getSupabase()
       .from("portfolio_dividends")
-      .select("*")
+      .select(PORTFOLIO_DIVIDEND_COLUMNS)
       .eq("user_id", user_id)
       .order("date", { ascending: false }),
   );
@@ -601,7 +614,7 @@ export async function listPortfolioTransactions(assetId: string): Promise<Portfo
   const { data, error } = await resolveQuery<PortfolioTransaction[]>(
     getSupabase()
       .from("portfolio_transactions")
-      .select("*")
+      .select(PORTFOLIO_TRANSACTION_COLUMNS)
       .eq("user_id", user_id)
       .eq("asset_id", assetId)
       .order("date"),
@@ -615,18 +628,19 @@ export async function listPortfolioTransactions(assetId: string): Promise<Portfo
 
 export async function listAllPortfolioTransactions(): Promise<PortfolioTransaction[]> {
   const user_id = await currentUserId();
-  const { data, error } = await resolveQuery<PortfolioTransaction[]>(
-    getSupabase()
+  const data = await readAllPages<PortfolioTransaction>((afterId, pageSize) => {
+    let page = getSupabase()
       .from("portfolio_transactions")
-      .select("*")
+      .select(PORTFOLIO_TRANSACTION_COLUMNS)
       .eq("user_id", user_id)
-      .order("date"),
-  );
-  if (error) {
-    const classified = classifyError(error);
-    throw new AppError(classified.kind, classified.message, error);
-  }
-  return (data ?? []).map(mapTransaction);
+      .order("id", { ascending: true })
+      .limit(pageSize);
+    if (afterId) page = page.gt("id", afterId);
+    return resolveQuery<PortfolioTransaction[]>(page);
+  });
+  return data
+    .map(mapTransaction)
+    .sort((left, right) => left.date.localeCompare(right.date) || left.id.localeCompare(right.id));
 }
 
 export async function createPortfolioTransaction(
@@ -784,7 +798,12 @@ function mapUserDividendEvent(row: UserDividendEvent): UserDividendEvent {
     is_manual: Boolean(row.is_manual),
     is_type_uncertain: Boolean(row.is_type_uncertain),
     manual_review_required: Boolean(row.manual_review_required),
-    revision: row.revision != null ? Number(row.revision) : 1,
+    revision:
+      typeof row.revision === "number" && Number.isFinite(row.revision)
+        ? row.revision
+        : Number.isFinite(Number(row.revision)) && row.revision != null
+          ? Number(row.revision)
+          : 0,
   };
 }
 
@@ -863,21 +882,24 @@ export async function listCorporateDividends(tickers?: string[]): Promise<Corpor
  */
 export async function listUserDividendEvents(): Promise<UserDividendEvent[]> {
   const uid = await currentUserId();
-  const { data, error } = await resolveQuery(
-    getSupabase()
+  const rows = await readAllPages<UserDividendEvent>((afterId, pageSize) => {
+    let page = getSupabase()
       .from("user_dividend_events")
-      .select("*")
+      .select(USER_DIVIDEND_EVENT_COLUMNS)
       .eq("user_id", uid)
-      .order("payment_date", { ascending: false, nullsFirst: true })
-      .order("com_date", { ascending: false }),
-  );
+      .order("id", { ascending: true })
+      .limit(pageSize);
+    if (afterId) page = page.gt("id", afterId);
+    return resolveQuery<UserDividendEvent[]>(page);
+  });
 
-  if (error) {
-    const classified = classifyError(error);
-    throw new AppError(classified.kind, classified.message, error);
-  }
-
-  return ((data ?? []) as UserDividendEvent[]).map(mapUserDividendEvent);
+  return rows.map(mapUserDividendEvent).sort((a, b) => {
+    if (a.payment_date == null && b.payment_date != null) return -1;
+    if (a.payment_date != null && b.payment_date == null) return 1;
+    const payCmp = (b.payment_date ?? "").localeCompare(a.payment_date ?? "");
+    if (payCmp !== 0) return payCmp;
+    return b.com_date.localeCompare(a.com_date);
+  });
 }
 
 export interface CreateManualUserDividendEventInput {

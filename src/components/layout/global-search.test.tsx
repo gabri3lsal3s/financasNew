@@ -68,7 +68,7 @@ const entries: SearchEntry[] = [
   },
 ];
 
-vi.mock("@/state", () => ({
+vi.mock("@/state/queries/use-search", () => ({
   useGlobalSearchEntries: (enabled: boolean) => ({
     entries: enabled ? entries : [],
     isLoading: false,
@@ -96,7 +96,7 @@ describe("GlobalSearch (busca global ⌘K §3.9 & Fase 64)", () => {
     render(<GlobalSearch />);
 
     await user.click(screen.getByRole("button", { name: "Buscar ou executar comando (Ctrl+K)" }));
-    expect(screen.getByPlaceholderText(/Buscar páginas, ações/)).toBeInTheDocument();
+    expect(await screen.findByPlaceholderText(/Buscar páginas, ações/)).toBeInTheDocument();
     expect(screen.getByText("Digite ao menos 2 caracteres para buscar.")).toBeInTheDocument();
   });
 
@@ -105,7 +105,7 @@ describe("GlobalSearch (busca global ⌘K §3.9 & Fase 64)", () => {
     render(<GlobalSearch />);
 
     await user.click(screen.getByRole("button", { name: "Buscar ou executar comando (Ctrl+K)" }));
-    await user.type(screen.getByPlaceholderText(/Buscar páginas, ações/), "mercado");
+    await user.type(await screen.findByPlaceholderText(/Buscar páginas, ações/), "mercado");
 
     // Grupo "Despesas" com o resultado.
     expect(screen.getByText("Despesas")).toBeInTheDocument();
@@ -120,7 +120,7 @@ describe("GlobalSearch (busca global ⌘K §3.9 & Fase 64)", () => {
     render(<GlobalSearch />);
 
     await user.click(screen.getByRole("button", { name: "Buscar ou executar comando (Ctrl+K)" }));
-    await user.type(screen.getByPlaceholderText(/Buscar páginas, ações/), "nubank");
+    await user.type(await screen.findByPlaceholderText(/Buscar páginas, ações/), "nubank");
 
     expect(screen.getByText("Cartões de Crédito")).toBeInTheDocument();
     expect(screen.getByText("Nubank")).toBeInTheDocument();
@@ -133,7 +133,7 @@ describe("GlobalSearch (busca global ⌘K §3.9 & Fase 64)", () => {
     render(<GlobalSearch />);
 
     await user.click(screen.getByRole("button", { name: "Buscar ou executar comando (Ctrl+K)" }));
-    await user.type(screen.getByPlaceholderText(/Buscar páginas, ações/), "pendente");
+    await user.type(await screen.findByPlaceholderText(/Buscar páginas, ações/), "pendente");
 
     expect(screen.getByText("Dívidas & Empréstimos")).toBeInTheDocument();
     await user.click(screen.getByText("Conta de luz"));
@@ -145,7 +145,7 @@ describe("GlobalSearch (busca global ⌘K §3.9 & Fase 64)", () => {
     render(<GlobalSearch />);
 
     await user.click(screen.getByRole("button", { name: "Buscar ou executar comando (Ctrl+K)" }));
-    await user.type(screen.getByPlaceholderText(/Buscar páginas, ações/), "nova despesa");
+    await user.type(await screen.findByPlaceholderText(/Buscar páginas, ações/), "nova despesa");
 
     expect(screen.getByText("Ações Rápidas")).toBeInTheDocument();
     await user.click(screen.getByRole("option", { name: /Nova Despesa/i }));
@@ -157,7 +157,7 @@ describe("GlobalSearch (busca global ⌘K §3.9 & Fase 64)", () => {
     render(<GlobalSearch />);
 
     await user.click(screen.getByRole("button", { name: "Buscar ou executar comando (Ctrl+K)" }));
-    await user.type(screen.getByPlaceholderText(/Buscar páginas, ações/), "petr4");
+    await user.type(await screen.findByPlaceholderText(/Buscar páginas, ações/), "petr4");
 
     expect(screen.getByText("Investimentos & Ativos")).toBeInTheDocument();
     await user.click(screen.getByText("PETR4 · Petróleo"));
@@ -169,7 +169,7 @@ describe("GlobalSearch (busca global ⌘K §3.9 & Fase 64)", () => {
     render(<GlobalSearch />);
 
     await user.click(screen.getByRole("button", { name: "Buscar ou executar comando (Ctrl+K)" }));
-    await user.type(screen.getByPlaceholderText(/Buscar páginas, ações/), "acima de 200");
+    await user.type(await screen.findByPlaceholderText(/Buscar páginas, ações/), "acima de 200");
 
     expect(screen.getByText("Despesas")).toBeInTheDocument();
     expect(screen.getByText("Mercado Extra")).toBeInTheDocument();

@@ -135,7 +135,6 @@ export function AppearanceTab() {
     setThemePref("system");
     setDarkThemeVariant("dark");
     setScheduleConfig(DEFAULT_THEME_SCHEDULE);
-    triggerSensory("action");
     updateCustomSettingsMutation.mutate({
       experiencePreset: "dynamic",
       accent: "teal",

@@ -50,12 +50,12 @@ function statements(): string[] {
 }
 
 describe("F6.2 — RLS: cobertura total (D4 — multiusuário isolado)", () => {
-  it("toda tabela criada nas migrations tem RLS habilitado (74 tabelas)", () => {
+  it("toda tabela criada nas migrations tem RLS habilitado", () => {
     const createdMatches = [...ALL_SQL.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?public\.([a-zA-Z0-9_]+)/gi)]
       .map((m) => m[1]?.toLowerCase())
       .filter((name): name is string => Boolean(name));
     const created = Array.from(new Set(createdMatches));
-    expect(created.length).toBe(78);
+    expect(created.length).toBe(81);
     for (const table of created) {
       expect(ALL_SQL).toMatch(
         new RegExp(`alter\\s+table\\s+(?:only\\s+)?public\\.${table}\\s+enable\\s+row\\s+level\\s+security`, "i"),
@@ -255,6 +255,14 @@ describe("F6.2 — RPCs transacionais endurecidos (D1)", () => {
         if (fn.cleanName === "reconcile_expired_subscriptions") {
           expect(fn.body).toMatch(/cancel_at_period_end\s*=\s*true/i);
           expect(fn.body).toMatch(/current_period_end\s*<=\s*now\(\)/i);
+          continue;
+        }
+
+        // Exceção fundamentada: RPC de ativação atômica de assinatura via webhook/checkout.
+        // Exclusiva para service_role (sem auth.uid() em webhooks) e filtra por user_id = p_user_id.
+        if (fn.cleanName === "activate_subscription_from_payment") {
+          expect(fn.body).toMatch(/auth\.role\(\)\s*<>\s*'service_role'/i);
+          expect(fn.body).toMatch(/user_id\s*=\s*p_user_id/i);
           continue;
         }
 
@@ -637,7 +645,8 @@ describe("Tarefa 5.5 — Fortalecimento Nativo Android & Privacidade de Sessão"
       resolve(root, "src/app/authenticated-providers.tsx"),
       "utf8",
     );
-    expect(authenticatedProvidersTs).toContain("<AppLockOverlay />");
+    expect(authenticatedProvidersTs).toContain("<AppLockOverlayHost />");
+    expect(authenticatedProvidersTs).toContain("<LazyAppLockOverlay />");
   });
 });
 
@@ -866,14 +875,14 @@ describe("Tarefa 3.3 — Criação do Índice Composto Complementar em portfolio
 });
 
 describe("Tarefa 3.4 — Expansão da Suíte de Auditoria Integral de Banco & Governança InitPlan", () => {
-  it("todas as 74 tabelas possuem RLS habilitado e nenhuma migração contém disable row level security", () => {
+  it("todas as tabelas possuem RLS habilitado e nenhuma migração contém disable row level security", () => {
     expect(ALL_SQL).not.toMatch(/disable\s+row\s+level\s+security/i);
 
     const createdMatches = [...ALL_SQL.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?public\.([a-zA-Z0-9_]+)/gi)]
       .map((m) => m[1]?.toLowerCase())
       .filter((name): name is string => Boolean(name));
     const created = Array.from(new Set(createdMatches));
-    expect(created.length).toBe(78);
+    expect(created.length).toBe(81);
     for (const table of created) {
       expect(ALL_SQL).toMatch(
         new RegExp(`alter\\s+table\\s+(?:only\\s+)?public\\.${table}\\s+enable\\s+row\\s+level\\s+security`, "i"),

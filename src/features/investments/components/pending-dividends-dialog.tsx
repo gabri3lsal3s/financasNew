@@ -63,96 +63,23 @@ import {
   useConfirmUserDividendEvents,
   useCorporateDividends,
   useCreateManualUserDividendEvent,
+  useCreatePortfolioDividend,
   useDeleteUserDividendEvent,
   useDismissUserDividendEvent,
+  useDismissUserDividendEventsBatch,
   usePortfolioAssets,
+  usePortfolioDividends,
+  useSetDividendTracking,
+  useUpdatePortfolioDividend,
+  useUpdateUserDividendEvent,
   useUserPreferences,
 } from "@/state";
-import * as stateHooks from "@/state";
 import type {
   ConfirmDividendEventItem,
   CorporateDividendType,
   PortfolioAsset,
-  PortfolioDividend,
-  SetDividendTrackingAtomicResult,
 } from "@/types";
 
-function getOptionalStateHook<T>(key: string, fallback: T): T {
-  if (Reflect.ownKeys(stateHooks).includes(key)) {
-    const candidate = (stateHooks as Record<string, unknown>)[key];
-    if (typeof candidate === "function") return candidate as T;
-  }
-  return fallback;
-}
-
-const useOptionalDismissUserDividendEventsBatch = getOptionalStateHook<
-  () => {
-    mutateAsync: (params: {
-      ids: string[];
-      revisions?: number[] | null;
-      reason?: string;
-    }) => Promise<{ success: boolean; dismissed_ids: string[]; revisions: number[] }>;
-    isPending: boolean;
-  }
->("useDismissUserDividendEventsBatch", () => ({
-  mutateAsync: async () => ({ success: true, dismissed_ids: [], revisions: [] }),
-  isPending: false,
-}));
-
-const useOptionalUpdateUserDividendEvent = getOptionalStateHook<
-  () => {
-    mutateAsync: (params: {
-      id: string;
-      patch: {
-        status?: "PROVISIONED" | "PENDING_CONFIRMATION" | "SETTLED" | "DISMISSED";
-        settlement_origin?: "auto" | "manual" | "dedup" | null;
-        settled_dividend_id?: string | null;
-      };
-    }) => Promise<unknown>;
-    isPending: boolean;
-  }
->("useUpdateUserDividendEvent", () => ({
-  mutateAsync: async () => undefined,
-  isPending: false,
-}));
-
-const useOptionalUpdatePortfolioDividend = getOptionalStateHook<
-  () => {
-    mutateAsync: (params: {
-      id: string;
-      patch: { date?: string };
-    }) => Promise<unknown>;
-    isPending: boolean;
-  }
->("useUpdatePortfolioDividend", () => ({
-  mutateAsync: async () => undefined,
-  isPending: false,
-}));
-
-const useOptionalCreatePortfolioDividend = getOptionalStateHook<
-  () => {
-    mutateAsync: (params: {
-      asset_id?: string | null;
-      ticker: string;
-      amount: number;
-      date: string;
-      notes?: string | null;
-      sync_cash?: boolean;
-      cash_amount?: number | null;
-      create_transaction?: boolean;
-      tx_type?: "dividend" | "jcp" | "yield" | "other";
-      fx_rate?: number | null;
-    }) => Promise<unknown>;
-    isPending: boolean;
-  }
->("useCreatePortfolioDividend", () => ({
-  mutateAsync: async () => undefined,
-  isPending: false,
-}));
-
-const useOptionalPortfolioDividends = getOptionalStateHook<
-  () => { data?: PortfolioDividend[] }
->("usePortfolioDividends", () => ({ data: [] }));
 
 type OriginFilterValue = "all" | "official" | "community_verified" | "estimated" | "manual";
 
@@ -190,32 +117,6 @@ const CURRENCY_FILTER_OPTIONS: SelectOption[] = [
   { value: "USD", label: "USD" },
 ];
 
-const useOptionalSetDividendTracking = getOptionalStateHook<
-  () => {
-    mutateAsync: (input: {
-      trackingStartDate?: string | null;
-      assets?: Array<{
-        asset_id: string;
-        expected_start: string | null;
-        start_date: string | null;
-      }>;
-      expectedTrackingStartDate?: string | null;
-      silent?: boolean;
-    }) => Promise<SetDividendTrackingAtomicResult>;
-    isPending: boolean;
-  }
->("useSetDividendTracking", () => ({
-  mutateAsync: async () => ({
-    success: true,
-    tracking_start_date: null,
-    updated_assets: [],
-    updated_assets_count: 0,
-    affected_events_count: 0,
-    protected_events_count: 0,
-    invalidated_event_ids: [],
-  }),
-  isPending: false,
-}));
 
 export interface PendingDividendsDialogProps {
   open: boolean;
@@ -295,14 +196,14 @@ export function PendingDividendsDialog({
   const transactionsQuery = useAllPortfolioTransactions();
   const confirmMutation = useConfirmUserDividendEvents();
   const dismissMutation = useDismissUserDividendEvent();
-  const dismissBatchMutation = useOptionalDismissUserDividendEventsBatch();
+  const dismissBatchMutation = useDismissUserDividendEventsBatch();
   const createManualMutation = useCreateManualUserDividendEvent();
   const deleteManualMutation = useDeleteUserDividendEvent();
-  const updateDividendEventMutation = useOptionalUpdateUserDividendEvent();
-  const updatePortfolioDividendMutation = useOptionalUpdatePortfolioDividend();
-  const createPortfolioDividendMutation = useOptionalCreatePortfolioDividend();
-  const portfolioDividendsQuery = useOptionalPortfolioDividends();
-  const setDividendTracking = useOptionalSetDividendTracking();
+  const updateDividendEventMutation = useUpdateUserDividendEvent();
+  const updatePortfolioDividendMutation = useUpdatePortfolioDividend();
+  const createPortfolioDividendMutation = useCreatePortfolioDividend();
+  const portfolioDividendsQuery = usePortfolioDividends();
+  const setDividendTracking = useSetDividendTracking();
 
   const [searchTicker, setSearchTicker] = useState("");
   const [currencyFilter, setCurrencyFilter] = useState<"all" | "BRL" | "USD">("all");
@@ -860,7 +761,7 @@ export function PendingDividendsDialog({
               sync_cash: syncCash,
               cash_amount: cashAmount,
               create_transaction: syncCash,
-              tx_type: item.txType,
+              tx_type: item.txType === "yield" ? "fii_yield" : item.txType === "other" ? undefined : item.txType,
               fx_rate: isUsd ? effectiveFx : null,
             });
           }
@@ -914,7 +815,7 @@ export function PendingDividendsDialog({
               manualType === "JCP"
                 ? "jcp"
                 : manualType === "RENDIMENTO"
-                  ? "yield"
+                  ? "fii_yield"
                   : "dividend";
             await createPortfolioDividendMutation.mutateAsync({
               asset_id: selectedManualAsset.id,
@@ -1964,7 +1865,7 @@ export function PendingDividendsDialog({
                   </Badge>
                 ) : null}
               </div>
-              <div className="max-h-44 overflow-y-auto divide-y divide-border/60 rounded-lg border border-border/70 bg-surface">
+              <div className="divide-y divide-border/60 rounded-lg border border-border/70 bg-surface">
                 {parsedImport.items.map((it) => (
                   <div
                     key={`${it.rowIndex}-${it.ticker}-${it.date}`}
@@ -2306,7 +2207,7 @@ export function PendingDividendsDialog({
   );
 }
 
-function PendingDividendsDialogHostContent({
+export function PendingDividendsDialogHostContent({
   open,
   onOpenChange,
   initialTab,

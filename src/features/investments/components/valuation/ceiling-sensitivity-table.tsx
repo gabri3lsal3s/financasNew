@@ -27,7 +27,7 @@ export function CeilingSensitivityTable({
       <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
         Sensibilidade de Preço Teto por Yield Alvo
       </span>
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+      <div className="grid grid-cols-2 sm:grid-cols-6 gap-1.5">
         {rows.map((r) => {
           const isSelected = Math.abs(r.yieldPct - selectedYieldPct) < 0.01;
           return (

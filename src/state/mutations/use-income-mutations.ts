@@ -52,7 +52,10 @@ export function useCreateIncome() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: Omit<Parameters<typeof createIncome>[0], "user_id">) => createIncome(input),
-    onSuccess: () => invalidateIncomeAggregates(queryClient),
+    onSuccess: () => {
+      invalidateIncomeAggregates(queryClient);
+      void queryClient.invalidateQueries({ queryKey: ["onboarding"] });
+    },
   });
 }
 

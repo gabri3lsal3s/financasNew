@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
-import { useContext, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useContext, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { QueryClientContext } from "@tanstack/react-query";
 import { parseTimeHHMM } from "@/domain/notifications/schedule";
+import { ContentLoading } from "@/components/ui/content-loading";
 import { NativeUpdateToast } from "@/components/modules/native-update-toast";
-import { AppLockOverlay } from "@/app/app-lock-overlay";
-import { PendingDividendsDialogHost } from "@/features/investments/components/pending-dividends-dialog";
+import { PendingDividendsDialogHost } from "@/features/investments/components/pending-dividends-dialog-host";
 import { SubscriptionProvider, useIsPro } from "@/state/subscription-context";
 import {
   syncMerchantLearningFromCloud,
@@ -16,13 +16,27 @@ import { syncVisualWithCloud, useVisualCustomization } from "@/hooks/use-visual-
 import { useDynamicFavicon } from "@/hooks/use-dynamic-favicon";
 import { useDynamicAppIcon } from "@/hooks/use-dynamic-app-icon";
 import { cancelDailyReminder, clearAllDueNotifications, scheduleDailyReminder, syncDueReminderNotifications, syncDeviceNotificationsWithCloud } from "@/services/native/local-notifications";
-import { setPrivacyShieldEnabled } from "@/services/native/app-lock";
+import { isAppLocked, setPrivacyShieldEnabled, subscribeAppLock } from "@/services/native/app-lock";
 import { syncBankAssistantWithCloud } from "@/services/native/bank-assistant-preferences";
-import { syncMonitoredBanksWithNative } from "@/services/native/bank-listener";
 import { isNativePlatform } from "@/services/native/platform";
 import { useReminders } from "@/state/queries/use-reminders";
 import { useDemoSession } from "@/state/demo-mode/demo-session-store";
 import { useAuth } from "@/hooks/use-auth";
+import { NotificationCenterProvider } from "@/hooks/use-notification-center";
+
+const LazyAppLockOverlay = lazy(() =>
+  import("@/app/app-lock-overlay").then((m) => ({ default: m.AppLockOverlay })),
+);
+
+function AppLockOverlayHost() {
+  const isLocked = useSyncExternalStore(subscribeAppLock, isAppLocked);
+  if (!isLocked) return null;
+  return (
+    <Suspense fallback={<ContentLoading />}>
+      <LazyAppLockOverlay />
+    </Suspense>
+  );
+}
 
 function CloudPreferencesSync({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -53,9 +67,11 @@ function CloudPreferencesSyncInner({ children }: { children: ReactNode }) {
       if (preferences.custom_settings.bankAssistant) {
         const syncedBankPrefs = syncBankAssistantWithCloud(preferences.custom_settings.bankAssistant);
         if (isNativePlatform()) {
-          void syncMonitoredBanksWithNative(
-            syncedBankPrefs.passiveCaptureEnabled ? syncedBankPrefs.monitoredBanks : [],
-            syncedBankPrefs.interactiveNotificationsEnabled,
+          void import("@/services/native/bank-listener").then(({ syncMonitoredBanksWithNative }) =>
+            syncMonitoredBanksWithNative(
+              syncedBankPrefs.passiveCaptureEnabled ? syncedBankPrefs.monitoredBanks : [],
+              syncedBankPrefs.interactiveNotificationsEnabled,
+            ),
           );
         }
       }
@@ -169,12 +185,14 @@ export function AuthenticatedProviders({ children }: { children: ReactNode }) {
   return (
     <CloudPreferencesSync>
       <SubscriptionProvider>
-        <DynamicBrandSync />
-        <RemindersNotificationSync />
-        <NativeUpdateToast />
-        <PendingDividendsDialogHost />
-        <AppLockOverlay />
-        {children}
+        <NotificationCenterProvider>
+          <DynamicBrandSync />
+          <RemindersNotificationSync />
+          <NativeUpdateToast />
+          <PendingDividendsDialogHost />
+          <AppLockOverlayHost />
+          {children}
+        </NotificationCenterProvider>
       </SubscriptionProvider>
     </CloudPreferencesSync>
   );

@@ -44,15 +44,17 @@ export async function listCashCheckpoints(scope?: TransactionScope): Promise<Cas
   return (data ?? []).map(mapCheckpoint);
 }
 
-/** Obtém o último checkpoint de saldo cadastrado no escopo informado (default: 'personal'). */
+/** Obtém o último checkpoint do escopo, limitado à data de referência quando informada. */
 export async function getLatestCashCheckpoint(
   scope: TransactionScope = "personal",
+  cutoffDate?: string,
 ): Promise<CashCheckpoint | null> {
+  let query = getSupabase().from("cash_checkpoints").select("*").eq("scope", scope);
+  if (cutoffDate) {
+    query = query.lte("date", cutoffDate);
+  }
   const { data, error } = await resolveQuery<Record<string, unknown>[]>(
-    getSupabase()
-      .from("cash_checkpoints")
-      .select("*")
-      .eq("scope", scope)
+    query
       .order("date", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(1),

@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { LogoProfileButton } from "@/components/layout/logo-profile-button";
 import { navGroups, filterNavItems } from "@/components/layout/nav-items";
 import { Button } from "@/components/ui/button";
-import { useNotificationCenter } from "@/hooks/use-notification-center";
+import { useUnreadNotificationCount } from "@/hooks/use-notification-center";
 import { useBusinessMode } from "@/state/queries/use-business-mode";
 import { useFamilyMode } from "@/state/queries/use-family-mode";
 import { useTripMode } from "@/state/queries/use-trip-mode";
@@ -38,7 +38,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const enterTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { totalRemindersPageCount: totalCount, criticalCount: urgentCount } =
-    useNotificationCenter();
+    useUnreadNotificationCount();
 
   useEffect(() => {
     return () => {

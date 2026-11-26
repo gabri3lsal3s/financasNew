@@ -11,7 +11,7 @@ import { useUserAccess } from "@/state/queries/use-user-access";
  * Impõe política estrita de inatividade de 30 minutos com aviso prévio de 60 segundos.
  */
 export function RequireAdminSession() {
-  const { session, loading: authLoading, mfaRequired, mfaVerified } = useAuth();
+  const { session, loading: authLoading, mfaRequired, mfaVerified, mfaError } = useAuth();
   const { isAdmin, isLoading: accessLoading } = useUserAccess(session?.user?.id);
   const location = useLocation();
   const idleSession = useIdleSessionTimeout({
@@ -30,7 +30,7 @@ export function RequireAdminSession() {
     return <Navigate to="/admin/login" replace state={{ from: location }} />;
   }
 
-  if (mfaRequired && !mfaVerified) {
+  if ((mfaRequired && !mfaVerified) || mfaError) {
     return <Navigate to="/entrar?desafio=totp" replace state={{ from: location }} />;
   }
 

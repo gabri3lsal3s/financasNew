@@ -13,6 +13,7 @@ import { pushToast } from "@/services/toast";
 import {
   useCreateHistoricalContribution,
   useDeletePortfolioContribution,
+  useSavePocketCostMilestoneAtomic,
   useUpdatePortfolioContribution,
   useUpsertMarcoZero,
   useUpsertPortfolioSnapshot,
@@ -43,6 +44,8 @@ export function usePocketCostManual(params: {
   const deleteContribution = useDeletePortfolioContribution();
   const upsertMarcoZero = useUpsertMarcoZero();
   const upsertSnapshot = useUpsertPortfolioSnapshot();
+  const saveMilestoneAtomic = useSavePocketCostMilestoneAtomic();
+  const milestoneRequestIdRef = useRef<string | null>(null);
 
   const formRef = useRef<HTMLFormElement>(null);
   const [editingMarco, setEditingMarco] = useState<PortfolioContribution | null>(null);
@@ -143,33 +146,51 @@ export function usePocketCostManual(params: {
         isFirstMarco: historicalContributions.length === 0,
       });
 
-      if (newAmountCents > 0) {
-        if (editingMarco) {
-          await updateHistorical.mutateAsync({
-            id: editingMarco.id,
-            input: { date: newDate, amount: newAmountCents / 100, notes: finalNotes },
-          });
-        } else {
-          await createHistorical.mutateAsync({
-            date: newDate,
-            amount: newAmountCents / 100,
-            notes: finalNotes,
-          });
-          if (entryType === "aporte") {
-            setLastAporteCents(newAmountCents);
+      if (newAmountCents > 0 && newGrossBalanceCents > 0) {
+        await saveMilestoneAtomic.mutateAsync({
+          requestId: milestoneRequestIdRef.current ?? (milestoneRequestIdRef.current = crypto.randomUUID()),
+          contributionId: editingMarco?.id ?? null,
+          date: newDate,
+          amount: newAmountCents / 100,
+          notes: finalNotes,
+          snapshotMonth: newDate.slice(0, 7),
+          snapshotTotalValue: newGrossBalanceCents / 100,
+          snapshotTotalCost: newAmountCents / 100,
+        });
+        milestoneRequestIdRef.current = null;
+        if (!editingMarco && entryType === "aporte") {
+          setLastAporteCents(newAmountCents);
+        }
+        await refetchSnapshots?.();
+      } else {
+        if (newAmountCents > 0) {
+          if (editingMarco) {
+            await updateHistorical.mutateAsync({
+              id: editingMarco.id,
+              input: { date: newDate, amount: newAmountCents / 100, notes: finalNotes },
+            });
+          } else {
+            await createHistorical.mutateAsync({
+              date: newDate,
+              amount: newAmountCents / 100,
+              notes: finalNotes,
+            });
+            if (entryType === "aporte") {
+              setLastAporteCents(newAmountCents);
+            }
           }
         }
-      }
 
-      if (newGrossBalanceCents > 0) {
-        await upsertSnapshot.mutateAsync({
-          month: newDate.slice(0, 7),
-          total_value: newGrossBalanceCents / 100,
-          total_cost: newAmountCents > 0 ? newAmountCents / 100 : 0,
-          status: "closed",
-          closing_date: newDate,
-        });
-        await refetchSnapshots?.();
+        if (newGrossBalanceCents > 0) {
+          await upsertSnapshot.mutateAsync({
+            month: newDate.slice(0, 7),
+            total_value: newGrossBalanceCents / 100,
+            total_cost: newAmountCents > 0 ? newAmountCents / 100 : 0,
+            status: "closed",
+            closing_date: newDate,
+          });
+          await refetchSnapshots?.();
+        }
       }
 
       await refetchContributions?.();

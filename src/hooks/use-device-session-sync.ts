@@ -79,6 +79,8 @@ async function handleRemoteRevocation(
     await signOut({ scope: "local" }).catch(() => {});
   } catch {
     // Tolera falhas residuais pós-revogação (ex.: 401/403)
+  } finally {
+    isHandlingRemoteRevocation = false;
   }
 }
 
@@ -153,6 +155,7 @@ function teardownSingleton(): void {
   activeSyncUserId = null;
   activeDeviceId = null;
   hasInitialSubscribed = false;
+  isHandlingRemoteRevocation = false;
 }
 
 /**

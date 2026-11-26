@@ -134,7 +134,7 @@ export function CreditCard3D({
 
         <div className="relative z-10 flex items-center justify-between gap-2 min-w-0">
           <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-            <span className="text-sm sm:text-base md:text-lg font-semibold tracking-tight text-white drop-shadow-sm truncate">
+            <span className="text-sm sm:text-base md:text-lg font-semibold tracking-tight text-white drop-shadow-sm line-clamp-2 break-words">
               {card.name}
             </span>
             {isPrimary && (

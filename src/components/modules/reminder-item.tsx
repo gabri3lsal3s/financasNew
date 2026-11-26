@@ -136,7 +136,7 @@ export function ReminderItem({
           </div>
 
           {item.subtitle && item.subtitle !== badgeLabel ? (
-            <p className="text-xs text-muted-foreground line-clamp-1 break-words">{item.subtitle}</p>
+            <p className="text-xs text-muted-foreground line-clamp-2 break-words">{item.subtitle}</p>
           ) : null}
 
           <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">

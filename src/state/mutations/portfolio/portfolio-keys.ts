@@ -42,7 +42,6 @@ export function invalidatePortfolioSuite(
   const promises: Promise<void>[] = [
     queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.assets }),
     queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.transactions }),
-    queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.allTransactions }),
     queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.dividends }),
     queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.contributions }),
     queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots }),

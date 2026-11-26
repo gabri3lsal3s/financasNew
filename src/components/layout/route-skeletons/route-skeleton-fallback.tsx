@@ -12,9 +12,11 @@ import {
   ReportsSkeleton,
 } from "./portfolio-skeletons";
 import {
+  BusinessSkeleton,
   FamilySkeleton,
   RemindersSkeleton,
   SettingsSkeleton,
+  SubscriptionSkeleton,
   TripsSkeleton,
 } from "./social-settings-skeletons";
 
@@ -67,6 +69,12 @@ export function RouteSkeletonFallback({ pathname }: { pathname?: string }) {
     }
     if (path.startsWith("/configuracoes")) {
       return <SettingsSkeleton />;
+    }
+    if (path.startsWith("/assinatura") || path.startsWith("/assinar")) {
+      return <SubscriptionSkeleton />;
+    }
+    if (path.startsWith("/negocio") || path.startsWith("/business")) {
+      return <BusinessSkeleton />;
     }
     return <OverviewSkeleton />;
   };

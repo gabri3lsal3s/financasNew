@@ -5,6 +5,7 @@ import { useReportsData } from "./use-reports-data";
 let mockExpenses: Array<{ id: string; date: string; category_id: string; value: number; report_weight: number; payment_method: string }> = [];
 let mockPositionLoading = false;
 let mockPositionError: Error | null = null;
+let mockCashReferenceDate: string | undefined;
 
 vi.mock("@/state", () => ({
   useExpenses: () => ({ data: mockExpenses, isLoading: false, error: null, refetch: vi.fn() }),
@@ -14,6 +15,8 @@ vi.mock("@/state", () => ({
   useDebts: () => ({ data: [], isLoading: false, error: null, refetch: vi.fn() }),
   useCategories: () => ({ data: [], isLoading: false, error: null, refetch: vi.fn() }),
   useBudgets: () => ({ data: [], isLoading: false, error: null }),
+  useBusinessMode: () => ({ isBusinessModeEnabled: false }),
+  useViewScope: () => ({ effectiveViewScope: "personal" }),
   useFamilyMode: () => ({ isFamilyModeEnabled: false }),
   useMyFamily: () => ({ data: null, isLoading: false, error: null }),
   useFamilyConsolidation: () => ({ data: null, isLoading: false, error: null }),
@@ -38,14 +41,17 @@ vi.mock("@/state", () => ({
   useAllPortfolioTransactions: () => ({ data: [], isLoading: false, error: null }),
   usePortfolioContributions: () => ({ data: [], isLoading: false, error: null }),
   useGroupTargets: () => ({ data: [], isLoading: false, error: null }),
-  useRealCashBalance: () => ({
-    cashBalance: { currentBalanceCents: 500000 },
-    cycleBreakdown: { openInvoicesCents: 150000 },
-    safeToSpend: { safeToSpendCents: 350000 },
-    isLoading: false,
-    error: null,
-    refetch: vi.fn(),
-  }),
+  useRealCashBalance: (referenceDate?: string) => {
+    mockCashReferenceDate = referenceDate;
+    return {
+      cashBalance: { currentBalanceCents: 500000 },
+      cycleBreakdown: { openInvoicesCents: 150000 },
+      safeToSpend: { safeToSpendCents: 350000 },
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    };
+  },
 }));
 
 describe("useReportsData — gates, períodos e integridade de cálculo", () => {
@@ -53,6 +59,7 @@ describe("useReportsData — gates, períodos e integridade de cálculo", () => 
     mockExpenses = [];
     mockPositionLoading = false;
     mockPositionError = null;
+    mockCashReferenceDate = undefined;
   });
 
   it("não inventa despesa mensal de R$ 3.000 quando não há gastos no mês", () => {
@@ -91,6 +98,7 @@ describe("useReportsData — gates, períodos e integridade de cálculo", () => 
     );
 
     expect(result.current.periodLabel).toBe("01/08/2026 a 15/08/2026");
+    expect(mockCashReferenceDate).toBe("2026-08-15");
     expect(result.current.buildWorkbookData().appName).toBe("Axir");
   });
 

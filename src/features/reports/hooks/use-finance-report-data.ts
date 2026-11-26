@@ -5,6 +5,7 @@ import {
   filterExpensesByViewScope,
   filterIncomesByViewScope,
 } from "@/domain/business";
+import { addDaysISO, todayISO } from "@/domain/debts";
 import { numberToCents } from "@/domain/money";
 import {
   aggregateByCategory,
@@ -72,7 +73,10 @@ export function useFinanceReportData({
   const rangeExpenses = useExpensesByRange(range.start, range.end, { enabled: isCustom && customValid && enabled });
   const rangeIncomes = useIncomesByRange(range.start, range.end, { enabled: isCustom && customValid && enabled });
   const debtsQuery = useDebts({ enabled });
-  const realCashQuery = useRealCashBalance(undefined, { enabled });
+  const today = todayISO();
+  const lastDayOfPeriod = range.end && customValid ? addDaysISO(range.end, -1) : today;
+  const cashReferenceDate = lastDayOfPeriod < today ? lastDayOfPeriod : today;
+  const realCashQuery = useRealCashBalance(cashReferenceDate, { enabled: enabled && customValid });
   const categoriesQuery = useCategories(undefined, { enabled });
   const budgetsQuery = useBudgets({ enabled });
   const { isFamilyModeEnabled } = useFamilyMode();
@@ -216,19 +220,46 @@ export function useFinanceReportData({
   const hasDualMetrics = weightsEnabled && (grossIncomeBrutoCents !== currentIncomeCents || grossExpenseBrutoCents !== currentExpenseCents);
 
   const refetchFinance = useCallback(async () => {
-    if (!enabled) return;
-    await Promise.all([
-      monthlyExpenses.refetch(),
-      monthlyIncomes.refetch(),
-      prevExpenses.refetch(),
-      prevIncomes.refetch(),
-      yearExpenses.refetch(),
-      yearIncomes.refetch(),
-      debtsQuery.refetch(),
-      categoriesQuery.refetch(),
-      realCashQuery.refetch(),
-    ]);
-  }, [enabled, monthlyExpenses, monthlyIncomes, prevExpenses, prevIncomes, yearExpenses, yearIncomes, debtsQuery, categoriesQuery, realCashQuery]);
+    const tasks: Promise<unknown>[] = [];
+    if (enabled) {
+      if (mode === "month") {
+        tasks.push(
+          monthlyExpenses.refetch(),
+          monthlyIncomes.refetch(),
+          prevExpenses.refetch(),
+          prevIncomes.refetch(),
+        );
+      } else if (mode === "year") {
+        tasks.push(
+          yearExpenses.refetch(),
+          yearIncomes.refetch(),
+          prevYearExpenses.refetch(),
+          prevYearIncomes.refetch(),
+        );
+      } else if (customValid) {
+        tasks.push(rangeExpenses.refetch(), rangeIncomes.refetch());
+      }
+      tasks.push(debtsQuery.refetch(), categoriesQuery.refetch(), realCashQuery.refetch());
+    }
+    await Promise.all(tasks);
+  }, [
+    enabled,
+    mode,
+    customValid,
+    monthlyExpenses,
+    monthlyIncomes,
+    prevExpenses,
+    prevIncomes,
+    yearExpenses,
+    yearIncomes,
+    prevYearExpenses,
+    prevYearIncomes,
+    rangeExpenses,
+    rangeIncomes,
+    debtsQuery,
+    categoriesQuery,
+    realCashQuery,
+  ]);
 
   return {
     loading,

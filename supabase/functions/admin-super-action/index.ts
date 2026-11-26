@@ -82,7 +82,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // 3. Exigir verificação MFA AAL2 caso o superadministrador possua fator TOTP ativo
+    // 3. Exigir verificação MFA AAL2 incondicional para qualquer operação de Superadmin
     const { data: mfaData, error: mfaError } = await adminClient.auth.admin.mfa.listFactors({
       userId: callerUser.id,
     });
@@ -92,27 +92,32 @@ Deno.serve(async (req: Request) => {
     const hasVerifiedMfa = (mfaData?.factors ?? []).some(
       (f: { status?: string }) => f.status === "verified",
     );
-    if (hasVerifiedMfa) {
-      try {
-        const token = authHeader.replace(/^Bearer\s+/i, "").trim();
-        const payloadBase64 = token.split(".")[1] ?? "";
-        const normalized = payloadBase64.replace(/-/g, "+").replace(/_/g, "/");
-        const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
-        const jwtPayload = JSON.parse(atob(padded));
-        if (jwtPayload?.aal !== "aal2") {
-          return jsonResponse(
-            req,
-            { error: "Verificação de segundo fator (MFA/2FA AAL2) obrigatória para ações de Superadmin." },
-            403,
-          );
-        }
-      } catch {
+    if (!hasVerifiedMfa) {
+      return jsonResponse(
+        req,
+        { error: "Segundo fator (MFA/2FA TOTP) verificado é obrigatório para ações de Superadmin." },
+        403,
+      );
+    }
+    try {
+      const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+      const payloadBase64 = token.split(".")[1] ?? "";
+      const normalized = payloadBase64.replace(/-/g, "+").replace(/_/g, "/");
+      const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
+      const jwtPayload = JSON.parse(atob(padded));
+      if (jwtPayload?.aal !== "aal2") {
         return jsonResponse(
           req,
-          { error: "Não foi possível validar o nível de segurança MFA (AAL2) do token." },
+          { error: "Verificação de segundo fator (MFA/2FA AAL2) obrigatória para ações de Superadmin." },
           403,
         );
       }
+    } catch {
+      return jsonResponse(
+        req,
+        { error: "Não foi possível validar o nível de segurança MFA (AAL2) do token." },
+        403,
+      );
     }
 
     const body = await req.json();

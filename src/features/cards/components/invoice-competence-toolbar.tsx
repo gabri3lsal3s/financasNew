@@ -1,5 +1,5 @@
-import { ArrowRight, CheckCircle2, Clock, Undo2 } from "lucide-react";
-import { Button, MoneyText } from "@/components/ui";
+import { ArrowRight, CheckCircle2, Clock, Receipt, Undo2 } from "lucide-react";
+import { Button, MoneyText, ResponsiveLabel } from "@/components/ui";
 import { InvoiceStatusBadge, MonthPicker } from "@/components/modules";
 import { shiftMonth, type CompetenceSummary, type InvoiceStatus } from "@/domain/cards";
 import { currentMonth, monthLabel } from "@/lib/date";
@@ -134,30 +134,38 @@ export function InvoiceCompetenceToolbar({
               type="button"
               variant="outline"
               size="sm"
+              aria-label="Estorno"
+              title="Registrar estorno"
               onClick={() => onOpenPayment("refund")}
-              className="gap-1.5 justify-center"
+              className="gap-1.5 justify-center max-sm:min-h-11 max-sm:min-w-11"
             >
-              <Undo2 className="size-3.5" aria-hidden="true" />
-              <span>Estorno</span>
+              <Undo2 className="size-3.5 shrink-0" aria-hidden="true" />
+              <ResponsiveLabel short="Estorno" full="Estorno" iconOnlyBelow380 />
             </Button>
             {onOpenCharge ? (
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
+                aria-label="Lançar encargo"
+                title="Lançar encargo"
                 onClick={onOpenCharge}
-                className="gap-1.5 justify-center"
+                className="gap-1.5 justify-center max-sm:min-h-11 max-sm:min-w-11"
               >
-                <span>Encargo</span>
+                <Receipt className="size-3.5 shrink-0" aria-hidden="true" />
+                <ResponsiveLabel short="Encargo" full="Encargo" iconOnlyBelow380 />
               </Button>
             ) : null}
             <Button
               type="button"
               size="sm"
+              aria-label="Registrar pagamento"
+              title="Registrar pagamento"
               onClick={() => onOpenPayment("payment")}
-              className="gap-1.5 justify-center shadow-xs"
+              className="gap-1.5 justify-center shadow-xs max-sm:min-h-11 max-sm:min-w-11"
             >
-              <span>Registrar pagamento</span>
+              <CheckCircle2 className="size-3.5 shrink-0" aria-hidden="true" />
+              <ResponsiveLabel short="Pagar" full="Registrar pagamento" iconOnlyBelow380 />
             </Button>
           </div>
         ) : null}

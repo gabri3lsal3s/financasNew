@@ -41,17 +41,12 @@ import {
 import { useDemoSession } from "@/state/demo-mode";
 import type { CorporateDividend, PortfolioAsset, UserDividendEvent } from "@/types";
 import { useAssetPrices } from "./use-asset-prices";
-import * as userPreferencesHooks from "./use-user-preferences";
+import { useUserPreferences } from "./use-user-preferences";
 import {
   useAllPortfolioTransactions,
   usePortfolioAssets,
   usePortfolioDividends,
 } from "./use-portfolio";
-
-const useOptionalUserPreferencesHook: typeof userPreferencesHooks.useUserPreferences =
-  typeof userPreferencesHooks.useUserPreferences === "function"
-    ? userPreferencesHooks.useUserPreferences
-    : ((() => ({ data: null, isLoading: false, isError: false })) as unknown as typeof userPreferencesHooks.useUserPreferences);
 
 export const CORPORATE_DIVIDENDS_QUERY_KEY = ["corporate_dividends"] as const;
 export const PORTFOLIO_DIVIDEND_DISMISSALS_QUERY_KEY = ["portfolio_dividend_dismissals"] as const;
@@ -162,7 +157,7 @@ export function useCorporateDividends(
   const transactionsQuery = useAllPortfolioTransactions({ enabled });
   const manualDividendsQuery = usePortfolioDividends({ enabled });
   const assetPricesQuery = useAssetPrices({ enabled });
-  const userPrefsQuery = useOptionalUserPreferencesHook({ enabled: enabled && !isDemoActive });
+  const userPrefsQuery = useUserPreferences({ enabled: enabled && !isDemoActive });
 
   const trackingStartDate = useMemo(() => {
     const raw = userPrefsQuery.data?.custom_settings?.dividendAutomation?.trackingStartDate;

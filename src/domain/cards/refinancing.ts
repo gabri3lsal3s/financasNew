@@ -68,7 +68,7 @@ export function calculateBillRefinancePlan(input: BillRefinanceInput): BillRefin
       ? Math.floor(pv / n)
       : Math.round((pv * (rate * Math.pow(1 + rate, n))) / (Math.pow(1 + rate, n) - 1));
 
-  const totalWithInterestCents = installmentCents * n;
+  const totalWithInterestCents = rate === 0 ? pv : installmentCents * n;
   const totalInterestCents = Math.max(0, totalWithInterestCents - pv);
 
   // Divide juros e principal com conservação exata de centavos via splitCents (resto nas primeiras parcelas)

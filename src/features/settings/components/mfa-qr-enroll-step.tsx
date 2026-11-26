@@ -1,6 +1,7 @@
+import { QrCodeCanvas } from "@/components/ui/qr-code-canvas";
 import type { FormEvent } from "react";
 import { Check, Copy } from "lucide-react";
-import { Button, FormField, Input, QrCodeCanvas } from "@/components/ui";
+import { Button, FormField, Input } from "@/components/ui";
 import type { MfaEnrollData } from "./use-mfa-enrollment-flow";
 
 export const MFA_VERIFY_FORM_ID = "mfa-verify-form";

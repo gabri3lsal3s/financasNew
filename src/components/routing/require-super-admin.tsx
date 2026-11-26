@@ -9,7 +9,7 @@ import { useUserAccess } from "@/state/queries/use-user-access";
  * usuários sem sessão seguem para /admin/login e sessões sem AAL2 para /entrar?desafio=totp.
  */
 export function RequireSuperAdmin() {
-  const { session, loading: authLoading, mfaRequired, mfaVerified } = useAuth();
+  const { session, loading: authLoading, mfaRequired, mfaVerified, mfaError } = useAuth();
   const { isSuperAdmin, isLoading: accessLoading } = useUserAccess(session?.user?.id);
   const location = useLocation();
 
@@ -23,7 +23,7 @@ export function RequireSuperAdmin() {
     return <Navigate to="/admin/login" replace state={{ from: location }} />;
   }
 
-  if (mfaRequired && !mfaVerified) {
+  if ((mfaRequired && !mfaVerified) || mfaError) {
     return <Navigate to="/entrar?desafio=totp" replace state={{ from: location }} />;
   }
 

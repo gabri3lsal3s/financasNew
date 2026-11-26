@@ -177,10 +177,10 @@ export function ReportEquityClassTable({
               >
                 {(isInternacional || hasUsdAssets) && group.subtotalPriceVarPctUSD !== undefined ? (
                   <div className="flex flex-col items-end leading-tight gap-0.5 text-right">
-                    <span className="font-semibold text-foreground font-mono tabular-nums text-[9.5px] whitespace-nowrap">
+                    <span className="font-semibold text-foreground font-mono tabular-nums text-[10px] print:text-[9.5px] whitespace-nowrap">
                       {formatSignedPct(group.subtotalPriceVarPctUSD)} (USD)
                     </span>
-                    <span className="text-[9px] text-muted-foreground font-normal font-mono tabular-nums whitespace-nowrap">
+                    <span className="text-[10px] print:text-[9px] text-muted-foreground font-normal font-mono tabular-nums whitespace-nowrap">
                       {formatSignedPct(subtotalPriceVarPct)} (BRL)
                     </span>
                   </div>
@@ -211,14 +211,14 @@ export function ReportEquityClassTable({
                 <strong>Ret. (BRL)</strong> consolida oscilação em dólar, variação cambial BRL/USD e proventos creditados.
               </div>
               {group.usdRate && group.usdRate > 0 && (
-                <div className="font-mono text-[9px] text-muted-foreground/90">
+                <div className="font-mono text-[10px] print:text-[9px] text-muted-foreground/90">
                   Conversão USD/BRL ({fxSourceText}): R$ {formatFxRate(group.usdRate)}
                 </div>
               )}
             </>
           ) : null}
           {hasQuoteFlags ? (
-            <div className="font-mono text-[9px] text-muted-foreground/90">
+            <div className="font-mono text-[10px] print:text-[9px] text-muted-foreground/90">
               Marcadores de cotação: [E] Estimada por fallback · [D] Defasada em relação ao pregão/operação · [M] Override manual.
             </div>
           ) : null}

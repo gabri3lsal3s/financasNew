@@ -355,14 +355,14 @@ describe("Webhook Asaas — Lógica de Decisão e Idempotência", () => {
 
     const cbDecision = decideWebhookAction({
       eventType: "PAYMENT_CHARGEBACK_REQUESTED",
-      payment: { id: "pay_cb_1" },
+      payment: { id: "pay_cb_1", subscription: "sub_rec_123" },
       currentSub: activeSub,
     });
     expect(cbDecision.action).toBe("mark_chargeback");
 
     const dupCb = decideWebhookAction({
       eventType: "PAYMENT_CHARGEBACK_REQUESTED",
-      payment: { id: "pay_cb_1" },
+      payment: { id: "pay_cb_1", subscription: "sub_rec_123" },
       currentSub: {
         ...activeSub,
         tier: "read_only",

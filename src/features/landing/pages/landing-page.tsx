@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { useLocation } from "react-router";
 import { LandingHeader } from "@/features/landing/components/landing-header";
 import { HeroEditorial } from "@/features/landing/components/hero-editorial";
@@ -63,17 +63,17 @@ export function LandingPage() {
 
   const handleSelectEcosystemDestination = (destination: EcosystemDestination) => {
     if (destination.section === "dores") {
-      setActivePain(destination.key);
+      startTransition(() => setActivePain(destination.key));
       scrollToSection("dores");
       return;
     }
 
-    setActiveDeepTab(destination.key);
+    startTransition(() => setActiveDeepTab(destination.key));
     scrollToSection("profundidade");
   };
 
   const handleExploreInvestments = () => {
-    setActiveDeepTab("investments");
+    startTransition(() => setActiveDeepTab("investments"));
     scrollToSection("profundidade");
   };
 

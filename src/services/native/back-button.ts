@@ -1,6 +1,4 @@
 import { App } from "@capacitor/app";
-import { isCalculatorOpen, setCalculatorOpen } from "@/services/calculator-open";
-import { isAppLocked } from "./app-lock";
 import { isNativePlatform } from "./platform";
 
 type BackHandler = () => boolean;
@@ -32,6 +30,7 @@ export function registerBackHandler(handler: BackHandler): () => void {
  * 6. Minimizar o app nativo caso esteja na raiz.
  */
 export async function handleHardwareBackButton(canGoBack = false): Promise<void> {
+  const { isAppLocked } = await import("./app-lock");
   // 1. Escudo de bloqueio biométrico ativo: nunca sai da tela de bloqueio nem volta no histórico
   if (isAppLocked()) {
     try {
@@ -51,6 +50,7 @@ export async function handleHardwareBackButton(canGoBack = false): Promise<void>
   }
 
   // 3. Calculadora flutuante aberta
+  const { isCalculatorOpen, setCalculatorOpen } = await import("@/services/calculator-open");
   if (isCalculatorOpen()) {
     setCalculatorOpen(false);
     return;

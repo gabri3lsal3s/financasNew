@@ -14,7 +14,7 @@ import {
 import type { InsightThemeFamily, SmartDecayRecord } from "@/domain/insights/attention-budget";
 import type { UserFinancialContext } from "@/domain/insights/financial-context";
 import { currentMonth, todayLocalIso } from "@/lib/date";
-import * as stateSelectors from "@/state/selectors";
+import { useUserFinancialContext } from "@/state/selectors";
 import type { Budget, Category } from "@/types";
 import {
   type SmartAdvisorActionSensoryOptions,
@@ -124,18 +124,7 @@ export function useSmartAdvisorInsights(
     committedObligationsCents: options.committedObligationsCents,
   });
 
-  let useUserFinancialContextSafe: (
-    opts: Parameters<typeof stateSelectors.useUserFinancialContext>[0],
-  ) => ReturnType<typeof stateSelectors.useUserFinancialContext> | undefined = () => undefined;
-  try {
-    const candidate = (stateSelectors as Record<string, unknown>).useUserFinancialContext;
-    if (typeof candidate === "function") {
-      useUserFinancialContextSafe = candidate as typeof stateSelectors.useUserFinancialContext;
-    }
-  } catch {
-    // Suporta mocks parciais do Vitest
-  }
-  const userFinancialContextResult = useUserFinancialContextSafe({
+  const userFinancialContextResult = useUserFinancialContext({
     month: refMonth,
     todayISO: todayISOStr,
     enabled: queryEnabled && options.financialContext === undefined,

@@ -262,7 +262,7 @@ export function calculateTwrSeries(
 
     const hasExplicitFlows =
       (pt.flows && pt.flows.length > 0) ||
-      (pt.netExternalCashFlowBRL !== undefined && Math.abs(pt.netExternalCashFlowBRL) > 0.0001);
+      pt.netExternalCashFlowBRL !== undefined;
 
     let totalFlow = 0;
     let weightedFlow = 0;

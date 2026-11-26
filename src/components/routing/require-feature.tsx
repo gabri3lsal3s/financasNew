@@ -16,10 +16,29 @@ export interface RequireFeatureProps {
  */
 export function RequireFeature({ featureKey, redirectTo }: RequireFeatureProps) {
   const { session, loading: authLoading } = useAuth();
-  const { hasFeature, isAdmin, isLoading } = useUserAccess(session?.user?.id);
+  const { hasFeature, isAdmin, isLoading, error, refetch } = useUserAccess(session?.user?.id);
 
   if (authLoading || isLoading || !session?.user) {
     return <RouteSkeletonFallback />;
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center p-4">
+        <div className="max-w-md space-y-3 rounded-xl border border-border/80 bg-surface p-5 text-center shadow-xs">
+          <p className="text-sm text-foreground">
+            Não foi possível validar suas permissões de acesso no momento.
+          </p>
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            className="inline-flex h-9 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (!hasFeature(featureKey)) {

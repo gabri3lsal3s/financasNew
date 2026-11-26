@@ -158,7 +158,7 @@ describe("portfolio repository (Fase 36 — Posição Consolidada)", () => {
       ],
     });
     const rows = await listAllPortfolioTransactions();
-    expect(builder.order).toHaveBeenCalledWith("date");
+    expect(builder.order).toHaveBeenCalledWith("id", { ascending: true });
     expect(rows).toHaveLength(2);
     expect(rows[1]).toMatchObject({ asset_id: "a2", quantity: 0, total: 150 });
   });

@@ -351,12 +351,18 @@ export function buildFixedIncomeSellNotes(params: {
   realizedProfit: number;
   taxAmount: number;
   taxRatePct: number;
+  iofAmount?: number;
   netCredit: number;
   userNotes?: string | null;
 }): string {
-  const profitSign = params.realizedProfit >= 0 ? "+" : "";
+  const profitSign = params.realizedProfit >= 0 ? "+" : "-";
+  const absProfit = Math.abs(params.realizedProfit);
+  const iofSegment =
+    params.iofAmount && params.iofAmount > 0
+      ? ` | IOF: -R$ ${params.iofAmount.toFixed(2)}`
+      : "";
   const parts = [
-    `Resgate Renda Fixa | Custo baixado: R$ ${params.appliedCost.toFixed(2)} | Lucro Realizado: ${profitSign}R$ ${params.realizedProfit.toFixed(2)} | IRRF: -R$ ${params.taxAmount.toFixed(2)} (${params.taxRatePct.toFixed(1)}%) | Líquido: R$ ${params.netCredit.toFixed(2)}`,
+    `Resgate Renda Fixa | Custo baixado: R$ ${params.appliedCost.toFixed(2)} | Lucro Realizado: ${profitSign}R$ ${absProfit.toFixed(2)}${iofSegment} | IRRF: -R$ ${params.taxAmount.toFixed(2)} (${params.taxRatePct.toFixed(1)}%) | Líquido: R$ ${params.netCredit.toFixed(2)}`,
     params.userNotes?.trim(),
   ].filter(Boolean);
   return parts.join(" — ");
@@ -365,6 +371,7 @@ export function buildFixedIncomeSellNotes(params: {
 export interface ParsedFixedIncomeSellNotes {
   appliedCost: number;
   realizedProfit: number;
+  iofAmount: number;
   taxAmount: number;
   taxRatePct: number;
   netCredit: number;
@@ -378,7 +385,7 @@ export function parseFixedIncomeSellNotes(notes?: string | null): ParsedFixedInc
   if (!notes || typeof notes !== "string") return null;
 
   const match = notes.match(
-    /Custo baixado:\s*R\$\s*([\d.,]+)\s*\|\s*Lucro Realizado:\s*([+-]?)\s*R\$\s*([\d.,]+)\s*\|\s*IRRF:\s*-\s*R\$\s*([\d.,]+)\s*\(([\d.,]+)%\)\s*\|\s*L[ií]quido:\s*R\$\s*([\d.,]+)/i,
+    /Custo baixado:\s*R\$\s*([\d.,]+)\s*\|\s*Lucro Realizado:\s*([+-]?)\s*R\$\s*([+-]?)\s*([\d.,]+)(?:\s*\|\s*IOF:\s*-\s*R\$\s*([\d.,]+))?\s*\|\s*IRRF:\s*-\s*R\$\s*([\d.,]+)\s*\(([\d.,]+)%\)\s*\|\s*L[ií]quido:\s*R\$\s*([\d.,]+)/i,
   );
   if (!match) return null;
 
@@ -395,17 +402,19 @@ export function parseFixedIncomeSellNotes(notes?: string | null): ParsedFixedInc
   };
 
   const appliedCost = parseNum(match[1]);
-  const sign = match[2] === "-" ? -1 : 1;
-  const realizedProfit = sign * parseNum(match[3]);
-  const taxAmount = parseNum(match[4]);
-  const taxRatePct = parseNum(match[5]);
-  const netCredit = parseNum(match[6]);
+  const sign = match[2] === "-" || match[3] === "-" ? -1 : 1;
+  const realizedProfit = sign * parseNum(match[4]);
+  const iofAmount = parseNum(match[5]);
+  const taxAmount = parseNum(match[6]);
+  const taxRatePct = parseNum(match[7]);
+  const netCredit = parseNum(match[8]);
 
   if (appliedCost <= 0 && netCredit <= 0) return null;
 
   return {
     appliedCost,
     realizedProfit,
+    iofAmount,
     taxAmount,
     taxRatePct,
     netCredit,

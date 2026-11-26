@@ -1,5 +1,6 @@
+import { QrCodeCanvas } from "@/components/ui/qr-code-canvas";
 import { AlertTriangle, Check, Copy, ShieldCheck } from "lucide-react";
-import { Alert, Button, QrCodeCanvas } from "@/components/ui";
+import { Alert, Button } from "@/components/ui";
 import { formatPixKeyTypeLabel } from "@/domain/pix";
 
 export interface SplitChargeQrBoxProps {

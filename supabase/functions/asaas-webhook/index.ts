@@ -216,19 +216,46 @@ Deno?.serve?.(async (req: Request) => {
       return json({ received: true, unlinked: true });
     }
 
-    // 4. Log de auditoria sanitizado e desduplicado por provider_event_id
-    try {
-      await supabase.from("billing_webhook_logs").insert({
+    // 4. Log de auditoria sanitizado e desduplicado por provider_event_id (W03)
+    const effectiveEventId = eventId || `${eventType}_${paymentId || subscriptionId}_${Date.now()}`;
+    const { data: logInserted, error: logInsertErr } = await supabase
+      .from("billing_webhook_logs")
+      .insert({
         provider: "asaas",
-        provider_event_id: eventId || `${eventType}_${paymentId || subscriptionId}_${Date.now()}`,
+        provider_event_id: effectiveEventId,
         event_type: eventType,
         payment_id: paymentId || null,
         subscription_id: subscriptionId,
         customer_id: customerId || null,
         payload: sanitizePaymentLog(event),
-      });
-    } catch (logErr) {
-      console.warn("[asaas-webhook] Log de auditoria já gravado ou erro de dedup:", sanitizePaymentLog(logErr));
+      })
+      .select("id")
+      .maybeSingle();
+
+    let webhookLogId: string | null = logInserted?.id ?? null;
+    if (logInsertErr) {
+      if (logInsertErr.code === "23505" && eventId) {
+        const { data: existingLog } = await supabase
+          .from("billing_webhook_logs")
+          .select("id, processed_at")
+          .eq("provider", "asaas")
+          .eq("provider_event_id", eventId)
+          .maybeSingle();
+
+        if (existingLog?.processed_at) {
+          return json({
+            received: true,
+            duplicate: true,
+            ignored: true,
+            reason: "webhook_event_already_processed",
+            event: eventType,
+          });
+        }
+        webhookLogId = existingLog?.id ?? null;
+      } else {
+        console.error("[asaas-webhook] Erro ao gravar billing_webhook_logs:", sanitizePaymentLog(logInsertErr));
+        return json({ error: "Erro ao registrar evento de webhook" }, 500);
+      }
     }
 
     const decision = decideWebhookAction({
@@ -459,36 +486,63 @@ Deno?.serve?.(async (req: Request) => {
     // =========================================================================
     if (decision.action === "activate") {
       const isFirstPaidCharge = !userSub.billing_start_at || userSub.tier === "trial";
+      const isReactivation =
+        userSub.status === "canceled" ||
+        userSub.status === "read_only_expired" ||
+        userSub.tier === "read_only";
 
-      // Lock atômico em billing_processed_payments ANTES de estender current_period_end
-      const { data: lockedRow, error: lockErr } = await supabase
-        .from("billing_processed_payments")
-        .upsert(
-          {
-            provider: "asaas",
-            provider_payment_id: paymentId,
-            user_id: userSub.user_id,
-            kind: isFirstPaidCharge ? "subscription_first_charge" : "subscription_renewal",
-            amount_cents: Math.round((payment?.value || 0) * 100),
-            period_end_applied: decision.currentPeriodEnd,
-            metadata: {
-              event_type: eventType,
-              tier: decision.targetTier,
-              subscription_id: subscriptionId,
-              billing_type: payment?.billingType,
-            },
-          },
-          { onConflict: "provider,provider_payment_id", ignoreDuplicates: true },
-        )
-        .select("id")
-        .maybeSingle();
+      // W01: Ao ativar pagamento avulso/PIX com assinatura recorrente prévia no Asaas, cancela recorrência anterior
+      let syncStatus = "synced";
+      const shouldCancelPreviousSub =
+        Boolean(userSub.asaas_subscription_id) &&
+        (decision.isUpgradeFromMonthly || !subscriptionId);
 
-      if (lockErr) {
-        console.error("[asaas-webhook] Erro ao adquirir lock atômico em billing_processed_payments:", lockErr);
-        return json({ error: "Erro transitório ao registrar pagamento" }, 500);
+      if (shouldCancelPreviousSub && userSub.asaas_subscription_id) {
+        try {
+          await ensurePreviousSubscriptionCanceled(userSub.asaas_subscription_id);
+        } catch (cancelErr) {
+          syncStatus = "pending_resync";
+          console.warn(
+            "[asaas-webhook] Falha ao cancelar assinatura anterior no Asaas:",
+            sanitizePaymentLog(cancelErr),
+          );
+        }
       }
 
-      if (!lockedRow) {
+      // W02 + W04: Ativação atômica via RPC transacional (lock + user_subscriptions + billing_intents)
+      const { data: atomicResult, error: atomicErr } = await supabase.rpc(
+        "activate_subscription_from_payment",
+        {
+          p_user_id: userSub.user_id,
+          p_subscription_row_id: userSub.id,
+          p_provider_payment_id: paymentId,
+          p_kind: isFirstPaidCharge ? "subscription_first_charge" : "subscription_renewal",
+          p_amount_cents: Math.round((payment?.value || 0) * 100),
+          p_target_tier: decision.targetTier,
+          p_current_period_end: decision.currentPeriodEnd,
+          p_asaas_customer_id: customerId || null,
+          p_asaas_subscription_id: subscriptionId || null,
+          p_clear_asaas_subscription: !subscriptionId && shouldCancelPreviousSub,
+          p_asaas_sync_status: syncStatus,
+          p_set_billing_start_at: isFirstPaidCharge || isReactivation,
+          p_billing_start_at: nowIso,
+          p_trial_consumed_at: userSub.trial_consumed_at || nowIso,
+          p_intent_id: intent?.id ?? null,
+          p_metadata: {
+            event_type: eventType,
+            tier: decision.targetTier,
+            subscription_id: subscriptionId,
+            billing_type: payment?.billingType,
+          },
+        },
+      );
+
+      if (atomicErr) {
+        console.error("[asaas-webhook] Erro na ativação atômica da assinatura:", atomicErr);
+        return json({ error: "Erro ao ativar assinatura no banco" }, 500);
+      }
+
+      if (atomicResult?.duplicate) {
         return json({
           received: true,
           duplicate: true,
@@ -498,67 +552,11 @@ Deno?.serve?.(async (req: Request) => {
         });
       }
 
-      // Se for upgrade de Mensal para Anual via Pix, cancela a assinatura recorrente mensal anterior no Asaas
-      if (decision.isUpgradeFromMonthly && userSub.asaas_subscription_id) {
-        try {
-          await ensurePreviousSubscriptionCanceled(userSub.asaas_subscription_id);
-        } catch (cancelErr) {
-          console.warn(
-            "[asaas-webhook] Falha ao cancelar assinatura mensal anterior no Asaas pós-Pix Anual:",
-            sanitizePaymentLog(cancelErr),
-          );
-        }
-      }
-
-      const updatePayload: Record<string, unknown> = {
-        tier: decision.targetTier,
-        plan_id: decision.targetTier,
-        status: "active",
-        current_period_end: decision.currentPeriodEnd,
-        cancel_at_period_end: false,
-        asaas_payment_id: paymentId,
-        asaas_customer_id: customerId || undefined,
-        scheduled_plan_id: null,
-        scheduled_first_charge_at: null,
-        pending_plan_id: null,
-        pending_plan_effective_at: null,
-        past_due_since: null,
-        past_due_block_at: null,
-        past_due_last_reminded_at: null,
-        past_due_reminder_count: 0,
-        asaas_sync_status: "synced",
-        updated_at: nowIso,
-      };
-
-      if (subscriptionId) {
-        updatePayload.asaas_subscription_id = subscriptionId;
-      } else if (decision.isUpgradeFromMonthly) {
-        // [A-06] Upgrade para Anual via PIX: limpa assinatura mensal cancelada
-        updatePayload.asaas_subscription_id = null;
-      }
-
-      if (isFirstPaidCharge) {
-        updatePayload.billing_start_at = nowIso;
-        updatePayload.trial_consumed_at = userSub.trial_consumed_at || nowIso;
-      }
-
-      const { error: subUpdateErr } = await supabase
-        .from("user_subscriptions")
-        .update(updatePayload)
-        .eq("id", userSub.id);
-
-      if (subUpdateErr) {
-        // Rollback compensatório para permitir retry seguro pelo Asaas
-        await supabase.from("billing_processed_payments").delete().eq("id", lockedRow.id);
-        console.error("[asaas-webhook] Falha ao atualizar user_subscriptions no activate:", subUpdateErr);
-        return json({ error: "Erro ao ativar assinatura no banco" }, 500);
-      }
-
-      if (intent?.id) {
+      if (webhookLogId) {
         await supabase
-          .from("billing_intents")
-          .update({ status: "paid", updated_at: nowIso })
-          .eq("id", intent.id);
+          .from("billing_webhook_logs")
+          .update({ processed_at: nowIso })
+          .eq("id", webhookLogId);
       }
 
       await supabase.from("audit_events").insert({
@@ -877,6 +875,19 @@ Deno?.serve?.(async (req: Request) => {
     // CASO F2: REVERSÃO / ESTORNO INTEGRAL (PAYMENT_REFUNDED)
     // =========================================================================
     if (decision.action === "mark_refunded") {
+      if (userSub.asaas_subscription_id) {
+        try {
+          await cancelAsaasSubscription(userSub.asaas_subscription_id);
+        } catch (cancelErr) {
+          if (!isAsaasAlreadyCanceledError(cancelErr)) {
+            console.warn(
+              "[asaas-webhook] Falha ao cancelar assinatura recorrente no Asaas após estorno:",
+              sanitizePaymentLog(cancelErr),
+            );
+          }
+        }
+      }
+
       const { error: refundErr } = await supabase
         .from("user_subscriptions")
         .update({

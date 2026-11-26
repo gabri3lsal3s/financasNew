@@ -135,12 +135,24 @@ beforeEach(() => {
   stateMocks.payments = [{ ...defaultPayment }];
 });
 
+vi.mock("@/state/queries/use-user-subscription", () => ({
+  useUserSubscription: () => ({
+    canWrite: true,
+    isReadOnly: false,
+    tier: "pro_annual",
+  }),
+}));
+
 vi.mock("@/state", () => ({
   useUserSubscription: () => ({
     canWrite: true,
     isReadOnly: false,
     tier: "pro_annual",
   }),
+  useBusinessMode: () => ({ isBusinessModeEnabled: false }),
+  useDeleteInternalTransferPair: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useIncomes: () => ({ data: [], isLoading: false, error: null, refetch: vi.fn() }),
+  useViewScope: () => ({ effectiveViewScope: "personal" }),
   usePermission: () => ({ isHidden: false, canRead: true, canWrite: true, isReadOnlyMode: false, accessLevel: "admin" }),
   useCategories: () => ({
     data: [],
@@ -323,7 +335,7 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
     const cardBtn = screen.getByRole("button", { name: /^cartão nubank/i });
     await user.click(cardBtn);
 
-    expect(screen.getByRole("heading", { name: "Editar cartão" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Editar cartão" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nome")).toHaveValue("Nubank");
   });
 
@@ -335,7 +347,7 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
     const cardBtn = screen.getByRole("button", { name: /^cartão nubank/i });
     await user.click(cardBtn);
 
-    expect(screen.getByRole("heading", { name: "Editar cartão" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Editar cartão" })).toBeInTheDocument();
     const deleteBtn = screen.getByRole("button", { name: "Excluir" });
     await user.click(deleteBtn);
 
@@ -437,7 +449,7 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
     const user = userEvent.setup();
     renderCardsPage();
     await user.click(screen.getByRole("button", { name: /adicionar novo cartão/i }));
-    expect(screen.getByRole("heading", { name: "Novo cartão" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Novo cartão" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nome")).toBeInTheDocument();
   });
 
@@ -477,10 +489,10 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
     }
   });
 
-  it("abre o formulário de criação via deep link direto (?novo=cartao)", () => {
+  it("abre o formulário de criação via deep link direto (?novo=cartao)", async () => {
     searchParamsMock.mockReturnValue([new URLSearchParams("novo=cartao"), vi.fn()]);
     renderCardsPage();
-    expect(screen.getByRole("heading", { name: "Novo cartão" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Novo cartão" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nome")).toBeInTheDocument();
     searchParamsMock.mockReturnValue([new URLSearchParams(), vi.fn()]);
   });

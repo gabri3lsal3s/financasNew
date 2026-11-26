@@ -71,7 +71,7 @@ export function resetViewScopeStoreForTest(): void {
  */
 export function useViewScope() {
   const { isBusinessModeEnabled } = useBusinessMode();
-  const viewScope = useSyncExternalStore(subscribe, readSnapshot, () => "all");
+  const viewScope = useSyncExternalStore<ViewScope>(subscribe, readSnapshot, () => "all");
 
   const setViewScope = useCallback((next: ViewScope) => {
     writeSnapshot(next);

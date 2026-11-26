@@ -191,7 +191,7 @@ export function DividendFreedomModal({
         </div>
 
         {/* 5 Marcos Equidistantes */}
-        <div className="grid grid-cols-5 gap-1 text-[9px] text-muted-foreground font-mono num border-t border-border/50 pt-1.5">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 sm:gap-1 text-[10px] text-muted-foreground font-mono num border-t border-border/50 pt-1.5">
           <div className="text-left">
             <span className="block font-bold text-foreground">0%</span>
             <span>Início</span>

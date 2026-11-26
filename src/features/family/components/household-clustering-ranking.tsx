@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { BarChart3 } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -53,6 +54,11 @@ export function HouseholdClusteringRanking({
             description="Os gastos da casa aparecerão organizados aqui por categoria assim que forem lançados."
             tone="default"
             className="py-8"
+            action={
+              <a href="/transacoes" className={buttonVariants({ variant: "outline", size: "sm" })}>
+                Lançar despesa
+              </a>
+            }
           />
         ) : (
           <div className="divide-y divide-border/80">

@@ -29,7 +29,22 @@ import {
   getMerchantLearningMemory,
   subscribeInsightsReevaluation,
 } from "@/services/merchant-learning";
-import * as state from "@/state";
+import {
+  useBudgets,
+  useCategories,
+  useCorporateDividends,
+  useExpenses,
+  useFeedback,
+  useFeedbackEntries,
+  useIncomeGoals,
+  useIncomes,
+  usePortfolioContributions,
+  usePortfolioPosition,
+  useRealCashBalance,
+  useRecurrences,
+  useUserAccess,
+  useUserPreferences,
+} from "@/state";
 import { isQueryPending } from "@/state/query-readiness";
 import type {
   Budget,
@@ -39,23 +54,9 @@ import type {
   IncomeGoal,
   PortfolioContribution,
   Recurrence,
-  UserDividendEvent,
-  UserPreferences,
   ViewScope,
 } from "@/types";
 
-function getOptionalStateHook<TResult>(
-  key: string,
-  fallback: (...args: unknown[]) => TResult,
-): (...args: unknown[]) => TResult {
-  if (Reflect.ownKeys(state).includes(key)) {
-    const candidate = (state as Record<string, unknown>)[key];
-    if (typeof candidate === "function") {
-      return candidate as (...args: unknown[]) => TResult;
-    }
-  }
-  return fallback;
-}
 
 const EMPTY_INCOMES: readonly Income[] = [];
 const EMPTY_EXPENSES: readonly Expense[] = [];
@@ -64,7 +65,6 @@ const EMPTY_CATEGORIES: readonly Category[] = [];
 const EMPTY_RECURRENCES: readonly Recurrence[] = [];
 const EMPTY_INCOME_GOALS: readonly IncomeGoal[] = [];
 const EMPTY_CONTRIBUTIONS: readonly PortfolioContribution[] = [];
-const EMPTY_DIVIDENDS: readonly UserDividendEvent[] = [];
 const EMPTY_POSITION_ROWS: readonly OverviewPortfolioPositionLike[] = [];
 
 export interface UseUserFinancialContextOptions {
@@ -118,103 +118,37 @@ export function useUserFinancialContext(
   const m2 = shiftMonth(month, -2);
   const m3 = shiftMonth(month, -3);
 
-  const useIncomesSafe = getOptionalStateHook("useIncomes", () => ({
-    data: EMPTY_INCOMES,
-    isLoading: false,
-  }));
-  const useExpensesSafe = getOptionalStateHook("useExpenses", () => ({
-    data: EMPTY_EXPENSES,
-    isLoading: false,
-  }));
-  const useBudgetsSafe = getOptionalStateHook("useBudgets", () => ({
-    data: EMPTY_BUDGETS,
-    isLoading: false,
-  }));
-  const useCategoriesSafe = getOptionalStateHook("useCategories", () => ({
-    data: EMPTY_CATEGORIES,
-    isLoading: false,
-  }));
-  const useFeedbackEntriesSafe = getOptionalStateHook("useFeedbackEntries", () => ({
-    data: undefined as FeedbackEntry[] | undefined,
-    isLoading: false,
-  }));
-  const useFeedbackSafe = getOptionalStateHook("useFeedback", () => ({
-    data: {} as Record<string, FeedbackEntry["decision"]>,
-    isLoading: false,
-  }));
-  const useRecurrencesSafe = getOptionalStateHook("useRecurrences", () => ({
-    data: EMPTY_RECURRENCES,
-    isLoading: false,
-  }));
-  const useIncomeGoalsSafe = getOptionalStateHook("useIncomeGoals", () => ({
-    data: EMPTY_INCOME_GOALS,
-    isLoading: false,
-  }));
-  const usePortfolioContributionsSafe = getOptionalStateHook("usePortfolioContributions", () => ({
-    data: EMPTY_CONTRIBUTIONS,
-    isLoading: false,
-  }));
-  const useCorporateDividendsSafe = getOptionalStateHook("useCorporateDividends", () => ({
-    recentlySettled: EMPTY_DIVIDENDS,
-    fxRate: 1,
-    isLoading: false,
-  }));
-  const useUserPreferencesSafe = getOptionalStateHook("useUserPreferences", () => ({
-    data: null as UserPreferences | null,
-    isLoading: false,
-  }));
-  const useUserAccessSafe = getOptionalStateHook("useUserAccess", () => ({
-    hasFeature: (() => true) as (feature?: string) => boolean,
-  }));
-  const useRealCashBalanceSafe = getOptionalStateHook("useRealCashBalance", () => ({
-    cashBalance: {
-      currentBalanceCents: 0,
-      latestCheckpoint: null,
-      inflowSinceCheckpointCents: 0,
-      outflowSinceCheckpointCents: 0,
-      eventsSinceCheckpoint: [],
-    },
-    safeToSpend: {
-      committedObligationsCents: 0,
-      safeToSpendCents: 0,
-    },
-    isLoading: false,
-  }));
-  const usePortfolioPositionSafe = getOptionalStateHook("usePortfolioPosition", () => ({
-    rows: [] as OverviewPortfolioPositionLike[],
-    isLoading: false,
-  }));
-  const m0IncomesQ = useIncomesSafe(month, { enabled: queryEnabled });
-  const m1IncomesQ = useIncomesSafe(m1, { enabled: queryEnabled });
-  const m2IncomesQ = useIncomesSafe(m2, { enabled: queryEnabled });
-  const m3IncomesQ = useIncomesSafe(m3, { enabled: queryEnabled });
+  const m0IncomesQ = useIncomes(month, { enabled: queryEnabled });
+  const m1IncomesQ = useIncomes(m1, { enabled: queryEnabled });
+  const m2IncomesQ = useIncomes(m2, { enabled: queryEnabled });
+  const m3IncomesQ = useIncomes(m3, { enabled: queryEnabled });
 
-  const m0ExpensesQ = useExpensesSafe(month, { enabled: queryEnabled });
-  const m1ExpensesQ = useExpensesSafe(m1, { enabled: queryEnabled });
-  const m2ExpensesQ = useExpensesSafe(m2, { enabled: queryEnabled });
-  const m3ExpensesQ = useExpensesSafe(m3, { enabled: queryEnabled });
+  const m0ExpensesQ = useExpenses(month, { enabled: queryEnabled });
+  const m1ExpensesQ = useExpenses(m1, { enabled: queryEnabled });
+  const m2ExpensesQ = useExpenses(m2, { enabled: queryEnabled });
+  const m3ExpensesQ = useExpenses(m3, { enabled: queryEnabled });
 
-  const access = useUserAccessSafe();
+  const access = useUserAccess();
   const hasInvestmentsAccess =
     typeof access?.hasFeature === "function" ? access.hasFeature("investments") : true;
-  const budgetsQ = useBudgetsSafe({ enabled: queryEnabled });
-  const categoriesQ = useCategoriesSafe(undefined, { enabled: queryEnabled });
-  const expenseCategoriesQ = useCategoriesSafe("expense", { enabled: queryEnabled });
-  const incomeCategoriesQ = useCategoriesSafe("income", { enabled: queryEnabled });
-  const feedbackEntriesQ = useFeedbackEntriesSafe({ enabled: queryEnabled });
-  const feedbackMapQ = useFeedbackSafe({ enabled: queryEnabled });
-  const recurrencesQ = useRecurrencesSafe(undefined, { enabled: queryEnabled });
-  const incomeGoalsQ = useIncomeGoalsSafe({ enabled: queryEnabled });
-  const contributionsQ = usePortfolioContributionsSafe({ enabled: queryEnabled && hasInvestmentsAccess });
-  const userPrefsQ = useUserPreferencesSafe({ enabled: queryEnabled });
-  const corporateDividendsQ = useCorporateDividendsSafe({
+  const budgetsQ = useBudgets({ enabled: queryEnabled });
+  const categoriesQ = useCategories(undefined, { enabled: queryEnabled });
+  const expenseCategoriesQ = useCategories("expense", { enabled: queryEnabled });
+  const incomeCategoriesQ = useCategories("income", { enabled: queryEnabled });
+  const feedbackEntriesQ = useFeedbackEntries({ enabled: queryEnabled });
+  const feedbackMapQ = useFeedback({ enabled: queryEnabled });
+  const recurrencesQ = useRecurrences(undefined, { enabled: queryEnabled });
+  const incomeGoalsQ = useIncomeGoals({ enabled: queryEnabled });
+  const contributionsQ = usePortfolioContributions({ enabled: queryEnabled && hasInvestmentsAccess });
+  const userPrefsQ = useUserPreferences({ enabled: queryEnabled });
+  const corporateDividendsQ = useCorporateDividends({
     enabled: queryEnabled && hasInvestmentsAccess,
   });
 
-  const realCashFallbackQ = useRealCashBalanceSafe(isCurrentMonth ? today : `${month}-01`, {
+  const realCashFallbackQ = useRealCashBalance(isCurrentMonth ? today : `${month}-01`, {
     enabled: queryEnabled && optionRealCashBalanceCents === undefined,
   });
-  const portfolioPositionFallbackQ = usePortfolioPositionSafe({
+  const portfolioPositionFallbackQ = usePortfolioPosition({
     enabled: queryEnabled && optionPositionRows === undefined && hasInvestmentsAccess,
   });
 

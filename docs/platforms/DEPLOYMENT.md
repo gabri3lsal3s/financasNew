@@ -13,12 +13,12 @@
 │  Cloudflare Pages (Vite SPA)    │ ─────► │  Supabase (Postgres 17)     │
 │  / (SPA + PWA)                  │  HTTPS │  ├─ Auth (email/senha)       │
 │  /assets/* (Cache imutável)     │        │  ├─ RLS (todas as tabelas)   │
-│  _redirects + _headers          │        │  ├─ RPCs transacionais (D1)  │
+│  Fallback SPA + _headers          │        │  ├─ RPCs transacionais (D1)  │
 └─────────────────────────────────┘        │  └─ Migrations versionadas   │
                                            └──────────────────────────────┘
 ```
 
-- **Frontend:** Cloudflare Pages — Git Integration nativa via Webhooks (sem GitHub Actions). Roteamento SPA configurado via `public/_redirects` e segurança/cache via `public/_headers`.
+- **Frontend:** Cloudflare Pages — Git Integration nativa via Webhooks (sem GitHub Actions). O fallback nativo do Cloudflare Pages atende às rotas da SPA. Arquivos estáticos são servidos diretamente e `public/_headers` define segurança e cache.
 - **Segurança de Borda e Headers HTTP (`public/_headers`):**
   - **Content-Security-Policy (CSP):** política estrita que restringe a execução de scripts e conexões a origens homologadas (`default-src 'self'`, `script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com https://cdn.jsdelivr.net/npm/tesseract.js@v7.0.0/ https://cdn.jsdelivr.net/npm/tesseract.js-core@v7.0.0/`, `worker-src 'self' blob: https://cdn.jsdelivr.net/npm/tesseract.js@v7.0.0/`, `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`, `img-src 'self' data: blob: https://*.supabase.co`, `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://challenges.cloudflare.com https://brapi.dev https://cdn.jsdelivr.net/npm/tesseract.js@v7.0.0/ https://cdn.jsdelivr.net/npm/tesseract.js-core@v7.0.0/ https://cdn.jsdelivr.net/npm/@tesseract.js-data/ blob:`, `font-src 'self' data: https://fonts.gstatic.com`, `frame-src 'self' https://challenges.cloudflare.com`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'`). Nas rotas `/assinatura` e `/assinatura/*`, a CSP é ainda mais restrita e remove completamente `cdn.jsdelivr.net` e `'wasm-unsafe-eval'`;
   - **Defesa em Profundidade:** `Strict-Transport-Security` (HSTS preload), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection: 0`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), accelerometer=(), gyroscope=(), interest-cohort=()`;
@@ -283,6 +283,7 @@ npx supabase secrets set \
 | `ASAAS_API_KEY` | Chave de API da conta Asaas de produção | Painel Asaas → Menu Superior Direito → Configurações da Conta → Integrações → Gerar Chave de API |
 | `ASAAS_API_URL` | URL base do endpoint v3 do Asaas | `https://api.asaas.com/v3` (produção) ou `https://sandbox.asaas.com/api/v3` (homologação) |
 | `ASAAS_WEBHOOK_TOKEN` | Token secreto estático para autenticar webhooks | Gerar string de alta entropia (ex.: `openssl rand -hex 24`) e cadastrar no painel do Asaas |
+| `RESEND_WEBHOOK_SECRET` | Segredo Svix usado para autenticar os eventos de entrega | Painel do Resend, na configuração do webhook |
 | `TELEGRAM_BOT_TOKEN` | Token do bot de suporte no Telegram | Criado via `@BotFather` no Telegram |
 | `TELEGRAM_CHAT_ID` | Identificador do canal/chat de suporte | Obtido via `@userinfobot` ou API do Telegram |
 | `VAPID_PUBLIC_KEY` | *(opcional)* Chave pública VAPID do Push Web | Gerada via `npx web-push generate-vapid-keys` (pareada com `VITE_VAPID_PUBLIC_KEY`) |
@@ -340,7 +341,12 @@ npx supabase functions deploy admin-super-action --no-verify-jwt --use-api
 
 # 10. Assistente de Micro-IA FinOps (fallback comprovantes e categorização/PDF de faturas)
 npx supabase functions deploy ai-financial-assistant --no-verify-jwt --use-api
+
+# 11. Eventos de entrega, devolução e reclamação do Resend
+npx supabase functions deploy resend-webhook --no-verify-jwt --use-api
 ```
+
+No painel do Resend, cadastre `https://<PROJECT_REF>.supabase.co/functions/v1/resend-webhook` e selecione os eventos `email.delivered`, `email.bounced`, `email.complained` e `email.delivery_delayed`. Grave o segredo de assinatura desse endpoint como `RESEND_WEBHOOK_SECRET` no Supabase do mesmo ambiente.
 
 > Para os passos manuais complementares pós-automação (Cloudflare Pages, Resend DNS/SMTP, `pg_cron` via `npm run notifications:cron`, Firebase FCM e validação ponta a ponta), consulte [`CONFIGURACAO_STACKS_E_PASSOS_MANUAIS.md`](./CONFIGURACAO_STACKS_E_PASSOS_MANUAIS.md).
 

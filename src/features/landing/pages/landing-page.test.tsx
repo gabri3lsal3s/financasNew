@@ -85,7 +85,7 @@ describe("LandingPage", () => {
       screen.getByRole("button", { name: /Racha de Parcelas & Viagens/i }),
     );
     expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: "smooth" });
-    expect(screen.getByTestId("card-racha")).toBeVisible();
+    expect(await screen.findByTestId("card-racha", {}, { timeout: 5000 })).toBeVisible();
   });
 
   it("permite interagir com o palco de Finanças Compartilhadas & Pix após selecionar Casal & Amigos", async () => {
@@ -95,7 +95,7 @@ describe("LandingPage", () => {
     const sharedTabs = screen.getAllByRole("tab", { name: /Casal & Amigos/i });
     await user.click(sharedTabs[0]!);
 
-    expect(screen.getByTestId("card-racha")).toBeVisible();
+    expect(await screen.findByTestId("card-racha", {}, { timeout: 5000 })).toBeVisible();
     expect(screen.getByText("Churrasco de Confraternização")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Copiar Pix/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Cobrar no WhatsApp/i })).toBeInTheDocument();
@@ -140,14 +140,14 @@ describe("LandingPage", () => {
 
     // Aba de Relatórios & Memória de Cálculo
     await user.click(screen.getByRole("tab", { name: /Relatórios/i }));
-    expect(screen.getByTestId("deep-dive-reports")).toBeInTheDocument();
+    expect(await screen.findByTestId("deep-dive-reports")).toBeInTheDocument();
     expect(
       screen.getByText("Zero Caixa Preta — Memória de Cálculo em 12 Módulos"),
     ).toBeInTheDocument();
 
     // Aba de Radar Preventivo & Privacidade
     await user.click(screen.getByRole("tab", { name: /Radar Preventivo & Privacidade/i }));
-    expect(screen.getByTestId("deep-dive-security")).toBeInTheDocument();
+    expect(await screen.findByTestId("deep-dive-security")).toBeInTheDocument();
 
     // Garantia estrita de honestidade: zero promessas de IRPF na Landing Page
     expect(
@@ -160,7 +160,7 @@ describe("LandingPage", () => {
     renderLanding();
 
     expect(screen.getByText("Simulador de Carteira & Aportes Inteligentes")).toBeInTheDocument();
-    expect(screen.getByText("Composição da Carteira")).toBeInTheDocument();
+    expect(await screen.findByText("Composição da Carteira")).toBeInTheDocument();
 
     const aporte6k = screen.getByRole("button", { name: "R$ 6k" });
     await user.click(aporte6k);
@@ -208,7 +208,7 @@ describe("LandingPage", () => {
     await user.click(termosButton);
 
     expect(
-      screen.getByText("Termos de Serviço & Privacidade (LGPD)"),
+      await screen.findByText("Termos de Serviço & Privacidade (LGPD)", {}, { timeout: 5000 }),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/Transparência, Teste Gratuito e Cancelamento/i),
@@ -223,7 +223,7 @@ describe("LandingPage", () => {
     await user.click(privacyButton);
 
     expect(
-      screen.getByText(/Privacidade Absoluta e Conformidade com a LGPD/i),
+      await screen.findByText(/Privacidade Absoluta e Conformidade com a LGPD/i),
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole("tab", { name: "Termos de Serviço" }));

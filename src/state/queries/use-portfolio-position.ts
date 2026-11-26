@@ -113,7 +113,7 @@ export interface PortfolioPosition {
   closedSnapshotsCount: number;
   isLoading: boolean;
   error: unknown;
-  refetch: () => void;
+  refetch: () => Promise<unknown>;
 }
 
 function mapCanonicalHoldingToRow(
@@ -238,13 +238,15 @@ export function usePortfolioPosition(options?: { enabled?: boolean }): Portfolio
   }, [canonicalState.rows, assetsQuery.data]);
 
   const refetch = useCallback(() => {
-    void assetsQuery.refetch();
-    void pricesQuery.refetch();
-    void macroQuery.refetch();
-    void contributionsQuery.refetch();
-    void dividendsQuery.refetch();
-    void snapshotsQuery.refetch();
-    void transactionsQuery.refetch();
+    return Promise.all([
+      assetsQuery.refetch(),
+      pricesQuery.refetch(),
+      macroQuery.refetch(),
+      contributionsQuery.refetch(),
+      dividendsQuery.refetch(),
+      snapshotsQuery.refetch(),
+      transactionsQuery.refetch(),
+    ]);
   }, [
     assetsQuery,
     pricesQuery,

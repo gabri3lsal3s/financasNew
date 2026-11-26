@@ -1,4 +1,5 @@
 import { getSupabase } from "@/data/client";
+import { reportError } from "@/services/observability";
 import { callRpc, unwrapRpc } from "./client";
 import type {
   AdminContactDetails,
@@ -356,7 +357,7 @@ export async function adminDeleteUser(params: { targetUserId: string }): Promise
       });
     }
   } catch (err) {
-    console.warn("[adminDeleteUser] Aviso ao cancelar assinatura Asaas pré-deleção:", err);
+    reportError(err, { source: "adminDeleteUser.cancelAsaas", targetUserId: params.targetUserId });
   }
 
   await unwrapRpc(

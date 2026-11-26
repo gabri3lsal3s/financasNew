@@ -1,7 +1,17 @@
-import { useLayoutEffect } from "react";
+import { lazy, Suspense, useLayoutEffect, useSyncExternalStore } from "react";
 import { isNativePlatform } from "@/services/native/platform";
-import { NativeUpdateToast } from "./native-update-toast";
-import { PWAUpdateToast } from "./pwa-update-toast";
+import { getIsPWAUpdating, getPWAUpdateAvailable, subscribePWAUpdate } from "@/app/pwa";
+
+const NativeUpdateToast = lazy(() =>
+  import("./native-update-toast").then((m) => ({ default: m.NativeUpdateToast })),
+);
+const PWAUpdateToast = lazy(() =>
+  import("./pwa-update-toast").then((m) => ({ default: m.PWAUpdateToast })),
+);
+
+function hasPWAUpdate(): boolean {
+  return getPWAUpdateAvailable() || getIsPWAUpdating();
+}
 
 const UNIFIED_HOST_EVENT = "axir:update-toast-host-change";
 
@@ -19,6 +29,7 @@ const UNIFIED_HOST_EVENT = "axir:update-toast-host-change";
  */
 export function AppUpdateToast() {
   const isNative = isNativePlatform();
+  const hasUpdate = useSyncExternalStore(subscribePWAUpdate, hasPWAUpdate, () => false);
 
   useLayoutEffect(() => {
     if (typeof document === "undefined" || typeof window === "undefined") return;
@@ -39,9 +50,11 @@ export function AppUpdateToast() {
     };
   }, []);
 
-  if (isNative) {
-    return <NativeUpdateToast bypassUnifiedGuard />;
-  }
-
-  return <PWAUpdateToast persistDismissal />;
+  return (
+    <Suspense fallback={null}>
+      {isNative
+        ? <NativeUpdateToast bypassUnifiedGuard />
+        : hasUpdate && <PWAUpdateToast persistDismissal />}
+    </Suspense>
+  );
 }

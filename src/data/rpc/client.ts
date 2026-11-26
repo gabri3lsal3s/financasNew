@@ -20,7 +20,10 @@ export function callRpc<K extends keyof Functions>(
   return getSupabase().rpc(fn, args as never) as unknown as PromiseLike<RpcResult<FnReturn<K>>>;
 }
 
-export async function unwrapRpc<T>(promise: PromiseLike<RpcResult<T>>, allowNull = false): Promise<T> {
+export async function unwrapRpc<T>(promise: PromiseLike<RpcResult<T>>): Promise<T>;
+export async function unwrapRpc<T>(promise: PromiseLike<RpcResult<T>>, allowNull: false): Promise<T>;
+export async function unwrapRpc<T>(promise: PromiseLike<RpcResult<T>>, allowNull: true): Promise<T | null>;
+export async function unwrapRpc<T>(promise: PromiseLike<RpcResult<T>>, allowNull = false): Promise<T | null> {
   const { data, error } = await promise;
   if (error) {
     const classified = classifyError(error);
@@ -29,5 +32,5 @@ export async function unwrapRpc<T>(promise: PromiseLike<RpcResult<T>>, allowNull
   if (data === null && !allowNull) {
     throw new AppError("unknown", "Resposta vazia do servidor.", null);
   }
-  return data as T;
+  return data;
 }

@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { GitCompare } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -106,6 +107,11 @@ export function HouseholdComparisonCard({
             description="Os comparativos de contribuição e cotas da casa aparecerão aqui conforme as despesas forem lançadas."
             tone="default"
             className="py-8"
+            action={
+              <a href="/transacoes" className={buttonVariants({ variant: "outline", size: "sm" })}>
+                Lançar despesa
+              </a>
+            }
           />
         ) : (
           <div className="divide-y divide-border/80">

@@ -48,8 +48,11 @@ function snapshotExpenseCaches(queryClient: QueryClient) {
 }
 
 /** Invalida todos os agregados financeiros após sucesso/erro (onSettled). */
-function invalidateFinanceAggregates(queryClient: QueryClient) {
+function invalidateFinanceAggregates(queryClient: QueryClient, options?: { cardinalityChanged?: boolean }) {
   for (const key of FINANCE_KEYS) void queryClient.invalidateQueries({ queryKey: key });
+  if (options?.cardinalityChanged) {
+    void queryClient.invalidateQueries({ queryKey: ["onboarding"] });
+  }
 }
 
 /** Cria despesa (+ parcelas + cobrança vinculada) numa única transação (D1). */
@@ -58,7 +61,7 @@ export function useCreateExpense() {
   return useMutation({
     mutationFn: (params: CreateExpenseWithDebtParams) => createExpenseWithDebt(params),
     onSuccess: (_data, variables) => {
-      invalidateFinanceAggregates(queryClient);
+      invalidateFinanceAggregates(queryClient, { cardinalityChanged: true });
       if (variables.description && variables.categoryId) {
         autoLearnExpenseCategory(variables.description, variables.categoryId);
       }
@@ -156,11 +159,25 @@ export function useUpdateExpense() {
       await queryClient.cancelQueries({ queryKey: expensesKey });
       await queryClient.cancelQueries({ queryKey: cardExpensesKey });
       const snapshot = snapshotExpenseCaches(queryClient);
+      let previousItem: Expense | undefined;
+      for (const [, data] of snapshot) {
+        if (Array.isArray(data)) {
+          const found = (data as Expense[]).find((item) => item.id === id);
+          if (found) {
+            previousItem = found;
+            break;
+          }
+        }
+      }
       applyExpenseUpdate(queryClient, id, input);
-      return { snapshot };
+      return { snapshot, previousItem };
     },
-    onError: (error, _variables, context) => {
-      if (context) restoreQueries(queryClient, context.snapshot);
+    onError: (error, variables, context) => {
+      if (context?.previousItem) {
+        applyExpenseUpdate(queryClient, variables.id, context.previousItem);
+      } else if (context) {
+        restoreQueries(queryClient, context.snapshot);
+      }
       pushToast({
         title: "Não foi possível salvar a despesa",
         description: `${getErrorMessage(error)} Os dados foram restaurados.`,

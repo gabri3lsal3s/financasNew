@@ -13,11 +13,33 @@ import { triggerSensory } from "@/services/sensory";
 import { saveLocalTabularBlueprint } from "@/services/statement-tabular-blueprints";
 import { pushToast } from "@/services/toast";
 import {
+  fetchStatementReconciliationReceipts,
   useCommitStatementReconciliation,
   useUpsertStatementBlueprint,
   type CommitStatementReconciliationParams,
   type CommitStatementReconciliationResult,
 } from "@/state";
+
+async function deriveDeterministicStatementImportIdentity(
+  userId: string | null,
+  cardId: string,
+  competenceMonth: string,
+  sourceHashes: readonly string[],
+): Promise<{ importId: string; planHash: string }> {
+  const canonical = JSON.stringify({
+    userId: userId ?? "anon",
+    cardId,
+    competenceMonth,
+    sourceHashes: [...sourceHashes].sort(),
+  });
+  const bytes = new TextEncoder().encode(canonical);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  const hex = Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  const importId = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+  return { importId, planHash: hex };
+}
 import type {
   DraftStatementBlueprintSession,
   StatementCommitRetryState,
@@ -96,6 +118,7 @@ export function useStatementCommit({ userId = null, onError, onSuccessCloseOrSte
       cardId: string; competenceMonth: string; closingDay?: number | null; openBalanceBeforeCents: number;
       itemsForLearning: ReadonlyArray<{ cleanDescription: string; merchantCleanRaw?: string; selectedCategoryId: string }>;
       draftBlueprint: DraftStatementBlueprintSession | null;
+      alreadyCommittedChunks?: ReadonlySet<number>;
     }) => {
       const totalExpenses = Math.max(1, params.chunks.reduce((acc, c) => acc + (c.expenses?.length ?? 0), 0));
       let processed = params.chunks.slice(0, params.startIndex).reduce((acc, c) => acc + (c.expenses?.length ?? 0), 0);
@@ -105,6 +128,10 @@ export function useStatementCommit({ userId = null, onError, onSuccessCloseOrSte
 
       for (let i = params.startIndex; i < params.chunks.length; i++) {
         const chunk = params.chunks[i]!;
+        if (params.alreadyCommittedChunks?.has(i)) {
+          processed += chunk.expenses?.length ?? 0;
+          continue;
+        }
         try {
           const res = await commitMutation.mutateAsync(chunk);
           accumulated = mergeCommitResults(accumulated, res);
@@ -154,7 +181,7 @@ export function useStatementCommit({ userId = null, onError, onSuccessCloseOrSte
   const handleConfirmCommit = useCallback(
     async (params: {
       plan: ReconciliationPlan; closingDay?: number | null; categoriesCount: number; isReadOnlyMode: boolean;
-      hasUnconfirmedCardMismatch: boolean; openBalanceBeforeCents: number; draftBlueprint: DraftStatementBlueprintSession | null; onConsumeDraftBlueprint: () => void;
+      hasUnconfirmedCardMismatch: boolean; openBalanceBeforeCents: number; draftBlueprint: DraftStatementBlueprintSession | null; onConsumeDraftBlueprint: () => void; sourceHashes?: readonly string[];
     }) => {
       if (params.isReadOnlyMode) {
         const msg = "Modo somente leitura ativo. Não é possível importar lançamentos.";
@@ -193,20 +220,56 @@ export function useStatementCommit({ userId = null, onError, onSuccessCloseOrSte
       const estimatedOpenBalanceAfterCents = Math.max(0, params.openBalanceBeforeCents + addedNewCents + adjustmentsDeltaCents - addedRefundsCents);
 
       const payload = toCommitReconciliationPlanPayload(params.plan);
+      const effectiveSourceHashes =
+        params.sourceHashes && params.sourceHashes.length > 0
+          ? params.sourceHashes
+          : params.plan.newExpensesToCreate.map((e) => e.statementHash);
+      const { importId, planHash } = await deriveDeterministicStatementImportIdentity(
+        userId,
+        params.plan.cardId,
+        params.plan.competenceMonth,
+        effectiveSourceHashes,
+      );
+
+      let initialAccumulated = emptyCommitResult();
+      let chunkIndexOffset = 0;
+      try {
+        const serverReceipts = await fetchStatementReconciliationReceipts({
+          importId,
+          cardId: params.plan.cardId,
+          competenceMonth: params.plan.competenceMonth,
+          planHash,
+        });
+        for (const r of serverReceipts) {
+          initialAccumulated = mergeCommitResults(initialAccumulated, r.result);
+          chunkIndexOffset = Math.max(chunkIndexOffset, r.chunk_index + 1);
+        }
+      } catch {
+        // Se consulta de recibos falhar, prossegue com commit_statement_reconciliation_batch
+      }
+
       const chunks = buildStatementCommitChunks(payload, STATEMENT_COMMIT_CHUNK_SIZE).map((c) => ({
-        cardId: params.plan.cardId, competenceMonth: params.plan.competenceMonth, expenses: c.expenses,
-        linkAdjustments: c.linkAdjustments, competenceMoves: c.competenceMoves, refunds: c.refunds, deleteExpenseIds: c.deleteExpenseIds,
+        cardId: params.plan.cardId,
+        competenceMonth: params.plan.competenceMonth,
+        importId,
+        chunkIndex: chunkIndexOffset + c.chunkIndex,
+        planHash,
+        expenses: c.expenses,
+        linkAdjustments: c.linkAdjustments,
+        competenceMoves: c.competenceMoves,
+        refunds: c.refunds,
+        deleteExpenseIds: c.deleteExpenseIds,
       }));
       const draft = params.draftBlueprint;
       params.onConsumeDraftBlueprint();
       return runChunkSequence({
-        chunks, startIndex: 0, initialAccumulated: emptyCommitResult(), cardId: params.plan.cardId, competenceMonth: params.plan.competenceMonth,
+        chunks, startIndex: 0, initialAccumulated, cardId: params.plan.cardId, competenceMonth: params.plan.competenceMonth,
         closingDay: params.closingDay, openBalanceBeforeCents: estimatedOpenBalanceAfterCents,
         itemsForLearning: params.plan.newExpensesToCreate.map((exp) => ({ cleanDescription: exp.item.transaction.cleanDescription, merchantCleanRaw: exp.item.transaction.merchantCleanRaw, selectedCategoryId: exp.categoryId })),
         draftBlueprint: draft,
       });
     },
-    [onError, onSuccessCloseOrStep, persistApprovedBlueprintDraft, runChunkSequence],
+    [onError, onSuccessCloseOrStep, persistApprovedBlueprintDraft, runChunkSequence, userId],
   );
 
   const handleRetryPendingChunks = useCallback(

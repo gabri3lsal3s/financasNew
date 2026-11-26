@@ -14,6 +14,23 @@
 import { todayISO } from "@/domain/debts/index";
 import { numberToCents } from "@/domain/money/parse";
 
+function toLocalCivilDate(dateOrIso: string): string {
+  const trimmed = dateOrIso.trim();
+  if (!trimmed.includes("T") && !trimmed.includes(" ")) {
+    return trimmed.slice(0, 10);
+  }
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) {
+    return trimmed.slice(0, 10);
+  }
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(parsed);
+}
+
 export interface CashCheckpointData {
   id?: string;
   date: string; // YYYY-MM-DD
@@ -192,6 +209,7 @@ export function resolveCashFlowEvents(params: CalculateCashBalanceParams): CashL
         description: pay.note || "Pagamento de fatura",
         amountCents,
         flow: "out",
+        createdAt: (pay as { created_at?: string }).created_at,
       });
     }
   }
@@ -199,7 +217,7 @@ export function resolveCashFlowEvents(params: CalculateCashBalanceParams): CashL
   // 4. Dívidas / Empréstimos Efetivamente Pagos ou Recebidos
   for (const debt of debts) {
     if (!debt.paid_at) continue;
-    const paidDate = debt.paid_at.slice(0, 10);
+    const paidDate = toLocalCivilDate(debt.paid_at);
     if (paidDate > referenceDate) continue;
     const amountCents = numberToCents(debt.amount);
     if (amountCents <= 0) continue;

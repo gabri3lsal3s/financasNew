@@ -13,7 +13,7 @@ import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { useAppUpdate } from "@/hooks/use-app-update";
 import { useModalTransition } from "@/hooks/use-modal-transition";
 import { applyPWAUpdate, getPWAUpdateAvailable, subscribePWAUpdate } from "@/app/pwa";
-import { useNotificationCenter } from "@/hooks/use-notification-center";
+import { useUnreadNotificationCount } from "@/hooks/use-notification-center";
 import { useBusinessMode } from "@/state/queries/use-business-mode";
 import { useFamilyMode } from "@/state/queries/use-family-mode";
 import { useTripMode } from "@/state/queries/use-trip-mode";
@@ -48,7 +48,7 @@ export function MoreMenuSheet({ open, onOpenChange }: MoreMenuSheetProps) {
   const showDownloadAppOption = !isNative && (canOfferAndroidApk || !isPwaActive);
 
   const { totalRemindersPageCount: totalCount, criticalCount: urgentCount } =
-    useNotificationCenter();
+    useUnreadNotificationCount();
   const { isAdmin, hasFeature } = useUserAccess();
   const { isFamilyModeEnabled } = useFamilyMode();
   const { isTripModeEnabled } = useTripMode();

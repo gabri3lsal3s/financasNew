@@ -1,6 +1,7 @@
 import { PieChart } from "lucide-react";
 import { Badge } from "@/components/ui";
 import { inferSectorFromTicker } from "@/domain/portfolio";
+import { formatPercent } from "@/services/masks";
 import type { PortfolioPositionRow } from "@/state";
 import {
   TargetDistributionCard,
@@ -66,7 +67,7 @@ export function TargetSectorsCard({
       savedTarget: storedSectorTargets.get(sectorName) ?? 0,
       currentPct: classTotalBRL > 0 ? (sectorBRL / classTotalBRL) * 100 : 0,
       currentSuffix: "da classe",
-      secondaryPctText: `${pctInPortfolio.toFixed(1)}% total`,
+      secondaryPctText: `${formatPercent(pctInPortfolio)}% total`,
       membersCount: members.length,
       stepperAriaLabel: `Meta do setor ${sectorName} em % da classe`,
       detailAriaLabel: `Ver detalhes de ${sectorName}`,

@@ -75,7 +75,7 @@ export function SplitChargeInstallments({
         className={cn(
           "grid grid-cols-1 sm:grid-cols-2 gap-2",
           isManyInstallments &&
-            "max-h-64 sm:max-h-72 overflow-y-auto no-scrollbar pr-1 rounded-xl bg-surface-raised p-2",
+            "rounded-xl bg-surface-raised p-2",
         )}
       >
         {installments.map((inst) => {

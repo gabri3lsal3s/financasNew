@@ -1,13 +1,26 @@
-import { useState } from "react";
+import { lazy, startTransition, Suspense, useState } from "react";
 import { Briefcase, Cpu, FileBarChart2, Layers, PieChart, ShieldCheck } from "lucide-react";
+import { ContentLoading } from "@/components/ui/content-loading";
 import { Tabs, type TabItem } from "@/components/ui/tabs";
 import { triggerSensory } from "@/services/sensory";
 import { ScrollReveal } from "./scroll-reveal";
 import { InvestmentsProPreview } from "./deep-dive-previews/investments-pro-preview";
-import { ReportsSuitePreview } from "./deep-dive-previews/reports-suite-preview";
-import { AiIntelligencePreview } from "./deep-dive-previews/ai-intelligence-preview";
-import { BusinessModePreview } from "./deep-dive-previews/business-mode-preview";
-import { SecurityAndRadarPreview } from "./deep-dive-previews/security-and-radar-preview";
+
+const ReportsSuitePreview = lazy(() =>
+  import("./deep-dive-previews/reports-suite-preview").then((m) => ({ default: m.ReportsSuitePreview })),
+);
+
+const AiIntelligencePreview = lazy(() =>
+  import("./deep-dive-previews/ai-intelligence-preview").then((m) => ({ default: m.AiIntelligencePreview })),
+);
+
+const BusinessModePreview = lazy(() =>
+  import("./deep-dive-previews/business-mode-preview").then((m) => ({ default: m.BusinessModePreview })),
+);
+
+const SecurityAndRadarPreview = lazy(() =>
+  import("./deep-dive-previews/security-and-radar-preview").then((m) => ({ default: m.SecurityAndRadarPreview })),
+);
 
 export type DeepDiveTabKey = "investments" | "business" | "ai" | "reports" | "security";
 
@@ -26,8 +39,10 @@ export function DeepDiveTabsSection({
   const handleTabChange = (value: string) => {
     const nextTab = value as DeepDiveTabKey;
     triggerSensory("selection");
-    setInternalTab(nextTab);
-    onTabChange?.(nextTab);
+    startTransition(() => {
+      setInternalTab(nextTab);
+      onTabChange?.(nextTab);
+    });
   };
 
   const tabItems: TabItem[] = [
@@ -88,13 +103,15 @@ export function DeepDiveTabsSection({
           </p>
         </ScrollReveal>
 
-        <Tabs
-          value={activeTab}
-          onValueChange={handleTabChange}
-          variant="pills"
-          ariaLabel="Recursos em profundidade do Axir"
-          items={tabItems}
-        />
+        <Suspense fallback={<ContentLoading />}>
+          <Tabs
+            value={activeTab}
+            onValueChange={handleTabChange}
+            variant="pills"
+            ariaLabel="Recursos em profundidade do Axir"
+            items={tabItems}
+          />
+        </Suspense>
       </div>
     </section>
   );

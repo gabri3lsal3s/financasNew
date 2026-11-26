@@ -358,7 +358,7 @@ export function HorizontalAllocationDriftBars({
       <div
         className={cn(
           "flex flex-col gap-3 pt-1",
-          scrollable && "max-h-[250px] overflow-y-auto pr-1.5 scroll-smooth no-scrollbar",
+          scrollable && "pr-1.5",
         )}
       >
         {items.map((item) => {

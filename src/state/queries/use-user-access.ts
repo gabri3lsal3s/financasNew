@@ -73,8 +73,12 @@ export function subscribeUserAccessRealtime(userId: string, queryClient: QueryCl
   }
 
   activeUserId = userId;
-  activeChannel = supabase
-    .channel(`user-access-${userId}`)
+  let reconnectAttempt = 0;
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const connectChannel = () => {
+    activeChannel = supabase
+      .channel(`user-access-${userId}`)
     .on(
       "postgres_changes",
       {
@@ -125,8 +129,10 @@ export function subscribeUserAccessRealtime(userId: string, queryClient: QueryCl
       },
     )
     .subscribe((status) => {
-      // Se a conexão falhar ou expirar por indisponibilidade do backend Realtime,
-      // encerra defensivamente o canal para evitar loops infinitos de reconexão e poluição do console
+      if (status === "SUBSCRIBED") {
+        reconnectAttempt = 0;
+        return;
+      }
       if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
         if (activeChannel) {
           const sb = getSupabase();
@@ -136,22 +142,55 @@ export function subscribeUserAccessRealtime(userId: string, queryClient: QueryCl
             // Fallback silencioso
           }
           activeChannel = null;
-          activeUserId = null;
-          subscriberCount = 0;
+        }
+        if (subscriberCount > 0 && reconnectTimer === null && reconnectAttempt < 5) {
+          const delayMs = Math.min(30_000, 1000 * Math.pow(2, reconnectAttempt));
+          reconnectAttempt += 1;
+          reconnectTimer = setTimeout(() => {
+            reconnectTimer = null;
+            if (subscriberCount > 0 && activeUserId === userId && !activeChannel) {
+              connectChannel();
+            }
+          }, delayMs);
         }
       }
     });
+  };
+
+  const handleOnline = () => {
+    if (subscriberCount > 0 && activeUserId === userId && !activeChannel) {
+      reconnectAttempt = 0;
+      if (reconnectTimer !== null) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+      connectChannel();
+    }
+  };
+  if (typeof window !== "undefined") {
+    window.addEventListener("online", handleOnline);
+  }
+  connectChannel();
 
   return () => {
     subscriberCount--;
-    if (subscriberCount <= 0 && activeChannel) {
-      const sb = getSupabase();
-      try {
-        void sb.removeChannel(activeChannel);
-      } catch {
-        // Fallback defensivo
+    if (subscriberCount <= 0) {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("online", handleOnline);
       }
-      activeChannel = null;
+      if (reconnectTimer !== null) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+      if (activeChannel) {
+        const sb = getSupabase();
+        try {
+          void sb.removeChannel(activeChannel);
+        } catch {
+          // Fallback defensivo
+        }
+        activeChannel = null;
+      }
       activeUserId = null;
       subscriberCount = 0;
     }

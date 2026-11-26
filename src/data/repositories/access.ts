@@ -1,9 +1,8 @@
 import { getSupabase } from "@/data/client";
 import { resolveQuery } from "@/data/query";
-import { getMyFeatures as getMyFeaturesRpc } from "@/data/rpc";
-import { validateInvite } from "@/domain/admin";
+import { callRpc, getMyFeatures as getMyFeaturesRpc, unwrapRpc } from "@/data/rpc";
 import { AppError, classifyError } from "@/services/errors";
-import type { AccessInvite, Profile } from "@/types";
+import type { Profile } from "@/types";
 
 /**
  * Consulta o perfil de segurança e acesso do usuário autenticado.
@@ -39,11 +38,7 @@ export async function getMyProfile(): Promise<Profile | null> {
  * Retorna o mapa de funcionalidades ativas/resolvidas para o usuário.
  */
 export async function getMyFeatures(): Promise<Record<string, boolean>> {
-  try {
-    return await getMyFeaturesRpc();
-  } catch {
-    return {};
-  }
+  return await getMyFeaturesRpc();
 }
 
 /**
@@ -58,19 +53,10 @@ export async function checkInviteEligibility(
     return { valid: false, reason: "Código de convite não informado." };
   }
 
-  const supabase = getSupabase();
-  const { data, error } = await resolveQuery<AccessInvite>(
-    supabase
-      .from("access_invites")
-      .select("*")
-      .ilike("code", cleanCode)
-      .maybeSingle(),
+  return await unwrapRpc(
+    callRpc("validate_access_invite", {
+      p_code: cleanCode,
+      p_email: userEmail?.trim().toLowerCase() ?? null,
+    }),
   );
-
-  if (error) {
-    const classified = classifyError(error);
-    throw new AppError(classified.kind, classified.message, error);
-  }
-
-  return validateInvite(data, userEmail);
 }

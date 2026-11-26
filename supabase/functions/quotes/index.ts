@@ -422,15 +422,18 @@ async function fetchBrapiDividendsSingleChunk(
       const itemRec = item as Record<string, unknown> | null;
       const sym = typeof itemRec?.symbol === "string" ? itemRec.symbol.trim().toUpperCase() : "";
       if (!sym) continue;
-      const hasDividendsObj = Boolean(
+      const rawCashDividends =
         itemRec?.dividendsData &&
-          typeof itemRec.dividendsData === "object" &&
-          Array.isArray((itemRec.dividendsData as Record<string, unknown>).cashDividends),
-      );
-      if (hasDividendsObj) {
-        coveredTickers.add(normalizeTickerForBrapi(sym));
+        typeof itemRec.dividendsData === "object" &&
+        Array.isArray((itemRec.dividendsData as Record<string, unknown>).cashDividends)
+          ? ((itemRec.dividendsData as Record<string, unknown>).cashDividends as unknown[])
+          : null;
+      const canonicalSym = normalizeTickerForBrapi(sym);
+      const parsedForSym = parseBrapiDividends(canonicalSym, { results: [item] });
+      if (rawCashDividends && (rawCashDividends.length === 0 || parsedForSym.length > 0)) {
+        coveredTickers.add(canonicalSym);
       }
-      allDividends.push(...parseBrapiDividends(normalizeTickerForBrapi(sym), { results: [item] }));
+      allDividends.push(...parsedForSym);
     }
     return { ok: true, status: response.status, dividends: allDividends, coveredTickers };
   } catch {
@@ -860,11 +863,13 @@ Deno.serve(async (req) => {
         }
         if (body && Array.isArray(body.tickers)) {
           const TICKER_REGEX = /^[A-Z0-9^=.-]{1,20}$/;
+          const rawTickers: unknown[] = body.tickers;
           requestedTickers = [
             ...new Set(
-              body.tickers
-                .map((t: unknown) => normalizeRequestedTickerToken(String(t)))
-                .filter((t: string) => Boolean(t) && TICKER_REGEX.test(t)),
+              rawTickers
+                .filter((ticker): ticker is string => typeof ticker === "string")
+                .map(normalizeRequestedTickerToken)
+                .filter((ticker) => TICKER_REGEX.test(ticker)),
             ),
           ].slice(0, 60);
         }
@@ -1402,15 +1407,23 @@ Deno.serve(async (req) => {
         .filter((a) => (Number(a.quantity) || 0) <= 0 && isMarketQuotedAsset(a))
         .map((a) => String(a.id));
       const recentlySoldAssetIds = new Set<string>();
+      let partialTxError = false;
       for (const idChunk of chunkArray(zeroQtyAssetIds, 150)) {
-        const { data: recentTxs } = await supabase
+        const { data: recentTxs, error: recentTxErr } = await supabase
           .from("portfolio_transactions")
           .select("asset_id")
           .in("asset_id", idChunk)
           .gte("date", lookbackStart);
+        if (recentTxErr) {
+          partialTxError = true;
+          continue;
+        }
         for (const r of recentTxs ?? []) {
           recentlySoldAssetIds.add(String(r.asset_id));
         }
+      }
+      if (partialTxError) {
+        console.warn("[quotes] partial error fetching recent portfolio_transactions for sold-asset lookback");
       }
 
       const brCanonicalSet = new Set<string>();
@@ -1500,6 +1513,7 @@ Deno.serve(async (req) => {
 
       // Similaridade ±1 / ±2 pregões contra catálogo existente (§4.1) sem degradar tier superior
       const normalizedRowsForUpsert: ParsedCorporateDividend[] = [];
+      let promoted = 0;
       if (allCorporateDividends.length > 0) {
         const syncTickers = [...new Set(allCorporateDividends.map((d) => d.ticker))];
         const existingCorpList: Array<{
@@ -1591,7 +1605,6 @@ Deno.serve(async (req) => {
       }
 
       let upserted = 0;
-      let promoted = 0;
       if (normalizedRowsForUpsert.length > 0) {
         const rpcBatchSize = 200;
         for (let i = 0; i < normalizedRowsForUpsert.length; i += rpcBatchSize) {
@@ -2793,11 +2806,12 @@ Deno.serve(async (req) => {
             manual_review_required: boolean;
             status: string;
             settled_dividend_id: string | null;
+            corporate_dividend_id: string | null;
             revision: number;
           }>((from, to) =>
             supabase
               .from("user_dividend_events")
-              .select("id, ticker, currency, com_date, payment_date, gross_amount, net_amount, type, is_type_uncertain, manual_review_required, status, settled_dividend_id, revision")
+              .select("id, ticker, currency, com_date, payment_date, gross_amount, net_amount, type, is_type_uncertain, manual_review_required, status, settled_dividend_id, corporate_dividend_id, revision")
               .eq("user_id", callerUserId!)
               .order("id", { ascending: true })
               .range(from, to),

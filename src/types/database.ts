@@ -60,6 +60,8 @@ import type {
   CorporateDividend,
   PortfolioDividendDismissal,
   UserDividendEvent,
+  UserDividendEventInsert,
+  UserDividendEventUpdate,
   ApproveDividendsBatchResult,
   ConfirmDividendEventsResult,
   SetDividendTrackingAtomicResult,
@@ -132,7 +134,12 @@ export interface Database {
       family_settlements: Table<FamilySettlement>;
       corporate_dividends: Table<CorporateDividend>;
       portfolio_dividend_dismissals: Table<PortfolioDividendDismissal>;
-      user_dividend_events: Table<UserDividendEvent>;
+      user_dividend_events: {
+        Row: UserDividendEvent;
+        Insert: UserDividendEventInsert;
+        Update: UserDividendEventUpdate;
+        Relationships: [];
+      };
       user_devices: Table<UserDevice>;
       user_push_subscriptions: Table<UserPushSubscription>;
       user_ai_quotas: Table<UserAiQuotaRow>;
@@ -289,6 +296,16 @@ export interface Database {
           p_token: string;
         };
         Returns: Record<string, unknown> | null;
+      };
+      validate_access_invite: {
+        Args: {
+          p_code: string;
+          p_email?: string | null;
+        };
+        Returns: {
+          valid: boolean;
+          reason?: string;
+        };
       };
       get_shared_goal_tracker: {
         Args: {
@@ -1011,6 +1028,66 @@ export interface Database {
           p_delete_expense_ids?: string[];
         };
         Returns: CommitStatementReconciliationResult;
+      };
+      commit_statement_reconciliation_batch: {
+        Args: {
+          p_import_id: string;
+          p_chunk_index: number;
+          p_card_id: string;
+          p_competence_month: string;
+          p_expenses?: unknown;
+          p_link_adjustments?: unknown;
+          p_competence_moves?: unknown;
+          p_refunds?: unknown;
+          p_delete_expense_ids?: string[];
+          p_plan_hash?: string;
+        };
+        Returns: CommitStatementReconciliationResult;
+      };
+      get_statement_reconciliation_receipts: {
+        Args: {
+          p_import_id: string;
+          p_card_id: string;
+          p_competence_month: string;
+          p_plan_hash?: string;
+        };
+        Returns: Array<{
+          chunk_index: number;
+          result: CommitStatementReconciliationResult;
+        }>;
+      };
+      import_portfolio_atomic: {
+        Args: {
+          p_request_id: string;
+          p_assets_to_create?: unknown;
+          p_assets_to_update?: unknown;
+          p_transactions?: unknown;
+        };
+        Returns: {
+          success: boolean;
+          created_assets: number;
+          updated_assets: number;
+          inserted_transactions: number;
+          idempotent?: boolean;
+        };
+      };
+      save_pocket_cost_milestone_atomic: {
+        Args: {
+          p_request_id: string;
+          p_contribution_id?: string | null;
+          p_date?: string | null;
+          p_amount?: number | null;
+          p_notes?: string | null;
+          p_snapshot_month?: string | null;
+          p_snapshot_total_value?: number | null;
+          p_snapshot_total_cost?: number | null;
+        };
+        Returns: {
+          success: boolean;
+          contribution_id: string | null;
+          snapshot_month: string | null;
+          idempotent?: boolean;
+        };
       };
       upsert_statement_layout_blueprint: {
         Args: {

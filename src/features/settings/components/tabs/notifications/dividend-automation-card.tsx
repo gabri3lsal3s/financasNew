@@ -23,55 +23,16 @@ import {
 import { formatDateBR } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import {
+  usePortfolioAssets,
+  useSetDividendTracking,
   useUpdateCustomSettings,
   useUserAccess,
   useUserPreferences,
 } from "@/state";
-import * as stateHooks from "@/state";
 import type {
   DividendAutomationPreferences,
-  PortfolioAsset,
-  SetDividendTrackingAtomicResult,
 } from "@/types";
 
-function getOptionalStateHook<T>(key: string, fallback: T): T {
-  if (Reflect.ownKeys(stateHooks).includes(key)) {
-    const candidate = (stateHooks as Record<string, unknown>)[key];
-    if (typeof candidate === "function") return candidate as T;
-  }
-  return fallback;
-}
-
-const useOptionalSetDividendTracking = getOptionalStateHook<
-  () => {
-    mutateAsync: (input: {
-      trackingStartDate?: string | null;
-      assets?: Array<{
-        asset_id: string;
-        expected_start: string | null;
-        start_date: string | null;
-      }>;
-      expectedTrackingStartDate?: string | null;
-      silent?: boolean;
-    }) => Promise<SetDividendTrackingAtomicResult>;
-    isPending: boolean;
-  }
->("useSetDividendTracking", () => ({
-  mutateAsync: async () => ({
-    success: true,
-    tracking_start_date: null,
-    updated_assets: [],
-    updated_assets_count: 0,
-    affected_events_count: 0,
-    protected_events_count: 0,
-    invalidated_event_ids: [],
-  }),
-  isPending: false,
-}));
-
-const useOptionalPortfolioAssets = getOptionalStateHook<
-  (opts?: { enabled?: boolean }) => { data?: PortfolioAsset[] }
->("usePortfolioAssets", () => ({ data: [] }));
 
 /**
  * Configurações da Automação de Proventos da Carteira (§3.10 / Motor Bloco C).
@@ -81,8 +42,8 @@ export function DividendAutomationCard() {
   const hasInvestmentsAccess = hasFeature("investments");
   const preferencesQuery = useUserPreferences();
   const updateCustomSettings = useUpdateCustomSettings();
-  const setDividendTracking = useOptionalSetDividendTracking();
-  const assetsQuery = useOptionalPortfolioAssets({ enabled: hasInvestmentsAccess });
+  const setDividendTracking = useSetDividendTracking();
+  const assetsQuery = usePortfolioAssets({ enabled: hasInvestmentsAccess });
   const [trackingDraftOverride, setTrackingDraftOverride] = useState<string | null>(null);
   const [trackingError, setTrackingError] = useState<string | null>(null);
 

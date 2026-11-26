@@ -12,7 +12,6 @@ import { sumGrossCents } from "@/domain/money";
 import { useSafeViewScope } from "@/hooks/use-safe-business-scope";
 import { currentMonth, shiftMonth } from "@/lib/date";
 import { pushToast } from "@/services/toast";
-import * as stateHooks from "@/state";
 import {
   useBudgets,
   useCategories,
@@ -23,48 +22,22 @@ import {
   useFamilyConsolidation,
   useFamilyMode,
   useFeedback,
+  useFeedbackEntries,
   useIncomes,
   useMyFamily,
   usePortfolioPosition,
   useRealCashBalance,
+  useRecurrences,
+  useSetBudgetLimit,
   useSetFeedback,
+  useUpdateCustomSettings,
+  useUserAccess,
+  useUserPreferences,
 } from "@/state";
 
-function getOptionalStateHook<T>(name: string, fallback: () => T): () => T {
-  try {
-    const fn = (stateHooks as Record<string, unknown>)[name];
-    if (typeof fn === "function") return fn as () => T;
-  } catch {
-    // Suporta mocks parciais do Vitest
-  }
-  return fallback;
-}
 
 export function useInsightsDashboardData() {
   const month = currentMonth();
-  const useRecurrencesSafe = getOptionalStateHook("useRecurrences", () => ({
-    data: [] as ReturnType<typeof stateHooks.useRecurrences>["data"],
-    isLoading: false,
-    error: null,
-  }));
-  const useFeedbackEntriesSafe = getOptionalStateHook("useFeedbackEntries", () => ({
-    data: undefined as ReturnType<typeof stateHooks.useFeedbackEntries>["data"],
-    isLoading: false,
-    error: null,
-  }));
-  const useUserPreferencesSafe = getOptionalStateHook("useUserPreferences", () => ({
-    data: null as ReturnType<typeof stateHooks.useUserPreferences>["data"],
-    isLoading: false,
-    error: null,
-  }));
-  const useUpdateCustomSettingsSafe = getOptionalStateHook("useUpdateCustomSettings", () => ({
-    mutate: (() => undefined) as ReturnType<typeof stateHooks.useUpdateCustomSettings>["mutate"],
-    mutateAsync: (async () => ({})) as unknown as ReturnType<typeof stateHooks.useUpdateCustomSettings>["mutateAsync"],
-  }));
-  const useSetBudgetLimitSafe = getOptionalStateHook("useSetBudgetLimit", () => ({
-    mutateAsync: (async () => ({})) as unknown as ReturnType<typeof stateHooks.useSetBudgetLimit>["mutateAsync"],
-  }));
-
   const month0 = useExpenses(month);
   const month1 = useExpenses(shiftMonth(month, -1));
   const month2 = useExpenses(shiftMonth(month, -2));
@@ -75,17 +48,13 @@ export function useInsightsDashboardData() {
   const categoriesQuery = useCategories();
   const cardsQuery = useCreditCards();
   const debtsQuery = useDebts();
-  const recurrencesQuery = useRecurrencesSafe();
+  const recurrencesQuery = useRecurrences();
   const feedbackQuery = useFeedback();
-  const feedbackEntriesQuery = useFeedbackEntriesSafe();
-  const preferencesQuery = useUserPreferencesSafe();
-  const updateCustomSettings = useUpdateCustomSettingsSafe();
-  const setBudgetLimit = useSetBudgetLimitSafe();
-  const useUserAccessSafe = getOptionalStateHook("useUserAccess", () => ({
-    hasFeature: (() => true) as (feature?: string) => boolean,
-    isLoading: false,
-  }));
-  const access = useUserAccessSafe();
+  const feedbackEntriesQuery = useFeedbackEntries();
+  const preferencesQuery = useUserPreferences();
+  const updateCustomSettings = useUpdateCustomSettings();
+  const setBudgetLimit = useSetBudgetLimit();
+  const access = useUserAccess();
   const canUseInvestments = !access.isLoading && (typeof access.hasFeature === "function" ? access.hasFeature("investments") : true);
   const setFeedback = useSetFeedback();
   const position = usePortfolioPosition({ enabled: canUseInvestments });

@@ -33,9 +33,7 @@ export function BackToTop({
 
   const bottomClass =
     hasBottomDock !== undefined
-      ? hasBottomDock
-        ? "bottom-[calc(4.75rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))] md:bottom-8"
-        : "bottom-[calc(1.25rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))] md:bottom-8"
+      ? "bottom-[calc(1.25rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))] md:bottom-8"
       : bottomNavOffset
         ? "bottom-[calc(5.5rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))] lg:bottom-8"
         : "bottom-[calc(1.5rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))] md:bottom-8";
@@ -43,11 +41,12 @@ export function BackToTop({
   return (
     <div
       className={cn(
-        "fixed z-page-floating right-4 md:right-8 transition-all duration-200",
+        "fixed z-page-floating right-4 md:right-8 transition-[opacity,translate,scale] duration-200",
         bottomClass,
         visible
-          ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
+          ? "opacity-100 scale-100 pointer-events-auto"
           : "opacity-0 translate-y-3 scale-95 pointer-events-none",
+        visible && (hasBottomDock ? "-translate-y-14 md:translate-y-0" : "translate-y-0"),
         className,
       )}
     >
@@ -56,6 +55,7 @@ export function BackToTop({
         variant="outline"
         size="icon"
         onClick={handleClick}
+        tabIndex={visible ? undefined : -1}
         aria-label="Voltar ao topo da página"
         className="size-11 rounded-full border-border/80 bg-surface/90 shadow-md backdrop-blur-md hover:border-primary/50 hover:bg-surface-hover cursor-pointer"
       >

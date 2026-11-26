@@ -187,11 +187,11 @@ describe("parseYahooChartResponse — payload da Yahoo Chart API v8", () => {
     expect(parseYahooChartResponse("AAPL", payload)?.currency).toBe("USD");
   });
 
-  it("moeda desconhecida cai para BRL (padrão do schema)", () => {
+  it("rejeita moeda desconhecida (retorna null para avançar na cascata)", () => {
     const payload = {
       chart: { result: [{ meta: { regularMarketPrice: 10, currency: "EUR" } }] },
     };
-    expect(parseYahooChartResponse("X", payload)?.currency).toBe("BRL");
+    expect(parseYahooChartResponse("X", payload)).toBeNull();
   });
 
   it("retorna null para payloads inválidos", () => {

@@ -15,7 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { PRO_BENEFITS_CATALOG, type ProBenefitIconKey } from "@/domain/subscription";
-import { Badge, Button, Modal, ModalFooter } from "@/components/ui";
+import { Badge, Button, Modal, ModalFooter, ResponsiveLabel } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { useUserSubscription } from "@/state";
 import type { SubscriptionPlan } from "@/types";
@@ -98,8 +98,7 @@ export function UpgradeDialog({
             className="gap-2 font-semibold"
           >
             <Sparkles className="size-4 shrink-0" aria-hidden="true" />
-            <span className="sm:hidden">Continuar</span>
-            <span className="hidden sm:inline">Continuar para Pagamento Seguro</span>
+            <ResponsiveLabel short="Continuar" full="Continuar para Pagamento Seguro" />
           </Button>
         </ModalFooter>
       }

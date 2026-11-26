@@ -276,7 +276,18 @@ export function StatementReconcileStep(props: StatementReconcileStepProps) {
             ))
           )
         ) : visibleItems.length === 0 && (activeTab !== "attention" || appDuplicates.length === 0) ? (
-          <EmptyState tone="default" title={searchQuery.trim() ? "Nenhum lançamento encontrado" : "Nada pendente nesta aba"} description={searchQuery.trim() ? "Tente buscar por outro nome ou valor." : "Alterne entre as abas acima para revisar os demais itens da fatura."} />
+          <EmptyState
+            tone="default"
+            title={searchQuery.trim() ? "Nenhum lançamento encontrado" : "Nada pendente nesta aba"}
+            description={searchQuery.trim() ? "Tente buscar por outro nome ou valor." : "Alterne entre as abas acima para revisar os demais itens da fatura."}
+            action={
+              searchQuery.trim() ? (
+                <Button type="button" size="sm" variant="outline" onClick={() => onSearchChange("")}>
+                  Limpar busca
+                </Button>
+              ) : undefined
+            }
+          />
         ) : (
           <>
             {activeTab === "attention"

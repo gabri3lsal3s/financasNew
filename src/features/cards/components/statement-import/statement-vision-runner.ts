@@ -176,7 +176,7 @@ export async function runVisionWavesWithAi(
       if (waveController.signal.aborted) break;
 
       wavesExecuted += 1;
-      const responses = await Promise.all(
+      const settledResponses = await Promise.allSettled(
         prepared.map(async (item) => {
           if (!item || waveController.signal.aborted) return null;
           try {
@@ -203,8 +203,9 @@ export async function runVisionWavesWithAi(
         }),
       );
 
-      for (const aiRes of responses) {
-        if (!aiRes) continue;
+      for (const settled of settledResponses) {
+        if (settled.status !== "fulfilled" || !settled.value) continue;
+        const aiRes = settled.value;
         if (!aiRes.ok) {
           const reasonNotice = buildAiStatusNoticeFromReason(aiRes.reason, aiRes.quotaResetAt);
           if (reasonNotice) aiStatusNotice = reasonNotice;

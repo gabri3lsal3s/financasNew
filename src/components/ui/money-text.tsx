@@ -51,7 +51,7 @@ const toneClass: Record<ExplicitTone, string> = {
   positive: "text-positive-strong",
   negative: "text-negative-strong",
   default: "text-foreground",
-  portfolio: "text-portfolio",
+  portfolio: "text-portfolio-strong",
 };
 
 function resolveTone(tone: NonNullable<MoneyTextProps["tone"]>, cents: number): ExplicitTone {

@@ -157,23 +157,23 @@ export function TaxBensDireitosSection({
 
         <div className="flex flex-col gap-2">
           {groupedItems.length === 0 ? (
-            <div className="rounded-lg border border-border/70 p-2 text-[9px] text-muted-foreground italic">
+            <div className="rounded-lg border border-border/70 p-2 text-[10px] text-muted-foreground italic">
               Nenhum ativo com posição em custódia apurada em 31/12/{calendarYear}.
             </div>
           ) : (
             groupedItems.map((group) => (
               <div key={`print-group-${group.key}`} className="flex flex-col gap-0.5 break-inside-avoid">
-                <header className="flex items-center justify-between gap-2 bg-muted/30 border border-border/80 px-2 py-1 text-[8.5px] font-bold text-foreground uppercase tracking-wider break-after-avoid rounded-t">
+                <header className="flex items-center justify-between gap-2 bg-muted/30 border border-border/80 px-2 py-1 text-[10px] print:text-[8.5px] font-bold text-foreground uppercase tracking-wider break-after-avoid rounded-t">
                   <span className="leading-tight truncate">
                     Grupo {group.groupCode} - {group.groupName} · Código {group.itemCode} - {group.itemName}
                   </span>
-                  <span className="font-mono num whitespace-nowrap text-right text-[8.5px] inline-flex items-center justify-end gap-1 font-bold text-foreground shrink-0">
+                  <span className="font-mono num whitespace-nowrap text-right text-[10px] print:text-[8.5px] inline-flex items-center justify-end gap-1 font-bold text-foreground shrink-0">
                     <span className="font-normal text-muted-foreground">Subtotal:</span>
                     <MoneyText cents={numberToCents(group.subtotalBRL)} className="inline font-bold text-foreground whitespace-nowrap" />
                   </span>
                 </header>
 
-                <div className="border-x border-b border-border/80 rounded-b overflow-hidden">
+                <div className="border-x border-b border-border/80 rounded-b overflow-x-auto print:overflow-visible">
                   <table className="w-full text-left text-xs border-collapse table-fixed">
                     <colgroup>
                       <col style={{ width: "18%" }} />
@@ -181,7 +181,7 @@ export function TaxBensDireitosSection({
                       <col style={{ width: "20%" }} />
                     </colgroup>
                     <thead>
-                      <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[8.5px] uppercase tracking-wider">
+                      <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] print:text-[8.5px] uppercase tracking-wider">
                         <th className="py-0.5 px-2">Ticker</th>
                         <th className="py-0.5 px-2">Discriminação para o Programa IRPF</th>
                         <th className="py-0.5 px-2 text-right">Situação em 31/12 (R$)</th>
@@ -195,7 +195,7 @@ export function TaxBensDireitosSection({
                               {item.safeTicker}
                             </span>
                           </td>
-                          <td className="py-1 px-2 text-[9px] text-muted-foreground leading-tight align-top">
+                          <td className="py-1 px-2 text-[10px] print:text-[9px] text-muted-foreground leading-tight align-top">
                             {item.textToCopy}
                           </td>
                           <td className="py-1 px-2 text-right num font-mono font-bold text-foreground whitespace-nowrap text-[10px] align-top">

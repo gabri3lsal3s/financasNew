@@ -53,7 +53,12 @@ export {
   type UseModalTransitionResult,
 } from "./use-modal-transition";
 export {
+  NotificationCenterProvider,
   useNotificationCenter,
+  useUnreadNotificationCount,
+  useNotificationItems,
+  useNotificationActions,
+  type NotificationCenterCounts,
   type UseNotificationCenterResult,
 } from "./use-notification-center";
 

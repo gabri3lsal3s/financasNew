@@ -40,7 +40,7 @@ function mapPublicShare(row: Record<string, unknown>): PublicShare {
   const payload = (row.payload as Record<string, unknown>) ?? {};
   return {
     id: String(row.id),
-    user_id: String(row.user_id),
+    user_id: row.user_id ? String(row.user_id) : "",
     kind: row.kind as PublicShareKind,
     token: String(row.token),
     payload,
@@ -148,50 +148,21 @@ export async function getPublicShareByToken(token: string): Promise<PublicShare 
 
   try {
     const rpcResult = await getPublicShareByTokenRpc({ token: cleanToken });
-    if (rpcResult) {
-      const share = mapPublicShare(rpcResult);
-      if (share.expires_at && new Date(share.expires_at).getTime() <= Date.now()) {
-        return null;
-      }
-      if (isArchivedSplitShare(share)) {
-        return null;
-      }
-      return share;
+    if (!rpcResult) return null;
+
+    const share = mapPublicShare(rpcResult);
+    if (share.expires_at && new Date(share.expires_at).getTime() <= Date.now()) {
+      return null;
     }
+    if (isArchivedSplitShare(share)) {
+      return null;
+    }
+    return share;
   } catch (error) {
-    // Se a RPC falhar por qualquer motivo (ex: em mocks ou antes da migration ser aplicada),
-    // prossegue para a consulta direta por compatibilidade.
-    if (import.meta.env.DEV) {
-      console.warn("Falha na chamada da RPC get_public_share_by_token, tentando fallback direto:", error);
-    }
-  }
-
-  const { data, error } = await resolveQuery<Record<string, unknown>[]>(
-    getSupabase()
-      .from("public_shares")
-      .select("*")
-      .eq("token", cleanToken)
-      .eq("is_revoked", false)
-      .limit(1),
-  );
-
-  if (error) {
+    if (error instanceof AppError) throw error;
     const classified = classifyError(error);
     throw new AppError(classified.kind, classified.message, error);
   }
-
-  const row = data?.[0];
-  if (!row) return null;
-
-  const share = mapPublicShare(row);
-  if (share.expires_at && new Date(share.expires_at).getTime() <= Date.now()) {
-    return null;
-  }
-  if (isArchivedSplitShare(share)) {
-    return null;
-  }
-
-  return share;
 }
 
 /**

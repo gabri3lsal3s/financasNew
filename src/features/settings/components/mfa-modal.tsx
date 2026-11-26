@@ -1,5 +1,5 @@
 import { KeyRound, Loader2, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
-import { Alert, Button, Modal, ModalFooter } from "@/components/ui";
+import { Alert, Button, ContentLoading, Modal, ModalFooter } from "@/components/ui";
 import { MfaActiveStatusStep } from "./mfa-active-status-step";
 import { MfaIntroStep } from "./mfa-intro-step";
 import { MFA_SECURITY_GATE_FORM_ID, MfaPasswordGateStep } from "./mfa-password-gate-step";
@@ -141,6 +141,7 @@ export function MfaModal({ open, onOpenChange }: MfaModalProps) {
           type="button"
           variant="default"
           sensoryIntent={false}
+          disabled={flow.isEnrolling || flow.isLoading}
           onClick={flow.handleStartEnrollment}
         >
           <ShieldCheck className="size-4 mr-1.5" aria-hidden="true" />
@@ -167,10 +168,7 @@ export function MfaModal({ open, onOpenChange }: MfaModalProps) {
         ) : null}
 
         {flow.isLoading ? (
-          <div className="flex flex-col items-center justify-center py-8 space-y-3">
-            <Loader2 className="size-6 animate-spin text-muted-foreground" aria-hidden="true" />
-            <span className="text-xs text-muted-foreground">Carregando status de segurança...</span>
-          </div>
+          <ContentLoading />
         ) : flow.activeFactor ? (
           flow.confirmAction !== "none" ? (
             <MfaPasswordGateStep

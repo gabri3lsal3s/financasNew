@@ -1,6 +1,7 @@
+import { QrCodeCanvas } from "@/components/ui/qr-code-canvas";
 import { useEffect, useRef, useState } from "react";
 import { Check, Copy, QrCode, ShieldCheck } from "lucide-react";
-import { Badge, Button, QrCodeCanvas } from "@/components/ui";
+import { Badge, Button } from "@/components/ui";
 import { inspectPixPaymentPayload } from "@/domain/pix";
 import { copyTextToClipboard } from "@/services/export-actions";
 import { triggerSensory } from "@/services/sensory";

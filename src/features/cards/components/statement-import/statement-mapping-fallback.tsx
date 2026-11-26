@@ -1,6 +1,6 @@
 import { useId, useState } from "react";
 import { ArrowRight, ChevronDown, ChevronUp, RotateCcw } from "lucide-react";
-import { Badge, Button, Checkbox, FormField, ModalFooter, Select } from "@/components/ui";
+import { Badge, Button, Checkbox, FormField, ModalFooter, ResponsiveLabel, Select } from "@/components/ui";
 import type {
   ColumnMapping,
   ParsedSpreadsheetSheet,
@@ -370,7 +370,7 @@ export function StatementMappingFallback({
             Voltar
           </Button>
           <Button type="submit" className="gap-1.5">
-            Avançar para conferência
+            <ResponsiveLabel short="Avançar" full="Avançar para conferência" />
             <ArrowRight className="size-4" aria-hidden="true" />
           </Button>
         </ModalFooter>

@@ -9,6 +9,7 @@ import {
   updatePublicSharePayload,
 } from "@/data/repositories/public-shares";
 import { todayISO } from "@/domain/debts";
+import { reportError } from "@/services/observability";
 import {
   applySplitSettlementTransition,
   normalizeSplitParticipants,
@@ -165,7 +166,7 @@ export function useCreateLinkedSplit() {
           });
           debtId = createdDebt.id;
         } catch (err) {
-          console.warn("Não foi possível criar cobrança vinculada ao racha:", err);
+          reportError(err, { source: "useCreateSplitShare.createLinkedReceivableDebt", expenseId });
         }
       }
 

@@ -42,22 +42,29 @@ export function computeMonthlyDarfReport({
       const assetClass = asset?.asset_class ?? null;
       const currency = asset?.currency ?? "BRL";
 
+      const isUsd = currency.toUpperCase() === "USD";
       const assetTxs = sortTransactionsChronologically(
         transactions.filter((tx) => tx.asset_id === t.asset_id && tx.date <= t.date),
       );
 
       let runningQty = 0;
-      let runningCost = 0;
+      let runningCostBrl = 0;
       for (const tx of assetTxs) {
+        const txRate = isUsd ? (tx.fx_rate && tx.fx_rate > 0 ? tx.fx_rate : 1) : 1;
         if (tx.type === "buy" || tx.type === "subscription") {
           runningQty += tx.quantity;
-          runningCost += tx.quantity * tx.price;
+          const outlayNative = tx.total > 0 ? tx.total : tx.quantity * tx.price;
+          const outlayBrl =
+            isUsd && tx.total_cost_brl != null && tx.total_cost_brl > 0
+              ? tx.total_cost_brl
+              : outlayNative * txRate;
+          runningCostBrl += outlayBrl;
         } else if (tx.type === "sell" && tx.id !== t.id) {
           if (runningQty > 0) {
-            const pm = runningCost / runningQty;
+            const pmBrl = runningCostBrl / runningQty;
             const soldQty = Math.min(runningQty, tx.quantity);
             runningQty -= soldQty;
-            runningCost -= soldQty * pm;
+            runningCostBrl -= soldQty * pmBrl;
           }
         } else if (tx.type === "split") {
           const factor = tx.quantity > 0 ? tx.quantity : 1;
@@ -68,16 +75,21 @@ export function computeMonthlyDarfReport({
         }
       }
 
-      const historicalPm = runningQty > 0 ? runningCost / runningQty : 0;
-      const averagePrice =
-        historicalPm > 0
-          ? historicalPm
+      const sellRate = isUsd ? (t.fx_rate && t.fx_rate > 0 ? t.fx_rate : (asset?.fx_rate_at_purchase ?? 1)) : 1;
+      const historicalPmBrl = runningQty > 0 ? runningCostBrl / runningQty : 0;
+      const fallbackPmBrl =
+        asset?.average_cost_brl && asset.average_cost_brl > 0
+          ? asset.average_cost_brl
           : asset?.average_price && asset.average_price > 0
-            ? asset.average_price
-            : t.price;
+            ? asset.average_price * sellRate
+            : t.price * sellRate;
+      const averagePriceBrl = historicalPmBrl > 0 ? historicalPmBrl : fallbackPmBrl;
 
-      const costAmountCents = Math.round(t.quantity * averagePrice * 100);
-      const saleAmountCents = Math.round(t.total * 100);
+      const costAmountCents =
+        isUsd && t.total_cost_brl != null && t.total_cost_brl > 0 && historicalPmBrl <= 0
+          ? Math.round(t.total_cost_brl * 100)
+          : Math.round(t.quantity * averagePriceBrl * 100);
+      const saleAmountCents = Math.round((t.total > 0 ? t.total : t.quantity * t.price) * sellRate * 100);
       const profitCents = saleAmountCents - costAmountCents;
 
       return {

@@ -1,9 +1,9 @@
-import { useMemo } from "react";
+import { lazy, Suspense, useMemo } from "react";
+import { ContentLoading } from "@/components/ui/content-loading";
 import { ReportInsufficientDataModal } from "@/components/modules/reports";
 import { evaluateCarteiraMensalReadiness } from "@/domain/reports";
-import { getOptionalHook } from "@/hooks/use-notification-center";
 import { formatMonthYear } from "@/lib/date";
-import * as stateHooks from "@/state";
+import { useUserAccess } from "@/state";
 import type { PortfolioTransactionType } from "@/types";
 import {
   AllocationBreakdownDialog,
@@ -11,15 +11,20 @@ import {
   AssetEditDialog,
   AssetScoreEvaluationDialog,
   CalibrateFixedIncomeDialog,
-  CashFormDialog,
   InitialPocketCostDialog,
   ManualPriceDialog,
   PortfolioExecutiveReport,
   PortfolioSnapshotsDialog,
   QuickTransactionSheet,
 } from "..";
-import { InvestmentWizard } from "../../wizard";
 import type { useResumoTabController } from "./use-resumo-tab-controller";
+
+const InvestmentWizard = lazy(() =>
+  import("../../wizard/investment-wizard").then((m) => ({ default: m.InvestmentWizard })),
+);
+const CashFormDialog = lazy(() =>
+  import("../cash-form-dialog").then((m) => ({ default: m.CashFormDialog })),
+);
 
 export interface ResumoModalsHostProps {
   ctrl: ReturnType<typeof useResumoTabController>;
@@ -27,10 +32,7 @@ export interface ResumoModalsHostProps {
 
 export function ResumoModalsHost({ ctrl }: ResumoModalsHostProps) {
   const { position, breakdownGroup, classTargetsQuery, sectorTargetsQuery } = ctrl;
-  const useUserAccessSafe = getOptionalHook(stateHooks, "useUserAccess", () => ({
-    profile: null as { name?: string | null } | null,
-  }));
-  const userAccess = useUserAccessSafe();
+  const userAccess = useUserAccess();
   const accountHolder = userAccess?.profile?.name ?? undefined;
 
   const breakdownTargetPercent =
@@ -59,15 +61,17 @@ export function ResumoModalsHost({ ctrl }: ResumoModalsHostProps) {
 
   return (
     <>
-      {!ctrl.onOpenWizard ? (
-        <InvestmentWizard
-          open={ctrl.isWizardOpen}
-          onOpenChange={ctrl.handleWizardOpenChange}
-          initialAsset={ctrl.wizardInitialAsset}
-          initialMode={ctrl.wizardInitialMode}
-          initialQuantity={ctrl.wizardInitialQuantity}
-          initialTotalCents={ctrl.wizardInitialTotalCents}
-        />
+      {!ctrl.onOpenWizard && ctrl.isWizardOpen ? (
+        <Suspense fallback={<ContentLoading />}>
+          <InvestmentWizard
+            open={ctrl.isWizardOpen}
+            onOpenChange={ctrl.handleWizardOpenChange}
+            initialAsset={ctrl.wizardInitialAsset}
+            initialMode={ctrl.wizardInitialMode}
+            initialQuantity={ctrl.wizardInitialQuantity}
+            initialTotalCents={ctrl.wizardInitialTotalCents}
+          />
+        </Suspense>
       ) : null}
 
       <AssetDetailSheet
@@ -120,15 +124,17 @@ export function ResumoModalsHost({ ctrl }: ResumoModalsHostProps) {
         asset={ctrl.scoreEvaluatingAsset}
       />
 
-      {!ctrl.onOpenCash ? (
-        <CashFormDialog
-          open={ctrl.activeCashDialogOpen}
-          onOpenChange={(open) => {
-            ctrl.setCashDialogOpen(open);
-            if (!open) ctrl.setDismissedHighlight(true);
-          }}
-          asset={ctrl.cashAsset}
-        />
+      {!ctrl.onOpenCash && ctrl.activeCashDialogOpen ? (
+        <Suspense fallback={<ContentLoading />}>
+          <CashFormDialog
+            open={ctrl.activeCashDialogOpen}
+            onOpenChange={(open) => {
+              ctrl.setCashDialogOpen(open);
+              if (!open) ctrl.setDismissedHighlight(true);
+            }}
+            asset={ctrl.cashAsset}
+          />
+        </Suspense>
       ) : null}
 
       {ctrl.calibrateFor ? (

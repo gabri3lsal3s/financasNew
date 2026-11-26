@@ -159,7 +159,12 @@ export function useQuickTransactionForm({
   const [customTaxRatePct, setCustomTaxRatePct] = useState<number | null>(null);
   const [customTaxAmountCents, setCustomTaxAmountCents] = useState<number | null>(null);
   const [customInitialDate, setCustomInitialDate] = useState<string | null>(null);
-  const [fxRateBRL, setFxRateBRL] = useState<number | null>(() => editTransaction?.fx_rate ?? null);
+  const [manualFxRateBRL, setManualFxRateBRL] = useState<number | null>(
+    () => editTransaction?.fx_rate ?? null,
+  );
+  const [suggestedFxRateBRL, setSuggestedFxRateBRL] = useState<number | null>(null);
+  const fxRateBRL = manualFxRateBRL ?? suggestedFxRateBRL;
+  const setFxRateBRL = setManualFxRateBRL;
   const isSubmittingRef = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -180,14 +185,17 @@ export function useQuickTransactionForm({
     [isCorporateEvent, type, splitFromStr, splitToStr],
   );
   useEffect(() => {
-    if (targetAsset?.currency !== "BRL" && !editTransaction) {
-      void fetchPtaxForDate(date).then((rate) => {
-        if (rate && !fxRateBRL) {
-          setFxRateBRL(rate);
-        }
-      });
+    if (targetAsset?.currency !== "USD" || editTransaction || manualFxRateBRL !== null) {
+      return;
     }
-  }, [date, targetAsset?.currency, editTransaction, fxRateBRL]);
+    const controller = new AbortController();
+    void fetchPtaxForDate(date, { signal: controller.signal }).then((rate) => {
+      if (!controller.signal.aborted && rate) {
+        setSuggestedFxRateBRL(rate);
+      }
+    });
+    return () => controller.abort();
+  }, [date, targetAsset?.currency, editTransaction, manualFxRateBRL]);
 
   const custodyQty = Math.max(0, targetAsset?.quantity ?? 0);
   const effectiveDividendTotalBRL = useMemo(
@@ -250,6 +258,8 @@ export function useQuickTransactionForm({
     setCustomTaxRatePct(null);
     setCustomTaxAmountCents(null);
     setCustomInitialDate(null);
+    setManualFxRateBRL(null);
+    setSuggestedFxRateBRL(null);
     setRecordWithdrawal(true);
   };
 

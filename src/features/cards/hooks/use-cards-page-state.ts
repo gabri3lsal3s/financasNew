@@ -84,16 +84,52 @@ export function useCardsPageState() {
 
   const [month, setMonth] = useState<string | null>(null);
   const cardId = selectedCard?.id ?? null;
-  const expensesQuery = useCardExpenses(cardId);
-  const paymentsQuery = useCardPayments(cardId);
-  const rolloversQuery = useCardBillRollovers(cardId);
+  const hasAllExpenses = allCardExpensesQuery.data !== undefined;
+  const hasAllPayments = allCardPaymentsQuery.data !== undefined;
+  const hasAllRollovers = allCardRolloversQuery.data !== undefined;
+
+  const expensesQuery = useCardExpenses(cardId, { enabled: !hasAllExpenses });
+  const paymentsQuery = useCardPayments(cardId, { enabled: !hasAllPayments });
+  const rolloversQuery = useCardBillRollovers(cardId, { enabled: !hasAllRollovers });
   const categoriesQuery = useCategories("expense");
+
+  const cardExpenses = useMemo(
+    () =>
+      hasAllExpenses
+        ? (cardId ? allExpenses.filter((e) => e.card_id === cardId || e.card_id === undefined) : [])
+        : (expensesQuery.data ?? []),
+    [hasAllExpenses, cardId, allExpenses, expensesQuery.data],
+  );
+  const cardPayments = useMemo(
+    () =>
+      hasAllPayments
+        ? (cardId ? allPayments.filter((p) => p.card_id === cardId || p.card_id === undefined) : [])
+        : (paymentsQuery.data ?? []),
+    [hasAllPayments, cardId, allPayments, paymentsQuery.data],
+  );
+  const cardRollovers = useMemo(
+    () =>
+      hasAllRollovers
+        ? (cardId ? allRollovers.filter((r) => r.card_id === cardId || r.card_id === undefined) : [])
+        : (rolloversQuery.data ?? []),
+    [hasAllRollovers, cardId, allRollovers, rolloversQuery.data],
+  );
 
   const loading =
     cardsQuery.isLoading ||
-    (cardId !== null && (expensesQuery.isLoading || paymentsQuery.isLoading || rolloversQuery.isLoading));
+    (cardId !== null &&
+      ((!hasAllExpenses && expensesQuery.isLoading) ||
+        (!hasAllPayments && paymentsQuery.isLoading) ||
+        (!hasAllRollovers && rolloversQuery.isLoading)));
   const queryError =
-    cardsQuery.error ?? expensesQuery.error ?? paymentsQuery.error ?? rolloversQuery.error ?? categoriesQuery.error;
+    cardsQuery.error ??
+    allCardExpensesQuery.error ??
+    allCardPaymentsQuery.error ??
+    allCardRolloversQuery.error ??
+    expensesQuery.error ??
+    paymentsQuery.error ??
+    rolloversQuery.error ??
+    categoriesQuery.error;
 
   const categoryById = useMemo(
     () => new Map((categoriesQuery.data ?? []).map((c) => [c.id, c])),
@@ -103,11 +139,11 @@ export function useCardsPageState() {
   const summaries = useMemo(
     () =>
       buildCompetenceSummaries(
-        expensesQuery.data ?? [],
-        paymentsQuery.data ?? [],
-        rolloversQuery.data ?? [],
+        cardExpenses,
+        cardPayments,
+        cardRollovers,
       ),
-    [expensesQuery.data, paymentsQuery.data, rolloversQuery.data],
+    [cardExpenses, cardPayments, cardRollovers],
   );
   const effectiveMonth =
     paramMonth ??
@@ -122,21 +158,21 @@ export function useCardsPageState() {
   );
 
   const competenceExpenses = useMemo(
-    () => (expensesQuery.data ?? []).filter((e) => e.bill_competence === effectiveMonth),
-    [expensesQuery.data, effectiveMonth],
+    () => cardExpenses.filter((e) => e.bill_competence === effectiveMonth),
+    [cardExpenses, effectiveMonth],
   );
   const competencePayments = useMemo(
-    () => (paymentsQuery.data ?? []).filter((p) => p.competence_month === effectiveMonth),
-    [paymentsQuery.data, effectiveMonth],
+    () => cardPayments.filter((p) => p.competence_month === effectiveMonth),
+    [cardPayments, effectiveMonth],
   );
   const competenceRollovers = useMemo(
     () =>
-      (rolloversQuery.data ?? []).filter(
+      cardRollovers.filter(
         (r) =>
           r.from_competence_month === effectiveMonth ||
           r.to_competence_month === effectiveMonth,
       ),
-    [rolloversQuery.data, effectiveMonth],
+    [cardRollovers, effectiveMonth],
   );
   const incomesQuery = useSafeIncomes(effectiveMonth, {
     enabled: isBusinessModeEnabled && Boolean(cardId),

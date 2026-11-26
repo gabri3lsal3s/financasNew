@@ -122,7 +122,9 @@ export function filterPeriodRedemptions(
     const txRealized = tx as unknown as {
       cost_basis_realized?: number | null;
       gross_realized_pnl?: number | null;
+      iof_withheld?: number | null;
       ir_withheld?: number | null;
+      net_realized_amount?: number | null;
       net_realized_pnl?: number | null;
     };
 
@@ -130,29 +132,33 @@ export function filterPeriodRedemptions(
     let appliedNative = 0;
     let appliedCostBRL: number;
     let grossProfitBRL: number;
+    let iofAmountBRL = 0;
     let taxAmountBRL = 0;
     let taxRatePct: number | null = null;
+    let hasExplicitTax = false;
 
-    if (txRealized.cost_basis_realized != null && txRealized.net_realized_pnl != null) {
+    if (txRealized.cost_basis_realized != null && (txRealized.net_realized_pnl != null || txRealized.ir_withheld != null)) {
       appliedCostBRL = round2(txRealized.cost_basis_realized);
       grossProfitBRL = round2(
         txRealized.gross_realized_pnl ?? (grossRedeemedValueBRL - appliedCostBRL),
       );
+      iofAmountBRL = round2(txRealized.iof_withheld ?? 0);
       taxAmountBRL = round2(txRealized.ir_withheld ?? 0);
+      hasExplicitTax = txRealized.ir_withheld != null;
       taxRatePct =
         grossProfitBRL > 0 && taxAmountBRL > 0
           ? round2((taxAmountBRL / grossProfitBRL) * 100)
-          : null;
+          : txRealized.ir_withheld === 0
+            ? 0
+            : null;
     } else if (parsedNotes) {
       appliedCostBRL = round2(parsedNotes.appliedCost);
       grossProfitBRL = round2(parsedNotes.realizedProfit);
+      iofAmountBRL = round2(parsedNotes.iofAmount);
       taxAmountBRL = round2(parsedNotes.taxAmount);
       taxRatePct = parsedNotes.taxRatePct;
-    } else if (
-      tx.total_cost_brl != null &&
-      tx.total_cost_brl > 0 &&
-      (!isFixedIncome || tx.total_cost_brl < grossRedeemedValueBRL)
-    ) {
+      hasExplicitTax = true;
+    } else if (tx.total_cost_brl != null && tx.total_cost_brl > 0) {
       appliedNative = rate > 0 ? tx.total_cost_brl / rate : tx.total_cost_brl;
       appliedCostBRL = round2(appliedNative * rate);
       grossProfitBRL = round2(grossRedeemedValueBRL - appliedCostBRL);
@@ -193,7 +199,7 @@ export function filterPeriodRedemptions(
       grossProfitBRL = round2(grossRedeemedValueBRL - appliedCostBRL);
     }
 
-    if (isFixedIncome && grossProfitBRL > 0 && taxRatePct === null) {
+    if (isFixedIncome && grossProfitBRL > 0 && taxRatePct === null && !hasExplicitTax) {
       const isTaxExempt = Boolean(asset?.fixed_income_metadata?.is_tax_exempt);
       if (!isTaxExempt) {
         const sortedBuyTxs = transactions
@@ -206,49 +212,32 @@ export function filterPeriodRedemptions(
           .sort((a, b) => a.date.localeCompare(b.date));
         const earliestBuyTx = sortedBuyTxs[0];
 
-        const hasExplicitAssetDate = Boolean(
-          asset?.fixed_income_metadata?.initial_investment_date,
-        );
-        const explicitDate =
+        const startDate =
           asset?.fixed_income_metadata?.initial_investment_date ||
           (tx as unknown as { acquisition_date?: string }).acquisition_date ||
           (tx as unknown as { application_date?: string }).application_date ||
           earliestBuyTx?.date;
 
-        const isEstimatedFallbackDate = !hasExplicitAssetDate && !explicitDate;
-        const startDate =
-          explicitDate ||
-          asset?.fixed_income_metadata?.base_date ||
-          (asset as unknown as { created_at?: string }).created_at?.slice(0, 10);
-
-        let daysPassed = 0;
         if (startDate && tx.date) {
-          daysPassed = countCalendarDays(startDate, tx.date);
+          const daysPassed = countCalendarDays(startDate, tx.date);
+          taxRatePct = getFixedIncomeTaxRatePct(
+            daysPassed,
+            false,
+            asset?.fixed_income_metadata?.manual_tax_rate_pct,
+          );
+          taxAmountBRL = round2(grossProfitBRL * (taxRatePct / 100));
+        } else if (asset?.fixed_income_metadata?.manual_tax_rate_pct != null) {
+          taxRatePct = asset.fixed_income_metadata.manual_tax_rate_pct;
+          taxAmountBRL = round2(grossProfitBRL * (taxRatePct / 100));
         }
-
-        // Salvaguarda econômica regressiva (Bloco 2 v6 / Bloco 1 v7 / Bloco 1 v8):
-        // Quando a data de aquisição for estimada ou ausente (ex.: Marco Zero), mas a rentabilidade acumulada
-        // for característica de longo prazo, calibra a alíquota pelo retorno histórico do ativo:
-        if (isEstimatedFallbackDate && appliedCostBRL > 0) {
-          const retRatio = grossProfitBRL / appliedCostBRL;
-          if (retRatio >= 0.15) {
-            daysPassed = 721; // > 720 dias -> 15,0%
-          } else if (retRatio >= 0.08) {
-            daysPassed = 181; // 181-360 dias -> 20,0%
-          }
-        }
-
-        taxRatePct = getFixedIncomeTaxRatePct(
-          daysPassed,
-          false,
-          asset?.fixed_income_metadata?.manual_tax_rate_pct,
-        );
-        taxAmountBRL = round2(grossProfitBRL * (taxRatePct / 100));
       }
     }
 
-    const redeemedValueBRL = round2(grossRedeemedValueBRL - taxAmountBRL);
-    const realizedPnlBRL = round2(grossProfitBRL - taxAmountBRL);
+    const redeemedValueBRL =
+      txRealized.net_realized_amount != null
+        ? round2(txRealized.net_realized_amount)
+        : round2(grossRedeemedValueBRL - iofAmountBRL - taxAmountBRL);
+    const realizedPnlBRL = round2(grossProfitBRL - iofAmountBRL - taxAmountBRL);
     const finalReturnPct =
       appliedCostBRL > 0 ? round2((realizedPnlBRL / appliedCostBRL) * 100) : null;
 

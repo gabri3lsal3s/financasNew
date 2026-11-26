@@ -2,6 +2,7 @@ import { getSupabase } from "@/data/client";
 import { currentUserId } from "@/data/session";
 import { resolveQuery } from "@/data/query";
 import { AppError, classifyError } from "@/services/errors";
+import { reportError } from "@/services/observability";
 import type { DbInsert, SupportTicket, SupportTicketStatus, SupportTicketType } from "@/types";
 
 export interface CreateSupportTicketInput {
@@ -61,11 +62,14 @@ export async function createSupportTicket(
 
   // Despacho assíncrono para o Telegram (fail-open para não penalizar a experiência do usuário caso o webhook oscile)
   try {
-    await getSupabase().functions.invoke("support-notify", {
+    const { error: notifyError } = await getSupabase().functions.invoke("support-notify", {
       body: { ticketId: data.id },
     });
+    if (notifyError) {
+      void reportError(notifyError, { feature: "support_notify" });
+    }
   } catch (notifyErr) {
-    console.warn("[support] Notificação em segundo plano no Telegram falhou:", notifyErr);
+    void reportError(notifyErr, { feature: "support_notify" });
   }
 
   return data;

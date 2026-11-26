@@ -11,6 +11,9 @@ import type { DbInsert, DbUpdate, Income } from "@/types";
  * PostgREST como string e é convertido para number (contrato de domínio).
  */
 
+const INCOME_COLUMNS =
+  "id, user_id, value, date, category_id, receive_type, description, report_weight, source_ref, installments_total, installment_number, installment_group_id, recurrence_id, occurrence_number, statement_hash, imported_from_statement, is_family, family_id, scope, is_internal_transfer, transfer_pair_id, transfer_kind, tax_withheld, created_at";
+
 function mapIncome(row: Income): Income {
   return {
     ...row,
@@ -23,20 +26,30 @@ function mapIncome(row: Income): Income {
   };
 }
 
-export async function listIncomesByMonth(month: string): Promise<Income[]> {
+export async function listIncomesByMonth(
+  month: string,
+  options?: { signal?: AbortSignal },
+): Promise<Income[]> {
+  if (options?.signal?.aborted) {
+    throw new DOMException("The user aborted a request.", "AbortError");
+  }
   // Fase 32 — recorrência formal: materializa as ocorrências do mês antes de
   // listar (idempotente; sob demanda, ver repositories/recurrences).
   await materializeRecurrencesForMonth(month, "income");
+  options?.signal?.throwIfAborted();
   const range = monthRange(month);
   const data = await readAllPages<Income>((afterId, pageSize) => {
     let page = getSupabase()
       .from("incomes")
-      .select("*")
+      .select(INCOME_COLUMNS)
       .gte("date", range.start)
-      .lt("date", range.end).order("id", { ascending: true }).limit(pageSize);
+      .lt("date", range.end)
+      .order("id", { ascending: true })
+      .limit(pageSize);
+    if (options?.signal) page = page.abortSignal(options.signal);
     if (afterId) page = page.gt("id", afterId);
     return resolveQuery<Income[]>(page);
-  }, undefined);
+  }, options?.signal);
   return data.map(mapIncome).sort((left, right) => right.date.localeCompare(left.date) || right.created_at.localeCompare(left.created_at) || left.id.localeCompare(right.id));
 }
 
@@ -57,7 +70,7 @@ export async function listIncomesByRange(
   const createQuery = () => {
   let query = getSupabase()
     .from("incomes")
-    .select("*")
+    .select(INCOME_COLUMNS)
     .gte("date", start)
     .lt("date", end);
 
@@ -79,7 +92,7 @@ export async function listIncomesByRange(
 /** Todas as rendas do usuário (busca global §3.9). */
 export async function listAllIncomes(): Promise<Income[]> {
   const data = await readAllPages<Income>((afterId, pageSize) => {
-    let page = getSupabase().from("incomes").select("*").order("id", { ascending: true }).limit(pageSize);
+    let page = getSupabase().from("incomes").select(INCOME_COLUMNS).order("id", { ascending: true }).limit(pageSize);
     if (afterId) page = page.gt("id", afterId);
     return resolveQuery<Income[]>(page);
   }, undefined);

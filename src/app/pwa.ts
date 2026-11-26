@@ -1,5 +1,5 @@
 import { registerSW } from "virtual:pwa-register";
-import { hasActiveDialogInDom, isLaunchWizardActive } from "@/hooks/use-active-overlays";
+import { hasActiveDialogInDom, isLaunchWizardActive } from "@/services/active-overlays";
 import { isNativePlatform } from "@/services/native/platform";
 
 /**

@@ -462,8 +462,12 @@ export const KNOWN_STOCK_UNITS = new Set([
  */
 export function isFiiAsset(ticker: string, assetClass?: string | null): boolean {
   const upperTicker = ticker.trim().toUpperCase();
-  // Units de ações e ETFs jamais são tributados como FIIs
-  if (KNOWN_STOCK_UNITS.has(upperTicker) || KNOWN_B3_ETFS.has(upperTicker)) {
+  // Units de ações e ETFs/BDRs jamais são tributados como FIIs (T03: classe explícita vence sufixo 11)
+  if (
+    KNOWN_STOCK_UNITS.has(upperTicker) ||
+    isEtfAsset(upperTicker, assetClass) ||
+    isBdrAsset(upperTicker, assetClass)
+  ) {
     return false;
   }
   if (isFiiClass(assetClass)) return true;
@@ -580,39 +584,50 @@ export function calculateMonthlyDarf(input: MonthlyDarfInput): MonthlyDarfResult
     }
   }
 
-  // 1. Ações Locais B3: isenção de R$ 20.000/mês
+  // 1. Ações Locais B3: compensação intrames antes da isenção/prejuízo acumulado; isenção de R$ 20.000/mês
   const isStockExempt = stockSalesVolumeCents <= STOCK_MONTHLY_EXEMPTION_LIMIT_CENTS;
   let stockTaxableProfitCents = 0;
   let stockCompensatedLossCents = 0;
 
   if (!isStockExempt && stockGrossProfitCents > 0) {
-    stockCompensatedLossCents = Math.min(stockGrossProfitCents, initialStockLoss);
-    stockTaxableProfitCents = stockGrossProfitCents - stockCompensatedLossCents;
-    initialStockLoss -= stockCompensatedLossCents;
-  }
-  initialStockLoss += stockNewLossCents;
+    const stockIntraCompensated = Math.min(stockGrossProfitCents, stockNewLossCents);
+    const stockNetMonthProfit = stockGrossProfitCents - stockIntraCompensated;
+    const stockRemainingNewLoss = stockNewLossCents - stockIntraCompensated;
 
-  // 2. FIIs B3: sem isenção de 20k, tributação de 20%
+    stockCompensatedLossCents = Math.min(stockNetMonthProfit, initialStockLoss);
+    stockTaxableProfitCents = stockNetMonthProfit - stockCompensatedLossCents;
+    initialStockLoss = (initialStockLoss - stockCompensatedLossCents) + stockRemainingNewLoss;
+  } else {
+    initialStockLoss += stockNewLossCents;
+  }
+
+  // 2. FIIs B3: compensação intrames no mesmo bucket antes de prejuízo acumulado; alíquota 20%
+  const fiiIntraCompensated = Math.min(fiiGrossProfitCents, fiiNewLossCents);
+  const fiiNetMonthProfit = fiiGrossProfitCents - fiiIntraCompensated;
+  const fiiRemainingNewLoss = fiiNewLossCents - fiiIntraCompensated;
   let fiiTaxableProfitCents = 0;
   let fiiCompensatedLossCents = 0;
 
-  if (fiiGrossProfitCents > 0) {
-    fiiCompensatedLossCents = Math.min(fiiGrossProfitCents, initialFiiLoss);
-    fiiTaxableProfitCents = fiiGrossProfitCents - fiiCompensatedLossCents;
+  if (fiiNetMonthProfit > 0) {
+    fiiCompensatedLossCents = Math.min(fiiNetMonthProfit, initialFiiLoss);
+    fiiTaxableProfitCents = fiiNetMonthProfit - fiiCompensatedLossCents;
     initialFiiLoss -= fiiCompensatedLossCents;
   }
-  initialFiiLoss += fiiNewLossCents;
+  initialFiiLoss += fiiRemainingNewLoss;
 
-  // 3. ETFs & BDRs B3: sem isenção de 20k, tributação de 15%
+  // 3. ETFs & BDRs B3: compensação intrames no mesmo bucket antes de prejuízo acumulado; alíquota 15%
+  const etfIntraCompensated = Math.min(etfGrossProfitCents, etfNewLossCents);
+  const etfNetMonthProfit = etfGrossProfitCents - etfIntraCompensated;
+  const etfRemainingNewLoss = etfNewLossCents - etfIntraCompensated;
   let etfTaxableProfitCents = 0;
   let etfCompensatedLossCents = 0;
 
-  if (etfGrossProfitCents > 0) {
-    etfCompensatedLossCents = Math.min(etfGrossProfitCents, initialEtfLoss);
-    etfTaxableProfitCents = etfGrossProfitCents - etfCompensatedLossCents;
+  if (etfNetMonthProfit > 0) {
+    etfCompensatedLossCents = Math.min(etfNetMonthProfit, initialEtfLoss);
+    etfTaxableProfitCents = etfNetMonthProfit - etfCompensatedLossCents;
     initialEtfLoss -= etfCompensatedLossCents;
   }
-  initialEtfLoss += etfNewLossCents;
+  initialEtfLoss += etfRemainingNewLoss;
 
   const stockTaxDueCents = Math.round(stockTaxableProfitCents * STOCK_TAX_RATE);
   const fiiTaxDueCents = Math.round(fiiTaxableProfitCents * FII_TAX_RATE);
@@ -651,27 +666,9 @@ export function calculateMonthlyDarf(input: MonthlyDarfInput): MonthlyDarfResult
   };
 }
 
-/**
- * Peso de precedência de operações para ordenação na mesma data:
- * 1. Eventos corporativos (split / reverse_split): abertura de pregão
- * 2. Compras e subscrições (buy / subscription): provisionam custódia
- * 3. Vendas e resgates (sell): liquidam de custódia disponível
- * 4. Demais operações (dividendos, amortizações)
- */
-export function getTransactionIntradayWeight(type: string): number {
-  switch (type) {
-    case "split":
-    case "reverse_split":
-      return 0;
-    case "buy":
-    case "subscription":
-      return 1;
-    case "sell":
-      return 2;
-    default:
-      return 3;
-  }
-}
+import { getTransactionIntradayWeight } from "./canonical-normalizer";
+
+export { getTransactionIntradayWeight };
 
 /**
  * Ordena transações deterministicamente com desempate por tipo de ordem na mesma data.
@@ -748,7 +745,7 @@ export function calculateHistoricalLossesCarryover(
       for (const tx of priorAssetTxs) {
         if (tx.type === "buy" || tx.type === "subscription") {
           runningQty += tx.quantity;
-          runningCost += tx.quantity * tx.price;
+          runningCost += tx.total > 0 ? tx.total : tx.quantity * tx.price;
         } else if (tx.type === "sell" && tx.id !== t.id) {
           if (runningQty > 0) {
             const pm = runningCost / runningQty;

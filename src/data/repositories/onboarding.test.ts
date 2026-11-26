@@ -51,14 +51,14 @@ describe("getOnboardingCounts — onboarding de primeiro uso (§5.7)", () => {
       transactions: 4,
       portfolioAssets: 2,
       portfolioTransactions: 2,
-      businessProfiles: 2,
+      businessProfiles: 0,
     });
 
     const tablesCalled = calls.map((c) => c.table);
     expect(tablesCalled).toContain("cash_checkpoints");
     expect(tablesCalled).toContain("portfolio_assets");
     expect(tablesCalled).toContain("portfolio_transactions");
-    expect(tablesCalled).toContain("business_profiles");
+    expect(tablesCalled).not.toContain("business_profiles");
   });
 
   it("aplica o filtro de categorias do usuário (is_reserved = false)", async () => {

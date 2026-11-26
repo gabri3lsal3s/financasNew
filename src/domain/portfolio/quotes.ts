@@ -280,10 +280,11 @@ export function parseTesouroDiretoResponse(
 }
 
 /**
- * Extrai a taxa do Banco Central SGS (Série 12 para CDI diário ou Série 432 para Selic Meta).
+ * Extrai a taxa do Banco Central SGS (Série 12 para CDI diário, Série 432 para Selic Meta ou Série 13522 para IPCA).
  */
 export function parseBcbSgsResponse(
   payload: unknown,
+  unit?: "daily" | "annual",
 ): { rateDaily?: number; rateAnnual?: number; date?: string } | null {
   if (!payload) return null;
 
@@ -300,9 +301,9 @@ export function parseBcbSgsResponse(
   if (!Number.isFinite(valNum)) return null;
 
   const dateStr = String(lastItem.data ?? "");
+  const treatAsDaily = unit === "daily" || (unit === undefined && valNum < 0.2);
 
-  // Se o valor for < 0.1 (ex.: 0.0416%), é taxa diária em %
-  if (valNum < 0.2) {
+  if (treatAsDaily) {
     const dailyRate = valNum / 100;
     const annualRate = (Math.pow(1 + dailyRate, 252) - 1) * 100;
     return {
@@ -312,7 +313,7 @@ export function parseBcbSgsResponse(
     };
   }
 
-  // Se o valor for >= 0.2 (ex.: 10.5%), é taxa anual em % a.a.
+  // Taxa anual em % a.a. (inclui IPCA negativo/baixo quando unit === "annual")
   const annualRate = valNum;
   const dailyRate = Math.pow(1 + annualRate / 100, 1 / 252) - 1;
   return {

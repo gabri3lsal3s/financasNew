@@ -5,7 +5,7 @@ import type { ThemePreference } from "@/app/theme-provider";
 import { cn } from "@/lib/utils";
 import { trackFeatureUse } from "@/services/analytics/tracker";
 import { resetPageScroll } from "@/services/scroll";
-import { UpgradeDialog } from "@/components/modules/subscription/upgrade-dialog";
+import { ContentLoading } from "@/components/ui/content-loading";
 import { buildCheckoutUrl } from "@/domain/subscription/plans";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { BackToTop } from "@/components/layout/back-to-top";
@@ -13,11 +13,10 @@ import { GlobalSearch } from "@/components/layout/global-search";
 import { NetworkStatusBanner } from "@/components/layout/network-status-banner";
 import { Sidebar } from "@/components/layout/sidebar";
 import { RouteSkeletonFallback } from "@/components/layout/route-skeletons/route-skeleton-fallback";
-import { DemoTourSpotlight } from "@/components/modules/demo-tour-spotlight";
 import { NativeOnboardingDialog } from "@/components/modules/native-onboarding-dialog";
 import { useDemoSession } from "@/state/demo-mode/demo-session-store";
 import { useContainerScroll } from "@/hooks/use-container-scroll";
-import { useNotificationCenter } from "@/hooks/use-notification-center";
+import { useUnreadNotificationCount } from "@/hooks/use-notification-center";
 import { useSidebarState } from "@/hooks/use-sidebar-state";
 import {
   resolveVisibleHeaderSlots,
@@ -37,6 +36,16 @@ import {
 
 const LaunchWizard = lazy(() =>
   import("@/features/transactions").then((m) => ({ default: m.LaunchWizard })),
+);
+const UpgradeDialog = lazy(() =>
+  import("@/components/modules/subscription/upgrade-dialog").then((m) => ({
+    default: m.UpgradeDialog,
+  })),
+);
+const DemoTourSpotlight = lazy(() =>
+  import("@/components/modules/demo-tour-spotlight").then((m) => ({
+    default: m.DemoTourSpotlight,
+  })),
 );
 
 const PATH_TO_MODULE: Record<string, string> = {
@@ -122,7 +131,7 @@ export function PageShell({ children }: { children?: ReactNode } = {}) {
   });
 
   const onboarding = useShellOnboardingOrchestrator({ isWizardOpen: wizardOpen });
-  const { totalBellCount } = useNotificationCenter();
+  const { totalBellCount } = useUnreadNotificationCount();
   const hasNotifications = totalBellCount > 0;
 
   const cfg = visual.headerButtons;
@@ -173,7 +182,11 @@ export function PageShell({ children }: { children?: ReactNode } = {}) {
             />
           </div>
         </header>
-        <DemoTourSpotlight />
+        {isDemoActive ? (
+          <Suspense fallback={null}>
+            <DemoTourSpotlight />
+          </Suspense>
+        ) : null}
         <NativeOnboardingDialog
           open={onboarding.isNativeOnboardingOpen}
           onOpenChange={onboarding.onNativeOnboardingOpenChange}
@@ -191,14 +204,18 @@ export function PageShell({ children }: { children?: ReactNode } = {}) {
       <BackToTop visible={showBackToTop} containerId="main-content" bottomNavOffset />
       <BottomNav />
 
-      <UpgradeDialog
-        open={headerUpgradeOpen}
-        onOpenChange={setHeaderUpgradeOpen}
-        onProceedToCheckout={(plan) => {
-          setHeaderUpgradeOpen(false);
-          navigate(buildCheckoutUrl({ plan }));
-        }}
-      />
+      {headerUpgradeOpen ? (
+        <Suspense fallback={<ContentLoading />}>
+          <UpgradeDialog
+            open={headerUpgradeOpen}
+            onOpenChange={setHeaderUpgradeOpen}
+            onProceedToCheckout={(plan) => {
+              setHeaderUpgradeOpen(false);
+              navigate(buildCheckoutUrl({ plan }));
+            }}
+          />
+        </Suspense>
+      ) : null}
     </div>
   );
 }

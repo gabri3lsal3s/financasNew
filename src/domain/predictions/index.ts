@@ -118,11 +118,9 @@ export function dayOfWeek(iso: string): number {
   return date.getDay();
 }
 
-/** Verifica se a data é fim de semana (sábado ou domingo). */
-export function isWeekend(iso: string): boolean {
-  const day = dayOfWeek(iso);
-  return day === 0 || day === 6;
-}
+import { isWeekend } from "@/domain/portfolio/business-days";
+
+export { isWeekend };
 
 /**
  * Fator de afinidade com o ciclo semanal (dia útil vs fim de semana).

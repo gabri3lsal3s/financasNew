@@ -86,10 +86,17 @@ export function sellAssetPosition(input: SellAssetInput): SellAssetResult {
   const remainingQuantity = Math.max(0, currentQuantity - sellQuantity);
   // O Preço Médio das cotas remanescentes permanece rigorosamente inalterado
   const remainingAveragePrice = remainingQuantity > 0 ? currentAveragePrice : 0;
-  const remainingTotalCost = Math.round(remainingQuantity * remainingAveragePrice * 100) / 100;
 
+  const currentTotalCostCents = Math.round(currentTotalCost * 100);
+  const costOfSoldCents =
+    remainingQuantity <= 0
+      ? currentTotalCostCents
+      : Math.min(currentTotalCostCents, Math.round(sellQuantity * currentAveragePrice * 100));
+  const remainingTotalCostCents = Math.max(0, currentTotalCostCents - costOfSoldCents);
+
+  const remainingTotalCost = remainingTotalCostCents / 100;
   const grossAmount = Math.round(sellQuantity * sellPrice * 100) / 100;
-  let costOfSoldQuantity = Math.round(sellQuantity * currentAveragePrice * 100) / 100;
+  let costOfSoldQuantity = costOfSoldCents / 100;
   let realizedPnl = Math.round((grossAmount - costOfSoldQuantity) * 100) / 100;
   let realizedPnlPct = costOfSoldQuantity > 0 ? (realizedPnl / costOfSoldQuantity) * 100 : 0;
 
@@ -178,14 +185,18 @@ export function sellAssetPosition(input: SellAssetInput): SellAssetResult {
       (currentTotalCost > 0 ? currentTotalCost : currentAveragePrice > 0 ? currentAveragePrice : currentBase);
 
     const isFull =
-      redemptionProportion >= 0.9999 ||
-      (effectiveGrossBalance > 0 && grossAmount >= effectiveGrossBalance - 0.01);
+      effectiveGrossBalance > 0
+        ? grossAmount >= effectiveGrossBalance - 0.01
+        : remainingQuantity <= 0;
 
-    // Baixa Proporcional canônica de custo (Padrão Receita Federal / Tesouro Direto):
-    // C_baixado = C_pré * min(1, V_resgate / V_pré)
-    costOfSoldQuantity = isFull
-      ? currentInitial
-      : Math.round(currentInitial * redemptionProportion * 100) / 100;
+    // Baixa Proporcional canônica de custo em centavos inteiros (conservando soma exata)
+    const currentInitialCents = Math.round(currentInitial * 100);
+    const fiCostOfSoldCents = isFull
+      ? currentInitialCents
+      : Math.min(currentInitialCents, Math.round(currentInitialCents * redemptionProportion));
+    const fiRemainingInitialCents = Math.max(0, currentInitialCents - fiCostOfSoldCents);
+
+    costOfSoldQuantity = fiCostOfSoldCents / 100;
     realizedPnl = Math.round((grossAmount - costOfSoldQuantity) * 100) / 100;
     realizedPnlPct = costOfSoldQuantity > 0 ? (realizedPnl / costOfSoldQuantity) * 100 : 0;
 
@@ -198,9 +209,7 @@ export function sellAssetPosition(input: SellAssetInput): SellAssetResult {
       const newBaseValue = isFull
         ? 0
         : Math.max(0, Math.round(currentBase * (1 - redemptionProportion) * 100) / 100);
-      const newInitialValue = isFull
-        ? 0
-        : Math.max(0, Math.round(currentInitial * (1 - redemptionProportion) * 100) / 100);
+      const newInitialValue = fiRemainingInitialCents / 100;
 
       updatedFixedIncomeMetadata = {
         ...input.fixedIncomeMetadata,
@@ -563,9 +572,28 @@ export function calculateReconciledAssetPosition(
     };
   }
 
+  const normalizedRemaining: LedgerTransaction[] = remainingTransactions.map((t, i) => ({
+    id: (t as { id?: string }).id ?? `tx-${i}`,
+    date: t.date,
+    type: t.type,
+    quantity: t.quantity,
+    price: t.price,
+    total: t.total,
+  }));
+
   // 3. Caso Renda Variável / Ações / FIIs / Internacional
   if (removedTransaction.type === "sell") {
-    // Excluir venda -> restaura as cotas vendidas sem alterar o PM atual
+    if (normalizedRemaining.length > 0) {
+      const ledger = computeLedger(normalizedRemaining);
+      return {
+        newQuantity: ledger.quantity,
+        newAveragePrice: Math.round(ledger.averageCost * 10000) / 10000,
+        newTotalCost: ledger.totalCost,
+        updatedFixedIncomeMetadata: null,
+      };
+    }
+
+    // Fallback sem ledger remanescente: restaura quantidade mantendo PM atual
     const newQuantity = currentQuantity + removedTransaction.quantity;
     const newTotalCost = Math.round(newQuantity * currentAveragePrice * 100) / 100;
     return {
@@ -575,15 +603,6 @@ export function calculateReconciledAssetPosition(
       updatedFixedIncomeMetadata: null,
     };
   }
-
-  const normalizedRemaining: LedgerTransaction[] = remainingTransactions.map((t, i) => ({
-    id: (t as { id?: string }).id ?? `tx-${i}`,
-    date: t.date,
-    type: t.type,
-    quantity: t.quantity,
-    price: t.price,
-    total: t.total,
-  }));
 
   if (removedTransaction.type === "buy" || removedTransaction.type === "subscription") {
     // Calcula o volume de cotas que era efetivamente rastreado pelas transações antes da exclusão

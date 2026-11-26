@@ -99,7 +99,7 @@ export function AdvisorNotificationRow({
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-medium text-xs text-foreground line-clamp-1 break-words">
+            <span className="font-medium text-xs text-foreground line-clamp-2 break-words">
               {advisorItem.title}
             </span>
             <Badge variant={presentation.badgeVariant} size="xs" className="shrink-0">
@@ -125,7 +125,7 @@ export function AdvisorNotificationRow({
               </span>
             ) : null}
             {advisorItem.metadata?.valueCents === undefined && !cardName ? (
-              <span className="line-clamp-1">{advisorItem.description}</span>
+              <span className="line-clamp-2 break-words">{advisorItem.description}</span>
             ) : null}
           </div>
         </div>
@@ -195,7 +195,7 @@ export function ReminderNotificationRow({
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-medium text-xs text-foreground line-clamp-1 break-words">
+            <span className="font-medium text-xs text-foreground line-clamp-2 break-words">
               {item.title}
             </span>
             <Badge variant={badgeVariant} size="xs" className="shrink-0">

@@ -65,7 +65,10 @@ export function ReportKpiGrid({
           >
             {/* Camada 1: Rótulo UPPERCASE e Ícone Sóbrio */}
             <div className="flex items-center justify-between gap-1.5 min-w-0">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider line-clamp-1 truncate print:text-[8pt] print:leading-tight">
+              <span
+                className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider line-clamp-2 break-words print:text-[8pt] print:leading-tight"
+                title={item.label}
+              >
                 {item.label}
               </span>
               {Icon && (
@@ -87,7 +90,10 @@ export function ReportKpiGrid({
                 {item.value}
               </div>
               {item.subtext && (
-                <div className="text-[10px] text-muted-foreground font-medium mt-0.5 line-clamp-1 truncate print:text-[8pt] print:leading-tight">
+                <div
+                  className="text-[10px] text-muted-foreground font-medium mt-0.5 line-clamp-2 break-words print:text-[8pt] print:leading-tight"
+                  title={typeof item.subtext === "string" ? item.subtext : undefined}
+                >
                   {item.subtext}
                 </div>
               )}

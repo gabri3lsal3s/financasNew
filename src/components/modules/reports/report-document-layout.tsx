@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { Printer } from "lucide-react";
-import { Button, ConfirmDialog, Modal, usePrint, PrintSheet } from "@/components/ui";
+import { Button, ConfirmDialog, Modal, usePrint, PrintSheet, ResponsiveLabel } from "@/components/ui";
 import type { ModalSize } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
@@ -123,10 +123,10 @@ export function ReportDocumentLayout({
               className="gap-1.5 shadow-xs h-8 text-xs px-2.5 sm:px-3"
             >
               <Printer className="size-3.5" aria-hidden="true" />
-              <span className="hidden sm:inline">
-                {printing ? "Preparando..." : "Imprimir / Salvar PDF"}
-              </span>
-              <span className="sm:hidden">{printing ? "..." : "PDF"}</span>
+              <ResponsiveLabel
+                short={printing ? "..." : "PDF"}
+                full={printing ? "Preparando..." : "Imprimir / Salvar PDF"}
+              />
             </Button>
           </div>
         }
@@ -156,6 +156,7 @@ export function ReportDocumentLayout({
           title={printWarning.title}
           description={printWarning.description}
           confirmLabel={printWarning.confirmLabel ?? "Emitir PDF mesmo assim"}
+          confirmShortLabel="Emitir PDF"
           cancelLabel="Cancelar"
           elevated
           onConfirm={() => {

@@ -1,6 +1,7 @@
+import { QrCodeCanvas } from "@/components/ui/qr-code-canvas";
 import { useState } from "react";
 import { Check, Copy, QrCode, Share2, ShieldAlert, UserPlus, Users } from "lucide-react";
-import { Badge, Button, Input, Modal, ModalFooter, QrCodeCanvas } from "@/components/ui";
+import { Badge, Button, Input, Modal, ModalFooter } from "@/components/ui";
 import { getPublicShareUrl } from "@/services/app-url";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";

@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { formatPercent } from "@/services/masks";
 
 export interface TargetDistributionProgressProps {
   label: string;
@@ -22,7 +23,7 @@ export function TargetDistributionProgress({ label, sum }: TargetDistributionPro
                   : "text-foreground",
             )}
           >
-            {sum.toFixed(1)}% / 100%
+            {formatPercent(sum)}% / 100%
           </span>
           <Badge
             variant={sum === 100 ? "positive" : sum > 100 ? "critical" : "muted"}
@@ -31,8 +32,8 @@ export function TargetDistributionProgress({ label, sum }: TargetDistributionPro
             {sum === 100
               ? "Completo"
               : sum > 100
-                ? `Excesso de ${(sum - 100).toFixed(1)}%`
-                : `Faltam ${(100 - sum).toFixed(1)}%`}
+                ? `Excesso de ${formatPercent(sum - 100)}%`
+                : `Faltam ${formatPercent(100 - sum)}%`}
           </Badge>
         </div>
       </div>

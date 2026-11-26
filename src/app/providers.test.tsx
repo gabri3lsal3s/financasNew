@@ -127,6 +127,10 @@ describe("AppProviders & AuthQuerySync", () => {
       // O cache foi purgado pelo resetAppState/clear no login
       expect(queryClientInstance!.getQueryData(["credit_cards"])).toBeUndefined();
     });
+
+    queryClientInstance!.setQueryData(["credit_cards"], ["cartão da primeira conta"]);
+    capturedCallback?.("SIGNED_IN", { user: { id: "user-other-456" } });
+    expect(queryClientInstance!.getQueryData(["credit_cards"])).toBeUndefined();
   });
 
   it("hidrata bankAssistant e deviceNotifications a partir das preferências de nuvem", () => {

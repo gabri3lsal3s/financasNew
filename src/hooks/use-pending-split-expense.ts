@@ -2,6 +2,7 @@ import { useEffect, useRef, useSyncExternalStore } from "react";
 import { useAuth } from "./use-auth";
 import { useSaveSplitExpense, useSignalSplitPayment } from "@/state/mutations/use-public-share-mutations";
 import { isAppLocked, subscribeAppLock } from "@/services/native/app-lock";
+import { reportError } from "@/services/observability";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 
@@ -69,7 +70,7 @@ export function usePendingSplitExpense() {
                   amountCents: data.amountCents!,
                 });
               } catch (signalErr) {
-                console.warn("Nao foi possivel sinalizar o pagamento:", signalErr);
+                reportError(signalErr, { source: "usePendingSplitExpense.signalSplitPayment" });
               }
             }
 
@@ -80,7 +81,7 @@ export function usePendingSplitExpense() {
               variant: "default",
             });
           } catch (err) {
-            console.error("Falha ao salvar racha pendente:", err);
+            reportError(err, { source: "usePendingSplitExpense.saveSplit" });
             triggerSensory("destructive");
           } finally {
             processingRef.current = false;

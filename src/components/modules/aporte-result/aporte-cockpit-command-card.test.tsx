@@ -43,8 +43,8 @@ describe("AporteCockpitCommandCard", () => {
     expect(screen.getByText("Sobra para caixa")).toBeInTheDocument();
 
     // Chips
-    expect(screen.getByText("6.2")).toBeInTheDocument();
-    expect(screen.getByText("18.5%")).toBeInTheDocument();
+    expect(screen.getByText("6,2")).toBeInTheDocument();
+    expect(screen.getByText("18,5%")).toBeInTheDocument();
   });
 
   it("revela o input de caixa quando o switch estiver ligado", () => {

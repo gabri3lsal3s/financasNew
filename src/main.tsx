@@ -1,7 +1,11 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "@/styles/globals.css";
-import { AppProviders } from "@/app/providers";
+import { ThemeProvider } from "@/app/theme-provider";
+import { Toaster } from "@/components/ui/toast";
+import { ToastHost } from "@/components/ui/toast-host";
+import { AppUpdateToast } from "@/components/modules/app-update-toast";
+import { AppErrorBoundary } from "@/components/layout/app-error-boundary";
 import { AppRouter } from "@/app/router";
 import { registerPWA } from "@/app/pwa";
 import { initObservability } from "@/services/observability";
@@ -34,9 +38,15 @@ if (!root) throw new Error("Elemento #root não encontrado");
 
 createRoot(root).render(
   <StrictMode>
-    <AppProviders>
-      <AppRouter />
-    </AppProviders>
+    <ThemeProvider>
+      <Toaster>
+        <AppUpdateToast />
+        <ToastHost />
+        <AppErrorBoundary>
+          <AppRouter />
+        </AppErrorBoundary>
+      </Toaster>
+    </ThemeProvider>
   </StrictMode>,
 );
 

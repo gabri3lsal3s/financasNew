@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import {
   ArrowLeftRight,
@@ -60,8 +60,14 @@ import {
 import { ExpenseDetailDialog } from "@/features/transactions/components/expense-detail-dialog";
 import { IncomeDetailDialog } from "@/features/transactions/components/income-detail-dialog";
 import { ExpenseRow, IncomeRow } from "@/features/transactions/components/list/transaction-feed-rows";
-import { LaunchWizard } from "@/features/transactions/wizard/launch-wizard";
+import { ContentLoading } from "@/components/ui/content-loading";
 import type { BusinessProfileKind, BusinessProfileSettings, Expense, Income } from "@/types";
+
+const LaunchWizard = lazy(() =>
+  import("@/features/transactions/wizard/launch-wizard").then((m) => ({
+    default: m.LaunchWizard,
+  })),
+);
 import { BreakEvenCard } from "../components/break-even-card";
 import { BusinessDreCard } from "../components/business-dre-card";
 import { BusinessOnboardingEmptyView } from "../components/business-onboarding-empty-view";
@@ -462,10 +468,10 @@ function BusinessDashboardContent({
           </div>
 
           <Card className="border-border/80 bg-surface shadow-xs">
-            <CardHeader className="flex-row items-center justify-between gap-2.5 pb-3">
+            <CardHeader className="flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 pb-3">
               <div className="flex items-center gap-2 min-w-0">
                 <Briefcase className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                <CardTitle className="text-sm sm:text-base font-semibold truncate">
+                <CardTitle className="text-sm sm:text-base font-semibold line-clamp-2 break-words">
                   <span className="sm:hidden">Movimentações</span>
                   <span className="hidden sm:inline">Movimentações do Negócio</span>
                 </CardTitle>
@@ -563,12 +569,14 @@ function BusinessDashboardContent({
       />
 
       {wizardOpen ? (
-        <LaunchWizard
-          open={wizardOpen}
-          onOpenChange={setWizardOpen}
-          initialMode="quick"
-          initialValues={{ scope: "business" }}
-        />
+        <Suspense fallback={<ContentLoading />}>
+          <LaunchWizard
+            open={wizardOpen}
+            onOpenChange={setWizardOpen}
+            initialMode="quick"
+            initialValues={{ scope: "business" }}
+          />
+        </Suspense>
       ) : null}
 
       <ExpenseDetailDialog

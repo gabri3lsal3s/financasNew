@@ -1,4 +1,4 @@
-import { Button, ModalFooter } from "@/components/ui";
+import { Button, ModalFooter, ResponsiveLabel } from "@/components/ui";
 import { canProceed, WIZARD_STEPS } from "./wizard-state";
 import type { LaunchState, WizardMode } from "./wizard-types";
 
@@ -30,7 +30,7 @@ export function LaunchWizardFooter({
           Cancelar
         </Button>
         <Button type="button" sensoryIntent={false} disabled={!canSubmitQuick || pending} onClick={onSubmit}>
-          {pending ? "Salvando…" : "Salvar Transação"}
+          {pending ? "Salvando…" : <ResponsiveLabel short="Salvar" full="Salvar Transação" />}
         </Button>
       </ModalFooter>
     );
@@ -49,7 +49,7 @@ export function LaunchWizardFooter({
       </Button>
       {isLastStep ? (
         <Button type="button" sensoryIntent={false} disabled={!canProceed(state) || pending} onClick={onSubmit}>
-          {pending ? "Confirmando…" : "Confirmar lançamento"}
+          {pending ? "Confirmando…" : <ResponsiveLabel short="Confirmar" full="Confirmar lançamento" />}
         </Button>
       ) : (
         <Button

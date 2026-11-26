@@ -6,7 +6,13 @@ import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import type { ClassAporteSummary, DiversificationImpactSummary, SectorAporteSummary } from "@/domain/portfolio";
 import { cn } from "@/lib/utils";
+import { formatPercent, formatSignedPct } from "@/services/masks";
 import { HorizontalAllocationDriftBars, type DriftBarItem } from "./allocation-drift-bars";
+
+const nefFormatter = new Intl.NumberFormat("pt-BR", {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
 
 export interface AporteSummarySectionProps {
   aporte: number;
@@ -75,18 +81,18 @@ export function AporteSummarySection({
     <div className="flex flex-col gap-3 min-w-0">
       {/* Faixa Métrica Densa de 1 Linha */}
       <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-3 sm:p-3.5 shadow-xs min-w-0">
-        <div className="grid grid-cols-3 divide-x divide-border/60 text-center">
-          <div className="flex flex-col px-2 min-w-0">
+        <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border/60 text-center">
+          <div className="flex flex-col px-2 py-1.5 sm:py-0 min-w-0">
             <span className="text-[11px] font-medium text-muted-foreground truncate" title="Aporte informado">
               Aporte informado
             </span>
             <MoneyText
               cents={numberToCents(aporte)}
               variant="value"
-              className="font-bold text-foreground text-xs sm:text-sm tabular-nums truncate"
+              className="font-bold text-foreground text-xs sm:text-sm tabular-nums"
             />
           </div>
-          <div className="flex flex-col px-2 min-w-0">
+          <div className="flex flex-col px-2 py-1.5 sm:py-0 min-w-0">
             <span
               className="text-[11px] font-medium text-muted-foreground truncate"
               title={completedCount > 0 ? `Alocado (${completedCount}/${totalRoutesCount} feitos)` : "Alocado em ativos"}
@@ -97,17 +103,17 @@ export function AporteSummarySection({
               cents={numberToCents(effectiveTotalAllocated)}
               tone="portfolio"
               variant="value"
-              className="font-bold text-xs sm:text-sm tabular-nums truncate"
+              className="font-bold text-xs sm:text-sm tabular-nums"
             />
           </div>
-          <div className="flex flex-col px-2 min-w-0">
+          <div className="flex flex-col px-2 py-1.5 sm:py-0 min-w-0">
             <span className="text-[11px] font-medium text-muted-foreground truncate" title="Sobra para caixa">
               Sobra para caixa
             </span>
             <MoneyText
               cents={numberToCents(effectiveLeftover)}
               variant="value"
-              className="font-bold text-foreground text-xs sm:text-sm tabular-nums truncate"
+              className="font-bold text-foreground text-xs sm:text-sm tabular-nums"
             />
           </div>
         </div>
@@ -120,7 +126,7 @@ export function AporteSummarySection({
                 <div className="inline-flex items-center gap-1 rounded-md bg-surface-raised px-2 py-0.5 text-muted-foreground">
                   <span>Nef:</span>
                   <span className="font-semibold text-foreground tabular-nums">
-                    {diversificationImpact.currentNef.toFixed(1)} → {diversificationImpact.projectedNef.toFixed(1)}
+                    {nefFormatter.format(diversificationImpact.currentNef)} → {nefFormatter.format(diversificationImpact.projectedNef)}
                   </span>
                   {diversificationImpact.deltaNefPct !== null && diversificationImpact.deltaNefPct !== 0 ? (
                     <span
@@ -129,8 +135,7 @@ export function AporteSummarySection({
                         diversificationImpact.deltaNefPct > 0 ? "text-positive-strong" : "text-muted-foreground",
                       )}
                     >
-                      ({diversificationImpact.deltaNefPct > 0 ? "+" : ""}
-                      {diversificationImpact.deltaNefPct.toFixed(1)}%)
+                      ({formatSignedPct(diversificationImpact.deltaNefPct)})
                     </span>
                   ) : null}
                 </div>
@@ -140,17 +145,15 @@ export function AporteSummarySection({
                 <div className="inline-flex items-center gap-1 rounded-md bg-surface-raised px-2 py-0.5 text-muted-foreground">
                   <span>Maior Ativo:</span>
                   <span className="font-semibold text-foreground tabular-nums">
-                    {diversificationImpact.projectedTopAssetSharePct.toFixed(1)}%
+                    {formatPercent(diversificationImpact.projectedTopAssetSharePct)}%
                   </span>
                   {diversificationImpact.currentTopAssetSharePct !== null &&
                   diversificationImpact.currentTopAssetSharePct > diversificationImpact.projectedTopAssetSharePct ? (
                     <span className="text-positive-strong font-medium">
-                      (-
-                      {(
-                        diversificationImpact.currentTopAssetSharePct -
-                        diversificationImpact.projectedTopAssetSharePct
-                      ).toFixed(1)}
-                      %)
+                      ({formatSignedPct(
+                        diversificationImpact.projectedTopAssetSharePct -
+                        diversificationImpact.currentTopAssetSharePct,
+                      )})
                     </span>
                   ) : null}
                 </div>

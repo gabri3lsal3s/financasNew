@@ -1,19 +1,33 @@
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { ThemeProvider } from "@/app/theme-provider";
 import { checkPWAUpdateNow } from "@/app/pwa";
-import { Toaster } from "@/components/ui/toast";
-import { ToastHost } from "@/components/ui/toast-host";
-import { AppUpdateToast } from "@/components/modules/app-update-toast";
-import { AppErrorBoundary } from "@/components/layout/app-error-boundary";
 import { getSupabase } from "@/data/client";
 import { resetAppState } from "@/services/auth-cleanup";
 import { initAppLockListener } from "@/services/native/app-lock";
-import { clearNativeBankMonitoring } from "@/services/native/bank-listener";
-import { cancelDailyReminder, clearAllDueNotifications } from "@/services/native/local-notifications";
-import { unregisterNativeFcmPush } from "@/services/push/fcm-push";
-import { unsubscribeBrowserWebPush } from "@/services/push/web-push";
+import { isNativePlatform } from "@/services/native/platform";
+
+function clearSessionNotifications(previousUserId: string | null) {
+  void Promise.allSettled([
+    import("@/services/push/web-push").then(({ unsubscribeBrowserWebPush }) =>
+      unsubscribeBrowserWebPush(),
+    ),
+    import("@/services/native/local-notifications").then(
+      ({ clearAllDueNotifications, cancelDailyReminder }) =>
+        Promise.allSettled([clearAllDueNotifications(previousUserId), cancelDailyReminder()]),
+    ),
+    ...(isNativePlatform()
+      ? [
+          import("@/services/native/bank-listener").then(({ clearNativeBankMonitoring }) =>
+            clearNativeBankMonitoring(),
+          ),
+          import("@/services/push/fcm-push").then(({ unregisterNativeFcmPush }) =>
+            unregisterNativeFcmPush(previousUserId),
+          ),
+        ]
+      : []),
+  ]);
+}
 
 /**
  * Sincroniza o ciclo de vida do TanStack Query e das stores locais
@@ -35,37 +49,43 @@ function AuthQuerySync({ children }: { children: ReactNode }) {
       return;
     }
 
+    const parseJwtAal = (token?: string): string | null => {
+      if (!token) return null;
+      try {
+        const parts = token.split(".");
+        if (parts.length !== 3 || !parts[1]) return null;
+        const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+        const payload = JSON.parse(atob(b64)) as { aal?: unknown };
+        return typeof payload.aal === "string" ? payload.aal : null;
+      } catch {
+        return null;
+      }
+    };
+    let lastAal: string | null = null;
+
     const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
       const newUserId = session?.user?.id ?? null;
       const previousUserId = activeUserIdRef.current;
+      const nextAal = parseJwtAal(session?.access_token);
 
       if (event === "SIGNED_OUT") {
-        void Promise.allSettled([
-          Promise.resolve(clearNativeBankMonitoring()),
-          Promise.resolve(clearAllDueNotifications(previousUserId)),
-          Promise.resolve(cancelDailyReminder()),
-          Promise.resolve(unsubscribeBrowserWebPush()),
-          Promise.resolve(unregisterNativeFcmPush(previousUserId)),
-        ]);
+        clearSessionNotifications(previousUserId);
         resetAppState(queryClient, null);
-        // Ao encerrar sessão, verifica e aplica atualizações pendentes do PWA em ponto seguro
+        lastAal = null;
         void checkPWAUpdateNow({ force: true, applyIfSafe: true });
       } else if (previousUserId !== newUserId) {
         if (previousUserId && previousUserId !== newUserId) {
-          void Promise.allSettled([
-            Promise.resolve(clearNativeBankMonitoring()),
-            Promise.resolve(clearAllDueNotifications(previousUserId)),
-            Promise.resolve(cancelDailyReminder()),
-            Promise.resolve(unsubscribeBrowserWebPush()),
-            Promise.resolve(unregisterNativeFcmPush(previousUserId)),
-          ]);
+          clearSessionNotifications(previousUserId);
         }
         resetAppState(queryClient, newUserId);
         void queryClient.invalidateQueries();
         void checkPWAUpdateNow({ force: true, applyIfSafe: true });
-      } else if (event === "SIGNED_IN") {
+        lastAal = nextAal;
+      } else if (event === "MFA_CHALLENGE_VERIFIED" || (lastAal !== "aal2" && nextAal === "aal2")) {
         void queryClient.invalidateQueries();
-        void checkPWAUpdateNow({ force: true, applyIfSafe: true });
+        lastAal = nextAal;
+      } else if (nextAal) {
+        lastAal = nextAal;
       }
 
       activeUserIdRef.current = newUserId;
@@ -80,13 +100,8 @@ function AuthQuerySync({ children }: { children: ReactNode }) {
 }
 
 /**
- * Providers globais mínimos do App Shell público.
- *
- * A sincronização de sessão permanece global (segurança/isolamento de cache),
- * mas tudo que depende de usuário autenticado (preferências em nuvem,
- * assinatura, lembretes, bloqueio biométrico e ícone dinâmico) vive em
- * `AuthenticatedProviders`, carregado apenas após o guard de autenticação.
- * Isso evita que a landing page baixe stores e sincronizações de conta.
+ * Provedores de dados das rotas com sessão ou consultas, incluindo login,
+ * checkout e compartilhamentos públicos. O shell editorial não importa este módulo.
  *
  * Política de retry Online First (docs/ARCHITECTURE.md §5.1): leituras com
  * retry limitado; mutações nunca com retry automático.
@@ -115,15 +130,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthQuerySync>
-        <ThemeProvider>
-          <Toaster>
-            <AppUpdateToast />
-            <ToastHost />
-            <AppErrorBoundary>{children}</AppErrorBoundary>
-          </Toaster>
-        </ThemeProvider>
-      </AuthQuerySync>
+      <AuthQuerySync>{children}</AuthQuerySync>
     </QueryClientProvider>
   );
 }

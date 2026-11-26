@@ -399,13 +399,14 @@ O console operacional administrativo do Áxis Finance foi completamente segregad
    - `/` verifica sessão persistida (`sb-*-auth-token`) e plataforma nativa antes de montar qualquer guard;
    - Visitantes web recebem a `LandingPage` imediatamente, sem executar `useAuth`, `useUserAccess`, prefetch de rotas, timeout de inatividade ou listeners nativos;
    - Usuários autenticados carregam `AuthenticatedRoot` via `lazy`, com `PageShell` e `OverviewPage` sob demanda.
-2. **Providers em duas camadas:**
-   - `AppProviders` mantém apenas QueryClient, sincronização de sessão, tema, toasts e ErrorBoundary;
-   - `AuthenticatedProviders` concentra preferências em nuvem, assinatura, lembretes, ícone dinâmico, App Lock e `NativeUpdateToast`, montados apenas dentro do guard.
+2. **Providers por necessidade da rota:**
+   - `main.tsx` monta tema, toasts e ErrorBoundary para todas as rotas. A landing e seus aliases editoriais funcionam sem QueryClient e sem iniciar o cliente Supabase.
+   - O roteador carrega `AppProviders` no primeiro acesso a uma rota com dados, como login, checkout, compartilhamento ou painel. O mesmo QueryClient e listener de sessão permanecem ativos até o documento ser recarregado. A purga de cache na troca de conta é síncrona e a limpeza de notificações carrega módulos sob demanda.
+   - `AuthenticatedProviders` concentra preferências em nuvem, assinatura, lembretes, ícone dinâmico e App Lock, montados dentro do guard.
 3. **Guards e módulos nativos sob demanda:** `RequireAuth`, `RequireActiveAccount`, `RequireAdminSession` e `RequireFeature` são `lazy`; o handler de deep links/notificações nativas vive no módulo autenticado.
-4. **Preload controlado:** `build.modulePreload: false` evita que o Vite injete no `index.html` todas as dependências de rotas lazy (o preload global anulava o code splitting).
+4. **Preload controlado:** o HTML comum antecipa apenas o vendor de React. O Vite prepara os imports da landing em paralelo apenas quando essa rota é solicitada. O Workbox usa o grafo estático do shell público e guarda os chunks das demais rotas conforme o uso.
 5. **Metadados por rota (`useDocumentMeta`):** título, descrição, canonical, OpenGraph, Twitter Card e diretiva `robots` são atualizados por landing, planos, ferramentas e documentos legais, com restauração segura ao desmontar.
-6. **Head estático:** canonical absoluto, `hreflang` pt-BR/x-default, OG/Twitter com imagens absolutas e `alt`, `meta robots` indexável, JSON-LD (`SoftwareApplication`, `Organization`, `FAQPage`) e fontes não bloqueantes ativadas pelo bundle (o handler `onload` inline era bloqueado pela CSP).
+6. **Head estático:** canonical absoluto, `hreflang` pt-BR/x-default, OG/Twitter com imagens absolutas e `alt`, `meta robots` indexável, JSON-LD (`SoftwareApplication`, `Organization`, `FAQPage`) e fontes WOFF2 locais. Inter e Sora têm preload e uma janela curta de aplicação (`font-display: optional`) para evitar troca tardia após a primeira pintura.
 7. **Navegação agêntica:** `llms.txt`/`llms-full.txt` seguem Markdown com H1, e `ai-catalog.json` + `.well-known/ai-catalog.json` validam contra o schema ARD 1.0 (`specVersion`, `host`, `entries`, URNs `urn:air:*`, `type`, `representativeQueries`).
 
 ---

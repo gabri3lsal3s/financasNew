@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import type { PositionRow } from "@/components/modules";
-import type { PriceSource, ProvisionedDividendsSummary } from "@/domain/portfolio";
+import type { PriceSource } from "@/domain/portfolio";
 import {
   buildMarketReferenceSummary,
   calculateCustodyReconciliation,
@@ -17,10 +17,9 @@ import {
 } from "@/domain/portfolio/resumo-metrics";
 import { currentMonth } from "@/lib/date";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
-import { getOptionalHook } from "@/hooks/use-notification-center";
-import * as state from "@/state";
 import {
   useAllPortfolioTransactions,
+  useCorporateDividends,
   useGroupTargets,
   useMarketQuotesSwr,
   usePortfolioAssets,
@@ -53,10 +52,7 @@ export function useResumoTabController({
   const classTargetsQuery = useGroupTargets("class");
   const sectorTargetsQuery = useGroupTargets("sector");
   const marketSwr = useMarketQuotesSwr({ enabled: true, enableInterval: false });
-  const useCorporateDividendsSafe = getOptionalHook(state, "useCorporateDividends", () => ({
-    provisionedSummary: null as ProvisionedDividendsSummary | null,
-  }));
-  const corporateDividendsState = useCorporateDividendsSafe();
+  const corporateDividendsState = useCorporateDividends();
 
   const { open: wizardDeepOpen, setOpen: setWizardDeepOpen } = useCreateDeepLink("investimento");
   const [wizardOpen, setWizardOpen] = useState(false);

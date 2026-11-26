@@ -27,7 +27,7 @@ describe("DeepDiveTabsSection", () => {
     render(<DeepDiveTabsSection />);
 
     await user.click(screen.getByRole("tab", { name: /Relatórios/i }));
-    expect(screen.getByTestId("deep-dive-reports")).toBeInTheDocument();
+    expect(await screen.findByTestId("deep-dive-reports")).toBeInTheDocument();
     expect(screen.getByTestId("report-preview-dre")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /Lâmina \(TWR\)/i }));
@@ -57,7 +57,7 @@ describe("DeepDiveTabsSection", () => {
     render(<DeepDiveTabsSection />);
 
     await user.click(screen.getByRole("tab", { name: /Radar Preventivo & Privacidade/i }));
-    expect(screen.getByTestId("deep-dive-security")).toBeInTheDocument();
+    expect(await screen.findByTestId("deep-dive-security")).toBeInTheDocument();
     expect(screen.getByText("Inteligência Preventiva & Radar Diário")).toBeInTheDocument();
     expect(screen.getByText("Segurança, Privacidade & Controle dos Dados")).toBeInTheDocument();
     expect(screen.getByText("Zero Senhas Bancárias")).toBeInTheDocument();

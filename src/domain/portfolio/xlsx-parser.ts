@@ -177,13 +177,35 @@ export function parseWorksheetXmlToCsv(sheetXml: string, sharedStrings: string[]
     }
   }
 
-  return rows.map((r) => r.map((cell) => (cell.includes(";") ? `"${cell}"` : cell)).join(";")).join("\n");
+  return rows
+    .map((r) =>
+      r
+        .map((cell) =>
+          cell.includes(";") || cell.includes('"') || cell.includes("\n")
+            ? `"${cell.replace(/"/g, '""')}"`
+            : cell,
+        )
+        .join(";"),
+    )
+    .join("\n");
 }
 
 /**
  * Converte um buffer de arquivo .xlsx em texto CSV compatível com nosso motor de parsing.
  */
 export async function parseXlsxToCsv(buffer: ArrayBuffer): Promise<string> {
+  const header = new Uint8Array(buffer, 0, Math.min(4, buffer.byteLength));
+  // Detecta arquivo .xls binário legado (OLE2: D0 CF 11 E0) para não tentar descompressão ZIP
+  if (
+    header.length >= 4 &&
+    header[0] === 0xd0 &&
+    header[1] === 0xcf &&
+    header[2] === 0x11 &&
+    header[3] === 0xe0
+  ) {
+    throw new Error("Formato .xls binário legado não suportado; salve como .xlsx ou .csv.");
+  }
+
   const entries = await parseZipEntries(buffer);
   if (entries.size === 0) return "";
 

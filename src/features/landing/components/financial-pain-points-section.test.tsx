@@ -27,7 +27,7 @@ describe("FinancialPainPointsSection", () => {
 
     // 2. Captura sem fricção + aprovação de despesa
     await user.click(screen.getByRole("tab", { name: /Captura com IA/i }));
-    expect(screen.getByTestId("pain-preview-capture")).toBeInTheDocument();
+    expect(await screen.findByTestId("pain-preview-capture")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /Aprovar Despesa/i }));
     expect(screen.getByText("Lançamento confirmado")).toBeInTheDocument();
@@ -35,11 +35,11 @@ describe("FinancialPainPointsSection", () => {
 
     // 3. Separação PF & PJ (Modo Negócio)
     await user.click(screen.getByRole("tab", { name: /PF & PJ/i }));
-    expect(screen.getByTestId("pain-preview-business")).toBeInTheDocument();
+    expect(await screen.findByTestId("pain-preview-business")).toBeInTheDocument();
 
     // 3. Parcelas, Contas a Receber & Dívidas (Price / SAC)
     await user.click(screen.getByRole("tab", { name: /Parcelas & Dívidas/i }));
-    expect(screen.getByTestId("pain-preview-debts")).toBeInTheDocument();
+    expect(await screen.findByTestId("pain-preview-debts")).toBeInTheDocument();
     expect(screen.getByText(/A Receber \(racha e empréstimos\)/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Price / SAC" }));
@@ -48,11 +48,11 @@ describe("FinancialPainPointsSection", () => {
 
     // 4. Casal & Amigos (SharedFinancesShowcase)
     await user.click(screen.getByRole("tab", { name: /Casal & Amigos/i }));
-    expect(screen.getByTestId("card-racha")).toBeInTheDocument();
+    expect(await screen.findByTestId("card-racha")).toBeInTheDocument();
 
     // 5. Onde aportar -> CTA para aprofundar em Investimentos
     await user.click(screen.getByRole("tab", { name: /Onde aportar/i }));
-    expect(screen.getByTestId("pain-preview-invest")).toBeInTheDocument();
+    expect(await screen.findByTestId("pain-preview-invest")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /Explorar ferramentas completas/i }));
     expect(onExploreInvestments).toHaveBeenCalledTimes(1);

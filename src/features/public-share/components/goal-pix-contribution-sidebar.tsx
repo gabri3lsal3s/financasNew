@@ -1,3 +1,4 @@
+import { QrCodeCanvas } from "@/components/ui/qr-code-canvas";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, CheckCircle2, Copy, QrCode } from "lucide-react";
 import { PixTroubleshootAccordion } from "@/components/modules";
@@ -8,7 +9,6 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  QrCodeCanvas,
 } from "@/components/ui";
 import {
   DEFAULT_PIX_CITY,

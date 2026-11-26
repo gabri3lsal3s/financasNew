@@ -5,15 +5,13 @@ import { addDaysISO, todayISO } from "@/domain/debts";
 import type { ReminderItem as ReminderItemData } from "@/domain/reminders";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
-import {
-  getOptionalHook,
-  useNotificationCenter,
-} from "@/hooks/use-notification-center";
+import { useNotificationCenter } from "@/hooks/use-notification-center";
 import { pushToast } from "@/services/toast";
-import * as state from "@/state";
 import {
   useDebts,
+  useDismissBroadcastNotification,
   useMarkAllRemindersAsRead,
+  useMarkBroadcastAsRead,
   usePermission,
   useReminderStates,
   useSetReminderState,
@@ -79,20 +77,8 @@ export function useRemindersPageState() {
   const setState = useSetReminderState();
   const markAllMutation = useMarkAllRemindersAsRead();
 
-  const useMarkBroadcastAsReadSafe = getOptionalHook<{
-    mutate: (id: string) => void;
-    isPending: boolean;
-  }>(state, "useMarkBroadcastAsRead", () => ({
-    mutate: () => {},
-    isPending: false,
-  }));
-  const useDismissBroadcastNotificationSafe = getOptionalHook(
-    state,
-    "useDismissBroadcastNotification",
-    () => null as { mutate: (id: string) => void } | null,
-  );
-  const markBroadcastMutation = useMarkBroadcastAsReadSafe();
-  const dismissBroadcastMutation = useDismissBroadcastNotificationSafe();
+  const markBroadcastMutation = useMarkBroadcastAsRead();
+  const dismissBroadcastMutation = useDismissBroadcastNotification();
 
   const stateMap = useMemo(
     () => new Map((statesQuery.data ?? []).map((s) => [s.key, s.kind])),

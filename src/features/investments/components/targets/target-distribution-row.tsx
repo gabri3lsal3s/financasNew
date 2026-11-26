@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Badge, Button, NumberStepperInput } from "@/components/ui";
 import { parseTargetInput } from "@/domain/portfolio";
 import { cn } from "@/lib/utils";
+import { formatPercent, formatSignedPct } from "@/services/masks";
 
 export interface TargetDistributionRowProps {
   name: string;
@@ -86,7 +87,7 @@ export function TargetDistributionRow({
 
         <div className="flex flex-wrap items-center gap-1.5 text-xs">
           <span className="font-mono text-muted-foreground tabular-nums">
-            Atual: <strong className="text-foreground font-semibold">{currentPct.toFixed(1)}%</strong>
+            Atual: <strong className="text-foreground font-semibold">{formatPercent(currentPct)}%</strong>
             {currentSuffix ? ` ${currentSuffix}` : ""}
             {secondaryPctText ? (
               <span className="text-muted-foreground font-normal"> ({secondaryPctText})</span>
@@ -100,19 +101,19 @@ export function TargetDistributionRow({
               <>
                 Meta efetiva:{" "}
                 <strong className="text-foreground font-semibold">
-                  {effectivePct.toFixed(1)}%
+                  {formatPercent(effectivePct)}%
                 </strong>{" "}
-                <span className="text-muted-foreground font-normal">(peso {target.toFixed(1)}%)</span>
+                <span className="text-muted-foreground font-normal">(peso {formatPercent(target)}%)</span>
               </>
             ) : (
               <>
-                Meta: <strong className="text-foreground font-semibold">{effectivePct.toFixed(1)}%</strong>
+                Meta: <strong className="text-foreground font-semibold">{formatPercent(effectivePct)}%</strong>
               </>
             )}
           </span>
           {effectivePct > 0 ? (
             <Badge variant={gap > 0 ? "positive" : "muted"} size="xs" className="font-mono">
-              {gap > 0 ? `+${gap.toFixed(1)}% (Aporte)` : `${gap.toFixed(1)}% (Acima)`}
+              {gap > 0 ? `${formatSignedPct(gap)} (Aporte)` : `${formatSignedPct(gap)} (Acima)`}
             </Badge>
           ) : null}
           <span className="text-muted-foreground" aria-hidden="true">

@@ -197,9 +197,16 @@ export function parseBrokerStatement(rawText: string): StatementParseResult {
       continue;
     }
 
-    // Divide por tabs, ponto-e-vírgula ou espaços múltiplos
-    const tokens = trimmed.split(/[\t;]+/).flatMap((t) => t.trim().split(/\s{2,}/)).filter(Boolean);
-    const combinedTokens = tokens.length <= 2 ? trimmed.split(/\s+/).filter(Boolean) : tokens;
+    // Divide por tabs ou ponto-e-vírgula preservando colunas vazias; fallback para espaços múltiplos
+    const hasExplicitDelimiter = /[\t;]/.test(trimmed);
+    const tokens = hasExplicitDelimiter
+      ? trimmed.split(/[\t;]/).flatMap((t) => {
+          const cell = t.trim();
+          return cell === "" ? [""] : cell.split(/\s{2,}/);
+        })
+      : trimmed.split(/\s{2,}/).map((t) => t.trim()).filter(Boolean);
+    const nonEmptyCount = tokens.filter(Boolean).length;
+    const combinedTokens = nonEmptyCount <= 2 ? trimmed.split(/\s+/).filter(Boolean) : tokens;
 
     const my = extractMonthYear(combinedTokens);
     if (!my) {

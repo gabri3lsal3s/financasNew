@@ -158,8 +158,10 @@ export function useRecordOrder() {
 
       // Determinação de total_cost_brl na transação:
       // Para compra: custo total em BRL (totalBRL = total * fx_rate)
-      // Para venda de Renda Fixa / Valor Completo: custo de aquisição da parcela resgatada (SSOT P&L / Gate v5)
+      // Para venda de Renda Fixa / Valor Completo: custo de aquisição da parcela resgatada
+      // Para venda de Renda Variável (BRL/USD): custo fiscal realizado proporcional em BRL (I01/I04/I05)
       let txTotalCostBRL = totalBRL;
+      let variableSellRemainingCostBRL: number | null = null;
       if (type === "sell" && isTotalValue) {
         if (appliedCostBasis !== undefined && appliedCostBasis > 0) {
           txTotalCostBRL = appliedCostBasis;
@@ -178,6 +180,21 @@ export function useRecordOrder() {
           const prop = currentGross > 0 ? Math.min(1, total / currentGross) : 1;
           txTotalCostBRL = Math.round(effectiveAppliedCost * prop * 100) / 100;
         }
+      } else if (type === "sell" && !isCashAssetClass(asset.asset_class)) {
+        const currentCostBrlCents =
+          asset.total_cost_brl !== null && asset.total_cost_brl !== undefined
+            ? Math.round(asset.total_cost_brl * 100)
+            : asset.currency === "USD"
+              ? Math.round(asset.quantity * asset.average_price * (asset.fx_rate_at_purchase ?? rate) * 100)
+              : Math.round(asset.quantity * asset.average_price * 100);
+        const soldFraction = asset.quantity > 0 ? Math.min(1, quantity / asset.quantity) : 1;
+        const realizedCostBrlCents =
+          quantity >= asset.quantity
+            ? currentCostBrlCents
+            : Math.min(currentCostBrlCents, Math.round(currentCostBrlCents * soldFraction));
+        const remainingCostBrlCents = Math.max(0, currentCostBrlCents - realizedCostBrlCents);
+        txTotalCostBRL = realizedCostBrlCents / 100;
+        variableSellRemainingCostBRL = remainingCostBrlCents / 100;
       }
 
       const isDividendOrder = type === "dividend" || type === "jcp" || type === "fii_yield";
@@ -444,13 +461,21 @@ export function useRecordOrder() {
             sellQuantity: quantity,
             sellPrice: price > 0 ? price : total / (quantity || 1),
           });
-          const remainingCostBRL = Math.round(sellResult.remainingQuantity * sellResult.remainingAveragePrice * 100) / 100;
+          const remainingCostBRL =
+            variableSellRemainingCostBRL !== null
+              ? variableSellRemainingCostBRL
+              : Math.round(sellResult.remainingQuantity * sellResult.remainingAveragePrice * 100) / 100;
+          const remainingAvgCostBRL =
+            sellResult.remainingQuantity > 0
+              ? Math.round((remainingCostBRL / sellResult.remainingQuantity) * 10000) / 10000
+              : 0;
           await updateAsset.mutateAsync({
             id: asset.id,
             patch: {
               quantity: sellResult.remainingQuantity,
               average_price: sellResult.remainingAveragePrice,
               total_cost_brl: remainingCostBRL,
+              ...(asset.currency === "USD" ? { average_cost_brl: remainingAvgCostBRL } : {}),
             },
           });
         }

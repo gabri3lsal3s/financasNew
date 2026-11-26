@@ -12,7 +12,7 @@ export function useExpenses(month: string, options?: { enabled?: boolean }) {
   const simulated = useSimulatedExpenses(month);
   const real = useQuery({
     queryKey: [...expensesKey, month],
-    queryFn: () => listExpensesByMonth(month),
+    queryFn: ({ signal }) => listExpensesByMonth(month, { signal }),
     enabled: (options?.enabled ?? true) && !isDemoActive,
     staleTime: STALE_TIMES.transactional,
   });

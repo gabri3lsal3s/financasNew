@@ -112,41 +112,47 @@ export function TransactionRow({
         <CategoryIcon icon={icon} color={iconColor} />
       </span>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <p className="truncate text-sm font-medium text-foreground">{title}</p>
-          {chargeKind && chargeKind !== "regular" ? (
-            <Badge
-              variant="warning"
-              size="xs"
-              className="shrink-0 font-medium"
-              title={`Encargo: ${CHARGE_KIND_LABELS[chargeKind as ChargeKind] ?? chargeKind}`}
-            >
-              {CHARGE_KIND_LABELS[chargeKind as ChargeKind] ?? chargeKind}
-            </Badge>
-          ) : null}
-          {hasLinkedSplit ? (
-            <Badge
-              variant="portfolio"
-              size="xs"
-              className="shrink-0 font-medium"
-              title="Despesa compartilhada em Racha"
-            >
-              Racha
-            </Badge>
-          ) : null}
-          {hasSplitWeight && splitLabel && !hasLinkedSplit ? (
-            <Badge
-              variant="muted"
-              size="xs"
-              className="hidden sm:inline-flex shrink-0 font-medium"
-              title={
-                Math.round((effectiveWeight ?? 0) * 100) === 0
-                  ? "Despesa 100% reembolsada/estornada (R$ 0 no relatório)"
-                  : `Rateio ativo: ${Math.round((effectiveWeight ?? 0) * 100)}% da despesa entra no relatório`
-              }
-            >
-              {splitLabel}
-            </Badge>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5 min-w-0">
+          <p className="line-clamp-2 break-words sm:truncate text-sm font-medium text-foreground" title={title}>
+            {title}
+          </p>
+          {(chargeKind && chargeKind !== "regular") || hasLinkedSplit || (hasSplitWeight && splitLabel && !hasLinkedSplit) ? (
+            <div className="flex flex-wrap items-center gap-1 shrink-0">
+              {chargeKind && chargeKind !== "regular" ? (
+                <Badge
+                  variant="warning"
+                  size="xs"
+                  className="shrink-0 font-medium"
+                  title={`Encargo: ${CHARGE_KIND_LABELS[chargeKind as ChargeKind] ?? chargeKind}`}
+                >
+                  {CHARGE_KIND_LABELS[chargeKind as ChargeKind] ?? chargeKind}
+                </Badge>
+              ) : null}
+              {hasLinkedSplit ? (
+                <Badge
+                  variant="portfolio"
+                  size="xs"
+                  className="shrink-0 font-medium"
+                  title="Despesa compartilhada em Racha"
+                >
+                  Racha
+                </Badge>
+              ) : null}
+              {hasSplitWeight && splitLabel && !hasLinkedSplit ? (
+                <Badge
+                  variant="muted"
+                  size="xs"
+                  className="hidden sm:inline-flex shrink-0 font-medium"
+                  title={
+                    Math.round((effectiveWeight ?? 0) * 100) === 0
+                      ? "Despesa 100% reembolsada/estornada (R$ 0 no relatório)"
+                      : `Rateio ativo: ${Math.round((effectiveWeight ?? 0) * 100)}% da despesa entra no relatório`
+                  }
+                >
+                  {splitLabel}
+                </Badge>
+              ) : null}
+            </div>
           ) : null}
         </div>
         {(subtitle || date) && (

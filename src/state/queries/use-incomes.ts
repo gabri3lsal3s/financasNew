@@ -26,7 +26,7 @@ export function useIncomes(month: string, options?: { enabled?: boolean }) {
   const simulated = useSimulatedIncomes(month);
   const real = useQuery({
     queryKey: [...incomesKey, month],
-    queryFn: () => listIncomesByMonth(month),
+    queryFn: ({ signal }) => listIncomesByMonth(month, { signal }),
     enabled: (options?.enabled ?? true) && !isDemoActive,
     staleTime: STALE_TIMES.transactional,
   });

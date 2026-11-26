@@ -1,10 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import {
-  hasActiveDialogInDom,
-  isLaunchWizardActive,
-  useActiveOverlays,
-} from "./use-active-overlays";
+import { hasActiveDialogInDom, isLaunchWizardActive } from "@/services/active-overlays";
+import { useActiveOverlays } from "./use-active-overlays";
 import { endDemo, resetDemoSession, startDemo } from "@/state/demo-mode";
 
 describe("useActiveOverlays — Detecção Reativa de Overlays e Modais (§4.1)", () => {

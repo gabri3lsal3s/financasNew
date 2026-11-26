@@ -70,6 +70,13 @@ export function CardInvoiceExpensesFeed({
             icon={<WalletCards className="size-6" aria-hidden="true" />}
             title="Sem despesas nesta fatura"
             description="As compras no cartão aparecem aqui de acordo com o fechamento da fatura."
+            action={
+              selectedCard ? (
+                <Button type="button" size="sm" variant="outline" onClick={onOpenImport}>
+                  Importar fatura
+                </Button>
+              ) : undefined
+            }
             className="py-10 sm:py-12 px-4"
           />
         </div>

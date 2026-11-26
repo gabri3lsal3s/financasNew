@@ -41,7 +41,7 @@ export function useMacroIndicators(options?: { enabled?: boolean }) {
 
       const effCdi = cdi !== null && cdi > 0 ? cdi : DEFAULT_ANNUAL_CDI_RATE;
       const effSelic = selic !== null && selic > 0 ? selic : (cdi ?? DEFAULT_ANNUAL_CDI_RATE);
-      const effIpca = ipca !== null && ipca > 0 ? ipca : 4.0;
+      const effIpca = ipca !== null && Number.isFinite(ipca) ? ipca : 4.0;
 
       // Taxas mensais compostas
       const monthlyCdi = (Math.pow(1 + effCdi / 100, 1 / 12) - 1) * 100;

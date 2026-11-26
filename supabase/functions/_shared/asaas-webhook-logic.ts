@@ -294,6 +294,24 @@ export function decideWebhookAction(params: {
   }
 
   if (eventType === "PAYMENT_CHARGEBACK_REQUESTED") {
+    const matchesCurrentPayment = Boolean(
+      payment?.id &&
+        currentSub.asaas_payment_id &&
+        payment.id === currentSub.asaas_payment_id,
+    );
+    const matchesCurrentSubscription = Boolean(
+      payment?.subscription &&
+        currentSub.asaas_subscription_id &&
+        payment.subscription === currentSub.asaas_subscription_id,
+    );
+
+    if (!matchesCurrentPayment && !matchesCurrentSubscription) {
+      return {
+        action: "ignore_unrelated_payment",
+        reason: "chargeback_for_non_current_payment",
+      };
+    }
+
     if (
       currentSub.status === "canceled" &&
       currentSub.tier === "read_only" &&
@@ -359,8 +377,11 @@ export function decideWebhookAction(params: {
       };
     }
 
-    const matchesCurrentPayment =
-      !currentSub.asaas_payment_id || !payment?.id || payment.id === currentSub.asaas_payment_id;
+    const matchesCurrentPayment = Boolean(
+      payment?.id &&
+        currentSub.asaas_payment_id &&
+        payment.id === currentSub.asaas_payment_id,
+    );
     const matchesCurrentSubscription = Boolean(
       payment?.subscription &&
         currentSub.asaas_subscription_id &&

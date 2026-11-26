@@ -1,5 +1,6 @@
+import { QrCodeCanvas } from "@/components/ui/qr-code-canvas";
 import { ArrowLeft, Check, Clock, Copy, CreditCard, Loader2, QrCode, Zap } from "lucide-react";
-import { Button, MoneyText, QrCodeCanvas } from "@/components/ui";
+import { Button, MoneyText } from "@/components/ui";
 import type { PixCheckoutResult } from "@/state";
 
 export interface PixQrWaitingPanelProps {

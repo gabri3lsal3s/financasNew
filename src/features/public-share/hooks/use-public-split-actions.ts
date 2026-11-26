@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
+import { reportError } from "@/services/observability";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import { useSaveSplitExpense, useSignalSplitPayment } from "@/state";
@@ -118,7 +119,7 @@ export function usePublicSplitActions({
               ...(targetInstIds.length > 0 ? { installmentIds: targetInstIds } : {}),
             });
           } catch (signalErr) {
-            console.warn("Não foi possível sinalizar o pagamento:", signalErr);
+            reportError(signalErr, { source: "usePublicSplitActions.signalSplitPayment" });
           }
         }
         triggerSensory("success");

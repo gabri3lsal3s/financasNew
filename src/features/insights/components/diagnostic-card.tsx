@@ -42,7 +42,7 @@ export function DiagnosticCard({ icon, label, value, subtitle, tone, badge, brea
           {value}
         </span>
         {subtitle ? (
-          <span className="text-[11px] text-muted-foreground line-clamp-1 break-words">{subtitle}</span>
+          <span className="text-[11px] text-muted-foreground line-clamp-2 break-words">{subtitle}</span>
         ) : null}
       </div>
     </div>

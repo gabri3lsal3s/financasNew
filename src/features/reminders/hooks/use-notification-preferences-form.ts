@@ -6,7 +6,6 @@ import {
   type QuietHoursConfig,
 } from "@/domain/notifications/schedule";
 import { resolveNotificationCategoryPreferences } from "@/domain/notifications/hub";
-import { getOptionalHook } from "@/hooks/use-notification-center";
 import * as nativeServices from "@/services/native";
 import {
   dispatchRemoteTestPush,
@@ -21,30 +20,17 @@ import {
   unsubscribeBrowserWebPush,
 } from "@/services/push";
 import { pushToast } from "@/services/toast";
-import * as state from "@/state";
-import type {
-  NotificationCategoryPreferences,
-  UserCustomSettings,
-} from "@/types";
-
-interface ReminderPreferencesPatch {
-  remindersEnabled?: boolean;
-  reminderDaysBeforeDebt?: number;
-  reminderDaysBeforeBill?: number;
-  weeklyDigestEnabled?: boolean;
-}
-
-interface WebPushSubscriptionInput {
-  endpoint: string;
-  p256dh: string;
-  auth: string;
-  userAgent?: string | null;
-}
-
-interface FcmTokenRegistrationInput {
-  fcmToken: string;
-  deviceLabel?: string | null;
-}
+import {
+  useDisableFcmToken,
+  useDisableWebPushSubscription,
+  useEnableWebPushSubscription,
+  useRegisterFcmToken,
+  useUpdateCustomSettings,
+  useUpdateReminderPreferences,
+  useUserAccess,
+  useUserPreferences,
+} from "@/state";
+import type { NotificationCategoryPreferences } from "@/types";
 
 function callOptionalNative<TResult>(
   key: string,
@@ -61,104 +47,14 @@ function callOptionalNative<TResult>(
 }
 
 export function useNotificationPreferencesForm() {
-  const useUserAccessSafe = getOptionalHook<{
-    hasFeature: (key: string) => boolean;
-  }>(state, "useUserAccess", () => ({
-    hasFeature: () => true,
-  }));
-  const useUserPreferencesSafe = getOptionalHook(state, "useUserPreferences", () => ({
-    data: null as {
-      reminders_enabled?: boolean;
-      reminder_days_before_bill?: number;
-      reminder_days_before_debt?: number;
-      weekly_digest_enabled?: boolean;
-      custom_settings?: {
-        deviceNotifications?: {
-          dueNotificationsEnabled?: boolean;
-          dailyReminderEnabled?: boolean;
-          dailyReminderTime?: string;
-          remotePushEnabled?: boolean;
-          quietHours?: Partial<QuietHoursConfig>;
-        };
-        notificationCategories?: NotificationCategoryPreferences;
-      };
-    } | null,
-  }));
-  const useUpdateReminderPreferencesSafe = getOptionalHook<{
-    mutate: (input: ReminderPreferencesPatch) => void;
-    isPending: boolean;
-  }>(
-    state,
-    "useUpdateReminderPreferences",
-    () => ({
-      mutate: () => {},
-      isPending: false,
-    }),
-  );
-  const useUpdateCustomSettingsSafe = getOptionalHook<{
-    mutate: (input: Partial<UserCustomSettings>) => void;
-    isPending: boolean;
-  }>(
-    state,
-    "useUpdateCustomSettings",
-    () => ({
-      mutate: () => {},
-      isPending: false,
-    }),
-  );
-  const useEnableWebPushMutationSafe = getOptionalHook<{
-    mutateAsync: (input: WebPushSubscriptionInput) => Promise<unknown>;
-    isPending: boolean;
-  }>(
-    state,
-    "useEnableWebPushSubscription",
-    () => ({
-      mutateAsync: async () => undefined,
-      isPending: false,
-    }),
-  );
-  const useDisableWebPushMutationSafe = getOptionalHook<{
-    mutateAsync: (endpoint?: string | null) => Promise<unknown>;
-    isPending: boolean;
-  }>(
-    state,
-    "useDisableWebPushSubscription",
-    () => ({
-      mutateAsync: async () => undefined,
-      isPending: false,
-    }),
-  );
-  const useRegisterFcmTokenSafe = getOptionalHook<{
-    mutateAsync: (input: FcmTokenRegistrationInput) => Promise<unknown>;
-    isPending: boolean;
-  }>(
-    state,
-    "useRegisterFcmToken",
-    () => ({
-      mutateAsync: async () => undefined,
-      isPending: false,
-    }),
-  );
-  const useDisableFcmTokenSafe = getOptionalHook<{
-    mutateAsync: (fcmToken?: string | null) => Promise<unknown>;
-    isPending: boolean;
-  }>(
-    state,
-    "useDisableFcmToken",
-    () => ({
-      mutateAsync: async () => undefined,
-      isPending: false,
-    }),
-  );
-
-  const { hasFeature } = useUserAccessSafe();
-  const preferencesQuery = useUserPreferencesSafe();
-  const updateReminderPreferencesMutation = useUpdateReminderPreferencesSafe();
-  const updateCustomSettingsMutation = useUpdateCustomSettingsSafe();
-  const enableWebPushMutation = useEnableWebPushMutationSafe();
-  const disableWebPushMutation = useDisableWebPushMutationSafe();
-  const registerFcmTokenMutation = useRegisterFcmTokenSafe();
-  const disableFcmTokenMutation = useDisableFcmTokenSafe();
+  const { hasFeature } = useUserAccess();
+  const preferencesQuery = useUserPreferences();
+  const updateReminderPreferencesMutation = useUpdateReminderPreferences();
+  const updateCustomSettingsMutation = useUpdateCustomSettings();
+  const enableWebPushMutation = useEnableWebPushSubscription();
+  const disableWebPushMutation = useDisableWebPushSubscription();
+  const registerFcmTokenMutation = useRegisterFcmToken();
+  const disableFcmTokenMutation = useDisableFcmToken();
 
   const permissionsStatus = nativeServices.usePermissionsStatus();
   const { postNotificationsGranted, requestPostNotifications } = permissionsStatus;

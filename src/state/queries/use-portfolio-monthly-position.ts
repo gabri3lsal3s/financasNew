@@ -87,7 +87,7 @@ export function usePortfolioMonthlyPosition(
     Record<string, Record<string, number>>
   >({});
   const [isFetchingApiQuotes, setIsFetchingApiQuotes] = useState(false);
-  const attemptedKeysRef = useRef<Set<string>>(new Set());
+  const attemptedKeysRef = useRef<Map<string, AbortController>>(new Map());
 
   const monthApiQuotes = useMemo(
     () => apiQuotesByMonth[month] ?? {},
@@ -161,27 +161,28 @@ export function usePortfolioMonthlyPosition(
 
     if (missingTickers.length === 0) return;
 
+    const abortController = new AbortController();
     const batchKeys = missingTickers.map((ticker) => `${month}:${ticker}`);
     for (const cacheKey of batchKeys) {
-      attemptedKeysRef.current.add(cacheKey);
+      attemptedKeysRef.current.set(cacheKey, abortController);
     }
 
     let isMounted = true;
     queueMicrotask(() => {
-      if (isMounted) setIsFetchingApiQuotes(true);
+      if (isMounted && !abortController.signal.aborted) setIsFetchingApiQuotes(true);
     });
 
-    // Safety timeout: descongela a UI em no máximo 3.5s caso a API externa/rede demore
+    // Safety timeout: descongela a UI e aborta transporte em no máximo 3.5s caso a API externa/rede demore
     const safetyTimer = setTimeout(() => {
       if (isMounted) setIsFetchingApiQuotes(false);
     }, 3500);
 
-    fetchHistoricalMonthlyQuotes(missingTickers, month)
+    fetchHistoricalMonthlyQuotes(missingTickers, month, {
+      existingHistoryRows: marketHistoryQuery.data ?? [],
+      signal: abortController.signal,
+    })
       .then((quotes) => {
-        if (!isMounted) {
-          for (const cacheKey of batchKeys) {
-            attemptedKeysRef.current.delete(cacheKey);
-          }
+        if (!isMounted || abortController.signal.aborted) {
           return;
         }
         if (quotes.length > 0) {
@@ -204,8 +205,11 @@ export function usePortfolioMonthlyPosition(
         }
       })
       .catch(() => {
+        const attemptedKeys = attemptedKeysRef.current;
         for (const cacheKey of batchKeys) {
-          attemptedKeysRef.current.delete(cacheKey);
+          if (attemptedKeys.get(cacheKey) === abortController) {
+            attemptedKeys.delete(cacheKey);
+          }
         }
       })
       .finally(() => {
@@ -213,8 +217,15 @@ export function usePortfolioMonthlyPosition(
         if (isMounted) setIsFetchingApiQuotes(false);
       });
 
+    const attemptedKeys = attemptedKeysRef.current;
     return () => {
       isMounted = false;
+      abortController.abort();
+      for (const cacheKey of batchKeys) {
+        if (attemptedKeys.get(cacheKey) === abortController) {
+          attemptedKeys.delete(cacheKey);
+        }
+      }
       clearTimeout(safetyTimer);
     };
   }, [

@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { Calculator, RotateCcw } from "lucide-react";
 import {
   Alert,
   Button,
   ConfirmDialog,
+  ContentLoading,
   EmptyState,
   ErrorState,
   SkeletonChart,
@@ -20,7 +21,10 @@ import { CvmDisclaimerBanner } from "../components/aporte/cvm-disclaimer-banner"
 import { useAporteAllocator } from "../components/aporte/use-aporte-allocator";
 import { buildCurrentAllocationSummaries } from "../components/aporte/current-allocation-mapper";
 import { AssetScoreEvaluationDialog } from "../components/asset-score-evaluation-dialog";
-import { InvestmentWizard } from "../wizard";
+
+const InvestmentWizard = lazy(() =>
+  import("../wizard/investment-wizard").then((m) => ({ default: m.InvestmentWizard })),
+);
 
 /**
  * Calculadora de aporte (§F36) — simulação hierárquica unificada (Classe -> Setor -> Ativo).
@@ -87,10 +91,10 @@ export function AporteTab({
       {recentBatch ? (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 p-3 sm:p-3.5 text-xs text-foreground animate-fade-in shadow-xs">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="font-medium truncate">
+            <span className="font-medium break-words">
               Aporte recente executado ({recentBatch.itemsCount}{" "}
               {recentBatch.itemsCount === 1 ? "ativo" : "ativos"} · R${" "}
-              {recentBatch.totalAmount.toFixed(2)})
+              {recentBatch.totalAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
             </span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -241,14 +245,18 @@ export function AporteTab({
         onConfirm={() => void allocator.handleExecuteBatch()}
       />
 
-      <InvestmentWizard
-        open={allocator.wizardOpen}
-        onOpenChange={allocator.setWizardOpen}
-        initialAsset={allocator.wizardAsset}
-        initialQuantity={allocator.wizardQuantity}
-        initialTotalCents={allocator.wizardTotalCents}
-        onSuccess={allocator.refetchAll}
-      />
+      {allocator.wizardOpen ? (
+        <Suspense fallback={<ContentLoading />}>
+          <InvestmentWizard
+            open={allocator.wizardOpen}
+            onOpenChange={allocator.setWizardOpen}
+            initialAsset={allocator.wizardAsset}
+            initialQuantity={allocator.wizardQuantity}
+            initialTotalCents={allocator.wizardTotalCents}
+            onSuccess={allocator.refetchAll}
+          />
+        </Suspense>
+      ) : null}
 
       <AssetScoreEvaluationDialog
         open={Boolean(allocator.evaluationAsset)}

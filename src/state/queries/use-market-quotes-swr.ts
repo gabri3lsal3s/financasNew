@@ -281,7 +281,7 @@ export function useMarketQuotesSwr(
           let hadTransientBlock = false;
           for (const res of results) {
             totalUpdated += res.updated;
-            if (res.rateLimited || res.skippedByLock > 0 || (res.failed > 0 && res.quotes.length === 0)) {
+            if (res.rateLimited || res.skippedByLock > 0 || res.failed > 0) {
               hadTransientBlock = true;
             }
             for (const q of res.quotes) {

@@ -1,7 +1,9 @@
 export type Theme = "light" | "dark" | "oled";
 
-export const THEME_PREFERENCES = ["light", "dark", "oled", "system", "schedule"] as const;
-export type ThemePreference = (typeof THEME_PREFERENCES)[number];
+import { THEME_PREFERENCES, type ThemePreference } from "@/types/schema";
+
+export { THEME_PREFERENCES };
+export type { ThemePreference };
 
 export type DarkThemeVariant = "dark" | "oled";
 

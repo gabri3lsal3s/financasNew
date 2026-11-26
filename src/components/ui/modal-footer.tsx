@@ -1,6 +1,21 @@
-import { Children } from "react";
+import { Children, Fragment, isValidElement } from "react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+
+function countActionChildren(node: ReactNode): number {
+  let count = 0;
+  Children.forEach(node, (child) => {
+    if (child === null || child === undefined || typeof child === "boolean") {
+      return;
+    }
+    if (isValidElement(child) && child.type === Fragment) {
+      count += countActionChildren((child.props as { children?: ReactNode }).children);
+      return;
+    }
+    count += 1;
+  });
+  return count;
+}
 
 export interface ModalFooterProps {
   children?: ReactNode;
@@ -17,7 +32,7 @@ export function ModalFooter({
   borderless = false,
   destructiveAction,
 }: ModalFooterProps) {
-  const count = Children.count(children);
+  const count = countActionChildren(children);
   const actionsLayoutClass =
     count === 2
       ? "grid grid-cols-2 gap-2.5 sm:flex sm:flex-row sm:items-center sm:justify-end"

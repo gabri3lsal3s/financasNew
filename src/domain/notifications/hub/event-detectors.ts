@@ -1,5 +1,7 @@
 import { budgetLimitsByCategory, exceededCents, resolveEffectiveLimit, spentByCategoryMap } from "@/domain/budgets/index";
-import { buildCompetenceSummaries, invoiceDueDate, shiftMonth } from "@/domain/cards/index";
+import { buildCompetenceSummaries, invoiceClosingDate, invoiceDueDate } from "@/domain/cards/index";
+
+export { invoiceClosingDate };
 import { addDaysISO, todayISO } from "@/domain/debts/index";
 import { todaySaoPauloISO } from "@/domain/portfolio/dividend-suggester";
 import type { SuggestedDividendItem } from "@/domain/portfolio";
@@ -56,24 +58,7 @@ export interface DetectClosedCardBillsInput {
   lookbackDays?: number;
 }
 
-/**
- * Resolve a data civil (YYYY-MM-DD) de fechamento da fatura de uma competência.
- * Quando closingDay >= dueDay, o corte ocorre no mês anterior ao vencimento.
- */
-export function invoiceClosingDate(
-  competenceMonth: string,
-  closingDay: number,
-  dueDay: number,
-): string {
-  const closingMonth =
-    closingDay >= dueDay ? shiftMonth(competenceMonth, -1) : competenceMonth;
-  return invoiceDueDate(closingMonth, closingDay);
-}
-
-/**
- * Detecta faturas recentemente fechadas (opt-in `billClosing`) com saldo em aberto,
- * que ainda não atingiram a data de vencimento.
- */
+/** Detecta faturas recentemente fechadas (opt-in `billClosing`). */
 export function detectClosedCardBills(
   input: DetectClosedCardBillsInput,
 ): ClosedCardBillAlert[] {

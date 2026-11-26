@@ -1,5 +1,5 @@
 import { ArrowDownLeft, ArrowUpRight, Coins, Landmark, Plus } from "lucide-react";
-import { Button, ErrorState, Tabs } from "@/components/ui";
+import { Button, ErrorState, ResponsiveLabel, Tabs } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
 import { ReadOnlyBanner, UpgradeDialog } from "@/components/modules";
 import { buildCheckoutUrl } from "@/domain/subscription/plans";
@@ -29,19 +29,23 @@ export function DebtsPage() {
               variant="outline"
               size="sm"
               aria-label="Novo contrato"
+              title="Novo contrato"
+              className="max-sm:min-h-11 max-sm:min-w-11"
               onClick={state.handleOpenLoanForm}
             >
               <Coins aria-hidden="true" />
-              <span>Novo contrato</span>
+              <ResponsiveLabel short="Contrato" full="Novo contrato" iconOnlyBelow380 />
             </Button>
             <Button
               type="button"
               size="sm"
               aria-label="Nova dívida"
+              title="Nova dívida"
+              className="max-sm:min-h-11 max-sm:min-w-11"
               onClick={() => state.handleOpenDebtForm(null)}
             >
               <Plus aria-hidden="true" />
-              <span>Nova dívida</span>
+              <ResponsiveLabel short="Dívida" full="Nova dívida" iconOnlyBelow380 />
             </Button>
           </>
         }

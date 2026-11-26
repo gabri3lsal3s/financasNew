@@ -1,6 +1,7 @@
+import { QrCodeCanvas } from "@/components/ui/qr-code-canvas";
 import { CalendarClock, Copy, ExternalLink, RefreshCw, Save, ShieldCheck } from "lucide-react";
 import type { PixKeyProfileSuggestions } from "@/components/modules";
-import { Alert, Badge, Button, FormField, QrCodeCanvas, Switch, Textarea } from "@/components/ui";
+import { Alert, Badge, Button, FormField, Switch, Textarea } from "@/components/ui";
 import { decodePixBrCode, formatPixKeyTypeLabel, type PixKeyType } from "@/domain/pix";
 import { formatDateBR } from "@/lib/date";
 import { formatCentsAsBRL } from "@/services/masks";

@@ -157,7 +157,7 @@ describe("AppUpdateToast", () => {
       </Toaster>,
     );
 
-    const titles = screen.getAllByText("Nova versão disponível");
+    const titles = await screen.findAllByText("Nova versão disponível");
     expect(titles).toHaveLength(1);
     expect(screen.getByText(/A versão 3\.10\.0 já está disponível/)).toBeInTheDocument();
 

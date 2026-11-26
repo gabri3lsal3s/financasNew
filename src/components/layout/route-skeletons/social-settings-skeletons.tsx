@@ -114,3 +114,43 @@ export function SettingsSkeleton() {
     </div>
   );
 }
+
+/** Esqueleto de Negócio (Visão PJ): KPIs, caixa profissional e movimentações. */
+export function BusinessSkeleton() {
+  return (
+    <div aria-label="Carregando Negócio" className="flex flex-col gap-5 sm:gap-6 min-w-0 motion-reduce:animate-none">
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between pb-1">
+        <div className="space-y-1.5">
+          <Skeleton className="h-8 w-44 rounded-lg" />
+          <Skeleton className="h-4 w-64 rounded" />
+        </div>
+        <Skeleton className="h-9 w-full sm:w-40 rounded-lg" />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
+        <Skeleton className="h-24 rounded-2xl" />
+        <Skeleton className="h-24 rounded-2xl" />
+        <Skeleton className="h-24 rounded-2xl" />
+      </div>
+      <div className="rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs space-y-3">
+        <Skeleton className="h-5 w-48 rounded" />
+        <SkeletonList rows={4} />
+      </div>
+    </div>
+  );
+}
+
+/** Esqueleto de Assinatura / Checkout: Comparativo de planos e resumo de cobrança. */
+export function SubscriptionSkeleton() {
+  return (
+    <div aria-label="Carregando Assinatura" className="flex flex-col gap-5 sm:gap-6 min-w-0 motion-reduce:animate-none">
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-48 rounded-lg" />
+        <Skeleton className="h-4 w-72 rounded" />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+        <Skeleton className="h-64 rounded-2xl" />
+        <Skeleton className="h-64 rounded-2xl" />
+      </div>
+    </div>
+  );
+}

@@ -23,7 +23,7 @@ export function SplitChargeParticipants({
       <span className="text-xs font-semibold text-muted-foreground block">
         Divisão entre os participantes
       </span>
-      <div className="space-y-1.5 max-h-48 overflow-y-auto no-scrollbar">
+      <div className="space-y-1.5">
         {participants.map((item, idx) => {
           const isHost = Boolean(item.is_host);
           const isMe = Boolean(

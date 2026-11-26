@@ -1065,13 +1065,23 @@ export type UserDividendEvent = {
   is_manual: boolean;
   is_type_uncertain: boolean;
   settlement_origin?: "auto" | "manual" | "dedup" | null;
-  manual_review_required?: boolean;
+  manual_review_required: boolean;
   dismiss_reason?: PortfolioDividendDismissalReason | null;
   notes?: string | null;
-  revision?: number;
+  revision: number;
   created_at?: string;
   updated_at?: string;
 };
+
+export type UserDividendEventInsert = Omit<
+  DbInsert<UserDividendEvent>,
+  "manual_review_required" | "revision"
+> & {
+  manual_review_required?: boolean;
+  revision?: number;
+};
+
+export type UserDividendEventUpdate = DbUpdate<UserDividendEvent>;
 
 export type PortfolioDividendDismissalReason = "already_received" | "not_applicable" | "manual_ignore";
 
@@ -1105,6 +1115,7 @@ export type ApproveDividendsBatchResult = {
   total_cash: number;
   cash_asset_id: string | null;
   inserted_ids: string[];
+  already_settled_dividend_ids?: string[];
 };
 
 export type ConfirmDividendEventItem = {
@@ -1155,6 +1166,7 @@ export type ConfirmDividendEventsResult = {
   cash_asset_id: string | null;
   inserted_ids: string[];
   settled_event_ids: string[];
+  already_settled_dividend_ids?: string[];
 };
 
 export type MonthlyClosingPriceItem = {

@@ -73,6 +73,8 @@ export interface AuthState {
   mfaVerified?: boolean;
   /** Nível de garantia da autenticação (aal1, aal2 ou null sem sessão). */
   aalLevel?: "aal1" | "aal2" | null;
+  /** Erro ao verificar estado de MFA (fail-closed quando aal !== aal2). */
+  mfaError?: string | null;
   signIn: (email: string, password: string, captchaToken?: string) => Promise<void>;
   signUp: (email: string, password: string, name?: string, inviteCode?: string, captchaToken?: string, redirectPath?: string) => Promise<SignUpResult>;
   resetPassword: (email: string, captchaToken?: string) => Promise<void>;
@@ -91,7 +93,9 @@ let globalConfigError: string | null = null;
 let globalMfaRequired = false;
 let globalMfaVerified = false;
 let globalAalLevel: "aal1" | "aal2" | null = null;
+let globalMfaError: string | null = null;
 let isGlobalAuthInitialized = false;
+let authGeneration = 0;
 const authSubscribers = new Set<(state: AuthStateSnapshot) => void>();
 
 interface AuthStateSnapshot {
@@ -102,6 +106,7 @@ interface AuthStateSnapshot {
   mfaRequired: boolean;
   mfaVerified: boolean;
   aalLevel: "aal1" | "aal2" | null;
+  mfaError: string | null;
 }
 
 function updateGlobalAuthState(partial: Partial<AuthStateSnapshot>): void {
@@ -112,6 +117,7 @@ function updateGlobalAuthState(partial: Partial<AuthStateSnapshot>): void {
   if (partial.mfaRequired !== undefined) globalMfaRequired = partial.mfaRequired;
   if (partial.mfaVerified !== undefined) globalMfaVerified = partial.mfaVerified;
   if (partial.aalLevel !== undefined) globalAalLevel = partial.aalLevel;
+  if (partial.mfaError !== undefined) globalMfaError = partial.mfaError;
 
   const current: AuthStateSnapshot = {
     session: globalSession,
@@ -121,6 +127,7 @@ function updateGlobalAuthState(partial: Partial<AuthStateSnapshot>): void {
     mfaRequired: globalMfaRequired,
     mfaVerified: globalMfaVerified,
     aalLevel: globalAalLevel,
+    mfaError: globalMfaError,
   };
 
   authSubscribers.forEach((subscriber) => subscriber(current));
@@ -134,6 +141,7 @@ export function markMfaVerified(): void {
     mfaVerified: true,
     mfaRequired: false,
     aalLevel: "aal2",
+    mfaError: null,
   });
 }
 
@@ -145,6 +153,7 @@ export function resetGlobalMfaState(): void {
     mfaRequired: false,
     mfaVerified: false,
     aalLevel: null,
+    mfaError: null,
   });
 }
 
@@ -160,6 +169,7 @@ export function clearGlobalAuthSession(): void {
     mfaRequired: false,
     mfaVerified: false,
     aalLevel: null,
+    mfaError: null,
   });
 }
 
@@ -178,6 +188,25 @@ export async function refreshMfaState(): Promise<void> {
   }
 }
 
+function parseJwtAalBaseline(accessToken?: string): "aal1" | "aal2" | null {
+  if (!accessToken || typeof accessToken !== "string") return null;
+  const parts = accessToken.split(".");
+  if (parts.length < 2) return null;
+  try {
+    const normalized = (parts[1] ?? "").replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
+    const payload = JSON.parse(atob(padded)) as { aal?: unknown; amr?: Array<{ method?: string }> };
+    if (payload.aal === "aal2") return "aal2";
+    if (Array.isArray(payload.amr) && payload.amr.some((item) => item?.method === "totp")) {
+      return "aal2";
+    }
+    if (payload.aal === "aal1") return "aal1";
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 async function resolveMfaState(
   supabase: ReturnType<typeof getSupabase>,
   session: Session | null,
@@ -185,10 +214,14 @@ async function resolveMfaState(
   mfaRequired: boolean;
   mfaVerified: boolean;
   aalLevel: "aal1" | "aal2" | null;
+  mfaError: string | null;
 }> {
   if (!session) {
-    return { mfaRequired: false, mfaVerified: false, aalLevel: null };
+    return { mfaRequired: false, mfaVerified: false, aalLevel: null, mfaError: null };
   }
+
+  const jwtAal = parseJwtAalBaseline(session.access_token);
+
   try {
     const [aalResult, factorsResult] = await Promise.all([
       session.access_token
@@ -196,6 +229,18 @@ async function resolveMfaState(
         : supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
       supabase.auth.mfa.listFactors(),
     ]);
+
+    if (aalResult.error || factorsResult.error) {
+      if (jwtAal === "aal2") {
+        return { mfaRequired: false, mfaVerified: true, aalLevel: "aal2", mfaError: null };
+      }
+      return {
+        mfaRequired: false,
+        mfaVerified: false,
+        aalLevel: jwtAal ?? "aal1",
+        mfaError: "Não foi possível validar o segundo fator (MFA). Tente novamente.",
+      };
+    }
 
     const aalData = aalResult.data;
     const factorsData = factorsResult.data;
@@ -208,7 +253,7 @@ async function resolveMfaState(
       allFactors.some((f) => f.status === "verified")
     );
 
-    const currentLevel = (aalData?.currentLevel as "aal1" | "aal2") ?? "aal1";
+    const currentLevel = (aalData?.currentLevel as "aal1" | "aal2") ?? jwtAal ?? "aal1";
     const nextLevel = (aalData?.nextLevel as "aal1" | "aal2") ?? (hasVerifiedTotp ? "aal2" : "aal1");
 
     const isMfaSatisfied = currentLevel === "aal2";
@@ -218,11 +263,19 @@ async function resolveMfaState(
       mfaRequired: isMfaPending || (nextLevel === "aal2" && !isMfaSatisfied),
       mfaVerified: isMfaSatisfied,
       aalLevel: currentLevel,
+      mfaError: null,
     };
   } catch {
-    // Silencia em ambiente offline / mock
+    if (jwtAal === "aal2") {
+      return { mfaRequired: false, mfaVerified: true, aalLevel: "aal2", mfaError: null };
+    }
+    return {
+      mfaRequired: false,
+      mfaVerified: false,
+      aalLevel: jwtAal ?? "aal1",
+      mfaError: "Falha de comunicação ao verificar segundo fator (MFA).",
+    };
   }
-  return { mfaRequired: false, mfaVerified: false, aalLevel: "aal1" };
 }
 
 let globalAuthSubscription: { unsubscribe: () => void } | null = null;
@@ -239,17 +292,21 @@ function initGlobalAuth(): void {
   if (isGlobalAuthInitialized) return;
   isGlobalAuthInitialized = true;
 
+  const bootstrapGen = ++authGeneration;
   void supabase.auth
     .getSession()
     .then(async ({ data }) => {
+      if (bootstrapGen !== authGeneration) return;
       const session = data?.session ?? null;
       const user = session?.user ?? null;
       const uid = user?.id ?? null;
       if (uid) setActiveUserId(uid);
       const mfa = await resolveMfaState(supabase, session);
+      if (bootstrapGen !== authGeneration) return;
       updateGlobalAuthState({ session, user, loading: false, configError: null, ...mfa });
     })
     .catch((err) => {
+      if (bootstrapGen !== authGeneration) return;
       updateGlobalAuthState({
         session: null,
         user: null,
@@ -258,10 +315,12 @@ function initGlobalAuth(): void {
         mfaRequired: false,
         mfaVerified: false,
         aalLevel: null,
+        mfaError: null,
       });
     });
 
   const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const eventGen = ++authGeneration;
     const user = session?.user ?? null;
     const uid = user?.id ?? null;
     if (uid) {
@@ -270,6 +329,7 @@ function initGlobalAuth(): void {
       setActiveUserId(null);
     }
     const mfa = await resolveMfaState(supabase, session);
+    if (eventGen !== authGeneration) return;
     updateGlobalAuthState({ session, user, loading: false, configError: null, ...mfa });
   });
 
@@ -300,6 +360,7 @@ export function useAuth(): AuthState {
       mfaRequired: globalMfaRequired,
       mfaVerified: globalMfaVerified,
       aalLevel: globalAalLevel,
+      mfaError: globalMfaError,
     };
   });
 

@@ -10,7 +10,6 @@ import {
   FALLBACK_USD_RATE,
   getActiveCustodyPositions,
   type CanonicalFxMetadata,
-  type ProvisionedDividendsSummary,
   type TwrConsolidatedResult,
   type XIRRResult,
 } from "@/domain/portfolio";
@@ -20,10 +19,9 @@ import {
   resolveReportPositionRows,
   resolveReportTotals,
 } from "@/domain/portfolio/executive-report-builder";
-import { getOptionalHook } from "@/hooks/use-notification-center";
 import { currentMonth, formatMonthYear } from "@/lib/date";
-import * as state from "@/state";
 import {
+  useCorporateDividends,
   useDeletePortfolioSnapshot,
   usePortfolioAssets,
   usePortfolioMonthlyPosition,
@@ -93,10 +91,7 @@ export function PortfolioExecutiveReport({
   const assetsQuery = usePortfolioAssets();
   const snapshotsQuery = usePortfolioSnapshots();
   const monthlyPositionQuery = usePortfolioMonthlyPosition(selectedMonth);
-  const useCorporateDividendsSafe = getOptionalHook(state, "useCorporateDividends", () => ({
-    provisionedSummary: null as ProvisionedDividendsSummary | null,
-  }));
-  const corporateDividendsState = useCorporateDividendsSafe();
+  const corporateDividendsState = useCorporateDividends();
 
   const isCurrentSelected = selectedMonth === activeMonth;
   const reportRefresh = useExecutiveReportRefresh({

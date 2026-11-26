@@ -185,19 +185,16 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
       ? shouldShowOnboardingBanner(onboardingQuery.data, hasFeature, initialGoal)
       : false;
 
+  const hasMonthIncomesOrExpenses =
+    (incomesQuery.data?.length ?? 0) > 0 || (expensesQuery.data?.length ?? 0) > 0;
+
   const loading =
     incomesQuery.isLoading ||
     expensesQuery.isLoading ||
     userPreferencesQuery.isLoading ||
-    cardsQuery.isLoading ||
-    debtsQuery.isLoading ||
-    (onboardingQuery.isLoading && !onboardingQuery.data) ||
-    (isCurrentMonth && realCashData.isLoading);
+    (!hasMonthIncomesOrExpenses && onboardingQuery.isLoading && !onboardingQuery.data);
 
-  const error =
-    incomesQuery.error ??
-    expensesQuery.error ??
-    (isCurrentMonth ? realCashData.error : null);
+  const error = incomesQuery.error ?? expensesQuery.error ?? null;
 
   const hasCashHistory = Boolean(
     realCashData.cashBalance.inflowSinceCheckpointCents > 0 ||

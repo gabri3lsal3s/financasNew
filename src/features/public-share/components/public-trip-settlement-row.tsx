@@ -1,6 +1,7 @@
+import { QrCodeCanvas } from "@/components/ui/qr-code-canvas";
 import { Check, Copy, QrCode } from "lucide-react";
 import { PixTroubleshootAccordion } from "@/components/modules";
-import { Button, MoneyText, QrCodeCanvas } from "@/components/ui";
+import { Button, MoneyText } from "@/components/ui";
 import { DEFAULT_PIX_CITY, buildPixTransferCode, formatPixKeyTypeLabel } from "@/domain/pix";
 import { formatCentsAsBRL } from "@/services/masks/money";
 import type { PublicTripLedgerData, SuggestedSettlement } from "@/types/trips";

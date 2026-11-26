@@ -288,8 +288,8 @@ export function parseAmountToCents(
 
   const hasExplicitBrlMarker = /(?:R\$|\bBRL\b|\breais\b|\breal\b)/i.test(trimmed);
 
-  const hasCreditPrefix = /^\+\s*(?:R\$|BRL|\$)?/i.test(trimmed);
-  const hasDebitPrefix = /^-\s*(?:R\$|BRL|\$)?/i.test(trimmed);
+  const hasCreditPrefix = /^(?:\+\s*(?:R\$|BRL|\$)?|(?:R\$|BRL|\$)\s*\+)/i.test(trimmed);
+  const hasDebitPrefix = /^(?:-\s*(?:R\$|BRL|\$)?|(?:R\$|BRL|\$)\s*-)/i.test(trimmed);
   const hasDebitSuffix =
     /(?:^|\s|\d|\))(?:[dD]|\([dD]\)|-)$/.test(trimmed) && !/card|id|feed/i.test(trimmed);
   const hasCreditSuffix =
@@ -331,10 +331,15 @@ export function parseAmountToCents(
     };
   }
 
-  const clean = sanitized.replace(/[^\d,.-]/g, "");
+  const strippedParens = sanitized.replace(/^\((.+)\)$/, "$1").trim();
+  if (!/^[+-]?[\d\s.,]+$/.test(strippedParens)) {
+    return null;
+  }
+
+  const clean = strippedParens.replace(/\s+/g, "");
   if (!clean) return null;
 
-  let normalized = clean.replace(/[-()]/g, "");
+  let normalized = clean.replace(/^[+-]/, "");
 
   if (normalized.includes(",") && normalized.includes(".")) {
     const lastComma = normalized.lastIndexOf(",");
@@ -361,11 +366,12 @@ export function parseAmountToCents(
     }
   }
 
-  const parsed = Number.parseFloat(normalized);
-  if (Number.isNaN(parsed)) return null;
+  if (!/^\d+(?:\.\d+)?$/.test(normalized)) return null;
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed)) return null;
 
   const amountCents = Math.round(parsed * 100);
-  if (amountCents === 0) return null;
+  if (!Number.isSafeInteger(amountCents) || amountCents === 0) return null;
 
   return {
     amountCents: Math.abs(amountCents),

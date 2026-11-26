@@ -73,6 +73,38 @@ describe("data/repositories/cash-checkpoints", () => {
     expect(result?.balance_cents).toBe(300000);
   });
 
+  it("filtra checkpoints pela data de corte antes de selecionar o mais recente", async () => {
+    const cutoffDate = "2026-08-24";
+    const mockLimit = vi.fn().mockResolvedValue({
+      data: [{
+        id: "chk-cutoff",
+        user_id: "user-test-123",
+        date: cutoffDate,
+        balance_cents: 80000,
+        scope: "business",
+        created_at: "2026-08-24T18:00:00Z",
+      }],
+      error: null,
+    });
+    const mockOrderCreatedAt = vi.fn().mockReturnValue({ limit: mockLimit });
+    const mockOrderDate = vi.fn().mockReturnValue({ order: mockOrderCreatedAt });
+    const mockLte = vi.fn().mockReturnValue({ order: mockOrderDate });
+    const mockEq = vi.fn().mockReturnValue({ lte: mockLte });
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
+    vi.mocked(getSupabase).mockReturnValue({
+      from: vi.fn().mockReturnValue({ select: mockSelect }),
+    } as unknown as ReturnType<typeof getSupabase>);
+
+    const result = await getLatestCashCheckpoint("business", cutoffDate);
+
+    expect(mockEq).toHaveBeenCalledWith("scope", "business");
+    expect(mockLte).toHaveBeenCalledWith("date", cutoffDate);
+    expect(mockOrderDate).toHaveBeenCalledWith("date", { ascending: false });
+    expect(mockOrderCreatedAt).toHaveBeenCalledWith("created_at", { ascending: false });
+    expect(mockLimit).toHaveBeenCalledWith(1);
+    expect(result?.balance_cents).toBe(80000);
+  });
+
   it("createCashCheckpoint insere e retorna novo checkpoint", async () => {
     const mockCreated = {
       id: "chk-new",

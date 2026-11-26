@@ -1,7 +1,7 @@
 {
   "name": "axir",
   "private": true,
-  "version": "3.31.0",
+  "version": "3.32.0",
   "type": "module",
   "engines": {
     "node": ">=22.23.4 <23 || >=24.22.1 <25 || >=26.12.1"
@@ -32,7 +32,7 @@
     "db:reset": "supabase db reset",
     "db:push": "supabase db push",
     "db:types": "supabase gen types typescript --local > src/types/database.ts",
-    "deploy:functions": "npx supabase functions deploy asaas-checkout --no-verify-jwt --use-api && npx supabase functions deploy asaas-manage --no-verify-jwt --use-api && npx supabase functions deploy asaas-webhook --no-verify-jwt --use-api && npx supabase functions deploy support-notify --no-verify-jwt --use-api && npx supabase functions deploy quotes --no-verify-jwt --use-api && npx supabase functions deploy billing-lifecycle-cron --no-verify-jwt --use-api && npx supabase functions deploy push-dispatcher --no-verify-jwt --use-api && npx supabase functions deploy sunday-digest --no-verify-jwt --use-api && npx supabase functions deploy admin-super-action --no-verify-jwt --use-api && npx supabase functions deploy ai-financial-assistant --no-verify-jwt --use-api",
+    "deploy:functions": "npx supabase functions deploy asaas-checkout --no-verify-jwt --use-api && npx supabase functions deploy asaas-manage --no-verify-jwt --use-api && npx supabase functions deploy asaas-webhook --no-verify-jwt --use-api && npx supabase functions deploy support-notify --no-verify-jwt --use-api && npx supabase functions deploy quotes --no-verify-jwt --use-api && npx supabase functions deploy billing-lifecycle-cron --no-verify-jwt --use-api && npx supabase functions deploy push-dispatcher --no-verify-jwt --use-api && npx supabase functions deploy sunday-digest --no-verify-jwt --use-api && npx supabase functions deploy admin-super-action --no-verify-jwt --use-api && npx supabase functions deploy ai-financial-assistant --no-verify-jwt --use-api && npx supabase functions deploy resend-webhook --no-verify-jwt --use-api",
     "quotes:deploy": "node scripts/deploy-quotes.mjs deploy",
     "quotes:cron": "node scripts/deploy-quotes.mjs cron",
     "notifications:cron": "node scripts/notifications-cron.mjs",
@@ -47,7 +47,6 @@
   "dependencies": {
     "@aparajita/capacitor-biometric-auth": "^10.0.0",
     "@capacitor-community/privacy-screen": "^8.0.0",
-    "@capacitor/android": "^8.5.3",
     "@capacitor/app": "^8.1.2",
     "@capacitor/clipboard": "^8.0.1",
     "@capacitor/core": "^8.5.3",
@@ -82,6 +81,7 @@
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "^3.1154.0",
+    "@capacitor/android": "^8.5.3",
     "@capacitor/cli": "^8.5.3",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.65.0",

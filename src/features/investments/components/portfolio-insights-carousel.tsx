@@ -9,22 +9,21 @@ import { usePortfolioAlertDismissals } from "@/hooks/use-portfolio-alert-dismiss
 import { openDividendReviewModal } from "@/services/dividend-review-modal";
 import { formatPercent } from "@/services/masks/percent";
 import { pushToast } from "@/services/toast";
-import { getOptionalHook } from "@/hooks/use-notification-center";
-import * as stateHooks from "@/state";
 import {
   useAssetGovernanceInsights,
+  useConfirmUserDividendEvents,
   useCorporateDividends,
   useGroupTargets,
   usePortfolioAssets,
   usePortfolioPosition,
   useUpdatePortfolioAsset,
+  useUserPreferences,
 } from "@/state";
 import { isQueryPending } from "@/state/query-readiness";
 import type {
   ConfirmDividendEventItem,
   CorporateDividendType,
   PortfolioAsset,
-  UserPreferences,
 } from "@/types";
 import { AssetScoreEvaluationDialog } from "./asset-score-evaluation-dialog";
 import { buildAllocationInsightItems } from "./insights-carousel/build-allocation-insight-items";
@@ -47,23 +46,13 @@ export function PortfolioInsightsCarousel({ className }: PortfolioInsightsCarous
     isLoading: isDividendsLoading,
   } = useCorporateDividends();
 
-  const useConfirmEventsSafe = getOptionalHook(stateHooks, "useConfirmUserDividendEvents", () => ({
-    mutateAsync: (async () => undefined) as (payload: {
-      items: ConfirmDividendEventItem[];
-      sync_cash: boolean;
-    }) => Promise<unknown>,
-    isPending: false,
-  }));
-  const useUserPreferencesSafe = getOptionalHook(stateHooks, "useUserPreferences", () => ({
-    data: null as UserPreferences | null,
-  }));
 
   const gov = useAssetGovernanceInsights();
   const position = usePortfolioPosition();
   const assetsQuery = usePortfolioAssets();
   const classTargetsQuery = useGroupTargets("class");
-  const confirmMutation = useConfirmEventsSafe();
-  const userPreferencesQuery = useUserPreferencesSafe();
+  const confirmMutation = useConfirmUserDividendEvents();
+  const userPreferencesQuery = useUserPreferences();
   const updateAssetMutation = useUpdatePortfolioAsset();
   const { dismissAlert, isAlertDismissed, isLoading: isDismissalsLoading } =
     usePortfolioAlertDismissals();

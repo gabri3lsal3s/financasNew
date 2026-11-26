@@ -604,7 +604,8 @@ export function parseYahooChartDetailed(
   if (!Number.isFinite(priceNum) || priceNum <= 0) return null;
 
   const rawCurrency = metaRec.currency;
-  const currency: QuoteCurrency = rawCurrency === "USD" ? "USD" : "BRL";
+  if (rawCurrency !== "USD" && rawCurrency !== "BRL") return null;
+  const currency: QuoteCurrency = rawCurrency;
   const marketPriceAt = toIsoOrNull(metaRec.regularMarketTime);
   const prevRaw = metaRec.chartPreviousClose ?? metaRec.previousClose;
   const prevNum = typeof prevRaw === "number" ? prevRaw : Number(prevRaw);
@@ -996,14 +997,27 @@ function parseExplicitDividendTypeEdge(
   return null;
 }
 
+function isValidCivilIsoDate(iso: string): boolean {
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return false;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  const dt = new Date(Date.UTC(y, mo - 1, d));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d;
+}
+
 function normalizeIsoDateOrNull(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
   const trimmed = raw.trim();
   const clean = trimmed.slice(0, 10);
-  if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) return clean;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
+    return isValidCivilIsoDate(clean) ? clean : null;
+  }
   const brMatch = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
   if (brMatch) {
-    return `${brMatch[3]}-${brMatch[2]}-${brMatch[1]}`;
+    const iso = `${brMatch[3]}-${brMatch[2]}-${brMatch[1]}`;
+    return isValidCivilIsoDate(iso) ? iso : null;
   }
   return null;
 }

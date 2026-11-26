@@ -16,7 +16,7 @@ import {
   mergeAndFilterValidDismissals,
 } from "@/domain/insights/smart-advisor-rules";
 import { getActiveUserId, getUserStorageKey, subscribeActiveUserId } from "@/services/user-storage";
-import * as stateHooks from "@/state";
+import { useUpdateCustomSettings, useUserPreferences } from "@/state";
 
 let memoryDismissals: Record<string, number> = {};
 let memoryLastDismissedDay: string | null = null;
@@ -364,14 +364,8 @@ export function useSmartAdvisorCooldownController(params: {
  */
 export function useSmartAdvisorDismissals() {
   const storeDismissals = useSyncExternalStore(subscribe, getDismissalsSnapshot, () => ({}));
-  const userPreferencesQuery =
-    typeof stateHooks.useUserPreferences === "function"
-      ? stateHooks.useUserPreferences()
-      : undefined;
-  const updateCustomSettingsMutation =
-    typeof stateHooks.useUpdateCustomSettings === "function"
-      ? stateHooks.useUpdateCustomSettings()
-      : undefined;
+  const userPreferencesQuery = useUserPreferences();
+  const updateCustomSettingsMutation = useUpdateCustomSettings();
   const [nowMs] = useState(() => Date.now());
   const cloudDismissals = userPreferencesQuery?.data?.custom_settings?.advisorDismissals;
 

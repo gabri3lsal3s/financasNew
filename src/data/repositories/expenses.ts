@@ -10,6 +10,9 @@ import type { DbUpdate, Expense } from "@/types";
  * PostgREST como string e são convertidos para number (contrato de domínio).
  */
 
+const EXPENSE_COLUMNS =
+  "id, user_id, value, date, category_id, payment_method, card_id, installments_total, installment_number, installment_group_id, bill_competence, report_weight, base_amount, description, charge_kind, recurrence_id, occurrence_number, statement_hash, imported_from_statement, is_family, family_id, trip_id, scope, rollover_id, is_internal_transfer, transfer_pair_id, transfer_kind, is_tax_deductible, created_at";
+
 function mapExpense(row: Expense): Expense {
   return {
     ...row,
@@ -23,20 +26,30 @@ function mapExpense(row: Expense): Expense {
   };
 }
 
-export async function listExpensesByMonth(month: string): Promise<Expense[]> {
+export async function listExpensesByMonth(
+  month: string,
+  options?: { signal?: AbortSignal },
+): Promise<Expense[]> {
+  if (options?.signal?.aborted) {
+    throw new DOMException("The user aborted a request.", "AbortError");
+  }
   // Fase 32 — recorrência formal: materializa as ocorrências do mês antes de
   // listar (idempotente; sob demanda, ver repositories/recurrences).
   await materializeRecurrencesForMonth(month, "expense");
+  options?.signal?.throwIfAborted();
   const range = monthRange(month);
   const data = await readAllPages<Expense>((afterId, pageSize) => {
     let page = getSupabase()
       .from("expenses")
-      .select("*")
+      .select(EXPENSE_COLUMNS)
       .gte("date", range.start)
-      .lt("date", range.end).order("id", { ascending: true }).limit(pageSize);
+      .lt("date", range.end)
+      .order("id", { ascending: true })
+      .limit(pageSize);
+    if (options?.signal) page = page.abortSignal(options.signal);
     if (afterId) page = page.gt("id", afterId);
     return resolveQuery<Expense[]>(page);
-  }, undefined);
+  }, options?.signal);
   return data.map(mapExpense).sort((left, right) => right.date.localeCompare(left.date) || right.created_at.localeCompare(left.created_at) || left.id.localeCompare(right.id));
 }
 
@@ -57,7 +70,7 @@ export async function listExpensesByRange(
   const createQuery = () => {
   let query = getSupabase()
     .from("expenses")
-    .select("*")
+    .select(EXPENSE_COLUMNS)
     .gte("date", start)
     .lt("date", end);
 
@@ -79,7 +92,7 @@ export async function listExpensesByRange(
 /** Todas as despesas do usuário (busca global §3.9). */
 export async function listAllExpenses(): Promise<Expense[]> {
   const data = await readAllPages<Expense>((afterId, pageSize) => {
-    let page = getSupabase().from("expenses").select("*").order("id", { ascending: true }).limit(pageSize);
+    let page = getSupabase().from("expenses").select(EXPENSE_COLUMNS).order("id", { ascending: true }).limit(pageSize);
     if (afterId) page = page.gt("id", afterId);
     return resolveQuery<Expense[]>(page);
   }, undefined);
@@ -103,7 +116,7 @@ export async function listExpensesByCard(cardId: string, options?: CardQueryOpti
   const createQuery = () => {
   let query = getSupabase()
     .from("expenses")
-    .select("*")
+    .select(EXPENSE_COLUMNS)
     .eq("card_id", cardId);
 
   const resolvedSinceMonth =
@@ -132,7 +145,7 @@ export async function listAllCardExpenses(options?: CardQueryOptions): Promise<E
   const createQuery = () => {
   let query = getSupabase()
     .from("expenses")
-    .select("*")
+    .select(EXPENSE_COLUMNS)
     .not("card_id", "is", null);
 
   const resolvedSinceMonth =
@@ -158,7 +171,7 @@ export async function listAllCardExpenses(options?: CardQueryOptions): Promise<E
 
 /** Despesa por id (usado no detalhe). */
 export async function getExpense(id: string): Promise<Expense | null> {
-  const { data, error } = await resolveQuery<Expense | null>(getSupabase().from("expenses").select("*").eq("id", id).maybeSingle());
+  const { data, error } = await resolveQuery<Expense | null>(getSupabase().from("expenses").select(EXPENSE_COLUMNS).eq("id", id).maybeSingle());
   if (error) {
     const classified = classifyError(error);
     throw new AppError(classified.kind, classified.message, error);
@@ -189,11 +202,33 @@ export async function listExpensesByInstallmentGroup(groupId: string): Promise<E
   const data = await readAllPages<Expense>((afterId, pageSize) => {
     let page = getSupabase()
       .from("expenses")
-      .select("*")
+      .select(EXPENSE_COLUMNS)
       .eq("installment_group_id", groupId).order("id", { ascending: true }).limit(pageSize);
     if (afterId) page = page.gt("id", afterId);
     return resolveQuery<Expense[]>(page);
   }, undefined);
   return data.map(mapExpense).sort((left, right) => left.date.localeCompare(right.date) || left.id.localeCompare(right.id));
+}
+
+/** Fallback para despesas parceladas legadas sem installment_group_id preenchido. */
+export async function listLegacyCardInstallmentSiblings(
+  cardId: string,
+  description: string,
+  installmentsTotal: number,
+): Promise<Expense[]> {
+  const { data, error } = await resolveQuery<Expense[]>(
+    getSupabase()
+      .from("expenses")
+      .select(EXPENSE_COLUMNS)
+      .eq("card_id", cardId)
+      .eq("description", description)
+      .eq("installments_total", installmentsTotal)
+      .order("installment_number", { ascending: true }),
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  return (data ?? []).map(mapExpense);
 }
 

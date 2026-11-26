@@ -96,6 +96,8 @@ describe("Skeleton por contexto (F12 — polimento)", () => {
       { path: "/insights", label: "Carregando Insights" },
       { path: "/lembretes", label: "Carregando Lembretes" },
       { path: "/investimentos", label: "Carregando Investimentos" },
+      { path: "/assinatura", label: "Carregando Assinatura" },
+      { path: "/negocio", label: "Carregando Negócio" },
     ];
 
     for (const entry of routeExpectations) {

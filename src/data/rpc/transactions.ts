@@ -508,6 +508,9 @@ export interface CommitStatementRefundInput {
 export interface CommitStatementReconciliationParams {
   cardId: string;
   competenceMonth: string;
+  importId?: string;
+  chunkIndex?: number;
+  planHash?: string;
   expenses?: readonly CommitStatementExpenseInput[];
   linkAdjustments?: readonly CommitStatementLinkAdjustmentInput[];
   competenceMoves?: readonly CommitStatementCompetenceMoveInput[];
@@ -517,12 +520,47 @@ export interface CommitStatementReconciliationParams {
 
 export type { CommitStatementReconciliationResult };
 
+export async function getStatementReconciliationReceipts(params: {
+  importId: string;
+  cardId: string;
+  competenceMonth: string;
+  planHash?: string;
+}): Promise<Array<{ chunk_index: number; result: CommitStatementReconciliationResult }>> {
+  const rows = await unwrapRpc(
+    callRpc("get_statement_reconciliation_receipts", {
+      p_import_id: params.importId,
+      p_card_id: params.cardId,
+      p_competence_month: params.competenceMonth,
+      p_plan_hash: params.planHash ?? "",
+    }),
+    true,
+  );
+  return Array.isArray(rows) ? rows : [];
+}
+
 /**
  * Executa a conciliação atômica de fatura de cartão em transação única PostgreSQL (Onda 1 / G11).
+ * Quando `importId` e `chunkIndex` são informados, garante idempotência por lote no servidor (T3.5).
  */
 export async function commitStatementReconciliation(
   params: CommitStatementReconciliationParams,
 ): Promise<CommitStatementReconciliationResult> {
+  if (params.importId && params.chunkIndex !== undefined) {
+    return unwrapRpc(
+      callRpc("commit_statement_reconciliation_batch", {
+        p_import_id: params.importId,
+        p_chunk_index: params.chunkIndex,
+        p_card_id: params.cardId,
+        p_competence_month: params.competenceMonth,
+        p_expenses: params.expenses ? [...params.expenses] : [],
+        p_link_adjustments: params.linkAdjustments ? [...params.linkAdjustments] : [],
+        p_competence_moves: params.competenceMoves ? [...params.competenceMoves] : [],
+        p_refunds: params.refunds ? [...params.refunds] : [],
+        p_delete_expense_ids: params.deleteExpenseIds ? [...params.deleteExpenseIds] : [],
+        p_plan_hash: params.planHash ?? "",
+      }),
+    );
+  }
   return unwrapRpc(
     callRpc("commit_statement_reconciliation", {
       p_card_id: params.cardId,

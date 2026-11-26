@@ -159,7 +159,7 @@ describe("filterPeriodRedemptions — Resgates e Vendas no Período com Deduçã
     });
   });
 
-  it("aplica alíquota regressiva de 15,0% para título com rentabilidade >= 25% mesmo com cadastro recente (Gate v6.2)", () => {
+  it("não infere prazo longo pela rentabilidade quando não há data de aplicação explícita (T1.8 / I10)", () => {
     const rfAssets = [
       {
         id: "asset-selic-31",
@@ -205,11 +205,10 @@ describe("filterPeriodRedemptions — Resgates e Vendas no Período com Deduçã
     expect(item.ticker).toBe("TESOURO-SELIC-31");
     expect(item.grossRedeemedValueBRL).toBe(1009.51);
     expect(item.appliedCostBRL).toBe(763.91);
-    // Lucro bruto: 1009.51 - 763.91 = 245.60 (+32,15% > 25%)
-    // Alíquota DEVE ser 15,0% (IR = R$ 36,84) e NUNCA 22,5% (IR = R$ 55,26)
-    expect(item.taxRatePct).toBe(15.0);
-    expect(item.taxAmountBRL).toBe(36.84);
-    expect(item.redeemedValueBRL).toBe(972.67);
-    expect(item.realizedPnlBRL).toBe(208.76);
+    // Sem data de aplicação, o relatório mantém a alíquota indeterminada.
+    expect(item.taxRatePct).toBeNull();
+    expect(item.taxAmountBRL).toBe(0);
+    expect(item.redeemedValueBRL).toBe(1009.51);
+    expect(item.realizedPnlBRL).toBe(245.6);
   });
 });

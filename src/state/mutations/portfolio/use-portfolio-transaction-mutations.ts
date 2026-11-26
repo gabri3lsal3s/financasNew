@@ -6,7 +6,11 @@ import {
   updatePortfolioAsset,
   updatePortfolioTransaction,
 } from "@/data/repositories/portfolio";
-import { deletePortfolioTransactionAtomic } from "@/data/rpc";
+import {
+  deletePortfolioTransactionAtomic,
+  importPortfolioAtomicRpc,
+  savePocketCostMilestoneAtomicRpc,
+} from "@/data/rpc";
 import { calculateReconciledAssetPosition } from "@/domain/portfolio/operations";
 import {
   getAssetPricingMode,
@@ -81,6 +85,26 @@ export function useCreatePortfolioTransactionsBatch() {
         variant: "destructive",
       });
       triggerSensory("destructive");
+    },
+  });
+}
+
+export function useImportPortfolioAtomic() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: importPortfolioAtomicRpc,
+    onSuccess: () => {
+      void invalidatePortfolioSuite(queryClient);
+    },
+  });
+}
+
+export function useSavePocketCostMilestoneAtomic() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: savePocketCostMilestoneAtomicRpc,
+    onSuccess: () => {
+      void invalidatePortfolioSuite(queryClient);
     },
   });
 }

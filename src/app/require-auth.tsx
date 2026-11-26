@@ -3,17 +3,15 @@ import { Suspense, lazy, useEffect, useRef } from "react";
 import { Navigate, Outlet, useLocation, useNavigate } from "react-router";
 import { LoadingScreen } from "@/components/layout/loading-screen";
 import { AuthenticatedProviders } from "@/app/authenticated-providers";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth, refreshMfaState } from "@/hooks/use-auth";
 import { useDeviceSessionSync } from "@/hooks/use-device-session-sync";
 import { useIdleSessionTimeout } from "@/hooks/use-idle-session-timeout";
 import { useMinimumLoading } from "@/hooks/use-minimum-loading";
-import { getOptionalHook } from "@/hooks/use-notification-center";
 import { useRoutePrefetch } from "@/hooks/use-route-prefetch";
 import { usePendingSplitExpense } from "@/hooks/use-pending-split-expense";
 import { usePendingSimulation } from "@/hooks/use-pending-simulation";
-import * as state from "@/state";
+import { useRegisterFcmToken } from "@/state";
 import { useUserAccess } from "@/state/queries/use-user-access";
-import { clearNativeBankMonitoring, initBankNotificationListener } from "@/services/native/bank-listener";
 import { getPendingRouteAfterUnlock, isAppLocked, setPendingRouteAfterUnlock, subscribeAppLock } from "@/services/native/app-lock";
 import { initDeepLinkListener } from "@/services/native/deep-links";
 import { initNotificationActionListener, isRemotePushEnabled } from "@/services/native/local-notifications";
@@ -39,14 +37,9 @@ const IdleSessionWarningModal = lazy(() =>
  */
 function NativeIntegrationsHandler() {
   const navigate = useNavigate();
-  const { hasFeature } = useUserAccess();
+  const { hasFeature, isLoading: accessLoading, error: accessError } = useUserAccess();
   const isBankListenerAllowed = hasFeature("bank_notification_listener");
-  const useRegisterFcmTokenSafe = getOptionalHook<{
-    mutate: (input: { fcmToken: string; deviceLabel?: string | null }) => void;
-  }>(state, "useRegisterFcmToken", () => ({
-    mutate: () => {},
-  }));
-  const { mutate: registerFcmToken } = useRegisterFcmTokenSafe();
+  const { mutate: registerFcmToken } = useRegisterFcmToken();
   const registerFcmTokenRef = useRef(registerFcmToken);
 
   useEffect(() => {
@@ -54,10 +47,12 @@ function NativeIntegrationsHandler() {
   }, [registerFcmToken]);
 
   useEffect(() => {
-    if (isNativePlatform() && !isBankListenerAllowed) {
-      void clearNativeBankMonitoring();
+    if (isNativePlatform() && !accessLoading && !accessError && !isBankListenerAllowed) {
+      void import("@/services/native/bank-listener").then(({ clearNativeBankMonitoring }) =>
+        clearNativeBankMonitoring(),
+      );
     }
-  }, [isBankListenerAllowed]);
+  }, [accessLoading, accessError, isBankListenerAllowed]);
 
   useEffect(() => {
     if (!isNativePlatform() || !isRemotePushEnabled() || getStoredFcmToken()) {
@@ -106,9 +101,15 @@ function NativeIntegrationsHandler() {
         }
       },
     });
-    const cleanupBankNotifications = isBankListenerAllowed
-      ? initBankNotificationListener(handleNativeNavigation)
-      : null;
+    let cancelled = false;
+    let cleanupBankNotifications: (() => Promise<void> | void) | null = null;
+    if (isBankListenerAllowed && isNativePlatform()) {
+      void import("@/services/native/bank-listener").then(({ initBankNotificationListener }) => {
+        if (!cancelled) {
+          cleanupBankNotifications = initBankNotificationListener(handleNativeNavigation);
+        }
+      });
+    }
 
     const cleanupAppLock = subscribeAppLock(() => {
       if (!isAppLocked()) {
@@ -121,6 +122,7 @@ function NativeIntegrationsHandler() {
     });
 
     return () => {
+      cancelled = true;
       void cleanupDeepLinks();
       void cleanupNotifications();
       void cleanupRemotePush();
@@ -142,7 +144,7 @@ function NativeIntegrationsHandler() {
  * nunca baixam/executam stores, prefetch de rotas ou sincronizações de conta.
  */
 export function RequireAuth({ children }: { children?: ReactNode }) {
-  const { session, loading: authLoading, configError, mfaRequired, mfaVerified } = useAuth();
+  const { session, loading: authLoading, configError, mfaRequired, mfaVerified, mfaError } = useAuth();
   const userAccess = useUserAccess(session?.user?.id);
   const location = useLocation();
   usePendingSplitExpense();
@@ -156,6 +158,23 @@ export function RequireAuth({ children }: { children?: ReactNode }) {
   const isDataLoading = authLoading || (hasUser && (userAccess.isLoading || isAccessPending));
 
   const { isShowing: isTransitioning, isClosing } = useMinimumLoading(isDataLoading, 650);
+
+  if (!authLoading && session?.user && mfaError) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center p-4">
+        <div className="max-w-md space-y-4 rounded-xl border border-critical/40 bg-surface p-6 text-center shadow-xs">
+          <p className="text-sm font-medium text-foreground">{mfaError}</p>
+          <button
+            type="button"
+            onClick={() => void refreshMfaState()}
+            className="inline-flex h-9 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!authLoading && session?.user && mfaRequired && !mfaVerified) {
     return <Navigate to="/entrar?desafio=totp" replace />;

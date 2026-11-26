@@ -57,7 +57,7 @@ describe("LandingFooter (Rodapé Oficial da Landing Page)", () => {
     await user.click(termsButton);
 
     expect(
-      screen.getByText("Termos de Serviço & Privacidade (LGPD)"),
+      await screen.findByText("Termos de Serviço & Privacidade (LGPD)", {}, { timeout: 5000 }),
     ).toBeInTheDocument();
 
     const closeButton = screen.getByRole("button", { name: /entendido/i });

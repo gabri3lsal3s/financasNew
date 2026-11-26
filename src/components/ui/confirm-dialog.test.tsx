@@ -93,4 +93,34 @@ describe("ConfirmDialog", () => {
 
     expect(screen.getByRole("dialog").className).toContain("z-floating-tools");
   });
+
+  it("bloqueia nova confirmação e fechamento durante a mutação", async () => {
+    const user = userEvent.setup();
+    const onConfirm = vi.fn();
+    const onOpenChange = vi.fn();
+
+    render(
+      <ConfirmDialog
+        open
+        title="Confirmar operação"
+        confirmPending
+        onConfirm={onConfirm}
+        onOpenChange={onOpenChange}
+      />,
+    );
+
+    const confirmButton = screen.getByRole("button", { name: "Carregando..." });
+    const cancelButton = screen.getByRole("button", { name: "Cancelar" });
+    expect(confirmButton).toBeDisabled();
+    expect(confirmButton).toHaveAttribute("aria-busy", "true");
+    expect(cancelButton).toBeDisabled();
+
+    await user.dblClick(confirmButton);
+    await user.click(cancelButton);
+    await user.click(screen.getByRole("button", { name: "Fechar" }));
+    await user.keyboard("{Escape}");
+
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
 });

@@ -9,6 +9,7 @@ vi.mock("@/data/client", () => ({
         error: null,
       }),
     },
+    rpc: () => Promise.resolve({ data: { valid: true }, error: null }),
     from: () => ({
       select: () => ({
         ilike: () => ({

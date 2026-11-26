@@ -128,7 +128,25 @@ export function inferAssetClassFromTicker(ticker: string): string | null {
 /**
  * Extrai data ISO de uma linha de texto.
  */
-export function extractDateFromText(text: string, defaultYear = new Date().getFullYear()): { dateStr: string; textWithoutDate: string } {
+function isValidCivilDateParts(year: number, month: number, day: number): boolean {
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return false;
+  if (year < 1900 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) return false;
+  const dt = new Date(Date.UTC(year, month - 1, day));
+  return dt.getUTCFullYear() === year && dt.getUTCMonth() === month - 1 && dt.getUTCDate() === day;
+}
+
+function excelSerialToIso(serial: number): string | null {
+  if (!Number.isFinite(serial) || serial < 25000 || serial > 70000) return null;
+  const wholeDays = Math.floor(serial);
+  const utcMs = Date.UTC(1899, 11, 30) + wholeDays * 86_400_000;
+  const dt = new Date(utcMs);
+  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}-${String(dt.getUTCDate()).padStart(2, "0")}`;
+}
+
+export function extractDateFromText(
+  text: string,
+  defaultYear = new Date().getFullYear(),
+): { dateStr: string; textWithoutDate: string } {
   const lower = text.toLowerCase();
 
   // Relativos
@@ -142,38 +160,68 @@ export function extractDateFromText(text: string, defaultYear = new Date().getFu
     return { dateStr: addDaysISO(todayISO(), -2), textWithoutDate: text.replace(/\banteontem\b/gi, " ").trim() };
   }
 
+  // Serial numérico do Excel (ex.: 46000)
+  const trimmedOnly = text.trim();
+  if (/^\d{5}(?:\.\d+)?$/.test(trimmedOnly)) {
+    const excelIso = excelSerialToIso(Number(trimmedOnly));
+    if (excelIso) {
+      return { dateStr: excelIso, textWithoutDate: "" };
+    }
+  }
+
   // DD/MM/YYYY
   const dmyMatch = /\b(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})\b/.exec(text);
   if (dmyMatch && dmyMatch[1] && dmyMatch[2] && dmyMatch[3]) {
-    const day = dmyMatch[1].padStart(2, "0");
-    const month = dmyMatch[2].padStart(2, "0");
-    return { dateStr: `${dmyMatch[3]}-${month}-${day}`, textWithoutDate: text.replace(dmyMatch[0], " ").trim() };
+    const dayNum = Number(dmyMatch[1]);
+    const monthNum = Number(dmyMatch[2]);
+    const yearNum = Number(dmyMatch[3]);
+    if (!isValidCivilDateParts(yearNum, monthNum, dayNum)) {
+      return { dateStr: "", textWithoutDate: text };
+    }
+    const day = String(dayNum).padStart(2, "0");
+    const month = String(monthNum).padStart(2, "0");
+    return { dateStr: `${yearNum}-${month}-${day}`, textWithoutDate: text.replace(dmyMatch[0], " ").trim() };
   }
 
   // YYYY-MM-DD
   const isoMatch = /\b(\d{4})[/-](\d{2})[/-](\d{2})\b/.exec(text);
   if (isoMatch && isoMatch[1] && isoMatch[2] && isoMatch[3]) {
+    const yearNum = Number(isoMatch[1]);
+    const monthNum = Number(isoMatch[2]);
+    const dayNum = Number(isoMatch[3]);
+    if (!isValidCivilDateParts(yearNum, monthNum, dayNum)) {
+      return { dateStr: "", textWithoutDate: text };
+    }
     return { dateStr: `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`, textWithoutDate: text.replace(isoMatch[0], " ").trim() };
   }
 
   // DD de [Mês] (de [Ano])?
   const namedMatch = /\b(\d{1,2})(?:º|o)?\s*(?:de\s+)?(janeiro|jan|fevereiro|fev|março|marco|mar|abril|abr|maio|mai|junho|jun|julho|jul|agosto|ago|setembro|set|outubro|out|novembro|nov|dezembro|dez)(?:\s*(?:de\s+)?(\d{4}))?\b/i.exec(lower);
   if (namedMatch && namedMatch[1] && namedMatch[2]) {
-    const day = namedMatch[1].padStart(2, "0");
-    const month = MONTH_NAME_TO_NUMBER[namedMatch[2].toLowerCase()] ?? "01";
-    const year = namedMatch[3] ?? defaultYear.toString();
-    return { dateStr: `${year}-${month}-${day}`, textWithoutDate: text.replace(new RegExp(namedMatch[0], "i"), " ").trim() };
+    const dayNum = Number(namedMatch[1]);
+    const monthStr = MONTH_NAME_TO_NUMBER[namedMatch[2].toLowerCase()] ?? "01";
+    const yearNum = Number(namedMatch[3] ?? defaultYear);
+    if (!isValidCivilDateParts(yearNum, Number(monthStr), dayNum)) {
+      return { dateStr: "", textWithoutDate: text };
+    }
+    const day = String(dayNum).padStart(2, "0");
+    return { dateStr: `${yearNum}-${monthStr}-${day}`, textWithoutDate: text.replace(new RegExp(namedMatch[0], "i"), " ").trim() };
   }
 
   // DD/MM (sem ano)
   const dmMatch = /\b(\d{1,2})[/.-](\d{1,2})\b/.exec(text);
   if (dmMatch && dmMatch[1] && dmMatch[2]) {
-    const day = dmMatch[1].padStart(2, "0");
-    const month = dmMatch[2].padStart(2, "0");
+    const dayNum = Number(dmMatch[1]);
+    const monthNum = Number(dmMatch[2]);
+    if (!isValidCivilDateParts(defaultYear, monthNum, dayNum)) {
+      return { dateStr: "", textWithoutDate: text };
+    }
+    const day = String(dayNum).padStart(2, "0");
+    const month = String(monthNum).padStart(2, "0");
     return { dateStr: `${defaultYear}-${month}-${day}`, textWithoutDate: text.replace(dmMatch[0], " ").trim() };
   }
 
-  return { dateStr: todayISO(), textWithoutDate: text };
+  return { dateStr: trimmedOnly ? "" : todayISO(), textWithoutDate: text };
 }
 
 /**
@@ -331,20 +379,41 @@ export function extractTickerFromText(text: string): { ticker: string; textWitho
 
 /**
  * Converte string de número (brasileiro ou internacional) para float.
+ * Rejeita cadeias com sufixos inválidos (ex.: `123XYZ`, `1,23,45`).
  */
 export function parseNumberClean(raw: string): number {
-  const clean = raw.trim().replace(/^R\$\s*/i, "").replace(/^\$\s*/, "").replace(/\s+/g, "").replace(/^[-+]/, "");
-  if (!clean || clean === "-") return 0;
+  const clean = raw
+    .trim()
+    .replace(/^(?:R\$|BRL|US\$|\$)\s*/i, "")
+    .replace(/\s+/g, "")
+    .replace(/^[-+]/, "");
+  if (!clean || clean === "-" || !/^[\d.,]+$/.test(clean)) return 0;
 
+  let normalized = clean;
   if (clean.includes(",") && clean.includes(".")) {
-    // 1.250,50 -> 1250.50
-    return parseFloat(clean.replace(/\./g, "").replace(",", "."));
+    const lastComma = clean.lastIndexOf(",");
+    const lastDot = clean.lastIndexOf(".");
+    if (lastComma > lastDot) {
+      // 1.250,50 -> 1250.50
+      normalized = clean.replace(/\./g, "").replace(",", ".");
+    } else {
+      // 1,234.56 -> 1234.56
+      normalized = clean.replace(/,/g, "");
+    }
+  } else if (clean.includes(",")) {
+    if (/^\d{1,3}(?:,\d{3}){2,}$/.test(clean)) {
+      normalized = clean.replace(/,/g, "");
+    } else {
+      // 45,90 -> 45.90
+      normalized = clean.replace(",", ".");
+    }
+  } else if (/^\d{1,3}(?:\.\d{3}){2,}$/.test(clean)) {
+    normalized = clean.replace(/\./g, "");
   }
-  if (clean.includes(",")) {
-    // 45,90 -> 45.90
-    return parseFloat(clean.replace(",", "."));
-  }
-  return parseFloat(clean);
+
+  if (!/^\d+(?:\.\d+)?$/.test(normalized)) return 0;
+  const num = Number(normalized);
+  return Number.isFinite(num) ? num : 0;
 }
 
 export interface ExtractedInvestmentValues {
@@ -593,9 +662,33 @@ export function detectPortfolioColumns(rawContent: string): { rows: RawPortfolio
     }
   }
 
+function splitCsvRowRfc4180(line: string, delimiter: string): string[] {
+  const cells: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i]!;
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (ch === delimiter && !inQuotes) {
+      cells.push(current.trim());
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  cells.push(current.trim());
+  return cells;
+}
+
   const rows: RawPortfolioRow[] = lines.map((line, index) => ({
     rowIndex: index,
-    cells: line.split(delimiter).map((c) => c.trim().replace(/^["']|["']$/g, "")),
+    cells: splitCsvRowRfc4180(line, delimiter),
     rawText: line,
   }));
 

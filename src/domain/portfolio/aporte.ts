@@ -2156,7 +2156,7 @@ export function getAporteSuggestions(opts: UnifiedAporteOptions): UnifiedAporteR
             const factor = 10 ** precision;
             suggestedQty = Math.floor((usableBudget / currentPrice) * factor) / factor;
           } else {
-            suggestedQty = Math.max(1, Math.floor(usableBudget / currentPrice));
+            suggestedQty = Math.floor(usableBudget / currentPrice);
           }
         }
 

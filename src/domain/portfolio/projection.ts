@@ -133,11 +133,14 @@ export function projectPatrimony(input: PatrimonyProjectionInput): PatrimonyProj
     totalInterestCents: number,
   ): PatrimonyProjectionYear => {
     const balanceCents = toBasis(nominalBalanceCents, year);
+    const effectiveContributedCents = basis === "real" ? toBasis(contributedCents, year) : contributedCents;
+    const effectiveInterestCents =
+      basis === "real" ? balanceCents - effectiveContributedCents : totalInterestCents;
     return {
       year,
       balanceCents,
-      contributedCents,
-      totalInterestCents,
+      contributedCents: effectiveContributedCents,
+      totalInterestCents: effectiveInterestCents,
       monthlyPassiveIncomeCents: Math.round(balanceCents * passiveMonthlyRate),
       targetProgressPct:
         independenceTargetCents && independenceTargetCents > 0

@@ -21,7 +21,12 @@ import type {
   SkippedAssetDiagnostic,
 } from "@/domain/portfolio";
 import { cn } from "@/lib/utils";
-import { formatCentsAsBRL } from "@/services/masks";
+import { formatCentsAsBRL, formatPercent, formatSignedPct } from "@/services/masks";
+
+const nefFormatter = new Intl.NumberFormat("pt-BR", {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
 
 export interface AporteCockpitCommandCardProps {
   aporteCents: number;
@@ -397,8 +402,8 @@ export function AporteCockpitCommandCard({
       <div className="flex flex-col gap-2.5 min-w-0 pt-3">
         {/* Cápsula de Síntese em Superfície Coesa */}
         <div className="rounded-xl border border-border/50 bg-surface-raised/40 p-2.5 sm:p-3 shadow-xs">
-          <div className="grid grid-cols-3 divide-x divide-border/50 text-center">
-            <div className="flex flex-col px-1 min-w-0">
+          <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border/50 text-center">
+            <div className="flex flex-col px-1 py-1 sm:py-0 min-w-0">
               <span className="text-[10px] font-medium text-muted-foreground truncate" title="Aporte informado">
                 <span className="hidden sm:inline">Aporte informado</span>
                 <span className="sm:hidden">Informado</span>
@@ -406,10 +411,10 @@ export function AporteCockpitCommandCard({
               <MoneyText
                 cents={totalPurchasingCents}
                 variant="value"
-                className="font-bold text-foreground text-xs sm:text-sm tabular-nums truncate mt-0.5"
+                className="font-bold text-foreground text-xs sm:text-sm tabular-nums mt-0.5"
               />
             </div>
-            <div className="flex flex-col px-1 min-w-0">
+            <div className="flex flex-col px-1 py-1 sm:py-0 min-w-0">
               <span
                 className="text-[10px] font-medium text-muted-foreground truncate"
                 title={
@@ -429,10 +434,10 @@ export function AporteCockpitCommandCard({
                 cents={numberToCents(effectiveTotalAllocated)}
                 tone="portfolio"
                 variant="value"
-                className="font-bold text-xs sm:text-sm tabular-nums truncate mt-0.5"
+                className="font-bold text-xs sm:text-sm tabular-nums mt-0.5"
               />
             </div>
-            <div className="flex flex-col px-1 min-w-0">
+            <div className="flex flex-col px-1 py-1 sm:py-0 min-w-0">
               <span className="text-[10px] font-medium text-muted-foreground truncate" title="Sobra para caixa">
                 <span className="hidden sm:inline">Sobra para caixa</span>
                 <span className="sm:hidden">Sobra Caixa</span>
@@ -440,7 +445,7 @@ export function AporteCockpitCommandCard({
               <MoneyText
                 cents={numberToCents(effectiveLeftover)}
                 variant="value"
-                className="font-bold text-foreground text-xs sm:text-sm tabular-nums truncate mt-0.5"
+                className="font-bold text-foreground text-xs sm:text-sm tabular-nums mt-0.5"
               />
             </div>
           </div>
@@ -459,12 +464,12 @@ export function AporteCockpitCommandCard({
                 <span className="font-semibold text-foreground font-mono tabular-nums">
                   {hasAporte && diversificationImpact.projectedNef !== null ? (
                     <>
-                      <span>{diversificationImpact.currentNef.toFixed(1)}</span>
+                      <span>{nefFormatter.format(diversificationImpact.currentNef)}</span>
                       <span className="mx-1 text-muted-foreground font-sans">{"->"}</span>
-                      <span>{diversificationImpact.projectedNef.toFixed(1)}</span>
+                      <span>{nefFormatter.format(diversificationImpact.projectedNef)}</span>
                     </>
                   ) : (
-                    diversificationImpact.currentNef.toFixed(1)
+                    nefFormatter.format(diversificationImpact.currentNef)
                   )}
                 </span>
                 {hasAporte &&
@@ -477,8 +482,7 @@ export function AporteCockpitCommandCard({
                       diversificationImpact.deltaNefPct > 0 ? "text-positive-strong" : "text-muted-foreground",
                     )}
                   >
-                    ({diversificationImpact.deltaNefPct > 0 ? "+" : ""}
-                    {diversificationImpact.deltaNefPct.toFixed(1)}%)
+                    ({formatSignedPct(diversificationImpact.deltaNefPct)})
                   </span>
                 ) : null}
               </div>
@@ -494,19 +498,17 @@ export function AporteCockpitCommandCard({
                 <span>Maior:</span>
                 <span className="font-semibold text-foreground font-mono tabular-nums">
                   {hasAporte && diversificationImpact.projectedTopAssetSharePct !== null
-                    ? `${diversificationImpact.projectedTopAssetSharePct.toFixed(1)}%`
-                    : `${diversificationImpact.currentTopAssetSharePct.toFixed(1)}%`}
+                    ? `${formatPercent(diversificationImpact.projectedTopAssetSharePct)}%`
+                    : `${formatPercent(diversificationImpact.currentTopAssetSharePct)}%`}
                 </span>
                 {hasAporte &&
                 diversificationImpact.projectedTopAssetSharePct !== null &&
                 diversificationImpact.currentTopAssetSharePct > diversificationImpact.projectedTopAssetSharePct ? (
                   <span className="text-positive-strong font-medium tabular-nums">
-                    (-
-                    {(
-                      diversificationImpact.currentTopAssetSharePct -
-                      diversificationImpact.projectedTopAssetSharePct
-                    ).toFixed(1)}
-                    %)
+                    ({formatSignedPct(
+                        diversificationImpact.projectedTopAssetSharePct -
+                        diversificationImpact.currentTopAssetSharePct,
+                      )})
                   </span>
                 ) : null}
               </div>

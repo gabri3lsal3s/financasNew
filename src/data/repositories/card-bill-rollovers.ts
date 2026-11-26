@@ -9,6 +9,7 @@ import {
 } from "@/data/rpc/cards";
 import { currentMonth, shiftMonth } from "@/lib/date";
 import { AppError, classifyError } from "@/services/errors";
+import { reportError } from "@/services/observability";
 import type { CardBillRollover } from "@/types";
 
 /**
@@ -78,7 +79,7 @@ export async function listCardBillRollovers(
   if (error) {
     if (isMissingRolloversTableError(error)) {
       if (import.meta.env.DEV) {
-        console.warn("[card_bill_rollovers] Tabela ausente no banco; aplique a migration 20260101000154.");
+        reportError(error, { source: "card_bill_rollovers", note: "Tabela ausente; aplique migration 20260101000154." });
       }
       return [];
     }
@@ -111,7 +112,7 @@ export async function listAllCardBillRollovers(
   if (error) {
     if (isMissingRolloversTableError(error)) {
       if (import.meta.env.DEV) {
-        console.warn("[card_bill_rollovers] Tabela ausente no banco; aplique a migration 20260101000154.");
+        reportError(error, { source: "card_bill_rollovers", note: "Tabela ausente; aplique migration 20260101000154." });
       }
       return [];
     }

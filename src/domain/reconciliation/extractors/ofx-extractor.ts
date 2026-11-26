@@ -65,7 +65,11 @@ export function extractOfxMetadata(ofxText: string): OfxStatementMetadata {
     const rawBal = extractFirstTagValue(ledgerBlockMatch[1], "BALAMT");
     const parsedBal = parseAmountToCents(rawBal, { preferDotDecimal: true });
     if (parsedBal && parsedBal.amountCents > 0) {
-      ledgerBalanceCents = parsedBal.amountCents;
+      const isCreditCardStatement = /<CCSTMTRS>/i.test(ofxText);
+      ledgerBalanceCents =
+        !isCreditCardStatement && parsedBal.isNegative
+          ? -parsedBal.amountCents
+          : parsedBal.amountCents;
     }
   }
 

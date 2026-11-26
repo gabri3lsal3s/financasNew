@@ -14,6 +14,7 @@ vi.mock("@/data/repositories/expenses", () => ({
   getExpense: vi.fn(),
   updateExpense: vi.fn(),
   listExpensesByInstallmentGroup: vi.fn(),
+  listLegacyCardInstallmentSiblings: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock("@/data/repositories/debts", () => ({
@@ -26,10 +27,6 @@ vi.mock("@/data/rpc", () => ({
   deleteExpenseInstallments: vi.fn(),
   settleIntegratedReceivable: vi.fn(),
   updateExpenseInstallmentsGroup: vi.fn(),
-}));
-
-vi.mock("@/data/client", () => ({
-  getSupabase: vi.fn(),
 }));
 
 describe("syncSplitExpenseReportWeights", () => {

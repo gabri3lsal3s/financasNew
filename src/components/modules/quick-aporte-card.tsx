@@ -5,6 +5,7 @@ import { ArrowRight, ChevronRight, ShieldCheck, Sparkles, TrendingUp } from "luc
 import { Button } from "@/components/ui/button";
 import { MoneyInput } from "@/components/ui/money-input";
 import { MoneyText } from "@/components/ui/money-text";
+import { ResponsiveLabel } from "@/components/ui/responsive-label";
 import type { CalculationBreakdown } from "@/domain/calculation-memory";
 import type { SurplusAllocationIntent } from "@/domain/overview";
 import { cn } from "@/lib/utils";
@@ -192,10 +193,11 @@ export function QuickAporteCard({
               variant="outline"
               size="default"
               aria-label="Calcular Rebalanceamento"
-              className="gap-1.5 shrink-0"
+              title="Calcular Rebalanceamento"
+              disabled={aporteCents <= 0}
+              className="gap-1.5 shrink-0 max-sm:min-h-11 max-sm:min-w-11"
             >
-              <span className="hidden sm:inline">Calcular Rebalanceamento</span>
-              <span className="sm:hidden">Calcular</span>
+              <ResponsiveLabel short="Calcular" full="Calcular Rebalanceamento" iconOnlyBelow380 />
               <ArrowRight className="size-4 shrink-0" aria-hidden="true" />
             </Button>
           </div>

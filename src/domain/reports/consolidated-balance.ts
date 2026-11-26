@@ -73,7 +73,7 @@ function divideSafe(numerator: number, denominator: number, fallback = 0): numbe
 export function computeConsolidatedBalanceSheet(input: ConsolidatedBalanceInput): ConsolidatedBalanceSheetResult {
   const totalInvestmentsBRL = Math.max(0, Number.isFinite(input.investmentsMarketValueBRL) ? input.investmentsMarketValueBRL : 0);
   const totalCostBRL = Math.max(0, Number.isFinite(input.investmentsTotalCostBRL) ? input.investmentsTotalCostBRL : 0);
-  const cashBalanceBRL = Math.max(0, Number.isFinite(input.cashBalanceBRL) ? input.cashBalanceBRL : 0);
+  const cashBalanceBRL = round2(Number.isFinite(input.cashBalanceBRL) ? input.cashBalanceBRL : 0);
 
   const unrealizedPnlBRL = round2(totalInvestmentsBRL - totalCostBRL);
   const unrealizedPnlPct = totalCostBRL > 0 ? round2((unrealizedPnlBRL / totalCostBRL) * 100) : 0;

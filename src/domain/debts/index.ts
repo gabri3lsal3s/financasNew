@@ -9,17 +9,11 @@
  */
 
 import { numberToCents } from "@/domain/money/parse";
+import { todayISO } from "@/lib/date";
+
+export { todayISO };
 
 export type DebtStatus = "paid" | "overdue" | "due_today" | "due_soon" | "pending";
-
-/** Hoje em ISO local (YYYY-MM-DD) — injetável nos testes. */
-export function todayISO(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
 
 /** Soma dias a uma data ISO (YYYY-MM-DD) preservando timezone local. */
 export function addDaysISO(iso: string, days: number): string {

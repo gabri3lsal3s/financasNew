@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { History } from "lucide-react";
-import { EmptyState, SkeletonTable } from "@/components/ui";
+import { Button, EmptyState, SkeletonTable } from "@/components/ui";
 import { MonthPicker } from "@/components/modules";
 import {
   resolveActivityItemAsset,
@@ -21,11 +22,19 @@ export interface PortfolioActivityPanelProps {
   defaultMonth?: string;
 }
 
+const ACTIVITY_PAGE_SIZE = 50;
+
 /**
  * Extrato Completo de Movimentações da Carteira.
  */
 export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelProps) {
   const vm = useActivityFiltersExport(defaultMonth);
+  const filterKey = `${vm.month}|${vm.search}|${vm.filterType}|${vm.selectedClass}|${vm.selectedSector}`;
+  const [pagination, setPagination] = useState({ key: filterKey, count: ACTIVITY_PAGE_SIZE });
+  const visibleCount = pagination.key === filterKey ? pagination.count : ACTIVITY_PAGE_SIZE;
+
+  const visibleActivities = vm.filteredActivities.slice(0, visibleCount);
+  const hasMoreActivities = vm.filteredActivities.length > visibleCount;
 
   const handleEditItem = (item: ActivityItem, asset: PortfolioAsset | null) => {
     if (item.type === "dividend") {
@@ -109,18 +118,40 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
             headingLevel="h3"
           />
         ) : (
-          <div className="flex flex-col divide-y divide-border/50 rounded-xl border border-border/80 overflow-hidden bg-surface shadow-xs">
-            {vm.filteredActivities.map((item) => (
-              <ActivityRowItem
-                key={item.id}
-                item={item}
-                itemAsset={resolveActivityItemAsset(item, vm.assetMap)}
-                onEdit={handleEditItem}
-                onRequestDelete={(target) =>
-                  vm.guardAction(() => vm.setItemToDelete(target), "Excluir Movimentação")
-                }
-              />
-            ))}
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col divide-y divide-border/50 rounded-xl border border-border/80 overflow-hidden bg-surface shadow-xs">
+              {visibleActivities.map((item) => (
+                <ActivityRowItem
+                  key={item.id}
+                  item={item}
+                  itemAsset={resolveActivityItemAsset(item, vm.assetMap)}
+                  onEdit={handleEditItem}
+                  onRequestDelete={(target) =>
+                    vm.guardAction(() => vm.setItemToDelete(target), "Excluir Movimentação")
+                  }
+                />
+              ))}
+            </div>
+            {hasMoreActivities ? (
+              <div className="flex items-center justify-between gap-3 px-1">
+                <span className="text-xs text-muted-foreground">
+                  Exibindo {visibleActivities.length} de {vm.filteredActivities.length} movimentações
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setPagination((prev) => ({
+                      key: filterKey,
+                      count: (prev.key === filterKey ? prev.count : ACTIVITY_PAGE_SIZE) + ACTIVITY_PAGE_SIZE,
+                    }))
+                  }
+                >
+                  Mostrar mais ({Math.min(ACTIVITY_PAGE_SIZE, vm.filteredActivities.length - visibleCount)})
+                </Button>
+              </div>
+            ) : null}
           </div>
         )}
       </div>

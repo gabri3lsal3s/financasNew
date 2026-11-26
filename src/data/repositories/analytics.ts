@@ -2,6 +2,7 @@ import { getSupabase } from "@/data/client";
 import { resolveQuery } from "@/data/query";
 import { currentUserId } from "@/data/session";
 import { AppError, classifyError } from "@/services/errors";
+import { reportError } from "@/services/observability";
 import type { AppAnalyticsEvent, FeatureUsageMetric } from "@/types";
 
 export interface LogAnalyticsEventInput {
@@ -39,7 +40,7 @@ export async function logAnalyticsBatch(
 
   if (error) {
     // Falha silenciosa para não quebrar a navegação do usuário
-    console.warn("[analytics] Falha ao enviar lote de eventos:", error.message);
+    reportError(error, { source: "analytics.logAnalyticsBatch", count: events.length });
   }
 }
 

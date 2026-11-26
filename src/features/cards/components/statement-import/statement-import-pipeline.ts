@@ -1,3 +1,4 @@
+import { decodeBufferToString } from "@/domain/reconciliation/extractors/csv-extractor";
 import {
   buildSpatialLinesFromRawLines,
   buildTransactionsFromRows,
@@ -360,15 +361,16 @@ export async function parseStatementWithPdfAiFallback(params: ParseStatementWith
     let usedLearnedBp = false;
 
     if (matchedSheetBp && learnedMapping) {
+      const bpConf = evaluateMappingConfidence({ rows: sheetRows, mapping: learnedMapping, isCacheHit: true });
       const bpTxs = buildTransactionsFromRows(
         sheetRows,
         learnedMapping,
         { cardId: params.cardId, competenceMonth: params.competenceMonth, closingDay },
         "spreadsheet",
       );
-      if (bpTxs.length > 0 && bpTxs.length >= sniffedTxs.length) {
+      if (bpTxs.length > 0 && bpConf >= sniffedConf) {
         finalMapping = learnedMapping;
-        finalConf = 100;
+        finalConf = bpConf;
         finalTxs = bpTxs;
         usedLearnedBp = true;
       }
@@ -422,7 +424,10 @@ export async function parseStatementWithPdfAiFallback(params: ParseStatementWith
   }
 
   const deterministic = parseStatementInput(params.content, params.fileNameOrType, { cardId: params.cardId, competenceMonth: params.competenceMonth, closingDay });
-  const textContent = typeof params.content === "string" ? params.content : new TextDecoder("utf-8", { fatal: false }).decode(params.content);
+  const textContent =
+    typeof params.content === "string"
+      ? params.content
+      : decodeBufferToString(params.content instanceof ArrayBuffer ? params.content : new Uint8Array(params.content).slice().buffer);
   const metadataRawText = params.rawFullText || textContent;
 
   if (deterministic.isOfx) {

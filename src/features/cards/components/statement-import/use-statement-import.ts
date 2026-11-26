@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getErrorMessage } from "@/services/errors";
+import { reportError } from "@/services/observability";
 import { getMerchantLearningMemory } from "@/services/merchant-learning";
 import { isLocalTabularBlueprintId, loadLocalTabularBlueprints, recordLocalTabularBlueprintOutcome } from "@/services/statement-tabular-blueprints";
 import {
@@ -139,34 +140,43 @@ export function useStatementImport({
         meta?.qualityGate && meta.qualityGate.effectiveTargetCents !== null && meta.qualityGate.diffCents <= 5,
       );
 
-      const result = await runSyncBatchCategorization({
-        transactions,
-        existingExpenses: mapExpensesForReconciliation(expSrc, comp),
-        adjacentExpenses: mapAdjacentExpensesForReconciliation(expSrc, comp),
-        existingRefunds: mapCardRefundsForReconciliation(paySrc, comp),
-        allCardExpenses: mapAllCardExpensesForReconciliation(expSrc),
-        competenceMonth: comp,
-        cardScope: meta?.targetCardScope ?? activeCard.scope,
-        categories,
-        history: historyQuery.entries ?? [],
-        defaultCategoryId,
-        userMemory: getMerchantLearningMemory(),
-        userId,
-        isReadOnlyMode,
-        aiExtractionEnabled: meta?.skipAiCategorization ? false : aiExtractionEnabled,
-        canRunPassiveCategorizeBatch: meta?.skipAiCategorization ? false : aiQuota.summary.canRunPassiveCategorizeBatch,
-        officialTotalValidated,
-        isMultiImageOverlapRisk: meta?.isMultiImageOverlapRisk,
-        signal: abortController.signal,
-        onStatusMessage: (msg) => {
-          if (reconcileRunIdRef.current === runId && !abortController.signal.aborted) setCategorizeStatusMessage(msg);
-        },
-      });
+      try {
+        const result = await runSyncBatchCategorization({
+          transactions,
+          existingExpenses: mapExpensesForReconciliation(expSrc, comp),
+          adjacentExpenses: mapAdjacentExpensesForReconciliation(expSrc, comp),
+          existingRefunds: mapCardRefundsForReconciliation(paySrc, comp),
+          allCardExpenses: mapAllCardExpensesForReconciliation(expSrc),
+          competenceMonth: comp,
+          cardScope: meta?.targetCardScope ?? activeCard.scope,
+          categories,
+          history: historyQuery.entries ?? [],
+          defaultCategoryId,
+          userMemory: getMerchantLearningMemory(),
+          userId,
+          isReadOnlyMode,
+          aiExtractionEnabled: meta?.skipAiCategorization ? false : aiExtractionEnabled,
+          canRunPassiveCategorizeBatch: meta?.skipAiCategorization ? false : aiQuota.summary.canRunPassiveCategorizeBatch,
+          officialTotalValidated,
+          isMultiImageOverlapRisk: meta?.isMultiImageOverlapRisk,
+          signal: abortController.signal,
+          onStatusMessage: (msg) => {
+            if (reconcileRunIdRef.current === runId && !abortController.signal.aborted) setCategorizeStatusMessage(msg);
+          },
+        });
 
-      if (reconcileRunIdRef.current !== runId || abortController.signal.aborted) return;
-      reconciliation.loadReconciliationSnapshot(result);
-      setCategorizeStatusMessage(null);
-      setStep("reconcile");
+        if (reconcileRunIdRef.current !== runId || abortController.signal.aborted) return;
+        reconciliation.loadReconciliationSnapshot(result);
+        setStep("reconcile");
+      } catch (err) {
+        if (reconcileRunIdRef.current === runId && !abortController.signal.aborted) {
+          reconciliation.setError(getErrorMessage(err));
+        }
+      } finally {
+        if (reconcileRunIdRef.current === runId) {
+          setCategorizeStatusMessage(null);
+        }
+      }
     },
     [activeCard.scope, activeCompetenceMonth, aiExtractionEnabled, aiQuota.summary.canRunPassiveCategorizeBatch, allExpenses, allPayments, categories, defaultCategoryId, historyQuery.entries, isReadOnlyMode, reconciliation, userId],
   );
@@ -187,7 +197,9 @@ export function useStatementImport({
         recordLocalTabularBlueprintOutcome(outcome.blueprintId, outcome.exactChecksumHit, userId);
         return;
       }
-      void recordBlueprintOutcomeMutation.mutateAsync(outcome).catch(() => {});
+      void recordBlueprintOutcomeMutation.mutateAsync(outcome).catch((err) => {
+        void reportError(err, { feature: "statement_blueprint_outcome" });
+      });
     },
     onCompetenceConflict: (payload) => {
       reconciliation.setUsedAiStructurer(payload.usedAiStructurer);
@@ -279,10 +291,14 @@ export function useStatementImport({
       });
       return () => { cancelled = true; };
     }
-    void applyReconciliation(payload.transactions, {
-      ...payload, skipAiCategorization: true, expensesSource: expensesQuery.data, paymentsSource: paymentsQuery.data, targetCardScope: activeCard.scope,
-    })
-      .catch((err) => { reconciliation.setError(getErrorMessage(err)); })
+    void Promise.resolve()
+      .then(() => {
+        if (cancelled) return;
+        return applyReconciliation(payload.transactions, {
+          ...payload, skipAiCategorization: true, expensesSource: expensesQuery.data, paymentsSource: paymentsQuery.data, targetCardScope: activeCard.scope,
+        });
+      })
+      .catch((err) => { if (!cancelled) reconciliation.setError(getErrorMessage(err)); })
       .finally(() => {
         if (inFlightCardSwitchRef.current === switchTargetId) {
           inFlightCardSwitchRef.current = null;
@@ -309,6 +325,7 @@ export function useStatementImport({
       plan: reconciliation.reconciliationPlan, closingDay: activeCard.closing_day, categoriesCount: categories.length, isReadOnlyMode,
       hasUnconfirmedCardMismatch: reconciliation.hasUnconfirmedCardMismatch, openBalanceBeforeCents: reconciliation.billProtection.openBalanceCents,
       draftBlueprint: ingestion.getDraftBlueprint(), onConsumeDraftBlueprint: ingestion.clearDraftBlueprint,
+      sourceHashes: reconciliation.reconciledItems.map((item) => item.transaction.statementHash),
     });
   }, [activeCard.closing_day, categories.length, commit, ingestion, isReadOnlyMode, reconciliation]);
 

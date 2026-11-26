@@ -1,6 +1,7 @@
+import { QrCodeCanvas } from "@/components/ui/qr-code-canvas";
 import { Copy, QrCode } from "lucide-react";
 import { PixTroubleshootAccordion } from "@/components/modules";
-import { Badge, Button, Input, MoneyText, QrCodeCanvas } from "@/components/ui";
+import { Badge, Button, Input, MoneyText } from "@/components/ui";
 import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
 import type { CalculationBreakdown } from "@/domain/calculation-memory/types";
 import { buildPixTransferCode, formatPixKeyTypeLabel, validatePixBrCode } from "@/domain/pix";

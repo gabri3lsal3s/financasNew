@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { filterNavItems, navItems } from "@/components/layout/nav-items";
 import { resolveBottomNavSlots } from "@/domain/navigation/nav-resolver";
 import { triggerSensory } from "@/services/sensory";
-import { useNotificationCenter } from "@/hooks/use-notification-center";
+import { useUnreadNotificationCount } from "@/hooks/use-notification-center";
 import { useBusinessMode } from "@/state/queries/use-business-mode";
 import { useFamilyMode } from "@/state/queries/use-family-mode";
 import { useTripMode } from "@/state/queries/use-trip-mode";
@@ -25,7 +25,7 @@ export function BottomNav() {
   const isTripActive = Boolean(isTripModeEnabled);
   const isBusinessActive = Boolean(isBusinessModeEnabled);
   const { totalRemindersPageCount: totalCount, criticalCount: urgentCount } =
-    useNotificationCenter();
+    useUnreadNotificationCount();
   const { guardAction, upgradeModal, isReadOnlyMode } = useMutationGuard();
 
   const allowedItems = filterNavItems(navItems, isAdmin, hasFeature, isFamilyActive, isTripActive, isBusinessActive);

@@ -164,19 +164,71 @@ export async function commitMonthlyClosingRpc(
   );
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function sanitizeUuidArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string" && UUID_RE.test(item));
+}
+
 /**
  * Aprova múltiplos proventos de forma atômica no banco de dados.
  * Se sync_cash = true, realiza o UPSERT garantido no ativo CAIXA, criando-o caso inexista.
  */
+export async function importPortfolioAtomicRpc(params: {
+  requestId: string;
+  assetsToCreate: unknown[];
+  assetsToUpdate: unknown[];
+  transactions: unknown[];
+}) {
+  return unwrapRpc(
+    callRpc("import_portfolio_atomic", {
+      p_request_id: params.requestId,
+      p_assets_to_create: params.assetsToCreate,
+      p_assets_to_update: params.assetsToUpdate,
+      p_transactions: params.transactions,
+    }),
+  );
+}
+
+export async function savePocketCostMilestoneAtomicRpc(params: {
+  requestId: string;
+  contributionId?: string | null;
+  date?: string | null;
+  amount?: number | null;
+  notes?: string | null;
+  snapshotMonth?: string | null;
+  snapshotTotalValue?: number | null;
+  snapshotTotalCost?: number | null;
+}) {
+  return unwrapRpc(
+    callRpc("save_pocket_cost_milestone_atomic", {
+      p_request_id: params.requestId,
+      p_contribution_id: params.contributionId ?? null,
+      p_date: params.date ?? null,
+      p_amount: params.amount ?? null,
+      p_notes: params.notes ?? null,
+      p_snapshot_month: params.snapshotMonth ?? null,
+      p_snapshot_total_value: params.snapshotTotalValue ?? null,
+      p_snapshot_total_cost: params.snapshotTotalCost ?? null,
+    }),
+  );
+}
+
 export async function approveDividendsBatchRpc(
   payload: ApproveDividendsBatchPayload,
 ): Promise<ApproveDividendsBatchResult> {
-  return unwrapRpc(
+  const result = await unwrapRpc(
     callRpc("approve_dividends_batch_atomic", {
       p_dividends: payload.dividends,
       p_sync_cash: payload.sync_cash ?? false,
     }),
   );
+  return {
+    ...result,
+    inserted_ids: sanitizeUuidArray(result.inserted_ids),
+    already_settled_dividend_ids: sanitizeUuidArray(result.already_settled_dividend_ids),
+  };
 }
 
 /**
@@ -186,12 +238,18 @@ export async function approveDividendsBatchRpc(
 export async function confirmUserDividendEventsRpc(
   payload: ConfirmDividendEventsPayload,
 ): Promise<ConfirmDividendEventsResult> {
-  return unwrapRpc(
+  const result = await unwrapRpc(
     callRpc("confirm_user_dividend_events_atomic", {
       p_items: payload.items,
       p_sync_cash: payload.sync_cash ?? true,
     }),
   );
+  return {
+    ...result,
+    inserted_ids: sanitizeUuidArray(result.inserted_ids),
+    settled_event_ids: sanitizeUuidArray(result.settled_event_ids),
+    already_settled_dividend_ids: sanitizeUuidArray(result.already_settled_dividend_ids),
+  };
 }
 
 /**
@@ -316,6 +374,36 @@ export async function resetManualSnapshotCalibrationRpc(payload: {
 }
 
 /**
+ * Extrai status HTTP e mensagem real do payload JSON quando `supabase.functions.invoke`
+ * retorna `FunctionsHttpError` ("Edge Function returned a non-2xx status code").
+ */
+async function normalizeEdgeInvokeError(error: unknown): Promise<unknown> {
+  if (!error || typeof error !== "object") return error;
+  const record = error as { context?: unknown; message?: unknown; status?: unknown };
+  const ctx = record.context;
+  if (ctx && typeof ctx === "object" && "status" in ctx && "clone" in ctx && typeof (ctx as Response).clone === "function") {
+    const res = (ctx as Response).clone();
+    let bodyMessage = "";
+    try {
+      const json = (await res.json()) as { error?: unknown; message?: unknown } | null;
+      if (json && typeof json.error === "string" && json.error.trim()) {
+        bodyMessage = json.error.trim();
+      } else if (json && typeof json.message === "string" && json.message.trim()) {
+        bodyMessage = json.message.trim();
+      }
+    } catch {
+      // ignora corpo não-JSON
+    }
+    return {
+      status: res.status,
+      message: bodyMessage || (typeof record.message === "string" ? record.message : "Erro na Edge Function."),
+      raw: error,
+    };
+  }
+  return error;
+}
+
+/**
  * Executa escrita transacional de provento manual (`create` / `update` / `delete`) via Edge Function
  * `quotes` (`action: 'write_user_dividend'`), com timeout cliente de 10s e guarda explícita offline (§4.3).
  */
@@ -335,7 +423,8 @@ export async function writeUserDividendEdge(
       signal: controller.signal,
     });
     if (error) {
-      const classified = classifyError(error);
+      const normalized = await normalizeEdgeInvokeError(error);
+      const classified = classifyError(normalized);
       throw new AppError(classified.kind, classified.message, error);
     }
     if (!data || !data.success) {
@@ -370,7 +459,8 @@ export async function syncUserDividendsEdge(): Promise<SyncUserDividendsResult> 
     body: { action: "sync_user_dividends" },
   });
   if (error) {
-    const classified = classifyError(error);
+    const normalized = await normalizeEdgeInvokeError(error);
+    const classified = classifyError(normalized);
     throw new AppError(classified.kind, classified.message, error);
   }
   if (!data) {

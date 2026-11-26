@@ -9,7 +9,7 @@ import {
   getMissingKitItems,
   isKitItemInstalled,
   normalizeCategoryKey,
-} from "./kits";
+} from "@/domain/categories/kits";
 
 describe("Kits de Categorias (kits.ts)", () => {
   it("contém exatamente os 4 kits estruturados", () => {

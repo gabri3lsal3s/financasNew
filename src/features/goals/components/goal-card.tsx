@@ -98,7 +98,7 @@ export function GoalCard({
 
                 {composition?.includeInvestments ? (
                   <Badge variant="portfolio" size="xs" className="max-w-full truncate" title="Integrada com Investimentos">
-                    <PieChart className="size-3 text-portfolio" aria-hidden="true" />
+                    <PieChart className="size-3 text-portfolio-strong" aria-hidden="true" />
                     <span>Ativos</span>
                   </Badge>
                 ) : null}

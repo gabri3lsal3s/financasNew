@@ -25,6 +25,7 @@ vi.mock("@/data/client", () => ({
 
 vi.mock("@/data/rpc", () => ({
   createExpenseWithDebt: vi.fn(),
+  getPublicShareByTokenRpc: vi.fn(),
   getSharedFamilyBudget: vi.fn(),
 }));
 
@@ -111,6 +112,7 @@ describe("data/repositories/public-shares", () => {
     vi.mocked(getSupabase).mockReturnValue({
       from: mockFrom,
     } as unknown as ReturnType<typeof getSupabase>);
+    vi.mocked(rpcModule.getPublicShareByTokenRpc).mockResolvedValueOnce(mockRow as never);
 
     const result = await getPublicShareByToken("validtoken1");
     expect(result).not.toBeNull();
@@ -140,6 +142,7 @@ describe("data/repositories/public-shares", () => {
     vi.mocked(getSupabase).mockReturnValue({
       from: mockFrom,
     } as unknown as ReturnType<typeof getSupabase>);
+    vi.mocked(rpcModule.getPublicShareByTokenRpc).mockResolvedValueOnce(mockExpiredRow as never);
 
     const result = await getPublicShareByToken("expiredtoken");
     expect(result).toBeNull();
@@ -201,6 +204,7 @@ describe("data/repositories/public-shares", () => {
     vi.mocked(getSupabase).mockReturnValue({
       from: mockFrom,
     } as unknown as ReturnType<typeof getSupabase>);
+    vi.mocked(rpcModule.getPublicShareByTokenRpc).mockResolvedValueOnce(mockRow as never);
 
     const result = await getPublicShareByToken("archived-tok");
     expect(result).toBeNull();

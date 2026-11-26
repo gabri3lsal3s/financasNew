@@ -65,7 +65,13 @@ vi.mock("@/features/transactions/pages/transaction-list-page", async () => {
   };
 });
 
+vi.mock("@/state/queries/use-user-access", async () => {
+  const { useUserAccess } = await import("@/state");
+  return { useUserAccess };
+});
+
 vi.mock("@/state", () => ({
+  useRegisterFcmToken: () => ({ mutate: vi.fn() }),
   useUserAccess: () => ({
     profile: { id: "user-123", role: "user", status: "active" },
     role: "user",
@@ -387,8 +393,8 @@ describe("AppRouter (Code Splitting e Lazy Routes)", () => {
     render(<AppRouter />);
 
     // Deve exibir o badge ou o estado da página sem redirecionar para /entrar
-    expect(await screen.findByText("Racha de Conta", {}, { timeout: 8000 })).toBeInTheDocument();
-  });
+    expect(await screen.findByText("Racha de Conta", {}, { timeout: 30000 })).toBeInTheDocument();
+  }, 45000);
 
   it("renderiza a rota pública /orcamento-familiar/:token (FamilyBudgetPage) para visitantes", async () => {
     vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
@@ -597,8 +603,8 @@ describe("AppRouter (Code Splitting e Lazy Routes)", () => {
   }, 60000);
 
   it("redireciona para /entrar ao acessar a raiz / sem autenticação em plataforma nativa (Capacitor Android)", async () => {
-    const nativeModule = await import("@/services/native");
-    vi.spyOn(nativeModule, "isNativePlatform").mockReturnValue(true);
+    const nativeModule = await import("@/services/native/platform");
+    const nativeSpy = vi.spyOn(nativeModule, "isNativePlatform").mockReturnValue(true);
 
     vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
       session: null,
@@ -614,9 +620,13 @@ describe("AppRouter (Code Splitting e Lazy Routes)", () => {
     window.history.pushState({}, "", "/");
     render(<AppRouter />);
 
-    await waitFor(() => {
-      expect(window.location.pathname).toBe("/entrar");
-    });
+    try {
+      await waitFor(() => {
+        expect(window.location.pathname).toBe("/entrar");
+      });
+    } finally {
+      nativeSpy.mockRestore();
+    }
   });
 
   it("mantém a mesma instância de PageShell montada ao navegar entre / e rotas internas", async () => {

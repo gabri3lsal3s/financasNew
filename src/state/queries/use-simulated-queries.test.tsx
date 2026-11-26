@@ -296,7 +296,10 @@ describe("use-simulated-queries — Interceptação Segura de Queries no TanStac
       });
 
       // Em modo normal, chama o repositório
-      expect(mockListExpensesByMonth).toHaveBeenCalledWith("2026-10");
+      expect(mockListExpensesByMonth).toHaveBeenCalledWith(
+        "2026-10",
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
       expect(result.current.isError).toBe(false);
     });
 
@@ -559,7 +562,10 @@ describe("use-simulated-queries — Interceptação Segura de Queries no TanStac
       rerender();
 
       // Após desativar demo, a query real é disparada
-      expect(mockListExpensesByMonth).toHaveBeenCalledWith("2026-10");
+      expect(mockListExpensesByMonth).toHaveBeenCalledWith(
+        "2026-10",
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
     });
   });
 });

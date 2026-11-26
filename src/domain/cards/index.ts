@@ -10,6 +10,9 @@
  */
 
 import { addDaysISO, todayISO } from "@/domain/debts/index";
+import { shiftMonth } from "@/lib/date";
+
+export { shiftMonth };
 import { clampDay, resolveBillCompetence } from "@/domain/competence/index";
 import { addMonthsClamped, splitCents, toISODate } from "@/domain/money/parcelar";
 import { APP_START_DATE } from "@/types/schema";
@@ -131,15 +134,6 @@ export function invoiceStatus(
   return "open";
 }
 
-/** Desloca um mês YYYY-MM por `delta` meses (helper puro). */
-export function shiftMonth(month: string, delta: number): string {
-  const [year, monthNum] = month.split("-").map(Number);
-  const total = (year ?? 0) * 12 + ((monthNum ?? 1) - 1) + delta;
-  const y = Math.floor(total / 12);
-  const m = (((total % 12) + 12) % 12) + 1;
-  return `${y}-${String(m).padStart(2, "0")}`;
-}
-
 export interface CardBillRolloverLike {
   from_competence_month: string;
   to_competence_month: string;
@@ -217,7 +211,10 @@ export function buildCompetenceSummaries(
   for (const month of sortedMonths) {
     const monthExpenses = expenses.filter((e) => e.bill_competence === month);
     const previstoBruto = monthExpenses.reduce((acc, e) => acc + Math.round(e.value * 100), 0);
-    const previstoPonderado = monthExpenses.reduce((acc, e) => acc + Math.round(e.value * e.report_weight * 100), 0);
+    const previstoPonderado = monthExpenses.reduce(
+      (acc, e) => acc + Math.round(Math.round(e.value * 100) * e.report_weight),
+      0,
+    );
 
     const principalRoladoRecebido = rollovers
       .filter((r) => r.to_competence_month === month)
@@ -605,10 +602,17 @@ export function divideIntoInstallments(input: DivideIntoInstallmentsInput): Card
   const baseDay = Number(dayStr) || 1;
   const baseDate = new Date(baseYear, baseMonth, baseDay);
 
+  const firstCompetence = closingDay != null ? resolveBillCompetence(startDate, closingDay) : null;
+
   return values.map((valueCents, index) => {
     const installmentDateObj = addMonthsClamped(baseDate, index);
     const dateStr = toISODate(installmentDateObj);
-    const billCompetence = closingDay != null ? resolveBillCompetence(dateStr, closingDay) : null;
+    let billCompetence: string | null = null;
+    if (firstCompetence) {
+      const [compYearStr, compMonthStr] = firstCompetence.split("-");
+      const compDate = new Date(Number(compYearStr), Number(compMonthStr) - 1 + index, 1);
+      billCompetence = `${compDate.getFullYear()}-${String(compDate.getMonth() + 1).padStart(2, "0")}`;
+    }
 
     return {
       installmentNumber: index + 1,

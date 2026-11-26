@@ -9,12 +9,15 @@ import {
 } from "@/data/repositories/statement-blueprints";
 import {
   commitStatementReconciliation,
+  getStatementReconciliationReceipts,
   importStatementExpenses,
   type CommitStatementReconciliationParams,
   type CommitStatementReconciliationResult,
   type ImportStatementResult,
   type StatementExpenseItemInput,
 } from "@/data/rpc";
+
+export { getStatementReconciliationReceipts as fetchStatementReconciliationReceipts };
 import { budgetsKey } from "@/state/queries/use-budgets";
 import {
   cardExpensesKey,

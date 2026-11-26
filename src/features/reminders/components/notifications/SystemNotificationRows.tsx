@@ -113,7 +113,7 @@ export function BroadcastNotificationRow({
         </span>
         <div className="flex-1 min-w-0 space-y-1">
           <div className="flex items-center justify-between gap-1.5 min-w-0">
-            <span className="text-xs font-semibold text-foreground line-clamp-1 break-words">
+            <span className="text-xs font-semibold text-foreground line-clamp-2 break-words">
               {broadcast.title}
             </span>
             <Badge variant={badgeVariant} size="xs" className="shrink-0">
@@ -202,7 +202,7 @@ export function SupportReplyRow({
       </span>
       <div className="flex-1 min-w-0 space-y-1">
         <div className="flex items-center justify-between gap-1.5 min-w-0">
-          <span className="text-xs font-semibold text-foreground line-clamp-1 break-words">
+          <span className="text-xs font-semibold text-foreground line-clamp-2 break-words">
             Resposta do Suporte Axir
           </span>
           <Badge variant="warning" size="xs" className="shrink-0">
@@ -253,7 +253,7 @@ export function SplitSignalNotificationRow({
         </span>
         <div className="flex-1 min-w-0 space-y-1">
           <div className="flex items-center justify-between gap-1.5 min-w-0">
-            <span className="text-xs font-semibold text-foreground line-clamp-1 break-words">
+            <span className="text-xs font-semibold text-foreground line-clamp-2 break-words">
               {signalGroup.title}
             </span>
             <Badge variant="portfolio" size="xs" className="shrink-0">
@@ -261,7 +261,7 @@ export function SplitSignalNotificationRow({
             </Badge>
           </div>
           <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-muted-foreground">
-            <span className="line-clamp-1">{description}</span>
+            <span className="line-clamp-2 break-words">{description}</span>
             {signalGroup.totalCents > 0 ? (
               <MoneyText
                 cents={signalGroup.totalCents}
@@ -300,7 +300,7 @@ export function SubscriptionPastDueRow({ onOpen }: { onOpen: () => void }) {
       </span>
       <div className="flex-1 min-w-0 space-y-1">
         <div className="flex items-center justify-between gap-1.5 min-w-0">
-          <span className="text-xs font-semibold text-foreground line-clamp-1 break-words">
+          <span className="text-xs font-semibold text-foreground line-clamp-2 break-words">
             Pagamento da assinatura pendente
           </span>
           <Badge variant="critical" size="xs" className="shrink-0">
@@ -350,14 +350,14 @@ export function OnboardingNotificationRow({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-medium text-xs text-foreground line-clamp-1 break-words">
+            <span className="font-medium text-xs text-foreground line-clamp-2 break-words">
               Configuração inicial
             </span>
             <Badge variant="muted" size="xs" className="shrink-0">
               {done}/{total} passos
             </Badge>
           </div>
-          <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">
+          <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2 break-words">
             Complete seus primeiros passos na conta.
           </p>
         </div>
@@ -412,7 +412,7 @@ export function ClosedBillNotificationRow({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-medium text-xs text-foreground line-clamp-1 break-words">
+            <span className="font-medium text-xs text-foreground line-clamp-2 break-words">
               Fatura {alert.cardName} fechada
             </span>
             <Badge variant="default" size="xs" className="shrink-0">
@@ -485,7 +485,7 @@ export function BudgetOverrunNotificationRow({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-medium text-xs text-foreground line-clamp-1 break-words">
+            <span className="font-medium text-xs text-foreground line-clamp-2 break-words">
               {title}
             </span>
             <Badge variant="warning" size="xs" className="shrink-0">
@@ -568,7 +568,7 @@ export function TripFamilyNotificationRow({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-medium text-xs text-foreground line-clamp-1 break-words">
+            <span className="font-medium text-xs text-foreground line-clamp-2 break-words">
               {alert.title}
             </span>
             <Badge
@@ -660,7 +660,7 @@ export function DividendNotificationRow({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-medium text-xs text-foreground line-clamp-1 break-words">
+            <span className="font-medium text-xs text-foreground line-clamp-2 break-words">
               {alert.title}
             </span>
             <Badge variant={badgeVariant} size="xs" className="shrink-0">

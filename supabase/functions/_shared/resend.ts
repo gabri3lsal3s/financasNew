@@ -84,14 +84,15 @@ export async function sendTransactionalEmail(
     return { success: false, error: "E-mail de destino inválido." };
   }
 
-  // 1. Verificação de idempotência no banco: apenas status 'sent' bloqueia reenvio
+  // 1. O webhook pode alterar o status após o provedor aceitar o envio.
+  // Tanto a aceitação quanto os eventos de entrega bloqueiam um novo disparo.
   if (idempotencyKey) {
     try {
       const { data: existingLog } = await supabaseAdmin
         .from("transactional_email_logs")
         .select("id, status, provider_message_id")
         .eq("dedup_key", idempotencyKey)
-        .eq("status", "sent")
+        .in("status", ["sent", "delivered", "bounced", "complained", "delivery_delayed"])
         .maybeSingle();
 
       if (existingLog) {

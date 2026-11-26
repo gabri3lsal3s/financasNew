@@ -65,7 +65,7 @@ export function ConsolidatedBalanceSection({
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span
                     className="size-2 rounded-full shrink-0 border border-border/80"
-                    style={{ backgroundColor: assetSegments.find((s) => s.key === "cash")?.color ?? "#10b981" }}
+                    style={{ backgroundColor: assetSegments.find((s) => s.key === "cash")?.color ?? "hsl(var(--positive))" }}
                   />
                   <span className="text-muted-foreground truncate">Reserva de Caixa:</span>
                 </div>
@@ -127,13 +127,13 @@ export function ConsolidatedBalanceSection({
             <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
               DRE Pessoal
             </h3>
-            <span className="rounded border border-border/70 bg-muted/40 px-1.5 py-0.5 text-[8.5px] font-semibold text-muted-foreground uppercase tracking-wider shrink-0 font-mono">
+            <span className="rounded border border-border/70 bg-muted/40 px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider shrink-0 font-mono">
               Base Ponderada
             </span>
           </div>
         </div>
         {showDreStatement ? (
-          <div className="rounded-lg border border-border/80 overflow-hidden text-xs">
+          <div className="rounded-lg border border-border/80 overflow-x-auto text-xs">
             <table className="w-full text-left border-collapse table-fixed">
               <colgroup>
                 <col style={{ width: "70%" }} />

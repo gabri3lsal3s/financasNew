@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import { Navigate, BrowserRouter, Route, Routes, useLocation, useNavigate } from "react-router";
 import {
   ROUTE_CHECK_THROTTLE_MS,
@@ -7,7 +7,7 @@ import {
   getPWAUpdateAvailable,
   isCredentialRoute,
 } from "@/app/pwa";
-import { appRoutes } from "@/app/routes";
+import { appRoutes, publicLegalRoutes, publicToolsRoutes } from "@/app/routes";
 import { LoadingScreen } from "@/components/layout/loading-screen";
 import { ScrollRestoration } from "@/components/routing/scroll-restoration";
 import { isNativePlatform } from "@/services/native/platform";
@@ -16,6 +16,9 @@ import { isNativePlatform } from "@/services/native/platform";
  * Guards e App Shell carregados sob demanda: a landing page não deve baixar
  * stores, sincronizações de conta nem os hooks de prefetch/segurança do app.
  */
+const AppProviders = lazy(() =>
+  import("@/app/providers").then((m) => ({ default: m.AppProviders })),
+);
 const PageShell = lazy(() =>
   import("@/components/layout/page-shell").then((m) => ({ default: m.PageShell })),
 );
@@ -93,12 +96,6 @@ const ShareTargetPage = lazy(() =>
     default: m.ShareTargetPage,
   })),
 );
-const TermsPage = lazy(() =>
-  import("@/features/legal/pages/terms-page").then((m) => ({ default: m.TermsPage })),
-);
-const PrivacyPage = lazy(() =>
-  import("@/features/legal/pages/privacy-page").then((m) => ({ default: m.PrivacyPage })),
-);
 const SplitPublicPage = lazy(() =>
   import("@/features/public-share/pages/split-public-page").then((m) => ({
     default: m.SplitPublicPage,
@@ -123,18 +120,6 @@ const TripPublicPage = lazy(() =>
   import("@/features/public-share/pages/trip-public-page").then((m) => ({
     default: m.TripPublicPage,
   })),
-);
-const ToolsHubPage = lazy(() =>
-  import("@/features/tools/pages/tools-hub-page").then((m) => ({ default: m.ToolsHubPage })),
-);
-const DebtSimulatorPage = lazy(() =>
-  import("@/features/tools/pages/debt-simulator-page").then((m) => ({ default: m.DebtSimulatorPage })),
-);
-const RebalanceSimulatorPage = lazy(() =>
-  import("@/features/tools/pages/rebalance-simulator-page").then((m) => ({ default: m.RebalanceSimulatorPage })),
-);
-const CompoundInterestPage = lazy(() =>
-  import("@/features/tools/pages/compound-interest-page").then((m) => ({ default: m.CompoundInterestPage })),
 );
 const AdminLoginPage = lazy(() =>
   import("@/features/admin/pages/admin-login-page").then((m) => ({ default: m.AdminLoginPage })),
@@ -208,6 +193,25 @@ function hasStoredAuthSession(): boolean {
   return false;
 }
 
+function isAnonymousHome(pathname: string): boolean {
+  return pathname === "/" && !isNativePlatform() && !hasStoredAuthSession();
+}
+
+const EDITORIAL_PATHS = ["/apresentacao", "/landing", "/precos", "/planos", "/vendas"];
+
+function RouteProviders({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation();
+  const editorialPath = EDITORIAL_PATHS.includes(pathname.replace(/\/+$/, "").toLowerCase());
+  const needsData = isNativePlatform() || !(editorialPath || isAnonymousHome(pathname));
+  const [hasActivatedData, setHasActivatedData] = useState(needsData);
+
+  // Depois do primeiro acesso a dados, mantenha cache e listener de sessão
+  // ativos inclusive ao voltar para uma rota editorial na mesma aba.
+  if (needsData && !hasActivatedData) setHasActivatedData(true);
+
+  return hasActivatedData ? <AppProviders>{children}</AppProviders> : children;
+}
+
 /**
  * Entrada da área autenticada: visitantes web sem token na raiz `/` recebem
  * a landing page imediatamente, sem montar guards, stores ou sincronizações do App Shell.
@@ -216,9 +220,8 @@ function hasStoredAuthSession(): boolean {
  */
 function AuthenticatedAreaEntry() {
   const { pathname } = useLocation();
-  const isNative = isNativePlatform();
 
-  if (pathname === "/" && !isNative && !hasStoredAuthSession()) {
+  if (isAnonymousHome(pathname)) {
     return <LandingPage />;
   }
 
@@ -319,108 +322,104 @@ export function AppRouter() {
       <HashRouteNormalizer />
       <PWAUpdateRouteSync />
       <Suspense fallback={<LoadingScreen statusText="Iniciando sessão segura…" />}>
-        <Routes>
-          {/* Páginas públicas de apresentação & planos */}
-          <Route path="/apresentacao" element={<LandingPage />} />
-          <Route path="/landing" element={<LandingPage />} />
-          <Route path="/precos" element={<LandingPage />} />
-          <Route path="/planos" element={<LandingPage />} />
-          <Route path="/vendas" element={<LandingPage />} />
+        <RouteProviders>
+          <Routes>
+            {/* Páginas públicas de apresentação & planos */}
+            {EDITORIAL_PATHS.map((path) => (
+              <Route key={path} path={path} element={<LandingPage />} />
+            ))}
 
-          {/* Rotas públicas de compartilhamento (Racha de Contas, Orçamento Familiar & Termômetro de Meta) */}
-          <Route path="/r/:token" element={<SplitPublicPage />} />
-          <Route path="/orcamento-familiar/:token" element={<FamilyBudgetPage />} />
-          <Route path="/meta/:token" element={<GoalTrackerPublicPage />} />
-          <Route path="/convite-familiar/:token" element={<FamilyInvitePage />} />
-          <Route path="/viagem/:token" element={<TripPublicPage />} />
+            {/* Rotas públicas de compartilhamento (Racha de Contas, Orçamento Familiar & Termômetro de Meta) */}
+            <Route path="/r/:token" element={<SplitPublicPage />} />
+            <Route path="/orcamento-familiar/:token" element={<FamilyBudgetPage />} />
+            <Route path="/meta/:token" element={<GoalTrackerPublicPage />} />
+            <Route path="/convite-familiar/:token" element={<FamilyInvitePage />} />
+            <Route path="/viagem/:token" element={<TripPublicPage />} />
 
-          {/* Rotas públicas de simuladores financeiros abertos (Fase 5) */}
-          <Route path="/ferramentas" element={<ToolsHubPage />} />
-          <Route path="/ferramentas/simulador-dividas" element={<DebtSimulatorPage />} />
-          <Route path="/ferramentas/rebalanceamento" element={<RebalanceSimulatorPage />} />
-          <Route path="/ferramentas/juros-compostos" element={<CompoundInterestPage />} />
+            {/* Rotas públicas de simuladores financeiros abertos (Fase 5) */}
+            {publicToolsRoutes.map((route) => (
+              <Route key={route.path} path={route.path} element={<route.Component />} />
+            ))}
 
+            {/* Páginas públicas legais e regulatórias (fora do shell autenticado) */}
+            {publicLegalRoutes.map((route) => (
+              <Route key={route.path} path={route.path} element={<route.Component />} />
+            ))}
 
+            {/* Telas de auth — fora do shell (sem sidebar/bottom nav) */}
+            <Route path="/entrar" element={<LoginPage />} />
+            <Route path="/cadastro" element={<RegisterPage />} />
+            <Route path="/cadastrar" element={<RegisterPage />} />
+            <Route path="/criar-conta" element={<RegisterPage />} />
+            <Route path="/recuperar-senha" element={<ForgotPasswordPage />} />
+            <Route path="/redefinir-senha" element={<ResetPasswordPage />} />
+            <Route path="/atualizar-senha" element={<ResetPasswordPage />} />
 
-          {/* Páginas públicas legais e regulatórias (fora do shell autenticado) */}
-          <Route path="/termos" element={<TermsPage />} />
-          <Route path="/termos-de-uso" element={<TermsPage />} />
-          <Route path="/privacidade" element={<PrivacyPage />} />
-          <Route path="/politica-de-privacidade" element={<PrivacyPage />} />
+            {/* Portal de Login Administrativo Exclusivo */}
+            <Route path="/admin/login" element={<AdminLoginPage />} />
 
-          {/* Telas de auth — fora do shell (sem sidebar/bottom nav) */}
-          <Route path="/entrar" element={<LoginPage />} />
-          <Route path="/cadastro" element={<RegisterPage />} />
-          <Route path="/cadastrar" element={<RegisterPage />} />
-          <Route path="/criar-conta" element={<RegisterPage />} />
-          <Route path="/recuperar-senha" element={<ForgotPasswordPage />} />
-          <Route path="/redefinir-senha" element={<ResetPasswordPage />} />
-          <Route path="/atualizar-senha" element={<ResetPasswordPage />} />
+            {/* Checkout de assinatura Pro — layout próprio (sem shell do app) */}
+            <Route path="/assinatura" element={<SubscriptionCheckoutPage />} />
+            <Route path="/assinar" element={<SubscriptionCheckoutPage />} />
+            <Route path="/assinatura/sucesso" element={<SubscriptionSuccessPage />} />
+            <Route path="/assinar/sucesso" element={<SubscriptionSuccessPage />} />
 
-          {/* Portal de Login Administrativo Exclusivo */}
-          <Route path="/admin/login" element={<AdminLoginPage />} />
-
-          {/* Checkout de assinatura Pro — layout próprio (sem shell do app) */}
-          <Route path="/assinatura" element={<SubscriptionCheckoutPage />} />
-          <Route path="/assinar" element={<SubscriptionCheckoutPage />} />
-          <Route path="/assinatura/sucesso" element={<SubscriptionSuccessPage />} />
-          <Route path="/assinar/sucesso" element={<SubscriptionSuccessPage />} />
-
-          {/* Console Administrativo de Operações (Isolado fora do PageShell) */}
-          <Route element={<RequireAdminSession />}>
-            <Route element={<AdminShell />}>
-              <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
-              <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-              <Route path="/admin/usuarios" element={<AdminUsersPage />} />
-              <Route path="/admin/notificacoes" element={<AdminNotificationsPage />} />
-              <Route path="/admin/faturamento" element={<AdminBillingPage />} />
-              <Route path="/admin/chamados" element={<AdminTicketsPage />} />
-              <Route path="/admin/convites" element={<AdminInvitesPage />} />
-              <Route path="/admin/backups" element={<Navigate to="/admin/seguranca" replace />} />
-              <Route path="/admin/seguranca" element={<AdminSecurityPage />} />
-              <Route element={<RequireSuperAdmin />}>
-                <Route path="/admin/laboratorio-forense" element={<AdminForensicsPage />} />
-              </Route>
-              <Route path="/admin/configuracoes" element={<AdminSettingsPage />} />
-            </Route>
-          </Route>
-
-          {/* Telas de status da conta para usuários autenticados */}
-          <Route element={<AuthenticatedAreaEntry />}>
-            <Route path="/aprovacao-pendente" element={<PendingApprovalPage />} />
-            <Route path="/conta-suspensa" element={<SuspendedAccountPage />} />
-
-            {/* Área protegida: Requer conta com status 'active' */}
-            <Route element={<RequireActiveAccount />}>
-              {/* Redirecionamento de compatibilidade para atalhos PWA / links legados / rotas unificadas */}
-              <Route path="/transacoes/novo" element={<Navigate to="/transacoes?novo=transacao" replace />} />
-              <Route path="/metas" element={<RedirectWithSearch to="/orcamentos?tab=goals" />} />
-              <Route path="/investimentos" element={<RedirectWithSearch to="/investments" />} />
-              <Route path="/carteira" element={<RedirectWithSearch to="/investments" />} />
-              <Route path="/modo-familia" element={<RedirectWithSearch to="/familia" />} />
-
-              <Route element={<PageShell />}>
-                <Route path="/" element={<AuthenticatedHome />} />
-                <Route path="/share-target" element={<ShareTargetPage />} />
-                {appRoutes.filter((route) => route.path !== "/").map((route) => {
-                  const featureKey = ROUTE_FEATURE_MAP[route.path];
-                  if (featureKey) {
-                    return (
-                      <Route key={route.path} element={<RequireFeature featureKey={featureKey} />}>
-                        <Route path={route.path} element={<route.Component />} />
-                      </Route>
-                    );
-                  }
-                  return <Route key={route.path} path={route.path} element={<route.Component />} />;
-                })}
-
-                {/* Redirecionamento seguro para rotas legadas e fallback catch-all */}
-                <Route path="/mais" element={<Navigate to="/" replace />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
+            {/* Console Administrativo de Operações (Isolado fora do PageShell) */}
+            <Route element={<RequireAdminSession />}>
+              <Route element={<AdminShell />}>
+                <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+                <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+                <Route path="/admin/usuarios" element={<AdminUsersPage />} />
+                <Route path="/admin/notificacoes" element={<AdminNotificationsPage />} />
+                <Route path="/admin/faturamento" element={<AdminBillingPage />} />
+                <Route path="/admin/chamados" element={<AdminTicketsPage />} />
+                <Route path="/admin/convites" element={<AdminInvitesPage />} />
+                <Route path="/admin/backups" element={<Navigate to="/admin/seguranca" replace />} />
+                <Route path="/admin/seguranca" element={<AdminSecurityPage />} />
+                <Route element={<RequireSuperAdmin />}>
+                  <Route path="/admin/laboratorio-forense" element={<AdminForensicsPage />} />
+                </Route>
+                <Route path="/admin/configuracoes" element={<AdminSettingsPage />} />
               </Route>
             </Route>
-          </Route>
-        </Routes>
+
+            {/* Telas de status da conta para usuários autenticados */}
+            <Route element={<AuthenticatedAreaEntry />}>
+              <Route path="/aprovacao-pendente" element={<PendingApprovalPage />} />
+              <Route path="/conta-suspensa" element={<SuspendedAccountPage />} />
+
+              {/* Área protegida: Requer conta com status 'active' */}
+              <Route element={<RequireActiveAccount />}>
+                {/* Redirecionamento de compatibilidade para atalhos PWA / links legados / rotas unificadas */}
+                <Route path="/transacoes/novo" element={<Navigate to="/transacoes?novo=transacao" replace />} />
+                <Route path="/metas" element={<RedirectWithSearch to="/orcamentos?tab=goals" />} />
+                <Route path="/investimentos" element={<RedirectWithSearch to="/investments" />} />
+                <Route path="/carteira" element={<RedirectWithSearch to="/investments" />} />
+                <Route path="/modo-familia" element={<RedirectWithSearch to="/familia" />} />
+
+                <Route element={<PageShell />}>
+                  <Route path="/" element={<AuthenticatedHome />} />
+                  <Route path="/share-target" element={<ShareTargetPage />} />
+                  {appRoutes.filter((route) => route.path !== "/").map((route) => {
+                    const featureKey = ROUTE_FEATURE_MAP[route.path];
+                    if (featureKey) {
+                      return (
+                        <Route key={route.path} element={<RequireFeature featureKey={featureKey} />}>
+                          <Route path={route.path} element={<route.Component />} />
+                        </Route>
+                      );
+                    }
+                    return <Route key={route.path} path={route.path} element={<route.Component />} />;
+                  })}
+
+                  {/* Redirecionamento seguro para rotas legadas e fallback catch-all */}
+                  <Route path="/mais" element={<Navigate to="/" replace />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Route>
+              </Route>
+            </Route>
+          </Routes>
+        </RouteProviders>
       </Suspense>
     </BrowserRouter>
   );

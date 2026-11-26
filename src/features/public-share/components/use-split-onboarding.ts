@@ -4,6 +4,7 @@ import { useNavigate } from "react-router";
 import { signInWithEmail, signUpWithEmail } from "@/hooks/use-auth";
 import { useSaveSplitExpense, useSignalSplitPayment } from "@/state";
 import { classifyError } from "@/services/errors";
+import { reportError } from "@/services/observability";
 import { triggerSensory } from "@/services/sensory";
 import { checkPasswordRequirements, normalizeEmail } from "@/domain/validation";
 
@@ -99,7 +100,7 @@ export function useSplitOnboarding({
             amountCents: guestShareCents,
           });
         } catch (signalErr) {
-          console.warn("Não foi possível sinalizar o pagamento:", signalErr);
+          reportError(signalErr, { source: "useSplitOnboarding.signalSplitPayment" });
         }
       }
 

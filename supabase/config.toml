@@ -411,6 +411,10 @@ verify_jwt = false
 [functions.asaas-webhook]
 verify_jwt = false
 
+# Webhook Resend: o handler autentica o corpo com a assinatura Svix.
+[functions.resend-webhook]
+verify_jwt = false
+
 # Checkout valida JWT no handler via userClient.auth.getUser() (fail-closed + CORS).
 [functions.asaas-checkout]
 verify_jwt = false

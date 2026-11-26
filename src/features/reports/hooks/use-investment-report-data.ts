@@ -235,9 +235,30 @@ export function useInvestmentReportData({
     : null);
 
   const refetchInvestments = useCallback(async () => {
-    if (!enabled) return;
-    await Promise.all([positionQuery.refetch(), snapshotsQuery.refetch(), assetsQuery.refetch()]);
-  }, [enabled, positionQuery, snapshotsQuery, assetsQuery]);
+    const tasks: Promise<unknown>[] = [];
+    if (contributionsEnabled) {
+      tasks.push(contributionsQuery.refetch());
+    }
+    if (enabled) {
+      tasks.push(
+        positionQuery.refetch(),
+        snapshotsQuery.refetch(),
+        assetsQuery.refetch(),
+        transactionsQuery.refetch(),
+        sectorTargetsQuery.refetch(),
+      );
+    }
+    await Promise.all(tasks);
+  }, [
+    contributionsEnabled,
+    contributionsQuery,
+    enabled,
+    positionQuery,
+    snapshotsQuery,
+    assetsQuery,
+    transactionsQuery,
+    sectorTargetsQuery,
+  ]);
 
   return {
     loading,

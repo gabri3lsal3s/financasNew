@@ -176,7 +176,7 @@ export function breakdownCycleObligations(
     const amountCents = Math.max(0, numberToCents(debt.amount));
 
     if (debt.type === "payable") {
-      if (debt.due_date <= currentMonthRangeEnd) {
+      if (debt.due_date < currentMonthRangeEnd) {
         payableDebts.push({
           id: debt.id,
           name: debt.name,
@@ -194,7 +194,7 @@ export function breakdownCycleObligations(
         }
       }
     } else if (debt.type === "receivable") {
-      if (debt.due_date <= currentMonthRangeEnd) {
+      if (debt.due_date < currentMonthRangeEnd) {
         receivableDebts.push({
           id: debt.id,
           name: debt.name,

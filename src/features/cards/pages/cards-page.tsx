@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { FileUp, Plus } from "lucide-react";
-import { Alert, Badge, Button, ErrorState } from "@/components/ui";
+import { Alert, Badge, Button, ErrorState, ResponsiveLabel } from "@/components/ui";
 import { PageGuideButton, PageHeader } from "@/components/layout";
 import { CreditCardWallet, ReadOnlyBanner, TransactionRow } from "@/components/modules";
 import { numberToCents } from "@/domain/money";
@@ -79,18 +79,24 @@ export function CardsPage() {
               type="button"
               variant="outline"
               size="sm"
+              aria-label="Importar fatura"
+              title="Importar fatura"
+              className="max-sm:min-h-11 max-sm:min-w-11"
               onClick={state.handleOpenImport}
             >
               <FileUp aria-hidden="true" />
-              <span>Importar fatura</span>
+              <ResponsiveLabel short="Importar" full="Importar fatura" iconOnlyBelow380 />
             </Button>
             <Button
               type="button"
               size="sm"
+              aria-label="Novo cartão"
+              title="Novo cartão"
+              className="max-sm:min-h-11 max-sm:min-w-11"
               onClick={() => state.handleOpenForm(null)}
             >
               <Plus aria-hidden="true" />
-              <span>Novo cartão</span>
+              <ResponsiveLabel short="Cartão" full="Novo cartão" iconOnlyBelow380 />
             </Button>
           </>
         }

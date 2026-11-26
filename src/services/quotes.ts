@@ -8,6 +8,7 @@
  * para indicadores macroeconômicos e preenchimento assistido de câmbio em ordens.
  */
 
+import { z } from "zod";
 import { isCashAssetClass, isCustomValuationAsset, isFixedIncomeClass, isTesouroAsset } from "@/domain/portfolio/valuation";
 import { isPrivateFixedIncomeTicker, normalizeTesouroTicker, parseBcbSgsResponse, type ParsedQuote } from "@/domain/portfolio/quotes";
 import {
@@ -18,13 +19,10 @@ import { getSupabase } from "@/data/client";
 
 const FETCH_TIMEOUT_MS = 5_000;
 
-/** Cache de taxas de indexadores (CDI / Selic / IPCA) para 6 horas. */
-let bcbRateCache: {
-  cdiAnnual?: number;
-  selicAnnual?: number;
-  ipcaAnnual?: number;
-  timestamp: number;
-} | null = null;
+/** Cache individual por série de taxas de indexadores (CDI / Selic / IPCA) para 6 horas. */
+const bcbRateCache: Partial<
+  Record<"CDI" | "SELIC" | "IPCA", { value: number; timestamp: number }>
+> = {};
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
 export type QuoteSyncMode = "swr" | "report_preflight" | "preview";
@@ -57,9 +55,36 @@ export interface HistoricalMonthlyQuote {
   provider?: string | null;
 }
 
+const QuoteItemSchema = z.object({
+  ticker: z.string().trim().min(1),
+  price: z.number().finite().positive(),
+  currency: z.enum(["BRL", "USD"]).optional(),
+  marketPriceAt: z.string().nullable().optional(),
+  fetchedAt: z.string().nullable().optional(),
+  provider: z.string().nullable().optional(),
+});
+
+const QuotesEnvelopeSchema = z.object({
+  updated: z.number().finite().nonnegative().optional(),
+  guarded: z.number().finite().nonnegative().optional(),
+  failed: z.number().finite().nonnegative().optional(),
+  skippedByEodGuard: z.number().finite().nonnegative().optional(),
+  skippedByCooldown: z.number().finite().nonnegative().optional(),
+  skippedByLock: z.number().finite().nonnegative().optional(),
+  rateLimited: z.boolean().optional(),
+  retryAfterSeconds: z.number().finite().nonnegative().optional(),
+  quotes: z.array(z.unknown()).optional(),
+});
+
+const HistoricalQuotesEnvelopeSchema = z.object({
+  quotes: z.array(z.unknown()).optional(),
+});
+
 /** Limpa o cache em memória de indicadores BCB (uso em testes/reset). */
 export function clearBcbCache(): void {
-  bcbRateCache = null;
+  delete bcbRateCache.CDI;
+  delete bcbRateCache.SELIC;
+  delete bcbRateCache.IPCA;
 }
 
 /**
@@ -72,17 +97,13 @@ export async function fetchBcbIndicator(
   indicator: "CDI" | "SELIC" | "IPCA",
 ): Promise<number | null> {
   const now = Date.now();
-  if (bcbRateCache && now - bcbRateCache.timestamp < CACHE_TTL_MS) {
-    if (indicator === "CDI" && bcbRateCache.cdiAnnual !== undefined) return bcbRateCache.cdiAnnual;
-    if (indicator === "SELIC" && bcbRateCache.selicAnnual !== undefined) {
-      return bcbRateCache.selicAnnual;
-    }
-    if (indicator === "IPCA" && bcbRateCache.ipcaAnnual !== undefined) {
-      return bcbRateCache.ipcaAnnual;
-    }
+  const cached = bcbRateCache[indicator];
+  if (cached && now - cached.timestamp < CACHE_TTL_MS) {
+    return cached.value;
   }
 
   const serie = indicator === "CDI" ? 12 : indicator === "SELIC" ? 432 : 13522;
+  const unit = indicator === "CDI" ? "daily" : "annual";
   const targetUrl = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${serie}/dados/ultimos/1?formato=json`;
 
   const controller = new AbortController();
@@ -91,13 +112,9 @@ export async function fetchBcbIndicator(
     const response = await fetch(targetUrl, { signal: controller.signal });
     if (!response.ok) return null;
     const payload: unknown = await response.json();
-    const parsed = parseBcbSgsResponse(payload);
+    const parsed = parseBcbSgsResponse(payload, unit);
     if (parsed && parsed.rateAnnual !== undefined) {
-      if (!bcbRateCache) bcbRateCache = { timestamp: now };
-      if (indicator === "CDI") bcbRateCache.cdiAnnual = parsed.rateAnnual;
-      if (indicator === "SELIC") bcbRateCache.selicAnnual = parsed.rateAnnual;
-      if (indicator === "IPCA") bcbRateCache.ipcaAnnual = parsed.rateAnnual;
-      bcbRateCache.timestamp = now;
+      bcbRateCache[indicator] = { value: parsed.rateAnnual, timestamp: now };
       return parsed.rateAnnual;
     }
   } catch {
@@ -113,15 +130,20 @@ export async function fetchBcbIndicator(
  * Busca a cotação PTAX oficial do BCB (Série SGS 1 / market_price_history) para uma data civil (YYYY-MM-DD),
  * cobrindo finais de semana/feriados com lookback de 7 dias corridos para o formulário de ordens históricas.
  */
-export async function fetchPtaxForDate(dateISO: string): Promise<number | null> {
+export async function fetchPtaxForDate(
+  dateISO: string,
+  options?: { signal?: AbortSignal },
+): Promise<number | null> {
   const cleanDate = dateISO.slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) return null;
+  if (options?.signal?.aborted) return null;
 
   let historyFallbackRate: number | null = null;
 
   // 1. Consulta primeiro o histórico oficial já congelado no Postgres (janela de 7 dias)
   try {
     const histRow = await getMarketPriceHistoryForDate("USDBRL=X", cleanDate);
+    if (options?.signal?.aborted) return null;
     if (histRow && histRow.price > 0) {
       const rounded = Math.round(histRow.price * 10000) / 10000;
       if (histRow.reference_date === cleanDate) {
@@ -141,6 +163,8 @@ export async function fetchPtaxForDate(dateISO: string): Promise<number | null> 
 
   // 2. API oficial do Banco Central (Série SGS 1 - Dólar Comercial Venda / PTAX)
   const controller = new AbortController();
+  const onParentAbort = () => controller.abort();
+  options?.signal?.addEventListener("abort", onParentAbort, { once: true });
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
     const url = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.1/dados?formato=json&dataInicial=${fmtBcb(startUtc)}&dataFinal=${fmtBcb(endUtc)}`;
@@ -157,6 +181,7 @@ export async function fetchPtaxForDate(dateISO: string): Promise<number | null> 
     // Fallback silencioso para histórico lookback
   } finally {
     clearTimeout(timer);
+    options?.signal?.removeEventListener("abort", onParentAbort);
   }
 
   return historyFallbackRate;
@@ -223,28 +248,36 @@ export async function syncMarketQuotesBatch(params: {
         continue;
       }
 
-      aggregated.updated += Number(data.updated ?? 0);
-      aggregated.guarded += Number(data.guarded ?? 0);
-      aggregated.failed += Number(data.failed ?? 0);
-      aggregated.skippedByEodGuard += Number(data.skippedByEodGuard ?? 0);
-      aggregated.skippedByCooldown += Number(data.skippedByCooldown ?? 0);
-      aggregated.skippedByLock += Number(data.skippedByLock ?? 0);
-      if (data.rateLimited) {
-        aggregated.rateLimited = true;
-        aggregated.retryAfterSeconds = data.retryAfterSeconds;
+      const parsedEnvelope = QuotesEnvelopeSchema.safeParse(data);
+      if (!parsedEnvelope.success) {
+        aggregated.failed += chunk.length;
+        continue;
       }
-      if (Array.isArray(data.quotes)) {
-        for (const q of data.quotes) {
-          if (q && q.ticker && Number(q.price) > 0) {
-            aggregated.quotes.push({
-              ticker: q.ticker.trim().toUpperCase(),
-              price: Number(q.price),
-              currency: q.currency === "USD" ? "USD" : "BRL",
-              marketPriceAt: q.marketPriceAt ?? null,
-              fetchedAt: q.fetchedAt ?? null,
-              provider: q.provider ?? null,
-            });
-          }
+      const env = parsedEnvelope.data;
+
+      aggregated.updated += env.updated ?? 0;
+      aggregated.guarded += env.guarded ?? 0;
+      aggregated.failed += env.failed ?? 0;
+      aggregated.skippedByEodGuard += env.skippedByEodGuard ?? 0;
+      aggregated.skippedByCooldown += env.skippedByCooldown ?? 0;
+      aggregated.skippedByLock += env.skippedByLock ?? 0;
+      if (env.rateLimited) {
+        aggregated.rateLimited = true;
+        aggregated.retryAfterSeconds = env.retryAfterSeconds;
+      }
+      if (Array.isArray(env.quotes)) {
+        for (const rawItem of env.quotes) {
+          const parsedItem = QuoteItemSchema.safeParse(rawItem);
+          if (!parsedItem.success) continue;
+          const q = parsedItem.data;
+          aggregated.quotes.push({
+            ticker: q.ticker.trim().toUpperCase(),
+            price: q.price,
+            currency: q.currency === "USD" ? "USD" : "BRL",
+            marketPriceAt: q.marketPriceAt ?? null,
+            fetchedAt: q.fetchedAt ?? null,
+            provider: q.provider ?? null,
+          });
         }
       }
       if (aggregated.rateLimited) {
@@ -360,6 +393,16 @@ export async function syncQuotesForAssets(
 export async function fetchHistoricalMonthlyQuotes(
   tickers: string[],
   month: string,
+  options?: {
+    existingHistoryRows?: Array<{
+      ticker: string;
+      price: number;
+      currency: "BRL" | "USD";
+      market_price_at?: string | null;
+      provider?: string | null;
+    }>;
+    signal?: AbortSignal;
+  },
 ): Promise<HistoricalMonthlyQuote[]> {
   const cleanTickers = [
     ...new Set(
@@ -367,14 +410,18 @@ export async function fetchHistoricalMonthlyQuotes(
         .map((t) => t.trim().toUpperCase())
         .filter((t) => t.length > 0 && !isPrivateFixedIncomeTicker(t) && !normalizeTesouroTicker(t)),
     ),
-  ];
+  ].sort((a, b) => a.localeCompare(b));
 
   if (cleanTickers.length === 0 || !/^\d{4}-\d{2}$/.test(month)) return [];
+  if (options?.signal?.aborted) {
+    throw new DOMException("The user aborted a request.", "AbortError");
+  }
 
   const resolvedMap = new Map<string, HistoricalMonthlyQuote>();
 
   try {
-    const historyRows = await listMarketPriceHistoryByMonth(month);
+    const historyRows =
+      options?.existingHistoryRows ?? (await listMarketPriceHistoryByMonth(month));
     const requestedSet = new Set(cleanTickers);
     for (const row of historyRows) {
       const key = row.ticker.toUpperCase().trim();
@@ -384,8 +431,8 @@ export async function fetchHistoricalMonthlyQuotes(
           price: row.price,
           currency: row.currency,
           source: "api",
-          marketPriceAt: row.market_price_at,
-          provider: row.provider,
+          marketPriceAt: row.market_price_at ?? null,
+          provider: row.provider ?? null,
         });
       }
     }
@@ -397,15 +444,20 @@ export async function fetchHistoricalMonthlyQuotes(
   if (missingTickers.length > 0) {
     const supabase = getSupabase();
     const chunkSize = 50;
+    const chunks: string[][] = [];
     for (let i = 0; i < missingTickers.length; i += chunkSize) {
-      const chunk = missingTickers.slice(i, i + chunkSize);
-      let timerId: ReturnType<typeof setTimeout> | undefined;
-      try {
-        const timeoutPromise = new Promise<{ data: null; error: Error }>((_, reject) => {
-          timerId = setTimeout(() => reject(new Error("Timeout quotes edge function")), 15_000);
-        });
+      chunks.push(missingTickers.slice(i, i + chunkSize));
+    }
 
-        const fetchPromise = supabase.functions.invoke<{
+    const invokeChunk = async (chunk: string[]) => {
+      if (options?.signal?.aborted) return;
+      const chunkController = new AbortController();
+      const onParentAbort = () => chunkController.abort();
+      options?.signal?.addEventListener("abort", onParentAbort, { once: true });
+      const timerId = setTimeout(() => chunkController.abort(), 15_000);
+
+      try {
+        const invokePromise = supabase.functions.invoke<{
           quotes?: Array<{
             ticker: string;
             price: number;
@@ -415,18 +467,35 @@ export async function fetchHistoricalMonthlyQuotes(
           }>;
         }>("quotes", {
           body: { tickers: chunk, month },
+          signal: chunkController.signal,
+        } as Parameters<typeof supabase.functions.invoke>[1]);
+
+        const abortPromise = new Promise<never>((_, reject) => {
+          if (chunkController.signal.aborted) {
+            reject(new DOMException("Aborted", "AbortError"));
+            return;
+          }
+          chunkController.signal.addEventListener(
+            "abort",
+            () => reject(new DOMException("Aborted", "AbortError")),
+            { once: true },
+          );
         });
 
-        const response = await Promise.race([fetchPromise, timeoutPromise]);
-        const quotes = response.data?.quotes;
+        const response = await Promise.race([invokePromise, abortPromise]);
+        const parsedEnv = HistoricalQuotesEnvelopeSchema.safeParse(response.data);
+        const quotes = parsedEnv.success ? parsedEnv.data.quotes : undefined;
 
         if (Array.isArray(quotes)) {
-          for (const q of quotes) {
-            const key = q.ticker?.toUpperCase().trim();
-            if (key && Number(q.price) > 0 && !resolvedMap.has(key)) {
+          for (const rawItem of quotes) {
+            const parsedItem = QuoteItemSchema.safeParse(rawItem);
+            if (!parsedItem.success) continue;
+            const q = parsedItem.data;
+            const key = q.ticker.toUpperCase().trim();
+            if (key && !resolvedMap.has(key)) {
               resolvedMap.set(key, {
                 ticker: key,
-                price: Number(q.price),
+                price: q.price,
                 currency: q.currency === "USD" ? "USD" : "BRL",
                 source: "api",
                 marketPriceAt: q.marketPriceAt ?? null,
@@ -435,11 +504,24 @@ export async function fetchHistoricalMonthlyQuotes(
             }
           }
         }
-      } catch {
-        // Degradação graciosa em timeout ou falha de rede
+      } catch (err) {
+        if (options?.signal?.aborted) {
+          throw err;
+        }
+        // Degradação graciosa em timeout ou falha parcial de lote
       } finally {
-        if (timerId !== undefined) clearTimeout(timerId);
+        clearTimeout(timerId);
+        options?.signal?.removeEventListener("abort", onParentAbort);
       }
+    };
+
+    // Processa ondas paralelas com concorrência limitada (3 lotes por vez)
+    const maxConcurrency = 3;
+    for (let i = 0; i < chunks.length; i += maxConcurrency) {
+      if (options?.signal?.aborted) {
+        throw new DOMException("The user aborted a request.", "AbortError");
+      }
+      await Promise.allSettled(chunks.slice(i, i + maxConcurrency).map(invokeChunk));
     }
   }
 

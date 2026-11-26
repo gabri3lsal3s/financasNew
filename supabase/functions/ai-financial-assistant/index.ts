@@ -550,21 +550,29 @@ Deno?.serve?.(async (req: Request) => {
       trial_ends_at?: string | null;
     } | null;
 
-    const isAdmin = profile.role === "admin" || profile.role === "superadmin";
-    const isLifetime = sub?.tier === "lifetime";
-    const isActivePro =
-      (sub?.tier === "pro_monthly" || sub?.tier === "pro_annual") && sub?.status === "active";
-    const isActiveTrial =
-      sub?.tier === "trial" &&
-      sub?.status === "trialing" &&
-      (!sub.trial_ends_at || Date.parse(sub.trial_ends_at) > Date.now());
+    const { data: canWriteTransactions, error: canWriteErr } = await userClient.rpc(
+      "can_current_user_write_module",
+      { p_module_key: "transactions" },
+    );
 
-    if (!(isAdmin || isLifetime || isActivePro || isActiveTrial)) {
+    if (canWriteErr) {
+      console.error("[ai-financial-assistant] Erro ao verificar permissão de escrita:", canWriteErr);
+      return fallbackResponse(req, "upstream_unavailable", 500, {
+        error: "Não foi possível validar permissões da conta.",
+      });
+    }
+
+    if (!canWriteTransactions) {
       return fallbackResponse(req, "read_only", 403, {
         error: "Assinatura em modo somente leitura.",
       });
     }
 
+    const isAdmin = profile.role === "admin" || profile.role === "superadmin";
+    const isLifetime = sub?.tier === "lifetime";
+    const isActivePro =
+      (sub?.tier === "pro_monthly" || sub?.tier === "pro_annual") &&
+      (sub?.status === "active" || sub?.status === "past_due");
     const planGroup: AiPlanGroup = isAdmin || isLifetime || isActivePro ? "pro" : "trial";
 
     const allowedBatchCategoryIds =
@@ -590,7 +598,7 @@ Deno?.serve?.(async (req: Request) => {
             : null;
         const isLegacyCacheMissingCategory =
           Boolean(requestData.categories?.length) &&
-          Boolean(cachedRecord) &&
+          cachedRecord !== null &&
           !("categoryId" in cachedRecord);
         if (!isLegacyCacheMissingCategory) {
           const validatedCached = AiSingleReceiptOutputSchema.safeParse(

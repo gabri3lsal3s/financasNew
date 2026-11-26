@@ -1,8 +1,11 @@
 import { useMemo, useState } from "react";
 import { ArrowUpRight, Briefcase, ChevronRight, CreditCard, Gauge, Landmark, Scale, ShieldCheck, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ErrorState } from "@/components/ui/error-state";
 import { MoneyText } from "@/components/ui/money-text";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { getErrorMessage } from "@/services/errors";
 import { calculateSafeDailySpending } from "@/domain/cash";
 import { formatDateBR } from "@/lib/date";
 import { cn } from "@/lib/utils";
@@ -123,6 +126,45 @@ export function RealCashHeroCard({ realCashData, className, onCalibrate }: RealC
     : effectiveSafeDaily.incomeSource === "year_average"
       ? `Base: renda média (${effectiveSafeDaily.incomeMonthsCount} ${effectiveSafeDaily.incomeMonthsCount === 1 ? "mês" : "meses"})`
       : "Base: renda do mês";
+
+  if (realCashData.isLoading) {
+    return (
+      <div
+        aria-busy="true"
+        aria-label="Carregando saldo disponível em conta"
+        className={cn(
+          "flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs min-w-0",
+          className,
+        )}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <Skeleton className="h-4 w-44" />
+          <Skeleton className="h-8 w-28 rounded-lg" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <Skeleton className="h-16 rounded-xl" />
+          <Skeleton className="h-16 rounded-xl" />
+          <Skeleton className="h-16 rounded-xl" />
+        </div>
+      </div>
+    );
+  }
+
+  if (realCashData.error) {
+    return (
+      <div
+        className={cn(
+          "rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs min-w-0",
+          className,
+        )}
+      >
+        <ErrorState
+          message={getErrorMessage(realCashData.error)}
+          onRetry={() => void realCashData.refetch()}
+        />
+      </div>
+    );
+  }
 
   return (
     <>

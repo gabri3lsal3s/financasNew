@@ -226,7 +226,8 @@ Referência completa (ajustar nomes à marca final):
 
 | Recurso | Estratégia | Justificativa |
 |---|---|---|
-| App Shell (HTML + JS/CSS do build, com hash) | **Precache** (cache-first, imutáveis) | Carregamento instantâneo da casca visual (`cleanupOutdatedCaches: true`) |
+| Shell público (HTML, CSS, entrada JS e imports estáticos do bootstrap e da landing) | **Precache** gerado a partir do grafo do Vite | Reabertura com os hashes da versão instalada (`cleanupOutdatedCaches: true`) |
+| Rotas de conta, prévias e chunks lazy visitados | **CacheFirst** (`app-chunks`) | Cache sob demanda por hash, sem baixar módulos autenticados na instalação |
 | Fontes (Google Fonts) e imagens estáticas | **Stale-while-revalidate** (cache 1 ano / 30 dias) | Rápido e sempre atualizável |
 | Ícones PWA e assets de marca (`/pwa/icons/*`, `/brand/*`) | **NetworkFirst** (`pwa-brand-assets`, timeout 3s) | Revalidação de rede imediata com fallback para cache offline |
 | **API (Supabase, RPC, cotações)** | **Network only** — fora do SW | Online First: dados sempre da nuvem; erro explícito + retry manual |
@@ -234,7 +235,7 @@ Referência completa (ajustar nomes à marca final):
 
 **App Shell (definição):** layout, navegação (sidebar/bottom tabs), primitivos de UI e a página offline — o que torna a abertura instantânea. Os **dados** das telas continuam carregando via API com **skeletons** (regra de loading do DESIGN_SYSTEM).
 
-**Estado offline (na prática):** o `navigateFallback` serve o **App Shell** (index.html precached) para qualquer navegação — com rede, os dados carregam normalmente; **sem rede, a casca renderiza e as queries falham com erro explícito + "Tentar novamente"** (Online First — nunca dados fantasmas). O arquivo `public/pwa/offline.html` permanece como página estática de emergência (acesso direto), mantendo o padrão visual da marca.
+**Estado offline (na prática):** o `navigateFallback` serve o **App Shell** (index.html precached) para navegações da SPA, com os endpoints estáticos de descoberta excluídos. Com rede, os dados carregam normalmente; **sem rede, a casca renderiza e as queries falham com erro explícito + "Tentar novamente"** (Online First — nunca dados fantasmas). O arquivo `public/pwa/offline.html` permanece como página estática de emergência (acesso direto), mantendo o padrão visual da marca.
 
 ---
 

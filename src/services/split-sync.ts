@@ -1,12 +1,19 @@
-import { getSupabase } from "@/data/client";
-import { resolveQuery } from "@/data/query";
 import { createLinkedReceivableDebt, listDebts, updateDebt } from "@/data/repositories/debts";
-import { getExpense, listExpensesByInstallmentGroup, updateExpense } from "@/data/repositories/expenses";
-import { deleteExpenseInstallments, updateExpenseInstallmentsGroup } from "@/data/rpc/transactions";
-import { settleIntegratedReceivable } from "@/data/rpc/debts";
+import {
+  getExpense,
+  listExpensesByInstallmentGroup,
+  listLegacyCardInstallmentSiblings,
+  updateExpense,
+} from "@/data/repositories/expenses";
+import {
+  deleteExpenseInstallments,
+  settleIntegratedReceivable,
+  updateExpenseInstallmentsGroup,
+} from "@/data/rpc";
 import { divideIntoInstallments } from "@/domain/cards/index";
 import { todayISO } from "@/domain/debts/index";
 import { computeSplitExpenseWeights } from "@/domain/finance/split-reconciliation";
+import { reportError } from "@/services/observability";
 import type { Debt, Expense, SplitParticipantInstallment, SplitParticipantItem } from "@/types";
 
 export interface SyncSplitWeightsParams {
@@ -55,16 +62,12 @@ export async function resolveSplitTargetExpenses(
     linkedExpense.card_id &&
     linkedExpense.description
   ) {
-    const { data: siblings } = await resolveQuery<Expense[]>(
-      getSupabase()
-        .from("expenses")
-        .select("*")
-        .eq("card_id", linkedExpense.card_id)
-        .eq("description", linkedExpense.description)
-        .eq("installments_total", linkedExpense.installments_total)
-        .order("installment_number", { ascending: true }),
+    const siblings = await listLegacyCardInstallmentSiblings(
+      linkedExpense.card_id,
+      linkedExpense.description,
+      linkedExpense.installments_total,
     );
-    if (siblings && siblings.length > 0) {
+    if (siblings.length > 0) {
       groupExpenses = siblings;
     }
   }
@@ -313,7 +316,7 @@ export async function syncSplitDebtStatus({
         installment_group_id: groupId ?? null,
       });
     } catch (err) {
-      console.warn("Não foi possível criar cobrança vinculada para o racha:", err);
+      reportError(err, { source: "splitSync.createLinkedReceivableDebt", expenseId, groupId });
       return null;
     }
   }
@@ -347,7 +350,7 @@ export async function syncSplitDebtStatus({
       ...(targetDebt.paid_at ? { paid_at: null } : {}),
     });
   } catch (err) {
-    console.warn("Não foi possível sincronizar a cobrança vinculada ao racha:", err);
+    reportError(err, { source: "splitSync.syncLinkedReceivableDebt", debtId: targetDebt.id });
     return targetDebt;
   }
 }
@@ -376,7 +379,7 @@ export async function deleteAllSplitExpenses({
         await deleteExpenseInstallments(exp.id, "single");
         deletedCount++;
       } catch (err) {
-        console.warn(`Erro ao excluir parcela ${exp.id}:`, err);
+        reportError(err, { source: "splitSync.deleteAllSplitExpenses", expenseId: exp.id });
       }
     }
   } else {

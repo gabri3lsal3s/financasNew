@@ -382,8 +382,9 @@ export function buildPortfolioCashFlows(params: {
 
   const flows: CashFlow[] = [];
 
-  // 1. Aportes externos e Resgates históricos
+  // 1. Aportes externos e Resgates históricos (filtrando fluxos posteriores à data de corte)
   for (const c of contributions) {
+    if (c.date > today) continue;
     if (Math.abs(c.amount) < 0.0001) continue;
 
     // Salvaguarda: reinvestimento interno de proventos é neutro para o bolso do investidor
@@ -408,6 +409,7 @@ export function buildPortfolioCashFlows(params: {
 
   // 2. Retiradas / Saques externos (dinheiro que volta ao bolso via transação de caixa)
   for (const w of cashWithdrawals) {
+    if (w.date > today) continue;
     if (w.amount > 0) {
       flows.push({
         date: w.date,

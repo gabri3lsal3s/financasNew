@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, startTransition, Suspense, useState } from "react";
 import {
   Briefcase,
   Camera,
@@ -12,12 +12,24 @@ import { cn } from "@/lib/utils";
 import { useHorizontalDragScroll } from "@/hooks/use-horizontal-drag-scroll";
 import { triggerSensory } from "@/services/sensory";
 import { ScrollReveal } from "./scroll-reveal";
-import { SharedFinancesShowcase } from "./shared-finances-showcase";
+import { ContentLoading } from "@/components/ui/content-loading";
 import { PainCashPreview } from "./pain-previews/pain-cash-preview";
-import { PainCapturePreview } from "./pain-previews/pain-capture-preview";
-import { PainDebtsPreview } from "./pain-previews/pain-debts-preview";
-import { PainBusinessPreview } from "./pain-previews/pain-business-preview";
-import { PainInvestPreview } from "./pain-previews/pain-invest-preview";
+
+const SharedFinancesShowcase = lazy(() =>
+  import("./shared-finances-showcase").then((m) => ({ default: m.SharedFinancesShowcase })),
+);
+const PainCapturePreview = lazy(() =>
+  import("./pain-previews/pain-capture-preview").then((m) => ({ default: m.PainCapturePreview })),
+);
+const PainDebtsPreview = lazy(() =>
+  import("./pain-previews/pain-debts-preview").then((m) => ({ default: m.PainDebtsPreview })),
+);
+const PainBusinessPreview = lazy(() =>
+  import("./pain-previews/pain-business-preview").then((m) => ({ default: m.PainBusinessPreview })),
+);
+const PainInvestPreview = lazy(() =>
+  import("./pain-previews/pain-invest-preview").then((m) => ({ default: m.PainInvestPreview })),
+);
 
 export type PainKey = "cash" | "capture" | "business" | "debts" | "shared" | "invest";
 
@@ -92,8 +104,10 @@ export function FinancialPainPointsSection({
 
   const selectPain = (pain: PainKey) => {
     triggerSensory("selection");
-    setInternalPain(pain);
-    onPainChange?.(pain);
+    startTransition(() => {
+      setInternalPain(pain);
+      onPainChange?.(pain);
+    });
   };
 
   return (
@@ -190,15 +204,19 @@ export function FinancialPainPointsSection({
           </div>
 
           {/* Palco Interativo */}
-          <div key={activePain} className="lg:col-span-7 min-w-0 w-full animate-fade-slide-in">
-            {activePain === "cash" ? <PainCashPreview /> : null}
-            {activePain === "capture" ? <PainCapturePreview /> : null}
-            {activePain === "business" ? <PainBusinessPreview /> : null}
-            {activePain === "debts" ? <PainDebtsPreview /> : null}
-            {activePain === "shared" ? <SharedFinancesShowcase /> : null}
-            {activePain === "invest" ? (
-              <PainInvestPreview onExploreDeep={onExploreInvestments} />
-            ) : null}
+          <div className="lg:col-span-7 min-w-0 w-full">
+            <Suspense fallback={<ContentLoading />}>
+              <div key={activePain} className="animate-fade-slide-in">
+                {activePain === "cash" ? <PainCashPreview /> : null}
+                {activePain === "capture" ? <PainCapturePreview /> : null}
+                {activePain === "business" ? <PainBusinessPreview /> : null}
+                {activePain === "debts" ? <PainDebtsPreview /> : null}
+                {activePain === "shared" ? <SharedFinancesShowcase /> : null}
+                {activePain === "invest" ? (
+                  <PainInvestPreview onExploreDeep={onExploreInvestments} />
+                ) : null}
+              </div>
+            </Suspense>
           </div>
         </div>
       </div>

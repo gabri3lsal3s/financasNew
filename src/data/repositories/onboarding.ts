@@ -26,8 +26,7 @@ type OnboardingCountTable =
   | "expenses"
   | "incomes"
   | "portfolio_assets"
-  | "portfolio_transactions"
-  | "business_profiles";
+  | "portfolio_transactions";
 
 /**
  * Conta de forma leve (head: true) as linhas de uma tabela do usuário.
@@ -63,7 +62,6 @@ export async function getOnboardingCounts(): Promise<OnboardingCounts> {
     incomes,
     portfolioAssets,
     portfolioTransactions,
-    businessProfiles,
   ] = await Promise.all([
     count("categories", [
       { column: "type", value: "expense" },
@@ -79,7 +77,6 @@ export async function getOnboardingCounts(): Promise<OnboardingCounts> {
     count("incomes"),
     count("portfolio_assets"),
     count("portfolio_transactions"),
-    count("business_profiles"),
   ]);
 
   return {
@@ -90,6 +87,6 @@ export async function getOnboardingCounts(): Promise<OnboardingCounts> {
     transactions: expenses + incomes,
     portfolioAssets,
     portfolioTransactions,
-    businessProfiles,
+    businessProfiles: 0,
   };
 }

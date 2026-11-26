@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Download, Plus } from "lucide-react";
-import { Button, ErrorState } from "@/components/ui";
+import { Button, ErrorState, ResponsiveLabel } from "@/components/ui";
 import { MonthPicker, ReadOnlyBanner } from "@/components/modules";
 import { PageGuideButton, PageHeader } from "@/components/layout";
 import { buildCheckoutUrl } from "@/domain/subscription/plans";
@@ -43,6 +43,7 @@ export function TransactionListPage() {
               type="button"
               variant="outline"
               size="sm"
+              className="max-sm:min-h-11 max-sm:min-w-11"
               onClick={tx.handleExportCsv}
               disabled={tx.filteredFeedItemsCount === 0}
               aria-label="Exportar CSV"
@@ -53,15 +54,18 @@ export function TransactionListPage() {
               }
             >
               <Download aria-hidden="true" />
-              <span>Exportar CSV</span>
+              <ResponsiveLabel short="Exportar" full="Exportar CSV" iconOnlyBelow380 />
             </Button>
             <Button
               type="button"
               size="sm"
+              aria-label="Nova transação"
+              title="Nova transação"
+              className="max-sm:min-h-11 max-sm:min-w-11"
               onClick={tx.handleNewTransaction}
             >
               <Plus aria-hidden="true" />
-              <span>Nova transação</span>
+              <ResponsiveLabel short="Nova" full="Nova transação" iconOnlyBelow380 />
             </Button>
           </>
         }

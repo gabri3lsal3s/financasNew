@@ -81,20 +81,30 @@ Deno.serve(async (req: Request) => {
       const rec = payload.record;
       resolvedTicketId = rec.id ?? null;
 
+      if (rec.status && !["open", "in_progress"].includes(rec.status)) {
+        return jsonResponse(req, { ok: true, skipped: "status_not_notifiable" }, 200);
+      }
+
+      if (typeof rec.message !== "string" || !rec.message.trim()) {
+        return jsonResponse(req, { error: "Mensagem do chamado não informada." }, 400);
+      }
+
       let userName = rec.user_name ?? null;
       let userEmail = rec.user_email ?? null;
 
-      if ((!userName || !userEmail) && rec.user_id) {
+      if (rec.user_id) {
         const { data: profile } = await supabaseAdmin
           .from("profiles")
-          .select("name, email")
+          .select("name, email, status")
           .eq("id", rec.user_id)
           .maybeSingle();
 
-        if (profile) {
-          userName = userName || profile.name;
-          userEmail = userEmail || profile.email;
+        if (!profile || profile.status !== "active") {
+          return jsonResponse(req, { error: "Conta inativa ou não autorizada para notificação." }, 403);
         }
+
+        userName = userName || profile.name;
+        userEmail = userEmail || profile.email;
       }
 
       notificationData = {

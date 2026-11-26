@@ -8,6 +8,7 @@ import {
   type PortfolioColumnMapping,
   type RawPortfolioRow,
 } from "@/domain/portfolio/b3-csv-parser";
+import { decodeBufferToString } from "@/domain/reconciliation/extractors/csv-extractor";
 import { parseXlsxToCsv } from "@/domain/portfolio";
 import { pushToast } from "@/services/toast";
 import { usePortfolioAssets } from "@/state";
@@ -86,7 +87,8 @@ export function usePortfolioCsvImport(onOpenChange: (open: boolean) => void) {
         file.type.includes("spreadsheetml") ||
         file.type.includes("excel");
 
-      const content = isXlsx ? await parseXlsxToCsv(await file.arrayBuffer()) : await file.text();
+      const buffer = await file.arrayBuffer();
+      const content = isXlsx ? await parseXlsxToCsv(buffer) : decodeBufferToString(buffer);
       if (!content) {
         pushToast({
           title: "Planilha vazia ou ilegível",

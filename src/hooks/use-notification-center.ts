@@ -1,30 +1,37 @@
-import { useCallback, useMemo } from "react";
+import { createContext, createElement, useCallback, useContext, useMemo, type ReactNode } from "react";
 import { todayISO } from "@/domain/debts/index";
 import { buildNotificationCenter } from "@/domain/notifications/hub/build-notification-center";
 import { detectClosedCardBills, detectConsolidatedBudgetOverrun, detectDividendNotificationAlerts, detectTripAndFamilyPendingAlerts, resolveNotificationCategoryPreferences, type BudgetOverrunAlert, type ClosedCardBillAlert, type DividendNotificationAlert, type TripFamilyAlert } from "@/domain/notifications/hub/event-detectors";
 import { type NotificationCenterSummary } from "@/domain/notifications/hub/types";
 import { FALLBACK_USD_RATE } from "@/domain/portfolio/valuation";
-import { type SuggestedDividendItem } from "@/domain/portfolio/dividend-suggester";
 import { coreOnboardingProgress, shouldShowOnboardingBanner, type OnboardingCounts } from "@/domain/onboarding/index";
 import { isSnoozeExpired, type ReminderItem, type ReminderPreferences, type ReminderState } from "@/domain/reminders/index";
-import * as overviewHooks from "@/features/overview/hooks";
-import * as state from "@/state";
+import { useSmartAdvisorInsights } from "@/features/overview/hooks";
+import {
+  useAllCardExpenses,
+  useAllCardPayments,
+  useBudgets,
+  useCategories,
+  useCorporateDividends,
+  useCreditCards,
+  useExpenses,
+  useMyBroadcastNotifications,
+  useMyFamily,
+  useMyPublicShares,
+  useMySupportTickets,
+  useOnboardingCounts,
+  useReminderStates,
+  useReminders,
+  useUserAccess,
+  useUserPreferences,
+  useUserSubscription,
+  useUserTrips,
+} from "@/state";
 import type {
-  Budget,
-  CardPayment,
-  Category,
-  CreditCard,
-  Expense,
-  MyFamilyData,
   NotificationCategoryPreferences,
-  PublicShare,
   SupportTicket,
-  UserBroadcastNotification,
-  UserDividendEvent,
-  UserPreferences,
   UserSubscription,
 } from "@/types";
-import type { Trip } from "@/types/trips";
 import { useOnboardingDismissed } from "./use-onboarding-dismissed";
 
 const DEFAULT_REMINDER_PREFERENCES: ReminderPreferences = {
@@ -33,19 +40,6 @@ const DEFAULT_REMINDER_PREFERENCES: ReminderPreferences = {
   debtDaysBefore: 3,
 };
 
-export function getOptionalHook<TResult>(
-  mod: object,
-  key: string,
-  fallback: (...args: unknown[]) => TResult,
-): (...args: unknown[]) => TResult {
-  if (Reflect.ownKeys(mod).includes(key)) {
-    const candidate = (mod as Record<string, unknown>)[key];
-    if (typeof candidate === "function") {
-      return candidate as (...args: unknown[]) => TResult;
-    }
-  }
-  return fallback;
-}
 
 function isHubAlertHiddenByState(
   key: string,
@@ -88,168 +82,25 @@ export interface UseNotificationCenterResult extends NotificationCenterSummary {
   error: unknown;
 }
 
-/**
- * Fonte única de verdade (Notification Hub) para todas as superfícies de
- * notificação in-app: Sininho (NotificationsButton), NotificationsPopover,
- * Sidebar, BottomNav, MoreMenuSheet e página /lembretes.
- */
-export function useNotificationCenter(
+export interface NotificationCenterCounts {
+  criticalCount: number;
+  actionNeededCount: number;
+  urgentBellCount: number;
+  totalBellCount: number;
+  totalRemindersPageCount: number;
+  isLoading: boolean;
+}
+
+const NotificationCenterContext = createContext<UseNotificationCenterResult | null>(null);
+const NotificationCountsContext = createContext<NotificationCenterCounts | null>(null);
+
+function useNotificationCenterCompute(
   options?: UseNotificationCenterOptions,
 ): UseNotificationCenterResult {
   const today = options?.today ?? todayISO();
   const currentMonth = today.slice(0, 7);
 
-  const useUserAccessSafe = getOptionalHook(state, "useUserAccess", () => ({
-    hasFeature: () => true,
-  }));
-
-  const useUserPreferencesSafe = getOptionalHook(
-    state,
-    "useUserPreferences",
-    () => ({
-      data: null as UserPreferences | null,
-      isLoading: false,
-    }),
-  );
-
-  const useReminderStatesSafe = getOptionalHook(
-    state,
-    "useReminderStates",
-    () => ({
-      data: [] as ReminderState[],
-      isLoading: false,
-    }),
-  );
-
-  const useRemindersSafe = getOptionalHook(state, "useReminders", () => ({
-    items: [] as ReminderItem[],
-    allItems: [] as ReminderItem[],
-    payableItems: [] as ReminderItem[],
-    receivableItems: [] as ReminderItem[],
-    readHistoryItems: [] as ReminderItem[],
-    preferences: DEFAULT_REMINDER_PREFERENCES,
-    totalCount: 0,
-    overdueCount: 0,
-    dueTodayCount: 0,
-    dueSoonCount: 0,
-    receivableCount: 0,
-    urgentCount: 0,
-    readCount: 0,
-    isLoading: false,
-    error: null,
-  }));
-
-  const useOnboardingCountsSafe = getOptionalHook(
-    state,
-    "useOnboardingCounts",
-    () => ({
-      data: undefined as OnboardingCounts | undefined,
-      isLoading: false,
-    }),
-  );
-
-  const useMySupportTicketsSafe = getOptionalHook(
-    state,
-    "useMySupportTickets",
-    () => ({
-      data: [] as SupportTicket[],
-      isLoading: false,
-    }),
-  );
-
-  const useMyBroadcastNotificationsSafe = getOptionalHook(
-    state,
-    "useMyBroadcastNotifications",
-    () => ({
-      data: [] as UserBroadcastNotification[],
-      isLoading: false,
-    }),
-  );
-
-  const useMyPublicSharesSafe = getOptionalHook(
-    state,
-    "useMyPublicShares",
-    () => ({
-      data: [] as PublicShare[],
-      isLoading: false,
-    }),
-  );
-
-  const useUserSubscriptionSafe = getOptionalHook(
-    state,
-    "useUserSubscription",
-    () => null as UserSubscription | { data?: UserSubscription | null } | null,
-  );
-
-  const useCreditCardsSafe = getOptionalHook(state, "useCreditCards", () => ({
-    data: [] as CreditCard[],
-    isLoading: false,
-  }));
-  const useAllCardExpensesSafe = getOptionalHook(
-    state,
-    "useAllCardExpenses",
-    () => ({
-      data: [] as Expense[],
-      isLoading: false,
-    }),
-  );
-  const useAllCardPaymentsSafe = getOptionalHook(
-    state,
-    "useAllCardPayments",
-    () => ({
-      data: [] as CardPayment[],
-      isLoading: false,
-    }),
-  );
-  const useBudgetsSafe = getOptionalHook(state, "useBudgets", () => ({
-    data: [] as Budget[],
-    isLoading: false,
-  }));
-  const useExpensesSafe = getOptionalHook(state, "useExpenses", () => ({
-    data: [] as Expense[],
-    isLoading: false,
-  }));
-  const useCategoriesSafe = getOptionalHook(state, "useCategories", () => ({
-    data: [] as Category[],
-    isLoading: false,
-  }));
-  const useUserTripsSafe = getOptionalHook(state, "useUserTrips", () => ({
-    data: [] as Trip[],
-    isLoading: false,
-  }));
-  const useMyFamilySafe = getOptionalHook(state, "useMyFamily", () => ({
-    data: null as MyFamilyData | null,
-    isLoading: false,
-  }));
-  const useCorporateDividendsSafe = getOptionalHook(state, "useCorporateDividends", () => ({
-    available: [] as SuggestedDividendItem[],
-    projected: [] as SuggestedDividendItem[],
-    recentlySettled: [] as UserDividendEvent[],
-    fxRate: FALLBACK_USD_RATE,
-    isLoading: false,
-  }));
-
-  const rawAdvisorHook = getOptionalHook(
-    overviewHooks,
-    "useSmartAdvisorInsights",
-    () => ({
-      insights: [],
-      dismiss: () => {},
-    }),
-  );
-  const isRealUnmockedAdvisor = Function.prototype.toString
-    .call(rawAdvisorHook)
-    .includes("useSmartAdvisorQueries");
-  const canRunRealAdvisor =
-    !isRealUnmockedAdvisor || Reflect.ownKeys(state).includes("useExpenses");
-  const useSmartAdvisorInsightsSafe = canRunRealAdvisor
-    ? rawAdvisorHook
-    : () => ({
-        insights: [],
-        dismiss: () => {},
-      });
-
-  const access = useUserAccessSafe();
+  const access = useUserAccess();
   const rawHasFeature =
     typeof access?.hasFeature === "function"
       ? (access.hasFeature as (key: string) => boolean)
@@ -259,10 +110,10 @@ export function useNotificationCenter(
     [rawHasFeature],
   );
 
-  const userPrefsQuery = useUserPreferencesSafe();
-  const reminderStatesQuery = useReminderStatesSafe();
-  const reminders = useRemindersSafe(options?.today);
-  const onboardingQuery = useOnboardingCountsSafe();
+  const userPrefsQuery = useUserPreferences();
+  const reminderStatesQuery = useReminderStates();
+  const reminders = useReminders(options?.today);
+  const onboardingQuery = useOnboardingCounts();
   const { isDismissed: isOnboardingDismissed, dismiss: dismissOnboarding } =
     useOnboardingDismissed();
 
@@ -278,11 +129,11 @@ export function useNotificationCenter(
     preferences.enabled && categoryPreferences.advisorInsights,
   );
 
-  const advisorHook = useSmartAdvisorInsightsSafe({ enabled: canRunAdvisorInsights });
-  const supportQuery = useMySupportTicketsSafe();
-  const broadcastsQuery = useMyBroadcastNotificationsSafe();
-  const splitSharesQuery = useMyPublicSharesSafe("split");
-  const subscriptionQuery = useUserSubscriptionSafe();
+  const advisorHook = useSmartAdvisorInsights({ enabled: canRunAdvisorInsights });
+  const supportQuery = useMySupportTickets();
+  const broadcastsQuery = useMyBroadcastNotifications();
+  const splitSharesQuery = useMyPublicShares("split");
+  const subscriptionQuery = useUserSubscription();
 
   const canDetectBillClosing =
     categoryPreferences.billClosing && hasFeature("cards");
@@ -291,21 +142,21 @@ export function useNotificationCenter(
   const canDetectFamilyOrTrips = categoryPreferences.familyAndTrips;
 
   const canDetectDividends = hasFeature("investments");
-  const cardsQuery = useCreditCardsSafe({ enabled: canDetectBillClosing });
-  const cardExpensesQuery = useAllCardExpensesSafe({
+  const cardsQuery = useCreditCards({ enabled: canDetectBillClosing });
+  const cardExpensesQuery = useAllCardExpenses({
     enabled: canDetectBillClosing,
   });
-  const cardPaymentsQuery = useAllCardPaymentsSafe({
+  const cardPaymentsQuery = useAllCardPayments({
     enabled: canDetectBillClosing,
   });
-  const budgetsQuery = useBudgetsSafe();
-  const expensesQuery = useExpensesSafe(currentMonth, {
+  const budgetsQuery = useBudgets();
+  const expensesQuery = useExpenses(currentMonth, {
     enabled: canDetectBudgets,
   });
-  const expenseCategoriesQuery = useCategoriesSafe("expense");
-  const tripsQuery = useUserTripsSafe();
-  const familyQuery = useMyFamilySafe({ enabled: canDetectFamilyOrTrips });
-  const corporateDividendsState = useCorporateDividendsSafe({ enabled: canDetectDividends });
+  const expenseCategoriesQuery = useCategories("expense");
+  const tripsQuery = useUserTrips();
+  const familyQuery = useMyFamily({ enabled: canDetectFamilyOrTrips });
+  const corporateDividendsState = useCorporateDividends({ enabled: canDetectDividends });
 
   const reminderStates = useMemo(
     () => reminderStatesQuery?.data ?? [],
@@ -334,9 +185,13 @@ export function useNotificationCenter(
     !isOnboardingDismissed && onboardingData
       ? shouldShowOnboardingBanner(onboardingData, hasFeature)
       : false;
-  const onboardingProg = onboardingData
-    ? coreOnboardingProgress(onboardingData, hasFeature)
-    : { done: 0, total: 0 };
+  const onboardingProg = useMemo(
+    () =>
+      onboardingData
+        ? coreOnboardingProgress(onboardingData, hasFeature)
+        : { done: 0, total: 0 },
+    [onboardingData, hasFeature],
+  );
 
   const normalizedSupportTickets = useMemo(() => {
     const raw = supportQuery?.data ?? [];
@@ -362,8 +217,11 @@ export function useNotificationCenter(
     if (!subscriptionQuery || typeof subscriptionQuery !== "object") {
       return null;
     }
-    if ("data" in subscriptionQuery && subscriptionQuery.data !== undefined) {
-      return subscriptionQuery.data ?? null;
+    if ("data" in subscriptionQuery) {
+      const subData = (subscriptionQuery as { data?: UserSubscription | null }).data;
+      if (subData !== undefined) {
+        return subData ?? null;
+      }
     }
     if ("status" in subscriptionQuery || "tier" in subscriptionQuery) {
       return subscriptionQuery as unknown as UserSubscription;
@@ -564,37 +422,185 @@ export function useNotificationCenter(
   const totalRemindersPageCount =
     summary.totalRemindersPageCount + fallbackReminderCount;
 
-  const dismissAdvisor: (themeKey: string, days?: number) => void =
-    typeof advisorHook?.dismiss === "function"
-      ? (advisorHook.dismiss as (themeKey: string, days?: number) => void)
-      : () => {};
+  const rawDismissAdvisor = advisorHook?.dismiss;
+  const dismissAdvisor = useCallback(
+    (themeKey: string, days?: number) => {
+      if (typeof rawDismissAdvisor === "function") {
+        (rawDismissAdvisor as (themeKey: string, days?: number) => void)(themeKey, days);
+      }
+    },
+    [rawDismissAdvisor],
+  );
 
-  return {
-    ...summary,
-    criticalCount,
-    actionNeededCount,
-    urgentBellCount,
-    totalBellCount,
-    totalRemindersPageCount,
-    items,
-    allItems,
-    readHistoryItems,
-    preferences,
-    categoryPreferences,
-    totalCount,
-    overdueCount,
-    dueTodayCount,
-    dueSoonCount,
-    receivableCount,
-    urgentCount,
-    readCount,
-    onboardingData,
-    onboardingProg,
-    hasFeature,
-    isOnboardingDismissed,
-    dismissOnboarding,
-    dismissAdvisor,
-    isLoading: Boolean(reminders?.isLoading) || Boolean(reminderStatesQuery?.isLoading),
-    error: reminders?.error ?? null,
-  };
+  const isLoading = Boolean(reminders?.isLoading) || Boolean(reminderStatesQuery?.isLoading);
+  const error = reminders?.error ?? null;
+
+  return useMemo(
+    () => ({
+      ...summary,
+      criticalCount,
+      actionNeededCount,
+      urgentBellCount,
+      totalBellCount,
+      totalRemindersPageCount,
+      items,
+      allItems,
+      readHistoryItems,
+      preferences,
+      categoryPreferences,
+      totalCount,
+      overdueCount,
+      dueTodayCount,
+      dueSoonCount,
+      receivableCount,
+      urgentCount,
+      readCount,
+      onboardingData,
+      onboardingProg,
+      hasFeature,
+      isOnboardingDismissed,
+      dismissOnboarding,
+      dismissAdvisor,
+      isLoading,
+      error,
+    }),
+    [
+      summary,
+      criticalCount,
+      actionNeededCount,
+      urgentBellCount,
+      totalBellCount,
+      totalRemindersPageCount,
+      items,
+      allItems,
+      readHistoryItems,
+      preferences,
+      categoryPreferences,
+      totalCount,
+      overdueCount,
+      dueTodayCount,
+      dueSoonCount,
+      receivableCount,
+      urgentCount,
+      readCount,
+      onboardingData,
+      onboardingProg,
+      hasFeature,
+      isOnboardingDismissed,
+      dismissOnboarding,
+      dismissAdvisor,
+      isLoading,
+      error,
+    ],
+  );
+}
+
+/**
+ * Provider único do Notification Hub na sessão autenticada.
+ * Evita múltiplas instâncias de observadores e recomputações redundantes no shell.
+ */
+export function NotificationCenterProvider({ children }: { children: ReactNode }) {
+  const value = useNotificationCenterCompute();
+  const counts = useMemo<NotificationCenterCounts>(
+    () => ({
+      criticalCount: value.criticalCount,
+      actionNeededCount: value.actionNeededCount,
+      urgentBellCount: value.urgentBellCount,
+      totalBellCount: value.totalBellCount,
+      totalRemindersPageCount: value.totalRemindersPageCount,
+      isLoading: value.isLoading,
+    }),
+    [
+      value.criticalCount,
+      value.actionNeededCount,
+      value.urgentBellCount,
+      value.totalBellCount,
+      value.totalRemindersPageCount,
+      value.isLoading,
+    ],
+  );
+
+  return createElement(
+    NotificationCountsContext.Provider,
+    { value: counts },
+    createElement(NotificationCenterContext.Provider, { value }, children),
+  );
+}
+
+/**
+ * Fonte única de verdade (Notification Hub) para todas as superfícies de
+ * notificação in-app: Sininho (NotificationsButton), NotificationsPopover,
+ * Sidebar, BottomNav, MoreMenuSheet e página /lembretes.
+ */
+export function useNotificationCenter(
+  options?: UseNotificationCenterOptions,
+): UseNotificationCenterResult {
+  const shared = useContext(NotificationCenterContext);
+  const hasCustomToday = Boolean(options?.today);
+  // Se estiver dentro do Provider sem `today` customizado, usa o estado compartilhado;
+  // caso contrário (testes isolados ou /lembretes com `today` fixo), computa localmente.
+  const local = useNotificationCenterCompute(shared && !hasCustomToday ? undefined : options);
+  return shared && !hasCustomToday ? shared : local;
+}
+
+/** Seletor leve apenas para contadores de badging no shell (Sidebar, BottomNav, Topbar). */
+export function useUnreadNotificationCount(): NotificationCenterCounts {
+  const sharedCounts = useContext(NotificationCountsContext);
+  const fallback = useNotificationCenterCompute();
+  return useMemo(
+    () =>
+      sharedCounts ?? {
+        criticalCount: fallback.criticalCount,
+        actionNeededCount: fallback.actionNeededCount,
+        urgentBellCount: fallback.urgentBellCount,
+        totalBellCount: fallback.totalBellCount,
+        totalRemindersPageCount: fallback.totalRemindersPageCount,
+        isLoading: fallback.isLoading,
+      },
+    [
+      sharedCounts,
+      fallback.criticalCount,
+      fallback.actionNeededCount,
+      fallback.urgentBellCount,
+      fallback.totalBellCount,
+      fallback.totalRemindersPageCount,
+      fallback.isLoading,
+    ],
+  );
+}
+
+/** Seletor para listas de itens do Notification Hub. */
+export function useNotificationItems() {
+  const center = useNotificationCenter();
+  return useMemo(
+    () => ({
+      items: center.items,
+      allItems: center.allItems,
+      readHistoryItems: center.readHistoryItems,
+      advisorAlerts: center.advisorAlerts,
+      isLoading: center.isLoading,
+      error: center.error,
+    }),
+    [
+      center.items,
+      center.allItems,
+      center.readHistoryItems,
+      center.advisorAlerts,
+      center.isLoading,
+      center.error,
+    ],
+  );
+}
+
+/** Seletor estável de ações do Notification Hub. */
+export function useNotificationActions() {
+  const center = useNotificationCenter();
+  return useMemo(
+    () => ({
+      dismissOnboarding: center.dismissOnboarding,
+      dismissAdvisor: center.dismissAdvisor,
+      hasFeature: center.hasFeature,
+    }),
+    [center.dismissOnboarding, center.dismissAdvisor, center.hasFeature],
+  );
 }

@@ -210,6 +210,16 @@ export function PocketContributionsLedgerTab(props: PocketContributionsLedgerTab
             title="Nenhum marco cadastrado"
             description="Cadastre o seu primeiro marco acima informando a data inicial e os valores para que a TIR e o TWR considerem seu histórico real."
             headingLevel="h3"
+            action={
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => props.formRef.current?.scrollIntoView({ behavior: "smooth" })}
+              >
+                Cadastrar marco
+              </Button>
+            }
           />
         ) : (
           <div className="flex flex-col gap-1.5">

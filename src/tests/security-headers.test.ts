@@ -103,7 +103,8 @@ describe("Tarefa 1.3 — Content-Security-Policy (CSP) & Segurança de Borda em 
     expect(content).toContain("X-XSS-Protection: 0");
     expect(content).toContain("Referrer-Policy: strict-origin-when-cross-origin");
     expect(content).toContain(
-      "Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), accelerometer=(), gyroscope=(), interest-cohort=()",
+      "Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), accelerometer=(), gyroscope=()",
     );
+    expect(content).not.toContain("interest-cohort");
   });
 });

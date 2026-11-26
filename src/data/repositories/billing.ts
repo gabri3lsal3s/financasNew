@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { getSupabase } from "@/data/client";
 import { getMyBillingContact as getMyBillingContactRpc } from "@/data/rpc";
 import { AppError } from "@/services/errors";
@@ -17,6 +18,77 @@ import type {
   PixCheckoutResult,
   UpdatePaymentParams,
 } from "@/types/billing";
+
+const ProviderSchema = z.enum(["asaas", "stripe", "manual"]).default("asaas");
+
+const PixCheckoutSchema = z.object({
+  ok: z.literal(true),
+  method: z.literal("pix"),
+  provider: ProviderSchema,
+  paymentId: z.string().min(1),
+  qrCodeBase64: z.string().min(1),
+  copyPasteKey: z.string().min(1),
+  expirationDate: z.string().min(1),
+  needsEmailConfirmation: z.boolean().optional(),
+  email: z.string().optional(),
+});
+
+const DirectCreditCardSchema = z.object({
+  ok: z.literal(true),
+  method: z.literal("credit_card"),
+  provider: ProviderSchema,
+  subscriptionId: z.string().optional(),
+  paymentId: z.string().optional(),
+  tier: z.enum(["free", "pro_monthly", "pro_annual", "lifetime"]),
+  status: z.enum(["active", "trialing", "pending", "incomplete"]).optional(),
+  phase: z.enum(["trial_scheduled", "immediate"]).optional(),
+  firstChargeAt: z.string().optional(),
+  needsEmailConfirmation: z.boolean().optional(),
+  email: z.string().optional(),
+  cardLast4: z.string().optional(),
+});
+
+const HostedSessionSchema = z.object({
+  ok: z.literal(true),
+  method: z.literal("hosted_session"),
+  provider: ProviderSchema,
+  checkoutUrl: z.string().url(),
+  sessionId: z.string().min(1),
+});
+
+const CheckoutSessionResultSchema = z.discriminatedUnion("method", [
+  PixCheckoutSchema,
+  DirectCreditCardSchema,
+  HostedSessionSchema,
+]);
+
+const BillingInvoiceItemSchema = z.object({
+  id: z.string(),
+  status: z.string(),
+  value: z.number(),
+  dueDate: z.string(),
+  paymentDate: z.string().nullable().optional(),
+  invoiceUrl: z.string().nullable().optional(),
+  billingType: z.string(),
+  description: z.string().nullable().optional(),
+});
+
+const BillingInvoicesResponseSchema = z.object({
+  invoices: z.array(BillingInvoiceItemSchema).optional(),
+  error: z.string().optional(),
+});
+
+function parseCheckoutSessionResult(raw: unknown): CheckoutSessionResult {
+  const candidate =
+    raw && typeof raw === "object"
+      ? { ...(raw as Record<string, unknown>), provider: (raw as Record<string, unknown>).provider ?? "asaas" }
+      : raw;
+  const parsed = CheckoutSessionResultSchema.safeParse(candidate);
+  if (!parsed.success) {
+    throw new AppError("network", "Resposta inválida do gateway de pagamento.", parsed.error);
+  }
+  return parsed.data as CheckoutSessionResult;
+}
 
 export type {
   BillingContactInfo,
@@ -116,10 +188,7 @@ export const asaasBillingAdapter: BillingProviderAdapter = {
       throw new AppError("network", errorMsg, error);
     }
 
-    return {
-      ...data,
-      provider: "asaas",
-    } as CheckoutSessionResult;
+    return parseCheckoutSessionResult(data);
   },
 
   async createCumulativeCheckoutSession(params: CreateCumulativeCheckoutParams): Promise<CheckoutSessionResult> {
@@ -140,10 +209,7 @@ export const asaasBillingAdapter: BillingProviderAdapter = {
       throw new AppError("network", errorMsg, error);
     }
 
-    return {
-      ...data,
-      provider: "asaas",
-    } as CheckoutSessionResult;
+    return parseCheckoutSessionResult(data);
   },
 
   async cancelSubscription(): Promise<void> {
@@ -194,10 +260,24 @@ export const asaasBillingAdapter: BillingProviderAdapter = {
     });
 
     if (error || !data) {
-      return [];
+      throw new AppError(
+        "network",
+        error?.message || "Não foi possível carregar as faturas no momento.",
+        error,
+      );
     }
 
-    return (data.invoices || []) as BillingInvoiceItem[];
+    const parsed = BillingInvoicesResponseSchema.safeParse(data);
+    if (!parsed.success || parsed.data.error) {
+      throw new AppError(
+        "network",
+        (parsed.success ? parsed.data.error : undefined) ||
+          "Resposta inválida ao carregar faturas.",
+        parsed.success ? null : parsed.error,
+      );
+    }
+
+    return (parsed.data.invoices ?? []) as BillingInvoiceItem[];
   },
 
   async schedulePlanChange(targetPlan: "monthly" | "annual"): Promise<{ ok: boolean; message: string }> {

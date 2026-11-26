@@ -1,9 +1,10 @@
 import { z } from "zod";
 import { cleanTextSchema, moneyCentsSchema } from "@/domain/validation";
 import { formatCentsAsBRL } from "@/services/masks";
+import { REPORT_WEIGHT_PRESETS } from "../components/report-weight-constants";
 import type { LaunchState } from "./wizard-types";
 
-export const REPORT_WEIGHT_PRESETS = [1, 0.75, 0.5, 0.25, 0] as const;
+export { REPORT_WEIGHT_PRESETS };
 
 /** Valor sentinela que marca "peso personalizado em edição" no estado. */
 export const CUSTOM_WEIGHT_VALUE = -1;

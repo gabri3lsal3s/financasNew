@@ -15,6 +15,7 @@ import {
   type PositionSectorCalculationRow,
 } from "./class-breakdown";
 import { calculateYieldOnCost } from "./snowball";
+import { formatFixedIncomeRateLabel as formatCanonicalFixedIncomeRateLabel } from "./fixed-income";
 import { inferSectorFromTicker } from "./tickers-catalog";
 
 export type PositionSortKey =
@@ -236,24 +237,8 @@ export function formatFixedIncomeRateLabel(
   const isSelicTicker = ticker?.includes("SELIC");
   const meta = row.fixedIncomeMetadata;
   if (!meta) return isSelicTicker ? "SELIC" : null;
-  if (isSelicTicker && (meta.rate_value === 100 || meta.rate_value === 0 || meta.rate_type === "cdi")) {
-    return "SELIC";
-  }
-  if (isSelicTicker && meta.rate_value > 0 && meta.rate_value < 10) {
-    return `Selic + ${meta.rate_value}% a.a.`;
-  }
   if (requirePositiveRate && !(meta.rate_value > 0)) return null;
-  if (!(meta.rate_value > 0)) {
-    if (isSelicTicker || meta.rate_type === "selic") return "SELIC";
-    if (meta.rate_type === "cdi") return "CDI";
-    if (meta.rate_type === "pre") return "Prefixado";
-    if (meta.rate_type === "ipca") return "IPCA+";
-    return null;
-  }
-  if (meta.rate_type === "cdi") return `${meta.rate_value}% CDI`;
-  if (meta.rate_type === "selic") return meta.rate_value === 100 ? "SELIC" : `${meta.rate_value}% Selic`;
-  if (meta.rate_type === "pre") return `${meta.rate_value}% a.a.`;
-  return `IPCA + ${meta.rate_value}% a.a.`;
+  return formatCanonicalFixedIncomeRateLabel(meta, row.ticker);
 }
 
 export function getScoreBadgeMeta(score: number | null | undefined): {

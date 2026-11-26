@@ -180,16 +180,25 @@ function parseCsvLine(line: string, delimiter: string): string[] {
 }
 
 /**
- * Decodifica um buffer binário tentando UTF-8 e fazendo fallback para Latin-1 (ISO-8859-1).
+ * Decodifica um buffer binário respeitando BOM (UTF-16LE, UTF-16BE, UTF-8),
+ * tentando UTF-8 estrito e fazendo fallback para Windows-1252.
  */
 export function decodeBufferToString(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  if (bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xfe) {
+    return new TextDecoder("utf-16le").decode(bytes.subarray(2)).replace(/^\uFEFF/, "");
+  }
+  if (bytes.length >= 2 && bytes[0] === 0xfe && bytes[1] === 0xff) {
+    return new TextDecoder("utf-16be").decode(bytes.subarray(2)).replace(/^\uFEFF/, "");
+  }
+  if (bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
+    return new TextDecoder("utf-8", { fatal: false }).decode(bytes.subarray(3));
+  }
   let decoded: string;
   try {
-    const decoder = new TextDecoder("utf-8", { fatal: true });
-    decoded = decoder.decode(buffer);
+    decoded = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
   } catch {
-    const latinDecoder = new TextDecoder("iso-8859-1");
-    decoded = latinDecoder.decode(buffer);
+    decoded = new TextDecoder("windows-1252").decode(bytes);
   }
   return decoded.replace(/^[\uFEFF\uFFFE]/, "");
 }

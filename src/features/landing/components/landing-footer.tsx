@@ -1,10 +1,14 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Link } from "react-router";
 import { Building2, Lock, Mail, MapPin, ShieldCheck, User } from "lucide-react";
 import { BrandLogo } from "@/components/layout/brand-logo";
-import { LegalDialog, type LegalTab } from "./legal-dialog";
+import type { LegalTab } from "./legal-dialog";
 import { useLandingCta } from "@/features/landing/hooks/use-landing-cta";
 import { INSTITUTIONAL_CONFIG } from "@/lib/institutional";
+
+const LegalDialog = lazy(() =>
+  import("./legal-dialog").then((m) => ({ default: m.LegalDialog })),
+);
 
 export function LandingFooter() {
   const currentYear = new Date().getFullYear();
@@ -228,7 +232,11 @@ export function LandingFooter() {
         </div>
       </footer>
 
-      <LegalDialog open={legalOpen} onOpenChange={setLegalOpen} defaultTab={legalTab} />
+      {legalOpen && (
+        <Suspense fallback={null}>
+          <LegalDialog open={legalOpen} onOpenChange={setLegalOpen} defaultTab={legalTab} />
+        </Suspense>
+      )}
     </>
   );
 }

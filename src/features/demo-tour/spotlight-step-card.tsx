@@ -77,7 +77,7 @@ export function SpotlightStepCard({
         !isReduced && "animate-fade-in",
         isMobile
           ? cn(
-              "fixed inset-x-3 rounded-2xl p-4 max-h-[42vh] overflow-y-auto z-floating-tools",
+              "fixed inset-x-3 rounded-2xl p-4 max-h-[42dvh] overflow-y-auto overscroll-contain z-floating-tools",
               !isReduced && "transition-all duration-300 ease-out",
               isAnchorTopMobile
                 ? "top-[max(env(safe-area-inset-top,0px),16px)]"

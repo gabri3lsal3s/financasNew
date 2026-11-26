@@ -51,6 +51,7 @@ export {
   type RolloverCardBillParams,
 } from "./mutations/use-card-mutations";
 export {
+  fetchStatementReconciliationReceipts,
   useImportStatementExpenses,
   useCommitStatementReconciliation,
   useUpsertStatementBlueprint,
@@ -152,6 +153,8 @@ export {
   useDeletePortfolioDividend,
   useCreatePortfolioTransaction,
   useCreatePortfolioTransactionsBatch,
+  useImportPortfolioAtomic,
+  useSavePocketCostMilestoneAtomic,
   useUpdatePortfolioTransaction,
   useDeletePortfolioTransaction,
   useRecordOrder,
@@ -164,6 +167,7 @@ export {
   useCreateManualUserDividendEvent,
   useUpdateUserDividendEvent,
   useDismissUserDividendEvent,
+  useDismissUserDividendEventsBatch,
   useDeleteUserDividendEvent,
   reconcileAssetCustody,
   PORTFOLIO_QUERY_KEYS,

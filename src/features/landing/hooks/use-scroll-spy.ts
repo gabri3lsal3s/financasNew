@@ -66,36 +66,51 @@ export function useScrollSpy({
   const hasScrolledDownRef = useRef<boolean>(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    const sections = sectionIds
+      .map((id) => document.getElementById(id))
+      .filter((element) => element !== null);
+    const aliases = sectionIds === DEFAULT_SECTIONS ? SECTION_NAV_ALIAS : {};
+    const activationLine = () => offset ?? (
+      window.innerHeight > 400 ? Math.max(160, Math.min(340, Math.round(window.innerHeight * 0.35))) : 140
+    );
+    const setActive = (element?: HTMLElement) => {
+      const id = element?.id ?? "";
+      setActiveSection(aliases[id] ?? id);
+    };
 
-    const isDefaultSections = sectionIds === DEFAULT_SECTIONS;
+    let observer: IntersectionObserver | undefined;
+    const observeSections = () => {
+      if (typeof IntersectionObserver === "undefined") return;
 
+      observer?.disconnect();
+      const visible = new Set<Element>();
+      const top = Math.max(0, Math.min(activationLine(), window.innerHeight - 1));
+      const bottom = window.innerHeight - top - 1;
+
+      observer = new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) visible.add(entry.target);
+          else visible.delete(entry.target);
+        }
+        setActive(sections.find((section) => visible.has(section)));
+      }, { rootMargin: `-${top}px 0px -${bottom}px 0px` });
+      sections.forEach((section) => observer?.observe(section));
+    };
+
+    const documentRoot = document.documentElement;
+    const getScrollRange = () => documentRoot.scrollHeight - documentRoot.clientHeight;
+    let scrollRange = getScrollRange();
     const handleScroll = () => {
-      if (rafIdRef.current !== null) {
-        cancelAnimationFrame(rafIdRef.current);
-      }
+      if (rafIdRef.current !== null) cancelAnimationFrame(rafIdRef.current);
 
       rafIdRef.current = requestAnimationFrame(() => {
-        const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
-        const totalHeight =
-          document.documentElement.scrollHeight - document.documentElement.clientHeight;
+        rafIdRef.current = null;
+        const scrollY = window.scrollY || documentRoot.scrollTop || 0;
+        const range = resizeObserver ? scrollRange : getScrollRange();
+        setScrollProgress(range > 0 ? Math.min(100, Math.max(0, Math.round(scrollY / range * 100))) : 0);
+        setIsScrolled(scrollY > scrolledThreshold);
+        setShowBackToTop(scrollY > backToTopThreshold);
 
-        // 1. Progresso da rolagem em porcentagem inteira (0 a 100)
-        const progress =
-          totalHeight > 0
-            ? Math.min(100, Math.max(0, Math.round((scrollY / totalHeight) * 100)))
-            : 0;
-        setScrollProgress((prev) => (prev === progress ? prev : progress));
-
-        // 2. Estado de rolagem do header
-        const nextIsScrolled = scrollY > scrolledThreshold;
-        setIsScrolled((prev) => (prev === nextIsScrolled ? prev : nextIsScrolled));
-
-        // 3. Estado de exibição do botão Voltar ao Topo
-        const nextShowBackToTop = scrollY > backToTopThreshold;
-        setShowBackToTop((prev) => (prev === nextShowBackToTop ? prev : nextShowBackToTop));
-
-        // 4. Detecção de retorno inteligente ao topo para reativar efeitos
         if (scrollY > 250) {
           hasScrolledDownRef.current = true;
         } else if (scrollY <= scrolledThreshold && hasScrolledDownRef.current) {
@@ -103,38 +118,37 @@ export function useScrollSpy({
           setResetKey((prev) => prev + 1);
         }
 
-        // 5. Detecção da seção ativa com linha de ativação confortável ( ~35% da viewport quando padrão )
-        const effectiveOffset =
-          offset !== undefined
-            ? offset
-            : window.innerHeight > 400
-              ? Math.max(160, Math.min(340, Math.round(window.innerHeight * 0.35)))
-              : 140;
-
-        let currentActive = "";
-        for (const id of sectionIds) {
-          const element = document.getElementById(id);
-          if (element) {
-            const rect = element.getBoundingClientRect();
-            if (rect.top <= effectiveOffset && rect.bottom > effectiveOffset) {
-              currentActive = isDefaultSections ? (SECTION_NAV_ALIAS[id] ?? id) : id;
-              break;
-            }
-          }
+        if (!observer) {
+          const line = activationLine();
+          setActive(sections.find((section) => {
+            const { top, bottom } = section.getBoundingClientRect();
+            return top <= line && bottom > line;
+          }));
         }
-        setActiveSection((prev) => (prev === currentActive ? prev : currentActive));
       });
     };
 
+    const refreshProgress = () => {
+      scrollRange = getScrollRange();
+      handleScroll();
+    };
+    const resizeObserver = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(refreshProgress);
+    resizeObserver?.observe(document.body);
+
+    const handleResize = () => {
+      observeSections();
+      refreshProgress();
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
     window.addEventListener("scroll", handleScroll, { passive: true });
-    // Executa a primeira checagem para estado inicial
-    handleScroll();
 
     return () => {
+      observer?.disconnect();
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", handleResize);
       window.removeEventListener("scroll", handleScroll);
-      if (rafIdRef.current !== null) {
-        cancelAnimationFrame(rafIdRef.current);
-      }
+      if (rafIdRef.current !== null) cancelAnimationFrame(rafIdRef.current);
     };
   }, [sectionIds, offset, scrolledThreshold, backToTopThreshold]);
 

@@ -1,5 +1,6 @@
 import { Equal, RotateCcw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui";
+import { formatPercent } from "@/services/masks";
 
 export interface TargetDistributionActionsProps {
   sum: number;
@@ -33,7 +34,7 @@ export function TargetDistributionActions({
           className="gap-1.5 text-xs font-semibold shadow-xs"
         >
           <Sparkles className="size-3.5 shrink-0 text-primary-strong" aria-hidden="true" />
-          Distribuir restante ({remaining.toFixed(1)}%)
+          Distribuir restante ({formatPercent(remaining)}%)
         </Button>
       ) : null}
 

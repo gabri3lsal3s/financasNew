@@ -78,6 +78,11 @@ export function AssetTransactionsTimeline({
           title="Nenhuma operação registrada"
           description="Nenhuma operação registrada individualmente no histórico."
           headingLevel="h3"
+          action={
+            <Button type="button" size="sm" variant="outline" onClick={onCreateTx}>
+              Nova Operação
+            </Button>
+          }
         />
       ) : (
         <div className="flex flex-col divide-y divide-border/60 rounded-xl border border-border/80 bg-surface">

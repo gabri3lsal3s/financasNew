@@ -1,9 +1,6 @@
 import { lazy, Suspense } from "react";
 import { Navigate } from "react-router";
 import { OverviewSkeleton } from "@/components/layout/route-skeletons/finance-skeletons";
-import { PageShell } from "@/components/layout/page-shell";
-import { RequireActiveAccount } from "@/components/routing/require-active-account";
-import { RequireAuth } from "@/app/require-auth";
 import { useUserAccess } from "@/state/queries/use-user-access";
 
 const OverviewPage = lazy(() =>
@@ -36,21 +33,6 @@ export function AuthenticatedHome() {
     <Suspense fallback={<OverviewSkeleton />}>
       <OverviewPage />
     </Suspense>
-  );
-}
-
-/**
- * Raiz autenticada (`/`): wrapper de compatibilidade com PageShell e guards.
- */
-export function AuthenticatedRoot() {
-  return (
-    <RequireAuth>
-      <RequireActiveAccount>
-        <PageShell>
-          <AuthenticatedHome />
-        </PageShell>
-      </RequireActiveAccount>
-    </RequireAuth>
   );
 }
 

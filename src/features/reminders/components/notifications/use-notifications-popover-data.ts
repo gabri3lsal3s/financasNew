@@ -2,11 +2,13 @@ import { useNavigate } from "react-router";
 import type { SmartAdvisorInsight } from "@/domain/insights/advisor";
 import { coreOnboardingSteps } from "@/domain/onboarding";
 import type { ReminderItem } from "@/domain/reminders";
+import { useNotificationCenter } from "@/hooks/use-notification-center";
 import {
-  getOptionalHook,
-  useNotificationCenter,
-} from "@/hooks/use-notification-center";
-import * as state from "@/state";
+  useDismissBroadcastNotification,
+  useMarkAllRemindersAsRead,
+  useMarkBroadcastAsRead,
+  useSetReminderState,
+} from "@/state";
 import { navigateAdvisorAlert } from "../../utils/navigate-advisor-alert";
 
 function openActionUrlSafely(
@@ -44,40 +46,10 @@ export function useNotificationsPopoverData({
   const navigate = useNavigate();
   const center = useNotificationCenter();
 
-  const useSetReminderStateSafe = getOptionalHook<{
-    mutate: (args: {
-      occurrenceKey: string;
-      state: { kind: "read" | "snoozed"; snoozeUntil?: string } | null;
-    }) => void;
-    isPending: boolean;
-  }>(state, "useSetReminderState", () => ({
-    mutate: () => {},
-    isPending: false,
-  }));
-  const useMarkAllRemindersAsReadSafe = getOptionalHook<{
-    mutate: (keys: string[]) => void;
-    isPending: boolean;
-  }>(state, "useMarkAllRemindersAsRead", () => ({
-    mutate: () => {},
-    isPending: false,
-  }));
-  const useMarkBroadcastAsReadSafe = getOptionalHook<{
-    mutate: (id: string) => void;
-    isPending: boolean;
-  }>(state, "useMarkBroadcastAsRead", () => ({
-    mutate: () => {},
-    isPending: false,
-  }));
-  const useDismissBroadcastNotificationSafe = getOptionalHook(
-    state,
-    "useDismissBroadcastNotification",
-    () => null as { mutate: (id: string) => void } | null,
-  );
-
-  const setReminderStateMutation = useSetReminderStateSafe();
-  const markAllMutation = useMarkAllRemindersAsReadSafe();
-  const markBroadcastMutation = useMarkBroadcastAsReadSafe();
-  const dismissBroadcastMutation = useDismissBroadcastNotificationSafe();
+  const setReminderStateMutation = useSetReminderState();
+  const markAllMutation = useMarkAllRemindersAsRead();
+  const markBroadcastMutation = useMarkBroadcastAsRead();
+  const dismissBroadcastMutation = useDismissBroadcastNotification();
 
   const {
     items,

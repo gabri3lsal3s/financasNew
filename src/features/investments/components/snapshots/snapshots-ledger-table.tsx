@@ -65,19 +65,19 @@ export function SnapshotsLedgerTable({
             </th>
             <th scope="col" aria-label="Patrimônio" className="py-2 px-1.5 text-right print:py-1 print:px-1.5 print:align-bottom">
               <span className="block leading-tight">PATRIMÔNIO</span>
-              <span className="block text-[9px] print:text-[6.5pt] font-normal text-muted-foreground">(R$)</span>
+              <span className="block text-[10px] print:text-[6.5pt] font-normal text-muted-foreground">(R$)</span>
             </th>
             <th scope="col" aria-label="Custo" className="py-2 px-1.5 text-right print:py-1 print:px-1.5 print:align-bottom">
               <span className="block leading-tight">CUSTO</span>
-              <span className="block text-[9px] print:text-[6.5pt] font-normal text-muted-foreground">(R$)</span>
+              <span className="block text-[10px] print:text-[6.5pt] font-normal text-muted-foreground">(R$)</span>
             </th>
             <th scope="col" aria-label="Proventos Mês" className="py-2 px-1.5 text-right print:py-1 print:px-1.5 print:align-bottom">
               <span className="block leading-tight">PROV. MÊS</span>
-              <span className="block text-[9px] print:text-[6.5pt] font-normal text-muted-foreground">(R$)</span>
+              <span className="block text-[10px] print:text-[6.5pt] font-normal text-muted-foreground">(R$)</span>
             </th>
             <th scope="col" aria-label="Proventos Acum." className="py-2 px-1.5 text-right print:py-1 print:px-1.5 print:align-bottom">
               <span className="block leading-tight">PROV. ACUM.</span>
-              <span className="block text-[9px] print:text-[6.5pt] font-normal text-muted-foreground">(R$)</span>
+              <span className="block text-[10px] print:text-[6.5pt] font-normal text-muted-foreground">(R$)</span>
             </th>
             <th
               scope="col"
@@ -85,19 +85,19 @@ export function SnapshotsLedgerTable({
               className="py-2 px-1.5 text-right font-bold text-foreground bg-surface-hover/70 border-x border-border/80 print:py-1 print:px-1.5 print:align-bottom"
             >
               <span className="block leading-tight">TWR</span>
-              <span className="block text-[9px] print:text-[6.5pt] font-normal text-muted-foreground">MÊS</span>
+              <span className="block text-[10px] print:text-[6.5pt] font-normal text-muted-foreground">MÊS</span>
             </th>
             <th scope="col" aria-label="Ret. Total" className="py-2 px-1.5 text-right print:py-1 print:px-1.5 print:align-bottom">
               <span className="block leading-tight">RET.</span>
-              <span className="block text-[9px] print:text-[6.5pt] font-normal text-muted-foreground">TOTAL</span>
+              <span className="block text-[10px] print:text-[6.5pt] font-normal text-muted-foreground">TOTAL</span>
             </th>
             <th scope="col" aria-label="TWR Acum." className="py-2 px-1.5 text-right print:py-1 print:px-1.5 print:align-bottom">
               <span className="block leading-tight">TWR</span>
-              <span className="block text-[9px] print:text-[6.5pt] font-normal text-muted-foreground">ACUM.</span>
+              <span className="block text-[10px] print:text-[6.5pt] font-normal text-muted-foreground">ACUM.</span>
             </th>
             <th scope="col" aria-label="Cota (R$)" className="py-2 px-1.5 text-right print:py-1 print:px-1.5 print:align-bottom">
               <span className="block leading-tight">COTA</span>
-              <span className="block text-[9px] print:text-[6.5pt] font-normal text-muted-foreground">(R$)</span>
+              <span className="block text-[10px] print:text-[6.5pt] font-normal text-muted-foreground">(R$)</span>
             </th>
             <th scope="col" className="py-2 px-1 text-center whitespace-nowrap print:hidden w-10">Ações</th>
           </tr>

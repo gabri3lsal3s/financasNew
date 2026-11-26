@@ -22,13 +22,17 @@ export function useCashCheckpoints(scope?: TransactionScope, options?: { enabled
   return isDemoActive ? simulated : real;
 }
 
-/** Obtém o último checkpoint de saldo cadastrado no escopo informado (default: 'personal'). */
-export function useLatestCashCheckpoint(scope: TransactionScope = "personal", options?: { enabled?: boolean }) {
+/** Obtém o último checkpoint do escopo até a data de referência, quando informada. */
+export function useLatestCashCheckpoint(
+  scope: TransactionScope = "personal",
+  options?: { enabled?: boolean; cutoffDate?: string },
+) {
   const { isDemoActive } = useDemoSession();
   const simulated = makeSimulatedQueryResult<CashCheckpoint | null>(null);
+  const cutoffDate = options?.cutoffDate;
   const real = useQuery({
-    queryKey: [...cashCheckpointsKey, "latest", scope],
-    queryFn: () => getLatestCashCheckpoint(scope),
+    queryKey: [...cashCheckpointsKey, "latest", scope, cutoffDate ?? null],
+    queryFn: () => getLatestCashCheckpoint(scope, cutoffDate),
     enabled: (options?.enabled ?? true) && !isDemoActive,
     staleTime: STALE_TIMES.transactional,
     gcTime: STATIC_GC_TIME,

@@ -310,7 +310,9 @@ function StatementImportContent({
         title="Descartar alterações da conferência?"
         description="Você realizou ajustes nesta conferência que ainda não foram salvos. Deseja voltar e descartá-los?"
         confirmLabel="Descartar e voltar"
+        confirmShortLabel="Descartar"
         cancelLabel="Continuar conferindo"
+        cancelShortLabel="Voltar"
         variant="destructive"
         onConfirm={() => {
           setDiscardBackOpen(false);

@@ -60,7 +60,7 @@ export function useRealCashBalance(
   const { effectiveViewScope } = useViewScope();
   const activeScope: ViewScope = options?.scopeOverride ?? effectiveViewScope;
   const checkpointScope: TransactionScope = activeScope === "business" ? "business" : "personal";
-  const checkpointQuery = useLatestCashCheckpoint(checkpointScope, { enabled });
+  const checkpointQuery = useLatestCashCheckpoint(checkpointScope, { enabled, cutoffDate: referenceDate });
 
   const checkpoint = checkpointQuery.data;
   const isCheckpointReady = enabled && !checkpointQuery.isLoading;

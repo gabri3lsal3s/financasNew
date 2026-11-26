@@ -194,6 +194,22 @@ export function RemindersPendingTab({
           title="Tudo em dia"
           description={getEmptyDescription(subFilter)}
           tone="default"
+          action={
+            subFilter !== "all" ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => onSubFilterChange("all")}
+              >
+                Ver todas as pendências
+              </Button>
+            ) : (
+              <Button type="button" size="sm" variant="outline" onClick={onOpenSettings}>
+                Configurar alertas
+              </Button>
+            )
+          }
         />
       ) : (
         <div className="flex flex-col gap-2.5">

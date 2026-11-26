@@ -1,6 +1,7 @@
+import { QrCodeCanvas } from "@/components/ui/qr-code-canvas";
 import type { FormEvent } from "react";
 import { Copy, LogOut, QrCode, Trash2, UserMinus, UserPlus } from "lucide-react";
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Input, QrCodeCanvas } from "@/components/ui";
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Input } from "@/components/ui";
 import type { FamilyInvite, FamilyMember, FamilyMemberWithProfile } from "@/types";
 import { FamilyPendingInvitesList } from "./family-pending-invites-list";
 

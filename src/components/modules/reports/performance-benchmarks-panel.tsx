@@ -67,7 +67,7 @@ export function PerformanceBenchmarksPanel({
               {seriesLength !== 12 && <col style={{ width: "18%" }} />}
             </colgroup>
             <thead>
-              <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[9px] uppercase tracking-wider">
+              <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] print:text-[9px] uppercase tracking-wider">
                 <th className="py-1 px-2.5">Benchmark</th>
                 <th className="py-1 px-2 text-right">Acumulado ({seriesLength}M)</th>
                 <th className="py-1 px-2 text-right">Spread (p.p.)</th>
@@ -80,7 +80,7 @@ export function PerformanceBenchmarksPanel({
                 <tr key={bm.key} className="break-inside-avoid even:bg-muted/10">
                   <td className="py-1.5 px-2.5">
                     <span className="font-bold text-foreground text-[10.5px] block">{bm.name}</span>
-                    <span className="text-[9px] text-muted-foreground block truncate">{bm.description}</span>
+                    <span className="text-[10px] print:text-[9px] text-muted-foreground block truncate">{bm.description}</span>
                   </td>
                   <td className="py-1.5 px-2 text-right font-mono num tabular-nums text-foreground text-[10.5px]">
                     {formatPercent(bm.benchmarkRatePct)}%
@@ -112,7 +112,7 @@ export function PerformanceBenchmarksPanel({
                         <span>
                           {formatPercent(bm.sub12m.benchmark12mRatePct)}%
                           {bm.sub12m.pctOf12mBenchmark !== null && (
-                            <span className="ml-1 text-[9px] font-bold text-foreground">
+                            <span className="ml-1 text-[10px] print:text-[9px] font-bold text-foreground">
                               ({formatPercent(bm.sub12m.pctOf12mBenchmark)}%)
                             </span>
                           )}
@@ -167,7 +167,7 @@ export function PerformanceBenchmarksPanel({
                 {riskSummary.sharpeLabel}
               </span>
             </div>
-            <p className="text-[9px] text-muted-foreground leading-tight m-0">
+            <p className="text-[10px] print:text-[9px] text-muted-foreground leading-tight m-0">
               Excedente sobre CDI / Volatilidade
             </p>
           </div>
@@ -181,7 +181,7 @@ export function PerformanceBenchmarksPanel({
                 {formatSignedPct(riskSummary.maxDrawdown.maxDrawdownPct)}
               </span>
             </div>
-            <p className="text-[9px] text-muted-foreground leading-tight m-0">
+            <p className="text-[10px] print:text-[9px] text-muted-foreground leading-tight m-0">
               Retração histórica pico-a-fundo (TWR)
             </p>
           </div>
@@ -197,7 +197,7 @@ export function PerformanceBenchmarksPanel({
                 {formatPercent(riskSummary.volatility.annualizedStdDevPct)}% a.a.
               </span>
             </div>
-            <p className="text-[9px] text-muted-foreground leading-tight m-0">
+            <p className="text-[10px] print:text-[9px] text-muted-foreground leading-tight m-0">
               Desvio amostral ({formatPercent(riskSummary.volatility.monthlyStdDevPct)}% a.m.)
             </p>
           </div>
@@ -211,11 +211,11 @@ export function PerformanceBenchmarksPanel({
               <span className="text-sm font-mono font-bold text-positive-strong num tabular-nums">
                 {formatPercent(riskSummary.consistency.winRatePct)}%
               </span>
-              <span className="text-[9px] font-mono text-muted-foreground tabular-nums">
+              <span className="text-[10px] print:text-[9px] font-mono text-muted-foreground tabular-nums">
                 {riskSummary.consistency.positiveMonths}/{riskSummary.consistency.totalMonths}m
               </span>
             </div>
-            <div className="flex items-center justify-between text-[9px] font-mono pt-0.5 tabular-nums">
+            <div className="flex items-center justify-between text-[10px] print:text-[9px] font-mono pt-0.5 tabular-nums">
               <span className="text-positive-strong font-bold">
                 Max: {formatSignedPct(riskSummary.consistency.bestMonthPct)}
               </span>

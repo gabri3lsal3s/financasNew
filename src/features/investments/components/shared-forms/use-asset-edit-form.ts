@@ -10,10 +10,11 @@ import {
   useEmergencyFundComposition,
   useFamilyMode,
   useMyFamily,
+  useSetDividendTracking,
   useSetManualPrice,
   useUpdatePortfolioAsset,
+  useUserPreferences,
 } from "@/state";
-import * as stateHooks from "@/state";
 import type {
   AssetCeilingMetadata,
   AssetCeilingMethod,
@@ -21,55 +22,15 @@ import type {
   FixedIncomeMetadata,
   FixedIncomeRateType,
   PortfolioAsset,
-  SetDividendTrackingAtomicResult,
-  UserPreferences,
 } from "@/types";
 import { buildEmergencyConfigWithAssetToggle, isAssetInEmergencyConfig } from "../emergency-fund-sync";
 import { CLASSES_WITH_EDITABLE_CURRENCY } from "./asset-form-constants";
 
-function getOptionalStateHook<T>(key: string, fallback: T): T {
-  if (Reflect.ownKeys(stateHooks).includes(key)) {
-    const candidate = (stateHooks as Record<string, unknown>)[key];
-    if (typeof candidate === "function") return candidate as T;
-  }
-  return fallback;
-}
-
-const useOptionalSetDividendTracking = getOptionalStateHook<
-  () => {
-    mutateAsync: (input: {
-      trackingStartDate?: string | null;
-      assets?: Array<{
-        asset_id: string;
-        expected_start: string | null;
-        start_date: string | null;
-      }>;
-      expectedTrackingStartDate?: string | null;
-      silent?: boolean;
-    }) => Promise<SetDividendTrackingAtomicResult>;
-    isPending: boolean;
-  }
->("useSetDividendTracking", () => ({
-  mutateAsync: async () => ({
-    success: true,
-    tracking_start_date: null,
-    updated_assets: [],
-    updated_assets_count: 0,
-    affected_events_count: 0,
-    protected_events_count: 0,
-    invalidated_event_ids: [],
-  }),
-  isPending: false,
-}));
-
-const useOptionalUserPreferences = getOptionalStateHook<
-  () => { data?: UserPreferences | null }
->("useUserPreferences", () => ({ data: null }));
 
 export function useAssetEditForm(asset: PortfolioAsset, onClose: () => void) {
   const updateAsset = useUpdatePortfolioAsset();
-  const setDividendTracking = useOptionalSetDividendTracking();
-  const { data: userPreferences } = useOptionalUserPreferences();
+  const setDividendTracking = useSetDividendTracking();
+  const { data: userPreferences } = useUserPreferences();
   const pricesQuery = useAssetPrices();
   const setManualPrice = useSetManualPrice();
   const emergencyFund = useEmergencyFundComposition();

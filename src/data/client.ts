@@ -15,6 +15,43 @@ export type Supabase = SupabaseClient<Database, "public", "public", Database["pu
 let client: Supabase | null = null;
 
 /**
+ * Em modo desenvolvimento (`vite dev`), roteia chamadas `/functions/v1/*` pelo proxy
+ * local `/__supabase_functions/*` para evitar bloqueio de CORS quando o backend está
+ * com `ASAAS_ENVIRONMENT=production` (que restringe `localhost` no CORS).
+ */
+function createDevFunctionsProxyFetch(supabaseUrl: string): typeof fetch | undefined {
+  if (
+    !import.meta.env.DEV ||
+    import.meta.env.MODE !== "development" ||
+    typeof window === "undefined"
+  ) {
+    return undefined;
+  }
+
+  const functionsPrefix = `${supabaseUrl.replace(/\/+$/, "")}/functions/v1/`;
+  const baseFetch = globalThis.fetch.bind(globalThis);
+
+  return (input: RequestInfo | URL, init?: RequestInit) => {
+    const rawUrl =
+      typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.toString()
+          : input.url;
+
+    if (rawUrl.startsWith(functionsPrefix)) {
+      const proxiedUrl = `${window.location.origin}/__supabase_functions/${rawUrl.slice(functionsPrefix.length)}`;
+      if (input instanceof Request) {
+        return baseFetch(new Request(proxiedUrl, input), init);
+      }
+      return baseFetch(proxiedUrl, init);
+    }
+
+    return baseFetch(input, init);
+  };
+}
+
+/**
  * Cliente único do Supabase (Online First — sem camadas locais de persistência).
  *
  * Lazy: o import não lança; a primeira chamada valida o env (mensagem clara se
@@ -23,6 +60,7 @@ let client: Supabase | null = null;
 export function getSupabase(): Supabase {
   if (!client) {
     const { url, anonKey } = getSupabaseEnv();
+    const devFetch = createDevFunctionsProxyFetch(url);
     client = createClient<Database, "public">(url, anonKey, {
       auth: {
         flowType: "pkce",
@@ -30,6 +68,7 @@ export function getSupabase(): Supabase {
         autoRefreshToken: true,
         detectSessionInUrl: true,
       },
+      ...(devFetch ? { global: { fetch: devFetch } } : {}),
     }) as Supabase;
   }
   return client;

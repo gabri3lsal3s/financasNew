@@ -731,7 +731,11 @@ Deno.serve(async (req: Request) => {
         return jsonResponse(req, { invoices });
       } catch (err: unknown) {
         console.warn("[asaas-manage] Falha ao listar faturas no Asaas:", sanitizePaymentLog(err));
-        return jsonResponse(req, { invoices: [] });
+        return safeErrorResponse(
+          req,
+          502,
+          "Não foi possível consultar faturas no gateway de pagamento. Tente novamente.",
+        );
       }
     }
 
