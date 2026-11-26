@@ -3,25 +3,17 @@
  * fallback Vision cancelável e cache local LGPD por SHA-256.
  */
 
-import {
-  detectDocumentMultiplicity,
-  parseBankNotification,
-  parsePixShareText,
-  parseUniversalReceipt,
-  resolveBestMatchingCard,
-  type DocumentMultiplicity,
-  type ParsedBankTransaction,
-} from "@/domain/notifications";
+import { detectDocumentMultiplicity, type DocumentMultiplicity } from "@/domain/notifications/document-multiplicity";
+import { parseBankNotification, parsePixShareText, type ParsedBankTransaction } from "@/domain/notifications/bank-parser";
+import { parseUniversalReceipt } from "@/domain/notifications/universal-receipt-parser";
+import { resolveBestMatchingCard } from "@/domain/notifications/card-resolution";
 import {
   getBankCardMapping,
   getCardDigitsMapping,
 } from "@/services/merchant-learning";
-import {
-  extractReceiptTextFromFile,
-  isNativePlatform,
-  MAX_RECEIPT_FILE_SIZE_BYTES,
-  processPixShare,
-} from "@/services/native";
+import { extractReceiptTextFromFile, MAX_RECEIPT_FILE_SIZE_BYTES } from "@/services/native/receipt-extractor";
+import { isNativePlatform } from "@/services/native/platform";
+import { processPixShare } from "@/services/native/bank-listener";
 import {
   isPdfPasswordProtectedError,
   PdfPasswordProtectedError,

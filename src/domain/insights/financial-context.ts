@@ -11,7 +11,7 @@
  * 100% puro — zero dependências de UI, React ou Supabase. Moeda estritamente em centavos inteiros.
  */
 
-import { numberToCents } from "@/domain/money";
+import { numberToCents } from "@/domain/money/parse";
 import { resolveCategorySemantics } from "./category-semantics";
 import {
   buildUnifiedLearningGraph,

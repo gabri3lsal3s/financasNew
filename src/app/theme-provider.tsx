@@ -5,17 +5,8 @@ import {
   setUserStorageItem,
   subscribeActiveUserId,
 } from "@/services/user-storage";
-import { syncStatusBarTheme } from "@/services/native";
-import {
-  type Theme,
-  type ThemePreference,
-  type DarkThemeVariant,
-  type ThemeScheduleConfig,
-  DEFAULT_DARK_VARIANT,
-  DEFAULT_THEME_SCHEDULE,
-  THEME_COLORS,
-  resolveTheme,
-} from "@/domain/theme";
+import { syncStatusBarTheme } from "@/services/native/status-bar";
+import { type Theme, type ThemePreference, type DarkThemeVariant, type ThemeScheduleConfig, DEFAULT_DARK_VARIANT, DEFAULT_THEME_SCHEDULE, THEME_COLORS, resolveTheme } from "@/domain/theme/theme-resolver";
 
 export type { Theme, ThemePreference, DarkThemeVariant, ThemeScheduleConfig };
 

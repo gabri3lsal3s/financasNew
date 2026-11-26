@@ -7,6 +7,8 @@ interface Builder {
   gte: ReturnType<typeof vi.fn>;
   lt: ReturnType<typeof vi.fn>;
   order: ReturnType<typeof vi.fn>;
+  limit: ReturnType<typeof vi.fn>;
+  gt: ReturnType<typeof vi.fn>;
   abortSignal: ReturnType<typeof vi.fn>;
   then: (onFulfilled: (value: unknown) => unknown) => Promise<unknown>;
 }
@@ -18,6 +20,8 @@ function makeBuilder(result: unknown): Builder {
     gte: vi.fn(),
     lt: vi.fn(),
     order: vi.fn(),
+    limit: vi.fn(),
+    gt: vi.fn(),
     abortSignal: vi.fn(),
     then: (onFulfilled: (value: unknown) => unknown) => Promise.resolve(result).then(onFulfilled),
   } as Builder;
@@ -27,6 +31,8 @@ function makeBuilder(result: unknown): Builder {
   builder.gte.mockReturnValue(builder);
   builder.lt.mockReturnValue(builder);
   builder.order.mockReturnValue(builder);
+  builder.limit.mockReturnValue(builder);
+  builder.gt.mockReturnValue(builder);
   builder.abortSignal.mockReturnValue(builder);
   return builder;
 }
@@ -113,10 +119,10 @@ describe("listExpensesByMonth (repository — conversão de borda)", () => {
     expect(builder.lt).toHaveBeenCalledWith("date", "2026-09-01");
   });
 
-  it("ordena por data desc e created_at desc", async () => {
+  it("percorre as páginas por cursor estável de id", async () => {
     await listExpensesByMonth("2026-08");
-    expect(builder.order).toHaveBeenCalledWith("date", { ascending: false });
-    expect(builder.order).toHaveBeenCalledWith("created_at", { ascending: false });
+    expect(builder.order).toHaveBeenCalledWith("id", { ascending: true });
+    expect(builder.limit).toHaveBeenCalledWith(500);
   });
 
   it("propaga erro do banco via AppError", async () => {

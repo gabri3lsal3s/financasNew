@@ -15,16 +15,9 @@
  * Moeda tratada estritamente em centavos inteiros (FINANCIAL_MATH_SPEC.md §1).
  */
 
-import {
-  DEFAULT_PIX_CITY,
-  buildPixTransferCode,
-  sanitizeMerchantText,
-  sanitizePixCity,
-  sanitizeTxId,
-  validateAndClassifyPixKey,
-  validatePixBrCode,
-  type PixKeyType,
-} from "../pix";
+import { DEFAULT_PIX_CITY, sanitizeMerchantText, sanitizePixCity, sanitizeTxId, validatePixBrCode, type PixKeyType } from "@/domain/pix/pix-br-code";
+import { buildPixTransferCode } from "@/domain/pix/build-pix-transfer-code";
+import { validateAndClassifyPixKey } from "@/domain/pix/pix-key-validation";
 import {
   reconcileHouseholdSpending,
   resolveCompetenceMonthParts,

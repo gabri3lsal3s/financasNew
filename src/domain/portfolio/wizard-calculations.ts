@@ -5,7 +5,7 @@
  * Módulo puro — sem dependência de UI, React ou Supabase.
  */
 
-import { parseDecimalNumber } from "@/domain/money";
+import { parseDecimalNumber } from "@/domain/money/parse";
 import type { AssetCurrency, PortfolioAsset } from "@/types";
 import { resolveAssetPrecision } from "./aporte";
 import { sellAssetPosition } from "./operations";

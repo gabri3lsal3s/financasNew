@@ -8,16 +8,8 @@
  * para indicadores macroeconômicos e preenchimento assistido de câmbio em ordens.
  */
 
-import {
-  isCashAssetClass,
-  isCustomValuationAsset,
-  isFixedIncomeClass,
-  isPrivateFixedIncomeTicker,
-  isTesouroAsset,
-  normalizeTesouroTicker,
-  parseBcbSgsResponse,
-  type ParsedQuote,
-} from "@/domain/portfolio";
+import { isCashAssetClass, isCustomValuationAsset, isFixedIncomeClass, isTesouroAsset } from "@/domain/portfolio/valuation";
+import { isPrivateFixedIncomeTicker, normalizeTesouroTicker, parseBcbSgsResponse, type ParsedQuote } from "@/domain/portfolio/quotes";
 import {
   getMarketPriceHistoryForDate,
   listMarketPriceHistoryByMonth,

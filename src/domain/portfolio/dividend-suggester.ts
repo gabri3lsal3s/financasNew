@@ -16,7 +16,7 @@ import type {
   PortfolioDividendDismissal,
   PortfolioTransaction,
 } from "@/types";
-import { applyOperation, type AssetPosition } from "./index";
+import { applyOperation, type AssetPosition } from "@/domain/portfolio/index";
 import {
   findFuzzyMatchingManualDividend,
   normalizeDividendTickerKey,

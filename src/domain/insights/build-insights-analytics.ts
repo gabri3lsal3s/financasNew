@@ -1,16 +1,9 @@
-import { shiftMonth } from "@/domain/cards";
-import { numberToCents, sumGrossCents } from "@/domain/money";
-import { aggregateByWeekday } from "@/domain/reports";
-import {
-  buildChallengeOptions,
-  discretionaryChallenge,
-  pickTopChallenges,
-  typicalMonthlySpendCents,
-  type CategorySpend,
-  type ChallengeOption,
-  type DiscretionaryChallenge,
-} from "@/domain/savings";
-import { realizedByCategoryMap } from "@/domain/budgets";
+import { shiftMonth } from "@/domain/cards/index";
+import { numberToCents } from "@/domain/money/parse";
+import { sumGrossCents } from "@/domain/money/totals";
+import { aggregateByWeekday } from "@/domain/reports/index";
+import { buildChallengeOptions, discretionaryChallenge, pickTopChallenges, typicalMonthlySpendCents, type CategorySpend, type ChallengeOption, type DiscretionaryChallenge } from "@/domain/savings/index";
+import { realizedByCategoryMap } from "@/domain/budgets/index";
 import type { Category, CreditCard, Expense, Income } from "@/types";
 import {
   calculateProRataTrend,

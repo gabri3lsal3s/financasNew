@@ -1,6 +1,7 @@
-import { budgetLimitsByCategory, realizedByCategoryMap, resolveEffectiveLimit } from "@/domain/budgets";
-import { numberToCents, sumGrossCents } from "@/domain/money";
-import { calculateSurplusCapacity } from "@/domain/overview";
+import { budgetLimitsByCategory, realizedByCategoryMap, resolveEffectiveLimit } from "@/domain/budgets/index";
+import { numberToCents } from "@/domain/money/parse";
+import { sumGrossCents } from "@/domain/money/totals";
+import { calculateSurplusCapacity } from "@/domain/overview/surplus";
 import { shiftMonth } from "@/lib/date";
 import { formatCentsAsCurrency } from "@/services/masks/money";
 import type { Budget, Category, ChargeKind, FamilyConsolidationResult, IncomeGoal } from "@/types";

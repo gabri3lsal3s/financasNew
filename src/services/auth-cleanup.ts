@@ -8,7 +8,7 @@ import { setObservabilityUser } from "@/services/observability";
 import { setAppLocked, resetAppLockBackgroundTimer } from "@/services/native/app-lock";
 import { setCachedIconTier } from "@/services/native/app-icon";
 import { clearRecentReceipts } from "@/services/native/suggestions-store";
-import { resetUpdateDismissedForSession } from "@/domain/native";
+import { resetUpdateDismissedForSession } from "@/domain/native/update-toast-policy";
 
 /**
  * Rotina centralizada de limpeza e reset do estado da aplicação.

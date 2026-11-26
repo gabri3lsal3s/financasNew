@@ -1,8 +1,8 @@
 import { Navigate, Outlet } from "react-router";
-import { RouteSkeletonFallback } from "@/components/ui";
-import { resolveLandingPath } from "@/domain/navigation";
+import { RouteSkeletonFallback } from "@/components/layout/route-skeletons/route-skeleton-fallback";
+import { resolveLandingPath } from "@/domain/navigation/nav-resolver";
 import { useAuth } from "@/hooks/use-auth";
-import { useUserAccess } from "@/state";
+import { useUserAccess } from "@/state/queries/use-user-access";
 import type { SystemFeatureKey } from "@/types";
 
 export interface RequireFeatureProps {

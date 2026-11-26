@@ -12,7 +12,7 @@ import { diffMonths, medianOf, type ExpenseLike } from "./recurrences";
 import { extractHabitClusterKey, type IntentKind } from "./intent-semantics";
 import { DAY_OF_WEEK_LABELS_PTBR } from "./extended-periodicity";
 import { normalizeText, stripTemporalSuffixes } from "./shared";
-import { todayISO as getTodayISO } from "@/domain/debts";
+import { todayISO as getTodayISO } from "@/domain/debts/index";
 
 export interface SpendingHabit {
   /** Chave estável de clusterização do hábito (ex.: habit:cat_transporte:mobility:commute). */

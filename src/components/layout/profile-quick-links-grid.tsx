@@ -8,7 +8,7 @@ import {
   Sparkles,
   User,
 } from "lucide-react";
-import { Badge } from "@/components/ui";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 interface MenuLinkProps {

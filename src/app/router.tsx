@@ -10,7 +10,7 @@ import {
 import { appRoutes } from "@/app/routes";
 import { LoadingScreen } from "@/components/layout/loading-screen";
 import { ScrollRestoration } from "@/components/routing/scroll-restoration";
-import { isNativePlatform } from "@/services/native";
+import { isNativePlatform } from "@/services/native/platform";
 
 /**
  * Guards e App Shell carregados sob demanda: a landing page não deve baixar

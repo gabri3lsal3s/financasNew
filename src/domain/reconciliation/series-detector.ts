@@ -1,6 +1,6 @@
 import { addMonthsClamped, toISODate } from "@/domain/money/parcelar";
-import { shiftMonth } from "@/domain/cards";
-import { jaccardTokens, tokenize } from "@/domain/predictions";
+import { shiftMonth } from "@/domain/cards/index";
+import { jaccardTokens, tokenize } from "@/domain/predictions/index";
 import { generateStatementHash } from "./hash";
 import { alignInstallmentDateToCompetence } from "./extractors/type-sniffer";
 import type {

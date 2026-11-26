@@ -1,14 +1,17 @@
+import { lazy, Suspense } from "react";
+import { ContentLoading } from "@/components/ui/content-loading";
 import { Briefcase, Coins, Plus, Scale, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/layout";
 import { ReadOnlyBanner, UpgradeDialog } from "@/components/modules";
 import { Button, Tabs } from "@/components/ui";
 import { useMarketQuotesSwr } from "@/state";
-import { CashFormDialog, PortfolioInsightsCarousel } from "../components";
+import { PortfolioInsightsCarousel } from "../components";
 import { useInvestmentsPageController } from "../components/resumo/use-investments-page-controller";
-import { InvestmentWizard } from "../wizard";
-import { MovimentacoesTab } from "./movimentacoes-tab";
-import { ProventosTab } from "./proventos-tab";
-import { RebalanceTab } from "./rebalance-tab";
+const InvestmentWizard = lazy(() => import("../wizard/investment-wizard").then((module) => ({ default: module.InvestmentWizard })));
+const CashFormDialog = lazy(() => import("../components/cash-form-dialog").then((module) => ({ default: module.CashFormDialog })));
+const MovimentacoesTab = lazy(() => import("./movimentacoes-tab").then((module) => ({ default: module.MovimentacoesTab })));
+const ProventosTab = lazy(() => import("./proventos-tab").then((module) => ({ default: module.ProventosTab })));
+const RebalanceTab = lazy(() => import("./rebalance-tab").then((module) => ({ default: module.RebalanceTab })));
 import { ResumoTab } from "./resumo-tab";
 
 /**
@@ -95,7 +98,11 @@ export function InvestmentsPage() {
                     {
                       value: "extrato",
                       label: "Extrato",
-                      content: <MovimentacoesTab />,
+                      content: (
+                        <Suspense fallback={<ContentLoading />}>
+                          <MovimentacoesTab />
+                        </Suspense>
+                      ),
                     },
                   ]}
                 />
@@ -106,17 +113,26 @@ export function InvestmentsPage() {
             value: "rebalancear",
             label: "Rebalancear",
             icon: <Scale className="size-4" aria-hidden="true" />,
-            content: <RebalanceTab onGoToPosition={() => controller.handleTabChange("carteira")} />,
+            content: (
+              <Suspense fallback={<ContentLoading />}>
+                <RebalanceTab onGoToPosition={() => controller.handleTabChange("carteira")} />
+              </Suspense>
+            ),
           },
           {
             value: "proventos",
             label: "Proventos",
             icon: <Coins className="size-4" aria-hidden="true" />,
-            content: <ProventosTab onOpenWizard={controller.handleOpenWizard} />,
+            content: (
+              <Suspense fallback={<ContentLoading />}>
+                <ProventosTab onOpenWizard={controller.handleOpenWizard} />
+              </Suspense>
+            ),
           },
         ]}
       />
 
+      {controller.isWizardOpen && <Suspense fallback={<ContentLoading />}>
       <InvestmentWizard
         open={controller.isWizardOpen}
         onOpenChange={controller.handleWizardOpenChange}
@@ -125,11 +141,16 @@ export function InvestmentsPage() {
         initialQuantity={controller.wizardInitialQuantity}
         initialTotalCents={controller.wizardInitialTotalCents}
       />
+      </Suspense>}
 
-      <CashFormDialog
-        open={controller.cashDialogOpen}
-        onOpenChange={controller.setCashDialogOpen}
-      />
+      {controller.cashDialogOpen && (
+        <Suspense fallback={<ContentLoading />}>
+          <CashFormDialog
+            open={controller.cashDialogOpen}
+            onOpenChange={controller.setCashDialogOpen}
+          />
+        </Suspense>
+      )}
 
       <UpgradeDialog
         open={controller.upgradeOpen}

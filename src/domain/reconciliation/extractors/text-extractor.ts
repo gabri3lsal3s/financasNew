@@ -1,4 +1,4 @@
-import { addDaysISO, todayISO } from "@/domain/debts";
+import { addDaysISO, todayISO } from "@/domain/debts/index";
 import { isStatementNoiseOrSummary } from "../clean";
 import type { RawParsedRow } from "../contracts";
 

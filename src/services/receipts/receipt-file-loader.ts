@@ -1,9 +1,6 @@
 import { cleanOcrText } from "@/domain/notifications/ocr-cleaner";
-import {
-  reconstructSpatialReceiptText,
-  selectCandidateReceiptVisionPages,
-} from "@/domain/notifications";
-import { detectFileKindFromBytes } from "@/domain/reconciliation";
+import { reconstructSpatialReceiptText, selectCandidateReceiptVisionPages } from "@/domain/notifications/receipt-spatial-normalizer";
+import { detectFileKindFromBytes } from "@/domain/reconciliation/extractors/magic-bytes";
 import {
   isPdfPasswordProtectedError,
   PdfPasswordProtectedError,

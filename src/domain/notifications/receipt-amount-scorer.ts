@@ -7,7 +7,7 @@
  * - Reutiliza `parseBrazilianCurrencyToCents` para garantir conversão em centavos inteiros sem float.
  */
 
-import { parseBrazilianCurrencyToCents } from "@/domain/money";
+import { parseBrazilianCurrencyToCents } from "@/domain/money/parse";
 import type { ConfidenceLevel } from "./receipt-types";
 
 export interface SovereignReceiptAmountResult {

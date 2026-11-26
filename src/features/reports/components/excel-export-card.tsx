@@ -2,20 +2,20 @@ import { useState } from "react";
 import { Download, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui";
 import { todayISO } from "@/domain/debts";
-import { exportMultiSheetExcel, type ExcelWorkbookData } from "@/services/excel-export";
+import type { ExcelWorkbookData } from "@/services/excel-export";
 import { isNativePlatform } from "@/services/native";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 
 export interface ExcelExportCardProps {
-  workbookData: ExcelWorkbookData;
+  buildWorkbookData: () => ExcelWorkbookData;
   description?: string;
   disabled?: boolean;
   disabledReason?: string;
 }
 
 export function ExcelExportCard({
-  workbookData,
+  buildWorkbookData,
   description = "Exportação completa das abas de Investimentos e Finanças (Resumo Patrimonial, Custódia de Ativos, Proventos e Fiscal) com formatações e fórmulas nativas.",
   disabled = false,
   disabledReason = "Não há dados para exportar no período selecionado.",
@@ -27,7 +27,8 @@ export function ExcelExportCard({
     setDownloading(true);
     try {
       const today = todayISO();
-      const exported = await exportMultiSheetExcel(`Caderno_Relatorios_Financeiro_${today}`, workbookData);
+      const { exportMultiSheetExcel } = await import("@/services/excel-export");
+      const exported = await exportMultiSheetExcel(`Caderno_Relatorios_Financeiro_${today}`, buildWorkbookData());
       if (!exported) {
         throw new Error("Falha ao exportar planilha.");
       }

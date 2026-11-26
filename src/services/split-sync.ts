@@ -2,10 +2,11 @@ import { getSupabase } from "@/data/client";
 import { resolveQuery } from "@/data/query";
 import { createLinkedReceivableDebt, listDebts, updateDebt } from "@/data/repositories/debts";
 import { getExpense, listExpensesByInstallmentGroup, updateExpense } from "@/data/repositories/expenses";
-import { deleteExpenseInstallments, settleIntegratedReceivable, updateExpenseInstallmentsGroup } from "@/data/rpc";
-import { divideIntoInstallments } from "@/domain/cards";
-import { todayISO } from "@/domain/debts";
-import { computeSplitExpenseWeights } from "@/domain/finance";
+import { deleteExpenseInstallments, updateExpenseInstallmentsGroup } from "@/data/rpc/transactions";
+import { settleIntegratedReceivable } from "@/data/rpc/debts";
+import { divideIntoInstallments } from "@/domain/cards/index";
+import { todayISO } from "@/domain/debts/index";
+import { computeSplitExpenseWeights } from "@/domain/finance/split-reconciliation";
 import type { Debt, Expense, SplitParticipantInstallment, SplitParticipantItem } from "@/types";
 
 export interface SyncSplitWeightsParams {

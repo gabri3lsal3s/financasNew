@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { ContentLoading } from "@/components/ui/content-loading";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import {
   Bell,
@@ -13,13 +14,18 @@ import { PageHeader } from "@/components/layout";
 import { SupportChatDialog } from "@/components/modules";
 import {
   AccountTab,
-  AppearanceTab,
-  NotificationsTab,
-  SecurityTab,
-  SubscriptionTab,
-  SupportTab,
 } from "../components/tabs";
 import { resolveSettingsTab } from "../utils/settings-routes";
+
+const SecurityTab = lazy(() => import("../components/tabs/security-tab").then((module) => ({ default: module.SecurityTab })));
+
+const SubscriptionTab = lazy(() => import("../components/tabs/subscription-tab").then((module) => ({ default: module.SubscriptionTab })));
+
+const AppearanceTab = lazy(() => import("../components/tabs/appearance-tab").then((module) => ({ default: module.AppearanceTab })));
+
+const NotificationsTab = lazy(() => import("../components/tabs/notifications-tab").then((module) => ({ default: module.NotificationsTab })));
+
+const SupportTab = lazy(() => import("../components/tabs/support-tab").then((module) => ({ default: module.SupportTab })));
 
 export function SettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -74,35 +80,35 @@ export function SettingsPage() {
         label: "Aparência",
         shortLabel: "Aparência",
         icon: <Palette className="size-4" aria-hidden="true" />,
-        content: <AppearanceTab />,
+        content: <Suspense fallback={<ContentLoading />}><AppearanceTab /></Suspense>,
       },
       {
         value: "notifications",
         label: "Notificações",
         shortLabel: "Alertas",
         icon: <Bell className="size-4" aria-hidden="true" />,
-        content: <NotificationsTab />,
+        content: <Suspense fallback={<ContentLoading />}><NotificationsTab /></Suspense>,
       },
       {
         value: "security",
         label: "Segurança & Privacidade",
         shortLabel: "Segurança",
         icon: <ShieldCheck className="size-4" aria-hidden="true" />,
-        content: <SecurityTab />,
+        content: <Suspense fallback={<ContentLoading />}><SecurityTab /></Suspense>,
       },
       {
         value: "subscription",
         label: "Plano",
         shortLabel: "Plano",
         icon: <Zap className="size-4" aria-hidden="true" />,
-        content: <SubscriptionTab />,
+        content: <Suspense fallback={<ContentLoading />}><SubscriptionTab /></Suspense>,
       },
       {
         value: "support",
         label: "Suporte & Ajuda",
         shortLabel: "Suporte",
         icon: <LifeBuoy className="size-4" aria-hidden="true" />,
-        content: <SupportTab />,
+        content: <Suspense fallback={<ContentLoading />}><SupportTab /></Suspense>,
       },
     ],
     [],

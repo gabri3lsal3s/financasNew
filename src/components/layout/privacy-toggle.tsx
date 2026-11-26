@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { isAppLocked } from "@/services/native";
+import { isAppLocked } from "@/services/native/app-lock";
 import { triggerSensory } from "@/services/sensory";
 import { togglePrivacyMask, usePrivacyMask } from "@/hooks/use-privacy-mask";
 

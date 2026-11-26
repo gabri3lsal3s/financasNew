@@ -1,3 +1,4 @@
+import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import {
   listAllPortfolioTransactions,
@@ -28,12 +29,13 @@ export const portfolioDividendsKey = PORTFOLIO_QUERY_KEYS.dividends;
 
 /** Ativos da carteira. */
 export function usePortfolioAssets(options?: { enabled?: boolean }) {
+  const { user } = useAuth();
   const { isDemoActive } = useDemoSession();
   const simulated = useSimulatedPortfolioAssets();
   const real = useQuery({
     queryKey: portfolioAssetsKey,
-    queryFn: () => listPortfolioAssets(),
-    enabled: (options?.enabled ?? true) && !isDemoActive,
+    queryFn: () => listPortfolioAssets(user!.id),
+    enabled: (options?.enabled ?? true) && !isDemoActive && Boolean(user?.id),
     staleTime: STALE_TIMES.analytical,
   });
 

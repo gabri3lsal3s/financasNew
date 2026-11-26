@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { LogOut } from "lucide-react";
-import { Modal, Button } from "@/components/ui";
+import { Modal } from "@/components/ui/modal";
+import { Button } from "@/components/ui/button";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { DemoTrackSelectModal } from "@/components/modules/demo-track-select-modal";
 import { HelpModal } from "@/components/modules/help-modal";
 import { useAuth } from "@/hooks/use-auth";
 import { useModalTransition } from "@/hooks/use-modal-transition";
 import { useSignOut } from "@/hooks/use-sign-out";
-import { useUserSubscription } from "@/state";
+import { useUserSubscription } from "@/state/queries/use-user-subscription";
 import { AXIR_APP_NAME, AXIR_APP_VERSION } from "@/services/native/app-links";
 import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";

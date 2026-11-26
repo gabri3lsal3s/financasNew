@@ -7,7 +7,7 @@
  *   - preserva o erro original para debug.
  */
 
-import { sanitizeString } from "@/domain/validation";
+import { sanitizeString } from "@/domain/validation/sanitization";
 
 export type ErrorKind =
   | "rate-limit"

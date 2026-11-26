@@ -7,7 +7,9 @@ import { registerPWA } from "@/app/pwa";
 import { initObservability } from "@/services/observability";
 import { initOrientationLock } from "@/services/orientation-lock";
 import { initVisualCustomization } from "@/hooks/use-visual-customization";
-import { hideNativeSplashScreen, initHardwareBackButton, initSafeAreaInsets } from "@/services/native";
+import { hideNativeSplashScreen } from "@/services/native/splash-screen";
+import { initHardwareBackButton } from "@/services/native/back-button";
+import { initSafeAreaInsets } from "@/services/native/status-bar";
 
 // Aplica preferências visuais (acento, superfície, movimento) imediatamente
 initVisualCustomization();

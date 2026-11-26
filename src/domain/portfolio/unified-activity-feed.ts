@@ -4,7 +4,7 @@
  */
 
 import type { ExportPortfolioActivityRow } from "@/domain/export";
-import { numberToCents } from "@/domain/money";
+import { numberToCents } from "@/domain/money/parse";
 import type {
   PortfolioAsset,
   PortfolioContribution,

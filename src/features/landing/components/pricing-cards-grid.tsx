@@ -1,7 +1,9 @@
 import { Link } from "react-router";
 import { ArrowRight, Check, ShieldCheck, Sparkles } from "lucide-react";
-import { Badge, Card, buttonVariants } from "@/components/ui";
-import { PRO_BENEFITS_CATALOG, PRO_TRIAL_HIGHLIGHTS } from "@/domain/subscription";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { PRO_BENEFITS_CATALOG, PRO_TRIAL_HIGHLIGHTS } from "@/domain/subscription/benefits";
 import { cn } from "@/lib/utils";
 import { ScrollReveal } from "./scroll-reveal";
 

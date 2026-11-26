@@ -1,4 +1,4 @@
-import { numberToCents } from "@/domain/money";
+import { numberToCents } from "@/domain/money/parse";
 
 export interface ContributionItem {
   amount: number;

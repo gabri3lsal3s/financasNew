@@ -1,5 +1,6 @@
 import { Cpu, FileSpreadsheet, Lock, ReceiptText, Search, Sparkles } from "lucide-react";
-import { Badge, Card } from "@/components/ui";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 
 const AI_CAPABILITIES = [
   {

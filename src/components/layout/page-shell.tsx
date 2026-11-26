@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { Outlet, useLocation, useNavigate, useSearchParams } from "react-router";
 import type { ThemePreference } from "@/app/theme-provider";
 import { cn } from "@/lib/utils";
-import { trackFeatureUse } from "@/services/analytics";
+import { trackFeatureUse } from "@/services/analytics/tracker";
 import { resetPageScroll } from "@/services/scroll";
 import { UpgradeDialog } from "@/components/modules/subscription/upgrade-dialog";
 import { buildCheckoutUrl } from "@/domain/subscription/plans";
@@ -12,22 +12,20 @@ import { BackToTop } from "@/components/layout/back-to-top";
 import { GlobalSearch } from "@/components/layout/global-search";
 import { NetworkStatusBanner } from "@/components/layout/network-status-banner";
 import { Sidebar } from "@/components/layout/sidebar";
-import { RouteSkeletonFallback } from "@/components/ui";
+import { RouteSkeletonFallback } from "@/components/layout/route-skeletons/route-skeleton-fallback";
 import { DemoTourSpotlight } from "@/components/modules/demo-tour-spotlight";
 import { NativeOnboardingDialog } from "@/components/modules/native-onboarding-dialog";
-import { useDemoSession } from "@/state/demo-mode";
-import { useContainerScroll } from "@/hooks";
+import { useDemoSession } from "@/state/demo-mode/demo-session-store";
+import { useContainerScroll } from "@/hooks/use-container-scroll";
 import { useNotificationCenter } from "@/hooks/use-notification-center";
 import { useSidebarState } from "@/hooks/use-sidebar-state";
 import {
   resolveVisibleHeaderSlots,
   useVisualCustomization,
 } from "@/hooks/use-visual-customization";
-import { dismissPendingSuggestion } from "@/services/native";
-import {
-  useUpdateCustomSettings,
-  useUserSubscription,
-} from "@/state";
+import { dismissPendingSuggestion } from "@/services/native/suggestions-store";
+import { useUpdateCustomSettings } from "@/state/mutations/use-preference-mutations";
+import { useUserSubscription } from "@/state/queries/use-user-subscription";
 import { DesktopTopbar } from "./desktop-topbar";
 import { MobileTopbar } from "./mobile-topbar";
 import {

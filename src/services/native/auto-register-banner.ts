@@ -1,28 +1,21 @@
 import { useSyncExternalStore } from "react";
-import {
-  matchCategoryBySlug,
-  resolveBestMatchingCard,
-  resolveMerchantIdentity,
-  type ParsedBankTransaction,
-} from "@/domain/notifications";
+import { matchCategoryBySlug } from "@/domain/notifications/category-inference";
+import { resolveBestMatchingCard } from "@/domain/notifications/card-resolution";
+import { resolveMerchantIdentity } from "@/domain/notifications/merchant-resolver";
+import { type ParsedBankTransaction } from "@/domain/notifications/bank-parser";
 import { addPendingSuggestion, dismissPendingSuggestion, registerReceiptDeduplication } from "./suggestions-store";
 import { listCategories } from "@/data/repositories/categories";
 import { listCreditCards } from "@/data/repositories/credit-cards";
-import {
-  createExpenseWithDebt,
-  createIncomeInstallments,
-  deleteExpenseInstallments,
-  deleteIncomeInstallments,
-} from "@/data/rpc";
+import { createExpenseWithDebt, createIncomeInstallments, deleteExpenseInstallments, deleteIncomeInstallments } from "@/data/rpc/transactions";
 import { createIncome, deleteIncome } from "@/data/repositories/incomes";
 import { buildExpenseInstallments, buildIncomeInstallments } from "@/features/transactions/wizard/wizard-state";
 import { storeMerchantCategory } from "./merchant-storage";
 import { findMatchingCategory } from "./interactive-notifications";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
-import { formatCentsAsCurrency } from "@/services/masks";
-import { getErrorMessage } from "@/services/errors";
-import { toISODate } from "@/domain/money";
+import { formatCentsAsCurrency } from "@/services/masks/money";
+import { getErrorMessage } from "@/services/errors/index";
+import { toISODate } from "@/domain/money/parcelar";
 import {
   getCardDigitsMapping,
   getMerchantLearningMemory,

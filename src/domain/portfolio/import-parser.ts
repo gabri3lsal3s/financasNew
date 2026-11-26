@@ -6,7 +6,7 @@
  * 2. Planilhas e relatórios CSV de corretoras e B3 (Área do Investidor / CEI, Kinvo, Gorila, XP, NuInvest, Inter, BTG, Clear, Toro, Rico).
  */
 
-import { addDaysISO, todayISO } from "@/domain/debts";
+import { addDaysISO, todayISO } from "@/domain/debts/index";
 import { inferCurrencyFromTicker } from "./valuation";
 import { KNOWN_B3_ETFS, KNOWN_STOCK_UNITS } from "./tax";
 import type { AssetCurrency, PortfolioTransactionType } from "@/types";

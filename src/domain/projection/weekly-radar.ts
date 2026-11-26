@@ -7,7 +7,7 @@
  * indicando a margem de liquidez semanal ("saldo livre da semana").
  */
 
-import { addDaysISO, todayISO } from "@/domain/debts";
+import { addDaysISO, todayISO } from "@/domain/debts/index";
 
 /** Calcula a diferença em dias entre duas datas ISO YYYY-MM-DD (positivo se toIso for no futuro). */
 export function diffDaysISO(fromIso: string, toIso: string): number {

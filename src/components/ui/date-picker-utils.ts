@@ -1,4 +1,4 @@
-import { toISODate } from "@/domain/money";
+import { toISODate } from "@/domain/money/parcelar";
 
 export const MONTH_LABELS = [
   "Jan",

@@ -7,7 +7,7 @@
  * Motor 100% puro: zero dependências de UI, React ou Supabase.
  */
 
-import { numberToCents } from "@/domain/money";
+import { numberToCents } from "@/domain/money/parse";
 import type { ExpenseLike } from "./recurrences";
 import { normalizeText, stripTemporalSuffixes } from "./shared";
 import {

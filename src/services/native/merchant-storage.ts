@@ -1,9 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  forgetMerchantCategoryMemory,
-  recordMerchantCategoryMemory,
-  type MerchantCategoryMapping,
-} from "@/domain/notifications";
+import { forgetMerchantCategoryMemory, recordMerchantCategoryMemory, type MerchantCategoryMapping } from "@/domain/notifications/merchant-memory";
 import {
   getUserStorageItem,
   setUserStorageItem,

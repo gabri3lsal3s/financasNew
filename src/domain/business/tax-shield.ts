@@ -7,7 +7,7 @@
  * IOF de cartão jamais reduza a provisão devida ao Fisco.
  */
 
-import { sumWeightedCents } from "@/domain/money";
+import { sumWeightedCents } from "@/domain/money/totals";
 import type { BusinessProfileKind } from "@/types";
 import { isBusinessFiscalTaxExpense, type DreExpenseInput } from "./dre-calculator";
 

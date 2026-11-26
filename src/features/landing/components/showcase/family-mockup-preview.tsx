@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { ArrowRightLeft, Check, CheckCircle2, ShieldCheck } from "lucide-react";
-import { Badge, Button, MoneyText } from "@/components/ui";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { MoneyText } from "@/components/ui/money-text";
 import { cn } from "@/lib/utils";
 
 export interface FamilyMockupPreviewProps {

@@ -1,23 +1,23 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { ArrowRight, PieChart } from "lucide-react";
-import { Card, buttonVariants } from "@/components/ui";
+import { Card } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button-variants";
 import type { AllocationSlice } from "@/components/modules/allocation-donut";
 import { cn } from "@/lib/utils";
-import { useAnimatedNumber, useLandingCta } from "@/features/landing/hooks";
+import { useAnimatedNumber } from "@/features/landing/hooks/use-animated-number";
+import { useLandingCta } from "@/features/landing/hooks/use-landing-cta";
 import { ScrollReveal } from "@/features/landing/components/scroll-reveal";
 import { SimulatorInputsPanel } from "./simulator/simulator-inputs-panel";
 import { SimulatorChartPanel } from "./simulator/simulator-chart-panel";
 import { SimulatorAllocationResults } from "./simulator/simulator-allocation-results";
-import { formatCentsAsBRL, formatPercent } from "@/services/masks";
-import { numberToCents } from "@/domain/money";
-import { storePendingSimulation } from "@/domain/share";
+import { formatCentsAsBRL } from "@/services/masks/money";
+import { formatPercent } from "@/services/masks/percent";
+import { numberToCents } from "@/domain/money/parse";
+import { storePendingSimulation } from "@/domain/share/simulation-transport";
 import { setStoredInitialGoal } from "@/state/demo-mode/demo-storage";
-import {
-  simulateStrategyAporte,
-  STRATEGY_PRESETS,
-  type StrategyPresetKey,
-} from "@/domain/portfolio";
+import { simulateStrategyAporte } from "@/domain/portfolio/simulation";
+import { STRATEGY_PRESETS, type StrategyPresetKey } from "@/domain/portfolio/simulation-presets";
 
 const SIMULATION_ANNUAL_RATE = 8;
 const SIMULATION_MONTHLY_LIVING_COST = 2500;
@@ -70,7 +70,6 @@ export function MinimalWealthSimulator() {
 
   return (
     <section
-      id="simulador"
       className="py-14 md:py-24 bg-surface-raised/30 border-t border-border/60 scroll-mt-20"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12">

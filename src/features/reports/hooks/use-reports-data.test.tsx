@@ -91,7 +91,7 @@ describe("useReportsData — gates, períodos e integridade de cálculo", () => 
     );
 
     expect(result.current.periodLabel).toBe("01/08/2026 a 15/08/2026");
-    expect(result.current.workbookData.appName).toBe("Axir");
+    expect(result.current.buildWorkbookData().appName).toBe("Axir");
   });
 
   it("não trava a aba Finanças nem vaza erro de investimentos quando gateado", () => {

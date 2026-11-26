@@ -1,20 +1,15 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { KeyRound, Lock, LogOut, ShieldCheck } from "lucide-react";
-import { Button, Input } from "@/components/ui";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { cn } from "@/lib/utils";
-import {
-  checkBiometricsAvailability,
-  getPinLockoutState,
-  isAppLocked,
-  isNativePlatform,
-  isPinLockConfigured,
-  subscribeAppLock,
-  unlockAppWithBiometrics,
-  unlockAppWithPin,
-} from "@/services/native";
+import { checkBiometricsAvailability } from "@/services/native/biometrics";
+import { getPinLockoutState, isPinLockConfigured, unlockAppWithPin } from "@/services/native/pin-lock";
+import { isAppLocked, subscribeAppLock, unlockAppWithBiometrics } from "@/services/native/app-lock";
+import { isNativePlatform } from "@/services/native/platform";
 
 const FOCUSABLE_SELECTOR =
   'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"]):not([disabled])';

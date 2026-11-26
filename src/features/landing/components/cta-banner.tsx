@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 import { ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
-import { buttonVariants } from "@/components/ui";
-import { useLandingCta } from "@/features/landing/hooks";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { useLandingCta } from "@/features/landing/hooks/use-landing-cta";
 import { cn } from "@/lib/utils";
 import { ScrollReveal } from "./scroll-reveal";
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { getSupabase } from "@/data/client";
 import { ensureOwnProfile } from "@/data/repositories/profiles";
 import { ensureDefaultCategories } from "@/data/repositories/categories";
-import { getErrorMessage } from "@/services/errors";
+import { getErrorMessage } from "@/services/errors/index";
 import { reportError, setObservabilityUser } from "@/services/observability";
 import { setActiveUserId } from "@/services/user-storage";
 import type { Session, User } from "@supabase/supabase-js";

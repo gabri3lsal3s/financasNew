@@ -12,25 +12,13 @@ import { useRoutePrefetch } from "@/hooks/use-route-prefetch";
 import { usePendingSplitExpense } from "@/hooks/use-pending-split-expense";
 import { usePendingSimulation } from "@/hooks/use-pending-simulation";
 import * as state from "@/state";
-import { useUserAccess } from "@/state";
-import {
-  clearNativeBankMonitoring,
-  getPendingRouteAfterUnlock,
-  initBankNotificationListener,
-  initDeepLinkListener,
-  initNotificationActionListener,
-  isAppLocked,
-  isNativePlatform,
-  isRemotePushEnabled,
-  setPendingRouteAfterUnlock,
-  subscribeAppLock,
-} from "@/services/native";
-import {
-  checkNativePushPermission,
-  getStoredFcmToken,
-  initNativePushListeners,
-  registerNativeFcmPush,
-} from "@/services/push";
+import { useUserAccess } from "@/state/queries/use-user-access";
+import { clearNativeBankMonitoring, initBankNotificationListener } from "@/services/native/bank-listener";
+import { getPendingRouteAfterUnlock, isAppLocked, setPendingRouteAfterUnlock, subscribeAppLock } from "@/services/native/app-lock";
+import { initDeepLinkListener } from "@/services/native/deep-links";
+import { initNotificationActionListener, isRemotePushEnabled } from "@/services/native/local-notifications";
+import { isNativePlatform } from "@/services/native/platform";
+import { checkNativePushPermission, getStoredFcmToken, initNativePushListeners, registerNativeFcmPush } from "@/services/push/fcm-push";
 import { pushToast } from "@/services/toast";
 
 const FloatingCalculator = lazy(() =>

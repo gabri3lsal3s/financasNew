@@ -301,9 +301,9 @@ export function splitAssetPosition(input: SplitAssetInput): SplitAssetResult {
 // Sincronização e Reconciliação do Ledger com Custódia de Ativos (§F38 / F73)
 // ---------------------------------------------------------------------------
 
-import { todayISO } from "@/domain/debts";
+import { todayISO } from "@/domain/debts/index";
 import type { AssetCurrency } from "@/types";
-import { computeLedger, type LedgerTransaction } from "./index";
+import { computeLedger, type LedgerTransaction } from "@/domain/portfolio/index";
 
 export const APP_MIN_DATE = "2026-01-01";
 

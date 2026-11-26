@@ -9,7 +9,7 @@
  * - Pós-validação estrita via Zod e Whitelist de categorias no retorno antes de aceitar qualquer sugestão.
  */
 
-import { toISODate } from "@/domain/money";
+import { toISODate } from "@/domain/money/parcelar";
 import type { UniversalReceiptData } from "@/domain/notifications";
 import { getSupabase } from "@/data/client";
 import { getSupabaseEnv } from "@/lib/env";

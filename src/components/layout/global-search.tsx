@@ -15,25 +15,18 @@ import {
   WalletCards,
   Zap,
 } from "lucide-react";
-import { Button, Command } from "@/components/ui";
+import { Button } from "@/components/ui/button";
+import { Command } from "@/components/ui/command";
 import type { CommandGroup, CommandItem } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
-import {
-  hasStructuredFilters,
-  matchesStructuredTransactionQuery,
-  monthsBetween,
-  parseStructuredSearchQuery,
-  recencyBonus,
-  resolveSearchIntent,
-  searchGlobal,
-  type SearchEntryType,
-  type SearchResult,
-} from "@/domain/search";
-import { todayISO } from "@/domain/debts";
+import { hasStructuredFilters, matchesStructuredTransactionQuery, parseStructuredSearchQuery } from "@/domain/search/structured-query";
+import { monthsBetween, recencyBonus, searchGlobal, type SearchEntryType, type SearchResult } from "@/domain/search/index";
+import { resolveSearchIntent } from "@/domain/search/intents";
+import { todayISO } from "@/domain/debts/index";
 import { categorizeDescriptionsBatchWithAi } from "@/services/ai-assistant";
 import { recordBatchAiMerchantTeachings } from "@/services/merchant-learning";
-import { isAppLocked } from "@/services/native";
-import { useGlobalSearchEntries } from "@/state";
+import { isAppLocked } from "@/services/native/app-lock";
+import { useGlobalSearchEntries } from "@/state/queries/use-search";
 
 const TYPE_ICON: Record<SearchEntryType, typeof ArrowUpRight> = {
   action: Zap,

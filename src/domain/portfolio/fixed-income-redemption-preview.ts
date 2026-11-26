@@ -8,7 +8,7 @@
  * Módulo puro — sem dependência de UI ou Supabase.
  */
 
-import { todayISO } from "@/domain/debts";
+import { todayISO } from "@/domain/debts/index";
 import type { PortfolioAsset } from "@/types";
 import {
   calculateFixedIncomeBalance,

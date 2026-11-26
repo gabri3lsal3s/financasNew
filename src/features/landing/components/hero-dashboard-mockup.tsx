@@ -11,7 +11,9 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { BrandLogo } from "@/components/layout/brand-logo";
-import { Badge, Button, MoneyText } from "@/components/ui";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { MoneyText } from "@/components/ui/money-text";
 import { ScrollReveal } from "@/features/landing/components/scroll-reveal";
 import { cn } from "@/lib/utils";
 import { triggerSensory } from "@/services/sensory";

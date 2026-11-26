@@ -1,12 +1,9 @@
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
-import { evaluateStaleQuoteGuard } from "@/domain/portfolio";
+import { evaluateStaleQuoteGuard } from "@/domain/portfolio/stale-quote-guard";
 import { todaySaoPauloISO } from "@/domain/portfolio/dividend-suggester";
-import {
-  useAllPortfolioTransactions,
-  usePortfolioPosition,
-  usePortfolioSnapshots,
-  useUpsertPortfolioSnapshot,
-} from "@/state";
+import { useAllPortfolioTransactions, usePortfolioSnapshots } from "@/state/queries/use-portfolio";
+import { usePortfolioPosition } from "@/state/queries/use-portfolio-position";
+import { useUpsertPortfolioSnapshot } from "@/state/mutations/use-portfolio-snapshots-mutations";
 import {
   getMarketQuotesSwrSnapshot,
   subscribeMarketQuotesSwr,

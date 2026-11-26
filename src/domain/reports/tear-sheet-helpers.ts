@@ -1,13 +1,9 @@
-import { numberToCents } from "@/domain/money";
-import {
-  formatFxSourceLabel,
-  isCustomValuationAsset,
-  isTesouroAsset,
-  type CanonicalFxMetadata,
-  type PortfolioMonthlySeriesPoint,
-  type StaleQuoteGuardResult,
-  type TwrConsolidatedResult,
-} from "@/domain/portfolio";
+import { numberToCents } from "@/domain/money/parse";
+import { formatFxSourceLabel, type StaleQuoteGuardResult } from "@/domain/portfolio/stale-quote-guard";
+import { isCustomValuationAsset, isTesouroAsset } from "@/domain/portfolio/valuation";
+import { type CanonicalFxMetadata } from "@/domain/portfolio/canonical-types";
+import { type PortfolioMonthlySeriesPoint } from "@/domain/portfolio/summary";
+import { type TwrConsolidatedResult } from "@/domain/portfolio/twr";
 import type {
   TearSheetClassGroup,
   TearSheetPerformancePoint,

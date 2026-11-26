@@ -1,11 +1,7 @@
 import { Clipboard } from "@capacitor/clipboard";
-import { getErrorMessage } from "@/services/errors";
-import {
-  blobToBase64,
-  exportNativeFile,
-  isNativePlatform,
-  shareNativeText,
-} from "@/services/native";
+import { getErrorMessage } from "@/services/errors/index";
+import { blobToBase64, exportNativeFile, shareNativeText } from "@/services/native/native-export";
+import { isNativePlatform } from "@/services/native/platform";
 import { pushToast } from "@/services/toast";
 
 /**

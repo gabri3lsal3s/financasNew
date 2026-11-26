@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { cleanTextSchema, MAX_MONEY_AMOUNT, sanitizeString } from "@/domain/validation";
+import { cleanTextSchema, MAX_MONEY_AMOUNT, sanitizeString } from "@/domain/validation/sanitization";
 
 /**
  * Regex para validação de tickers de ativos:

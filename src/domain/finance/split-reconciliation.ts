@@ -10,7 +10,8 @@
  * Motor 100% puro: sem dependências de UI, React ou Supabase (AGENTS.md §3).
  */
 
-import { DEFAULT_PIX_CITY, buildPixTransferCode, type PixKeyType } from "@/domain/pix";
+import { DEFAULT_PIX_CITY, type PixKeyType } from "@/domain/pix/pix-br-code";
+import { buildPixTransferCode } from "@/domain/pix/build-pix-transfer-code";
 import type {
   SplitParticipantInstallment,
   SplitParticipantItem,

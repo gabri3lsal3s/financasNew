@@ -2,7 +2,7 @@
 import { useId, useState } from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Check, Droplet, X } from "lucide-react";
-import { hexToRgb, relativeLuminance } from "@/domain/accessibility";
+import { hexToRgb, relativeLuminance } from "@/domain/accessibility/index";
 import { cn } from "@/lib/utils";
 import { triggerSensory } from "@/services/sensory";
 import { Input } from "./input";

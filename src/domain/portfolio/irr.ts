@@ -12,7 +12,7 @@
  * Módulo puro — sem import de UI ou Supabase; 100% testável isoladamente.
  */
 
-import { todayISO } from "@/domain/debts";
+import { todayISO } from "@/domain/debts/index";
 
 export interface CashFlow {
   /** Data no formato ISO (YYYY-MM-DD). */

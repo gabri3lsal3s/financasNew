@@ -1,10 +1,8 @@
 import type { FixedIncomeMetadata } from "@/types";
-import {
-  countCalendarDays,
-  getFixedIncomeTaxRatePct,
-  isFixedIncomeClass,
-  parseFixedIncomeSellNotes,
-} from "@/domain/portfolio";
+import { countCalendarDays } from "@/domain/portfolio/business-days";
+import { getFixedIncomeTaxRatePct } from "@/domain/portfolio/fixed-income";
+import { isFixedIncomeClass } from "@/domain/portfolio/valuation";
+import { parseFixedIncomeSellNotes } from "@/domain/portfolio/fixed-income-redemption-preview";
 
 const round2 = (v: number): number => Math.round(v * 100) / 100;
 

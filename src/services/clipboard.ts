@@ -1,5 +1,5 @@
 import { Clipboard } from "@capacitor/clipboard";
-import { isNativePlatform } from "@/services/native";
+import { isNativePlatform } from "@/services/native/platform";
 
 /**
  * Gateway central de Área de Transferência (Clipboard Service).

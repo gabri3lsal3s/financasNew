@@ -1,5 +1,6 @@
 import { type ElementType, type ReactNode, type HTMLAttributes } from "react";
-import { useInView, useScrollRevealContext } from "@/features/landing/hooks";
+import { useInView } from "@/features/landing/hooks/use-in-view";
+import { useScrollRevealContext } from "@/features/landing/hooks/use-scroll-reveal-context";
 import { cn } from "@/lib/utils";
 
 export interface ScrollRevealProps extends HTMLAttributes<HTMLElement> {

@@ -1,8 +1,8 @@
 import { Link } from "react-router";
 import { ArrowRight, Sparkles } from "lucide-react";
-import { buttonVariants } from "@/components/ui";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
-import { useLandingCta } from "@/features/landing/hooks";
+import { useLandingCta } from "@/features/landing/hooks/use-landing-cta";
 
 export interface MobileCtaDockProps {
   /** Se o dock deve estar visível com base na rolagem. */

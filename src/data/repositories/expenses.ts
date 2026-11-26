@@ -1,5 +1,5 @@
 import { getSupabase } from "@/data/client";
-import { resolveQuery } from "@/data/query";
+import { readAllPages, resolveQuery } from "@/data/query";
 import { AppError, classifyError } from "@/services/errors";
 import { currentMonth, monthRange, shiftMonth } from "@/lib/date";
 import { materializeRecurrencesForMonth, materializeRecurrencesForRange } from "./recurrences";
@@ -28,21 +28,16 @@ export async function listExpensesByMonth(month: string): Promise<Expense[]> {
   // listar (idempotente; sob demanda, ver repositories/recurrences).
   await materializeRecurrencesForMonth(month, "expense");
   const range = monthRange(month);
-  const { data, error } = await resolveQuery<Expense[]>(
-    getSupabase()
+  const data = await readAllPages<Expense>((afterId, pageSize) => {
+    let page = getSupabase()
       .from("expenses")
       .select("*")
       .gte("date", range.start)
-      .lt("date", range.end)
-      .order("date", { ascending: false })
-      .order("created_at", { ascending: false }),
-  );
-
-  if (error) {
-    const classified = classifyError(error);
-    throw new AppError(classified.kind, classified.message, error);
-  }
-  return (data ?? []).map(mapExpense);
+      .lt("date", range.end).order("id", { ascending: true }).limit(pageSize);
+    if (afterId) page = page.gt("id", afterId);
+    return resolveQuery<Expense[]>(page);
+  }, undefined);
+  return data.map(mapExpense).sort((left, right) => right.date.localeCompare(left.date) || right.created_at.localeCompare(left.created_at) || left.id.localeCompare(right.id));
 }
 
 export interface RangeQueryOptions {
@@ -59,38 +54,36 @@ export async function listExpensesByRange(
     throw new DOMException("The user aborted a request.", "AbortError");
   }
   await materializeRecurrencesForRange(start, end, "expense");
+  const createQuery = () => {
   let query = getSupabase()
     .from("expenses")
     .select("*")
     .gte("date", start)
-    .lt("date", end)
-    .order("date", { ascending: true });
+    .lt("date", end);
 
   if (options?.signal) {
     query = query.abortSignal(options.signal);
   }
 
-  const { data, error } = await resolveQuery<Expense[]>(query);
-  if (error) {
-    if (options?.signal?.aborted || error.message?.includes("AbortError")) {
-      throw new DOMException("The user aborted a request.", "AbortError");
-    }
-    const classified = classifyError(error);
-    throw new AppError(classified.kind, classified.message, error);
-  }
-  return (data ?? []).map(mapExpense);
+
+    return query;
+  };
+  const data = await readAllPages<Expense>((afterId, pageSize) => {
+    let page = createQuery().order("id", { ascending: true }).limit(pageSize);
+    if (afterId) page = page.gt("id", afterId);
+    return resolveQuery<Expense[]>(page);
+  }, options?.signal);
+  return data.map(mapExpense).sort((left, right) => left.date.localeCompare(right.date) || left.id.localeCompare(right.id));
 }
 
 /** Todas as despesas do usuário (busca global §3.9). */
 export async function listAllExpenses(): Promise<Expense[]> {
-  const { data, error } = await resolveQuery<Expense[]>(
-    getSupabase().from("expenses").select("*").order("date", { ascending: false }),
-  );
-  if (error) {
-    const classified = classifyError(error);
-    throw new AppError(classified.kind, classified.message, error);
-  }
-  return (data ?? []).map(mapExpense);
+  const data = await readAllPages<Expense>((afterId, pageSize) => {
+    let page = getSupabase().from("expenses").select("*").order("id", { ascending: true }).limit(pageSize);
+    if (afterId) page = page.gt("id", afterId);
+    return resolveQuery<Expense[]>(page);
+  }, undefined);
+  return data.map(mapExpense).sort((left, right) => right.date.localeCompare(left.date) || left.id.localeCompare(right.id));
 }
 
 /** Janela temporal padrão para consultas de cartão (24 meses retroativos para cobertura de parcelamentos estendidos). */
@@ -107,6 +100,7 @@ export interface CardQueryOptions {
 
 /** Despesas de um cartão (derivação de fatura com janela padrão de 24 meses ou customizada). */
 export async function listExpensesByCard(cardId: string, options?: CardQueryOptions): Promise<Expense[]> {
+  const createQuery = () => {
   let query = getSupabase()
     .from("expenses")
     .select("*")
@@ -122,18 +116,20 @@ export async function listExpensesByCard(cardId: string, options?: CardQueryOpti
     query = query.or(`bill_competence.gte.${resolvedSinceMonth},date.gte.${sinceDate}`);
   }
 
-  const { data, error } = await resolveQuery<Expense[]>(
-    query.order("date", { ascending: false }),
-  );
-  if (error) {
-    const classified = classifyError(error);
-    throw new AppError(classified.kind, classified.message, error);
-  }
-  return (data ?? []).map(mapExpense);
+
+    return query;
+  };
+  const data = await readAllPages<Expense>((afterId, pageSize) => {
+    let page = createQuery().order("id", { ascending: true }).limit(pageSize);
+    if (afterId) page = page.gt("id", afterId);
+    return resolveQuery<Expense[]>(page);
+  }, undefined);
+  return data.map(mapExpense).sort((left, right) => right.date.localeCompare(left.date) || left.id.localeCompare(right.id));
 }
 
 /** Todas as despesas de cartão (faturas na visão consolidada com janela padrão de 24 meses ou customizada). */
 export async function listAllCardExpenses(options?: CardQueryOptions): Promise<Expense[]> {
+  const createQuery = () => {
   let query = getSupabase()
     .from("expenses")
     .select("*")
@@ -149,14 +145,15 @@ export async function listAllCardExpenses(options?: CardQueryOptions): Promise<E
     query = query.or(`bill_competence.gte.${resolvedSinceMonth},date.gte.${sinceDate}`);
   }
 
-  const { data, error } = await resolveQuery<Expense[]>(
-    query.order("date", { ascending: false }),
-  );
-  if (error) {
-    const classified = classifyError(error);
-    throw new AppError(classified.kind, classified.message, error);
-  }
-  return (data ?? []).map(mapExpense);
+
+    return query;
+  };
+  const data = await readAllPages<Expense>((afterId, pageSize) => {
+    let page = createQuery().order("id", { ascending: true }).limit(pageSize);
+    if (afterId) page = page.gt("id", afterId);
+    return resolveQuery<Expense[]>(page);
+  }, undefined);
+  return data.map(mapExpense).sort((left, right) => right.date.localeCompare(left.date) || left.id.localeCompare(right.id));
 }
 
 /** Despesa por id (usado no detalhe). */
@@ -189,17 +186,14 @@ export async function updateExpense(id: string, input: DbUpdate<Expense>): Promi
 
 /** Despesas pertencentes a um grupo de parcelas ordenadas por número da parcela. */
 export async function listExpensesByInstallmentGroup(groupId: string): Promise<Expense[]> {
-  const { data, error } = await resolveQuery<Expense[]>(
-    getSupabase()
+  const data = await readAllPages<Expense>((afterId, pageSize) => {
+    let page = getSupabase()
       .from("expenses")
       .select("*")
-      .eq("installment_group_id", groupId)
-      .order("installment_number", { ascending: true }),
-  );
-  if (error) {
-    const classified = classifyError(error);
-    throw new AppError(classified.kind, classified.message, error);
-  }
-  return (data ?? []).map(mapExpense);
+      .eq("installment_group_id", groupId).order("id", { ascending: true }).limit(pageSize);
+    if (afterId) page = page.gt("id", afterId);
+    return resolveQuery<Expense[]>(page);
+  }, undefined);
+  return data.map(mapExpense).sort((left, right) => left.date.localeCompare(right.date) || left.id.localeCompare(right.id));
 }
 

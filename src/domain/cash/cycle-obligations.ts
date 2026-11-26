@@ -9,9 +9,9 @@
  *  - Garante invariantes de soma com o Safe-to-Spend.
  */
 
-import { resolveOpenCardInvoices } from "@/domain/cards";
-import { todayISO } from "@/domain/debts";
-import { numberToCents } from "@/domain/money";
+import { resolveOpenCardInvoices } from "@/domain/cards/index";
+import { todayISO } from "@/domain/debts/index";
+import { numberToCents } from "@/domain/money/parse";
 import { shiftMonth } from "@/lib/date";
 
 export interface CycleInvoiceItem {

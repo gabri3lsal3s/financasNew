@@ -1,9 +1,4 @@
-import {
-  findBimodalGutterX,
-  groupTokensIntoLines,
-  type SpatialPdfLine,
-  type SpatialPdfToken,
-} from "@/domain/reconciliation";
+import { findBimodalGutterX, groupTokensIntoLines, type SpatialPdfLine, type SpatialPdfToken } from "@/domain/reconciliation/extractors/spatial-pdf-extractor";
 import {
   isPdfPasswordProtectedError,
   PdfPasswordProtectedError,

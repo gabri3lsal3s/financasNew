@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Plane, Scale, Target, Users } from "lucide-react";
-import { Card, Tabs } from "@/components/ui";
+import { Card } from "@/components/ui/card";
+import { Tabs } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { SplitMockupPreview } from "./showcase/split-mockup-preview";
 import { GoalMockupPreview } from "./showcase/goal-mockup-preview";

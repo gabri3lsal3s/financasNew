@@ -1,5 +1,6 @@
 import { useState, useCallback, type ReactNode } from "react";
-import { useUserSubscription, usePermission } from "@/state";
+import { useUserSubscription } from "@/state/queries/use-user-subscription";
+import { usePermission } from "@/state/queries/use-permission";
 import { UpgradeDialog } from "@/components/modules/subscription/upgrade-dialog";
 import { buildCheckoutUrl } from "@/domain/subscription/plans";
 import type { SubscriptionPlan, SystemFeatureKey } from "@/types";

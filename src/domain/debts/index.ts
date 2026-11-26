@@ -8,7 +8,7 @@
  * Motor puro — testável isoladamente.
  */
 
-import { numberToCents } from "@/domain/money";
+import { numberToCents } from "@/domain/money/parse";
 
 export type DebtStatus = "paid" | "overdue" | "due_today" | "due_soon" | "pending";
 

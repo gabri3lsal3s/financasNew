@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useDemoSession } from "@/state/demo-mode";
+import { useDemoSession } from "@/state/demo-mode/demo-session-store";
 
 export interface ActiveOverlaysResult {
   /**

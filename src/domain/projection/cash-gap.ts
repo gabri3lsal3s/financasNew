@@ -10,7 +10,7 @@
  * 100% puro — sem dependências de UI ou Supabase.
  */
 
-import { effectiveInvoiceDueDate, resolveOpenCardInvoices, type CardBillRolloverLike } from "@/domain/cards";
+import { effectiveInvoiceDueDate, resolveOpenCardInvoices, type CardBillRolloverLike } from "@/domain/cards/index";
 
 export interface CashGapObligation {
   id: string;

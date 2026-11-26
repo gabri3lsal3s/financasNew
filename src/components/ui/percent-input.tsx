@@ -1,7 +1,7 @@
 import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent, FocusEvent, InputHTMLAttributes, KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
-import { extractDigits } from "@/domain/money";
+import { extractDigits } from "@/domain/money/currency-input";
 
 export interface PercentInputProps
   extends Omit<

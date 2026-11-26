@@ -1,4 +1,5 @@
-import { calculateEffectiveAssetTargets, isCashAssetClass } from "@/domain/portfolio";
+import { calculateEffectiveAssetTargets } from "@/domain/portfolio/allocation";
+import { isCashAssetClass } from "@/domain/portfolio/valuation";
 import type { PointInTimeResult } from "@/domain/portfolio";
 import type { AssetAllocationStatus, GroupTarget, PortfolioAsset, PortfolioSnapshot } from "@/types";
 import { buildAllocationDonutSegments } from "./allocation-donuts";

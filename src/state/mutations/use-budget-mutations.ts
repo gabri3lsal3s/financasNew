@@ -4,10 +4,8 @@ import { removeGoal, setGoal } from "@/data/repositories/income-goals";
 import { reallocateBudget } from "@/data/rpc";
 import { budgetsKey } from "@/state/queries/use-budgets";
 import { incomeGoalsKey } from "@/state/queries/use-income-goals";
-import { expensesKey } from "@/state/queries/use-expenses";
-import { incomesKey } from "@/state/queries/use-incomes";
 
-const FINANCE_KEYS = [budgetsKey, incomeGoalsKey, expensesKey, incomesKey, ["overview"]] as const;
+const FINANCE_KEYS = [budgetsKey, incomeGoalsKey] as const;
 
 function invalidateFinance(queryClient: QueryClient) {
   for (const key of FINANCE_KEYS) void queryClient.invalidateQueries({ queryKey: key });

@@ -1,17 +1,9 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import {
-  isAndroidNative,
-  isAppLocked,
-  isNativePlatform,
-  subscribeAppLock,
-} from "@/services/native";
+import { isAndroidNative, isNativePlatform } from "@/services/native/platform";
+import { isAppLocked, subscribeAppLock } from "@/services/native/app-lock";
 import { shouldOfferAndroidApk } from "@/services/native/app-links";
-import {
-  hasSeenNativeOnboarding,
-  hasSeenWelcomeModal,
-  markNativeOnboardingSeen,
-  useDemoSession,
-} from "@/state/demo-mode";
+import { hasSeenNativeOnboarding, hasSeenWelcomeModal, markNativeOnboardingSeen } from "@/state/demo-mode/demo-storage";
+import { useDemoSession } from "@/state/demo-mode/demo-session-store";
 import type { LaunchState } from "@/features/transactions/wizard/wizard-state";
 import type { PaymentMethod } from "@/types";
 

@@ -27,7 +27,7 @@ describe("features/reports/components/tabs/TaxTab", () => {
   it("renderiza os cards de IRPF, DARF, exportação Excel e o aviso de responsabilidade fiscal/CFC/RFB", () => {
     render(
       <TaxTab
-        workbookData={mockWorkbookData}
+        buildWorkbookData={() => mockWorkbookData}
         excelDescription="Exportação completa das abas de Investimentos e Finanças"
         onOpenTaxReport={vi.fn()}
         onOpenDarfMonitor={vi.fn()}
@@ -47,7 +47,7 @@ describe("features/reports/components/tabs/TaxTab", () => {
 
     render(
       <TaxTab
-        workbookData={mockWorkbookData}
+        buildWorkbookData={() => mockWorkbookData}
         excelDescription="Exportação teste"
         onOpenTaxReport={handleOpenTax}
         onOpenDarfMonitor={handleOpenDarf}

@@ -6,8 +6,8 @@
  * Função 100% pura: sem dependências de UI, React ou banco de dados.
  */
 
-import { toISODate } from "@/domain/money";
-import { calculatePixCrc16, stripInvisiblePixChars } from "@/domain/pix";
+import { toISODate } from "@/domain/money/parcelar";
+import { calculatePixCrc16, stripInvisiblePixChars } from "@/domain/pix/pix-br-code";
 import type { ParsedBankTransaction } from "./bank-parser";
 import { cleanMerchantName } from "./bank-parser";
 import { inferCategoryKeyword } from "./category-inference";

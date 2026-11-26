@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router";
 import { prefetchPageChunks } from "@/app/routes";
-import { navItems } from "@/components/layout";
+import { navItems } from "@/components/layout/nav-items";
 
 /** Rotas primárias da BottomNav — pré-carregadas no primeiro idle da sessão. */
 const PRIMARY_PATHS = ["/", "/transacoes", "/cartoes", "/relatorios", "/investments"] as const;
@@ -18,13 +18,14 @@ function adjacentPaths(current: string): string[] {
 
 interface NetworkConnection {
   saveData?: boolean;
+  effectiveType?: string;
 }
 
 function shouldSkipPrefetch(): boolean {
   if (typeof navigator === "undefined") return true;
   if (typeof navigator.onLine === "boolean" && !navigator.onLine) return true;
   const conn = (navigator as unknown as { connection?: NetworkConnection }).connection;
-  if (conn?.saveData) return true;
+  if (conn?.saveData || ["slow-2g", "2g", "3g"].includes(conn?.effectiveType ?? "")) return true;
   return false;
 }
 
@@ -45,9 +46,9 @@ export function useRoutePrefetch(): void {
 
     const schedule = (): void => {
       if (shouldSkipPrefetch()) return;
-      const paths = [...new Set([...PRIMARY_PATHS, ...adjacentPaths(location.pathname)])].filter(
+      const paths = [...new Set([...adjacentPaths(location.pathname), ...PRIMARY_PATHS])].filter(
         (path) => path !== location.pathname,
-      );
+      ).slice(0, 2);
       prefetchPageChunks(paths);
     };
 

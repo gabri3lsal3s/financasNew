@@ -1,8 +1,11 @@
 import { CheckCircle2, Info, ShieldCheck, Sparkles, TrendingUp } from "lucide-react";
-import { Badge, MoneyText, Popover, PopoverContent, PopoverTrigger } from "@/components/ui";
-import { resolveAllocationStatus, type StrategyClassAllocationResult } from "@/domain/portfolio";
-import { numberToCents } from "@/domain/money";
-import { formatCentsAsBRL, formatPercent } from "@/services/masks";
+import { Badge } from "@/components/ui/badge";
+import { MoneyText } from "@/components/ui/money-text";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { resolveAllocationStatus, type StrategyClassAllocationResult } from "@/domain/portfolio/simulation";
+import { numberToCents } from "@/domain/money/parse";
+import { formatCentsAsBRL } from "@/services/masks/money";
+import { formatPercent } from "@/services/masks/percent";
 import { cn } from "@/lib/utils";
 
 export interface SimulatorAllocationResultsProps {

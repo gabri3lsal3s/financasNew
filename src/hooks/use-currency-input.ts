@@ -1,12 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import type { ChangeEvent, KeyboardEvent } from "react";
-import {
-  CURRENCY_INPUT_MAX_DIGITS,
-  centsFromDigits,
-  digitsFromCents,
-  extractDigits,
-} from "@/domain/money";
-import { formatCentsAsCurrency } from "@/services/masks";
+import { CURRENCY_INPUT_MAX_DIGITS, centsFromDigits, digitsFromCents, extractDigits } from "@/domain/money/currency-input";
+import { formatCentsAsCurrency } from "@/services/masks/money";
 import type { AssetCurrency } from "@/types";
 
 export interface UseCurrencyInputOptions {

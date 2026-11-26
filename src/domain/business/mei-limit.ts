@@ -6,7 +6,7 @@
  * Marcos de alerta: 70% (atenção), 85% (alerta), 100% (teto) e 120% (tolerância).
  */
 
-import { sumWeightedCents } from "@/domain/money";
+import { sumWeightedCents } from "@/domain/money/totals";
 import type { TransactionScope } from "@/types";
 
 export const DEFAULT_MEI_ANNUAL_CEILING_CENTS = 8_100_000; // R$ 81.000,00 (parametrizável)

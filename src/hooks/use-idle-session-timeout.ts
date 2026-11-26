@@ -10,7 +10,7 @@ import {
   type IdleLogoutPolicy,
 } from "@/services/session-policy";
 import { pushToast } from "@/services/toast";
-import { useDemoSession } from "@/state/demo-mode";
+import { useDemoSession } from "@/state/demo-mode/demo-session-store";
 
 /**
  * Tempo padrão da janela de aviso prévio antes do encerramento da sessão (60 segundos).

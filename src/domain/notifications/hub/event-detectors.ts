@@ -1,15 +1,6 @@
-import {
-  budgetLimitsByCategory,
-  exceededCents,
-  resolveEffectiveLimit,
-  spentByCategoryMap,
-} from "@/domain/budgets";
-import {
-  buildCompetenceSummaries,
-  invoiceDueDate,
-  shiftMonth,
-} from "@/domain/cards";
-import { addDaysISO, todayISO } from "@/domain/debts";
+import { budgetLimitsByCategory, exceededCents, resolveEffectiveLimit, spentByCategoryMap } from "@/domain/budgets/index";
+import { buildCompetenceSummaries, invoiceDueDate, shiftMonth } from "@/domain/cards/index";
+import { addDaysISO, todayISO } from "@/domain/debts/index";
 import { todaySaoPauloISO } from "@/domain/portfolio/dividend-suggester";
 import type { SuggestedDividendItem } from "@/domain/portfolio";
 import type {

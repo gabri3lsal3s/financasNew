@@ -14,7 +14,7 @@ import {
   DeepDiveTabsSection,
   type DeepDiveTabKey,
 } from "@/features/landing/components/deep-dive-tabs-section";
-import { MinimalWealthSimulator } from "@/features/landing/components/minimal-wealth-simulator";
+import { DeferredWealthSimulator } from "@/features/landing/components/deferred-wealth-simulator";
 import { PlatformComparison } from "@/features/landing/components/platform-comparison";
 import { ToolsShowcase } from "@/features/landing/components/tools-showcase";
 import { PricingSection } from "@/features/landing/components/pricing-section";
@@ -24,14 +24,16 @@ import { LandingFooter } from "@/features/landing/components/landing-footer";
 import { BackToTop } from "@/components/layout/back-to-top";
 import { MobileCtaDock } from "@/features/landing/components/mobile-cta-dock";
 import { ScrollRevealProvider } from "@/features/landing/components/scroll-reveal-context";
-import { useScrollSpy } from "@/features/landing/hooks";
+
 import { useDocumentMeta } from "@/hooks/use-document-meta";
-import { hasNativeBrowserBackToTop } from "@/services/native";
+import { hasNativeBrowserBackToTop } from "@/services/native/platform";
 
 const PLAN_ROUTES = ["/precos", "/planos", "/vendas"];
 
 export function LandingPage() {
-  const { showBackToTop, resetKey, activeSection } = useScrollSpy();
+  const [{ showBackToTop, resetKey, activeSection }, setScrollState] = useState({
+    showBackToTop: false, resetKey: 0, activeSection: "",
+  });
   const location = useLocation();
   const [activePain, setActivePain] = useState<PainKey>("cash");
   const [activeDeepTab, setActiveDeepTab] = useState<DeepDiveTabKey>("investments");
@@ -104,7 +106,7 @@ export function LandingPage() {
         </a>
 
         {/* Header Sticky com Barra de Progresso e Scroll-Spy */}
-        <LandingHeader />
+        <LandingHeader onScrollStateChange={setScrollState} />
 
         {/* Main Content Editorial */}
         <main id="conteudo-principal" className="flex-1 min-w-0 w-full max-w-full">
@@ -116,7 +118,7 @@ export function LandingPage() {
             onExploreInvestments={handleExploreInvestments}
           />
           <DeepDiveTabsSection activeTab={activeDeepTab} onTabChange={setActiveDeepTab} />
-          <MinimalWealthSimulator />
+          <DeferredWealthSimulator />
           <ToolsShowcase />
           <PricingSection />
           <PlatformComparison />

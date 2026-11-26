@@ -9,7 +9,7 @@
  * - Yield on Cost (YoC) vs Dividend Yield (DY): Retorno sobre o capital desembolsado vs rendimento corrente.
  */
 
-import { numberToCents } from "@/domain/money";
+import { numberToCents } from "@/domain/money/parse";
 import { formatPercent, formatSignedPct } from "@/services/masks/percent";
 import { enrichBreakdown } from "../formatters";
 import type { BreakdownStep, CalculationBreakdown } from "../types";

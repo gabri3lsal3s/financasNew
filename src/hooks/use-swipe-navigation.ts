@@ -1,16 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
-import {
-  AXIS_DOMINANCE_RATIO,
-  boundaryResistance,
-  directionOf,
-  EDGE_INSET_PX,
-  isEdgeZoneTouch,
-  isHorizontalDominant,
-  LOCK_DISTANCE_PX,
-  resolveSwipeIntent,
-  type SwipeDirection,
-} from "@/domain/gestures";
+import { AXIS_DOMINANCE_RATIO, boundaryResistance, directionOf, EDGE_INSET_PX, isEdgeZoneTouch, isHorizontalDominant, LOCK_DISTANCE_PX, resolveSwipeIntent, type SwipeDirection } from "@/domain/gestures/swipe";
 import { triggerSensory } from "@/services/sensory";
 
 /**

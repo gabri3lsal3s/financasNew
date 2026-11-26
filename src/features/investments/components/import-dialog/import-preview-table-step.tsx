@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { Pagination } from "@/components/ui/pagination";
 import { Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { Badge, Button, Checkbox, MoneyText } from "@/components/ui";
 import { numberToCents } from "@/domain/money";
@@ -54,6 +56,16 @@ export function ImportPreviewTableStep({
   onAddNewRow,
   onAdjustColumns,
 }: ImportPreviewTableStepProps) {
+  const [page, setPage] = useState(1);
+  const pageSize = 50;
+  const pageCount = Math.max(1, Math.ceil(parsedRows.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const startIndex = (currentPage - 1) * pageSize;
+  const changePage = (nextPage: number) => {
+    onDoneEdit();
+    setPage(nextPage);
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -69,7 +81,7 @@ export function ImportPreviewTableStep({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={onAddNewRow} className="text-xs gap-1">
+          <Button type="button" variant="outline" size="sm" onClick={() => { setPage(1); onAddNewRow(); }} className="text-xs gap-1">
             <Plus aria-hidden="true" className="size-3.5" />
             Adicionar linha
           </Button>
@@ -83,7 +95,8 @@ export function ImportPreviewTableStep({
       </div>
 
       <div className="overflow-x-auto no-scrollbar scroll-smooth rounded-xl border border-border/80 bg-surface divide-y divide-border/60 p-1 w-full">
-        {parsedRows.map((row, idx) => {
+        {parsedRows.slice(startIndex, startIndex + pageSize).map((row, pageIndex) => {
+          const idx = startIndex + pageIndex;
           const isSelected = selectedIndices.has(idx);
           const op =
             isPositionMode && row.type === "buy"
@@ -174,6 +187,7 @@ export function ImportPreviewTableStep({
           );
         })}
       </div>
+      <Pagination page={currentPage} pageCount={pageCount} onPageChange={changePage} />
     </div>
   );
 }

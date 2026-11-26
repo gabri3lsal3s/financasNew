@@ -1,5 +1,5 @@
 import { registerPlugin } from "@capacitor/core";
-import { getErrorMessage } from "@/services/errors";
+import { getErrorMessage } from "@/services/errors/index";
 import { isNativePlatform } from "./platform";
 
 export interface NativePrintResult {

@@ -10,7 +10,7 @@
  *     `custodyBrazilCents + custodyForeignBRLCents === closingPatrimonyCents`.
  */
 
-import { numberToCents } from "@/domain/money";
+import { numberToCents } from "@/domain/money/parse";
 import type { CanonicalFxMetadata } from "./canonical-types";
 import { formatFxSourceLabel } from "./stale-quote-guard";
 import { FALLBACK_USD_RATE } from "./valuation";

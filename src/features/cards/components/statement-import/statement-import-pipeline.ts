@@ -14,7 +14,6 @@ import {
   getStatementIngestionErrorMessage,
   isSpreadsheetOrHtmlFileName,
   MAX_STATEMENT_AI_CHUNKS,
-  parseSpreadsheetWorkbook,
   parseStatementInput,
   preprocessStatementTextForAi,
   sniffColumnMapping,
@@ -275,6 +274,7 @@ export async function parseStatementWithPdfAiFallback(params: ParseStatementWith
     contentKind === "xls_biff8" ||
     contentKind === "html_or_xml_sheet"
   ) {
+    const { parseSpreadsheetWorkbook } = await import("@/domain/reconciliation/extractors/spreadsheet-extractor");
     const workbook = await parseSpreadsheetWorkbook(params.content);
     if (workbook.rows.length === 0) {
       return {

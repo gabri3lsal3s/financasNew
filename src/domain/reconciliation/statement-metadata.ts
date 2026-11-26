@@ -1,5 +1,5 @@
-import { shiftMonth } from "@/domain/cards";
-import { resolveBillCompetence } from "@/domain/competence";
+import { shiftMonth } from "@/domain/cards/index";
+import { resolveBillCompetence } from "@/domain/competence/index";
 import { normalizeDateToISO } from "./extractors/type-sniffer";
 import type { StatementTransaction } from "./contracts";
 

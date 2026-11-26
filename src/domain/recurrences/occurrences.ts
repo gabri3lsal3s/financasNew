@@ -15,8 +15,8 @@
  * inclui a primeira ocorrência). Datas nunca antes de APP_START_DATE.
  */
 
-import { addMonthsClamped, toISODate } from "@/domain/money";
-import { addDaysISO } from "@/domain/debts";
+import { addMonthsClamped, toISODate } from "@/domain/money/parcelar";
+import { addDaysISO } from "@/domain/debts/index";
 import { APP_START_DATE } from "@/types/schema";
 import type { RecurrenceFrequency, RecurrenceOccurrence, RecurrenceRule } from "./types";
 

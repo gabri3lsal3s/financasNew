@@ -3,7 +3,7 @@
  * Sem dependências de UI, React ou Supabase (AGENTS.md §3).
  */
 
-import { numberToCents } from "@/domain/money";
+import { numberToCents } from "@/domain/money/parse";
 import { inferSectorFromTicker } from "./tickers-catalog";
 
 export interface ResumoPositionRowInput {

@@ -1,4 +1,4 @@
-import { todayISO } from "@/domain/debts";
+import { todayISO } from "@/domain/debts/index";
 import type { ColumnMapping, StatementTransaction } from "./contracts";
 
 export type QualityGateFailureReason =

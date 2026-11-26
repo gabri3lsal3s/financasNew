@@ -10,7 +10,7 @@
  * - Resolução do Bug AUD-08: Diagnóstico transparente do motivo de corte de ativos preteridos.
  */
 
-import { numberToCents } from "@/domain/money";
+import { numberToCents } from "@/domain/money/parse";
 import type {
   AporteOverflowEvent,
   ClassAporteSummary,

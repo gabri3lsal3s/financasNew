@@ -6,8 +6,8 @@
  * Zero dependência de LLM ou chamadas externas de rede.
  */
 
-import { todayISO as getTodayISO } from "@/domain/debts";
-import { numberToCents } from "@/domain/money";
+import { todayISO as getTodayISO } from "@/domain/debts/index";
+import { numberToCents } from "@/domain/money/parse";
 import type { MerchantLearningMemory } from "@/domain/notifications";
 import {
   buildStructuredQueryBadges,

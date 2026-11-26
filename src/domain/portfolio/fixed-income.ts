@@ -13,7 +13,7 @@
 
 import type { FixedIncomeRateType } from "@/types";
 import { countBusinessDays, countCalendarDays } from "./business-days";
-import { todayISO } from "@/domain/debts";
+import { todayISO } from "@/domain/debts/index";
 import { inferFixedIncomeCategories } from "./tickers-catalog";
 
 /**

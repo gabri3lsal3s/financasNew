@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { cleanTextSchema, moneyAmountSchema } from "@/domain/validation";
+import { cleanTextSchema, moneyAmountSchema } from "@/domain/validation/sanitization";
 
 /**
  * Schema Zod para criação e edição de Dívidas / Cobranças (Empréstimos, Contas a Pagar/Receber):

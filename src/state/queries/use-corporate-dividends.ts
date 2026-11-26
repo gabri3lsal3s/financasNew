@@ -118,10 +118,10 @@ export function useCorporateDividends(
 ): UseCorporateDividendsState {
   const enabled = options?.enabled ?? true;
   const { isDemoActive } = useDemoSession();
-  const assetsQuery = usePortfolioAssets();
-  const transactionsQuery = useAllPortfolioTransactions();
-  const manualDividendsQuery = usePortfolioDividends();
-  const assetPricesQuery = useAssetPrices();
+  const assetsQuery = usePortfolioAssets({ enabled });
+  const transactionsQuery = useAllPortfolioTransactions({ enabled });
+  const manualDividendsQuery = usePortfolioDividends({ enabled });
+  const assetPricesQuery = useAssetPrices({ enabled });
 
   const portfolioTickers = useMemo(() => {
     const tickers = new Set<string>();

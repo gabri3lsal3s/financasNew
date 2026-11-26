@@ -18,7 +18,7 @@ import type {
   FixedIncomeRateType,
   PortfolioAsset,
 } from "@/types";
-import { todayISO } from "@/domain/debts";
+import { todayISO } from "@/domain/debts/index";
 import {
   FII_MACRO_CATEGORY_LABELS,
   FIXED_INCOME_INDEXER_LABELS,

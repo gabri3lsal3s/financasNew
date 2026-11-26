@@ -1,10 +1,10 @@
 import { lazy, Suspense } from "react";
 import { Navigate } from "react-router";
-import { OverviewSkeleton } from "@/components/ui";
+import { OverviewSkeleton } from "@/components/layout/route-skeletons/finance-skeletons";
 import { PageShell } from "@/components/layout/page-shell";
 import { RequireActiveAccount } from "@/components/routing/require-active-account";
 import { RequireAuth } from "@/app/require-auth";
-import { useUserAccess } from "@/state";
+import { useUserAccess } from "@/state/queries/use-user-access";
 
 const OverviewPage = lazy(() =>
   import("@/features/overview/pages/overview-page").then((m) => ({ default: m.OverviewPage })),

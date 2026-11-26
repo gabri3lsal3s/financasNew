@@ -1,27 +1,11 @@
-import {
-  budgetLimitsByCategory,
-  budgetStatus,
-  resolveEffectiveLimit,
-  spentByCategoryMap,
-} from "@/domain/budgets";
-import {
-  buildDiagnosticBreakdowns,
-  buildPaceProjectionBreakdown,
-  buildPendingSummaryBreakdown,
-  buildRecurrencesSummaryBreakdown,
-  buildSavingsChallengesBreakdown,
-  type CalculationBreakdown,
-  type DiagnosticBreakdowns,
-} from "@/domain/calculation-memory";
-import { numberToCents, sumGrossCents } from "@/domain/money";
-import { computeOverview } from "@/domain/overview";
-import {
-  dailyBudget,
-  endOfMonthProjection,
-  pendingProjection,
-  spendingPace,
-  type EmergencyFundComposition,
-} from "@/domain/projection";
+import { budgetLimitsByCategory, budgetStatus, resolveEffectiveLimit, spentByCategoryMap } from "@/domain/budgets/index";
+import { buildDiagnosticBreakdowns, buildPaceProjectionBreakdown, buildPendingSummaryBreakdown, buildRecurrencesSummaryBreakdown, buildSavingsChallengesBreakdown, type DiagnosticBreakdowns } from "@/domain/calculation-memory/builders/insights-breakdown";
+import { type CalculationBreakdown } from "@/domain/calculation-memory/types";
+import { numberToCents } from "@/domain/money/parse";
+import { sumGrossCents } from "@/domain/money/totals";
+import { computeOverview } from "@/domain/overview/index";
+import { dailyBudget, endOfMonthProjection, pendingProjection, spendingPace } from "@/domain/projection/index";
+import { type EmergencyFundComposition } from "@/domain/projection/emergency-fund";
 import type {
   Budget,
   Category,

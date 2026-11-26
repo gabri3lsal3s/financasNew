@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { triggerSensory } from "@/services/sensory";
-import { projectPatrimony, type ProjectionBasis } from "@/domain/portfolio";
+import { projectPatrimony, type ProjectionBasis } from "@/domain/portfolio/projection";
 import { buildFireChartGeometry } from "@/domain/simulators/fire-curve";
 import { cn } from "@/lib/utils";
 import { FireInteractiveSvgChart } from "./fire-interactive-svg-chart";

@@ -36,7 +36,9 @@ export function OverviewModalsHost({
   const expenseCategories = data.expenseCategories.data ?? [];
   const expenses = data.expensesQuery.data ?? [];
   const prevExpenses = data.prevExpensesQuery.data ?? [];
-  const prevSpentWeightedByCategory = spentByCategoryMap([...prevExpenses]);
+  const prevSpentWeightedByCategory = modals.selectedCategoryId === null
+    ? new Map<string, number>()
+    : spentByCategoryMap([...prevExpenses]);
   const selectedCategory = expenseCategories.find((c) => c.id === modals.selectedCategoryId) ?? null;
 
   const selectedLimitCents = selectedCategory
@@ -51,7 +53,9 @@ export function OverviewModalsHost({
   const selectedPrevSpentWeightedCents = selectedCategory
     ? (prevSpentWeightedByCategory.get(selectedCategory.id) ?? 0)
     : 0;
-  const selectedExpenses = expenses.filter((e) => e.category_id === modals.selectedCategoryId);
+  const selectedExpenses = modals.selectedCategoryId === null
+    ? []
+    : expenses.filter((e) => e.category_id === modals.selectedCategoryId);
 
   const quickTourTrack: OnboardingQuickTourTrack =
     data.initialGoal === "family"

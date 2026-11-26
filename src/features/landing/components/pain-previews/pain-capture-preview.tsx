@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { Check, CheckCircle2, FileSpreadsheet, FileText, Share2, ShieldCheck } from "lucide-react";
-import { Badge, Button, Card, MoneyText } from "@/components/ui";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { MoneyText } from "@/components/ui/money-text";
 import { pushToast } from "@/services/toast";
 
 export function PainCapturePreview() {

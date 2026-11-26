@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { ArrowLeftRight, Briefcase, CheckCircle2, ShieldCheck, TrendingUp } from "lucide-react";
-import { Badge, Button, Card, MoneyText } from "@/components/ui";
-import { formatPercent } from "@/services/masks";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { MoneyText } from "@/components/ui/money-text";
+import { formatPercent } from "@/services/masks/percent";
 import { pushToast } from "@/services/toast";
 
 export function PainBusinessPreview() {

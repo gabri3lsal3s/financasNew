@@ -11,8 +11,9 @@
  * Função 100% pura: sem dependências de UI, React ou banco de dados.
  */
 
-import { parseBrazilianCurrencyToCents, toISODate } from "@/domain/money";
-import { stripInvisiblePixChars } from "@/domain/pix";
+import { parseBrazilianCurrencyToCents } from "@/domain/money/parse";
+import { toISODate } from "@/domain/money/parcelar";
+import { stripInvisiblePixChars } from "@/domain/pix/pix-br-code";
 import { isValidCNPJ } from "@/domain/validation/cnpj";
 import { isValidCPF } from "@/domain/validation/cpf";
 

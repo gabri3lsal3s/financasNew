@@ -2,7 +2,7 @@
  * Motor puro de rateio de Cartão Misto e controle anti-duplicidade de reembolso PJ para PF (Fase 2B).
  */
 
-import { sumWeightedCents } from "@/domain/money";
+import { sumWeightedCents } from "@/domain/money/totals";
 import type { TransactionScope } from "@/types";
 
 export interface MixedCardExpenseInput {

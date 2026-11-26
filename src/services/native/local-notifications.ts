@@ -1,18 +1,11 @@
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { setReminderState } from "@/data/repositories/reminder-states";
-import { addDaysISO, todayISO } from "@/domain/debts";
-import { DEMO_USER_ID } from "@/domain/demo-simulation";
-import {
-  DEFAULT_QUIET_HOURS,
-  MAX_OVERDUE_DAYS_FOR_NOTIFICATION,
-  adjustDateForQuietHours,
-  buildDueNotificationSchedule,
-  inferCategoryKeyword,
-  normalizeQuietHours,
-  type ParsedBankTransaction,
-  type QuietHoursConfig,
-} from "@/domain/notifications";
-import { getDemoSessionState } from "@/state/demo-mode";
+import { addDaysISO, todayISO } from "@/domain/debts/index";
+import { DEMO_USER_ID } from "@/domain/demo-simulation/mock-finances";
+import { DEFAULT_QUIET_HOURS, MAX_OVERDUE_DAYS_FOR_NOTIFICATION, adjustDateForQuietHours, buildDueNotificationSchedule, normalizeQuietHours, type QuietHoursConfig } from "@/domain/notifications/schedule";
+import { inferCategoryKeyword } from "@/domain/notifications/category-inference";
+import { type ParsedBankTransaction } from "@/domain/notifications/bank-parser";
+import { getDemoSessionState } from "@/state/demo-mode/demo-session-store";
 import { getUserStorageItem, setUserStorageItem } from "@/services/user-storage";
 import { isNativePlatform } from "./platform";
 import {

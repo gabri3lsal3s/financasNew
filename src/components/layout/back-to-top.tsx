@@ -1,5 +1,5 @@
 import { ArrowUp } from "lucide-react";
-import { Button } from "@/components/ui";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { scrollToTop } from "@/services/scroll";
 

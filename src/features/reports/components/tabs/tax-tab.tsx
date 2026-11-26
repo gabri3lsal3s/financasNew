@@ -5,7 +5,7 @@ import { OFFICIAL_TAX_DISCLAIMER } from "@/lib/institutional";
 import type { ExcelWorkbookData } from "@/services/excel-export";
 
 export interface TaxTabProps {
-  workbookData: ExcelWorkbookData;
+  buildWorkbookData: () => ExcelWorkbookData;
   excelDescription: string;
   onOpenTaxReport: () => void;
   onOpenDarfMonitor: () => void;
@@ -17,7 +17,7 @@ export interface TaxTabProps {
  * Aba "Fiscal & Declaração" — Facilitador de IRPF, Monitor DARF e Exportação Excel.
  */
 export function TaxTab({
-  workbookData,
+  buildWorkbookData,
   excelDescription,
   onOpenTaxReport,
   onOpenDarfMonitor,
@@ -72,7 +72,7 @@ export function TaxTab({
 
       {/* Card 3: Caderno de Relatórios em Excel (.xlsx) */}
       <ExcelExportCard
-        workbookData={workbookData}
+        buildWorkbookData={buildWorkbookData}
         description={excelDescription}
         disabled={isExcelDisabled}
         disabledReason={excelDisabledReason}

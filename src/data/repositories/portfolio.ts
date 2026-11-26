@@ -1,6 +1,6 @@
 import { getSupabase } from "@/data/client";
 import { currentUserId } from "@/data/session";
-import { resolveQuery } from "@/data/query";
+import { readAllPages, resolveQuery } from "@/data/query";
 import { AppError, classifyError } from "@/services/errors";
 import { currentMonth } from "@/lib/date";
 import { normalizeDividendTickerKey } from "@/domain/portfolio/dividend-deduplication";
@@ -91,8 +91,8 @@ function mapDividend(row: PortfolioDividend): PortfolioDividend {
 // ---------------------------------------------------------------------------
 
 /** Ativos da carteira com quantidade e preço médio consolidados. */
-export async function listPortfolioAssets(): Promise<PortfolioAsset[]> {
-  const user_id = await currentUserId();
+export async function listPortfolioAssets(confirmedUserId?: string): Promise<PortfolioAsset[]> {
+  const user_id = confirmedUserId ?? await currentUserId();
   const { data, error } = await resolveQuery<PortfolioAsset[]>(
     getSupabase()
       .from("portfolio_assets")
@@ -797,24 +797,25 @@ export async function listCorporateDividends(tickers?: string[]): Promise<Corpor
 
     const byId = new Map<string, CorporateDividend>();
     const CHUNK_SIZE = 150;
-    for (let i = 0; i < uniqueTickers.length; i += CHUNK_SIZE) {
-      const chunk = uniqueTickers.slice(i, i + CHUNK_SIZE);
-      const { data, error } = await resolveQuery(
-        getSupabase()
-          .from("corporate_dividends")
-          .select("*")
-          .in("ticker", chunk)
-          .order("com_date", { ascending: false }),
-      );
-
-      if (error) {
-        const classified = classifyError(error);
-        throw new AppError(classified.kind, classified.message, error);
-      }
-
-      for (const rawRow of (data ?? []) as CorporateDividend[]) {
-        const mapped = mapCorporateDividend(rawRow);
-        byId.set(mapped.id, mapped);
+    const concurrency = 3;
+    for (let offset = 0; offset < uniqueTickers.length; offset += CHUNK_SIZE * concurrency) {
+      const batches = Array.from({ length: concurrency }, (_, index) =>
+        uniqueTickers.slice(offset + index * CHUNK_SIZE, offset + (index + 1) * CHUNK_SIZE),
+      ).filter((batch) => batch.length > 0);
+      const pages = await Promise.all(batches.map((tickersBatch) =>
+        readAllPages<CorporateDividend>((afterId, pageSize) => {
+          let query = getSupabase()
+            .from("corporate_dividends")
+            .select("id,ticker,type,com_date,payment_date,rate,currency,net_rate,provider,tax_rate_pct,is_type_uncertain")
+            .in("ticker", tickersBatch)
+            .order("id", { ascending: true })
+            .limit(pageSize);
+          if (afterId) query = query.gt("id", afterId);
+          return resolveQuery<CorporateDividend[]>(query);
+        }),
+      ));
+      for (const rows of pages) {
+        for (const row of rows) byId.set(row.id, mapCorporateDividend(row));
       }
     }
 

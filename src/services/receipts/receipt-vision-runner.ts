@@ -6,12 +6,10 @@ import type {
   ResolvedMerchantIdentity,
   UniversalReceiptData,
 } from "@/domain/notifications";
-import {
-  getReceiptKindLabel,
-  resolveBestMatchingCard,
-  resolveMerchantIdentity,
-  formatReceiptItemsObservation,
-} from "@/domain/notifications";
+import { getReceiptKindLabel } from "@/domain/notifications/universal-receipt-parser";
+import { resolveBestMatchingCard } from "@/domain/notifications/card-resolution";
+import { resolveMerchantIdentity } from "@/domain/notifications/merchant-resolver";
+import { formatReceiptItemsObservation } from "@/domain/notifications/receipt-item-extractor";
 import {
   convertAiReceiptToUniversalData,
   extractSingleReceiptWithAi,

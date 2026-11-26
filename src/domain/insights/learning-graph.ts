@@ -15,8 +15,8 @@
  * Motor 100% puro — sem dependências de UI, React ou Supabase.
  */
 
-import { budgetLimitsByCategory, resolveEffectiveLimit } from "@/domain/budgets";
-import { numberToCents } from "@/domain/money";
+import { budgetLimitsByCategory, resolveEffectiveLimit } from "@/domain/budgets/index";
+import { numberToCents } from "@/domain/money/parse";
 import type { FeedbackDecision, FeedbackMap } from "./feedback";
 import { medianOf } from "./recurrences";
 import { normalizeText, stripTemporalSuffixes } from "./shared";

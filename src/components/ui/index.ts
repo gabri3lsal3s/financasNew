@@ -134,3 +134,7 @@ export { DonutRing } from "./donut-ring";
 export type { DonutRingProps } from "./donut-ring";
 export { SegmentedControl } from "./segmented-control";
 export type { SegmentedControlProps, SegmentedControlOption } from "./segmented-control";
+
+export { ContentLoading } from "./content-loading";
+
+export { Pagination, type PaginationProps } from "./pagination";

@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { Check, Copy, MessageCircle, ShieldCheck } from "lucide-react";
-import { Badge, Button, MoneyText, QrCodeCanvas } from "@/components/ui";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { MoneyText } from "@/components/ui/money-text";
+import { QrCodeCanvas } from "@/components/ui/qr-code-canvas";
 import { pushToast } from "@/services/toast";
 import { cn } from "@/lib/utils";
 import {

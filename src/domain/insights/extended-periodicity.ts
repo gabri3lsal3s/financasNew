@@ -12,7 +12,7 @@
 import { formatBRL, medianOf, type ExpenseLike } from "./recurrences";
 import { isOccurrenceIgnored, type FeedbackMap } from "./feedback";
 import { normalizeText, stripTemporalSuffixes } from "./shared";
-import { todayISO as getTodayISO } from "@/domain/debts";
+import { todayISO as getTodayISO } from "@/domain/debts/index";
 
 export const MONTH_NAMES_FULL_PTBR = [
   "Janeiro",

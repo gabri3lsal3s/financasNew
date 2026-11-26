@@ -1,7 +1,8 @@
 import { createPortal } from "react-dom";
 import { Link } from "react-router";
 import { ArrowLeft, Download } from "lucide-react";
-import { Button, buttonVariants } from "@/components/ui";
+import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import { LANDING_NAV_LINKS } from "./landing-nav-links";
 

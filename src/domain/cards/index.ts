@@ -9,10 +9,10 @@
  * Motor puro — testável isoladamente.
  */
 
-import { addDaysISO, todayISO } from "@/domain/debts";
-import { clampDay, resolveBillCompetence } from "@/domain/competence";
+import { addDaysISO, todayISO } from "@/domain/debts/index";
+import { clampDay, resolveBillCompetence } from "@/domain/competence/index";
 import { addMonthsClamped, splitCents, toISODate } from "@/domain/money/parcelar";
-import { APP_START_DATE } from "@/types";
+import { APP_START_DATE } from "@/types/schema";
 
 /** Saldo aberto de uma fatura (totalFatura − pago − estorno − creditoAnterior − principalRoladoEnviado, nunca negativo). */
 export function invoiceBalance(

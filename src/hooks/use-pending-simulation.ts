@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
 import { useAuth } from "./use-auth";
-import { useSaveSimulationToAccount } from "@/state";
+import { useSaveSimulationToAccount } from "@/state/mutations/use-public-share-mutations";
 import { getStoredInitialGoal, setStoredInitialGoal } from "@/state/demo-mode/demo-storage";
-import { getPendingSimulation, clearPendingSimulation } from "@/domain/share";
+import { getPendingSimulation, clearPendingSimulation } from "@/domain/share/simulation-transport";
 
 /**
  * Hook para processar simulações financeiras pendentes salvas nos simuladores

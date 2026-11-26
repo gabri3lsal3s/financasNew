@@ -1,9 +1,7 @@
-import { toISODate } from "@/domain/money";
-import {
-  parseClipboardTransactionCandidate,
-  parseNfceQrCodeUrl,
-  type UniversalReceiptData,
-} from "@/domain/notifications";
+import { toISODate } from "@/domain/money/parcelar";
+import { parseClipboardTransactionCandidate } from "@/domain/notifications/pix-clipboard";
+import { parseNfceQrCodeUrl } from "@/domain/notifications/danfe-nfc-parser";
+import { type UniversalReceiptData } from "@/domain/notifications/receipt-types";
 
 interface BarcodeDetectorHit {
   rawValue?: string;

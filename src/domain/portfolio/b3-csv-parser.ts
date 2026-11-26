@@ -17,7 +17,7 @@ import {
   type PortfolioColumnMapping,
   type RawPortfolioRow,
 } from "./import-parser";
-import { applyOperation, computeLedger } from "./index";
+import { applyOperation, computeLedger } from "@/domain/portfolio/index";
 import { isFixedIncomeClass, isTesouroAsset } from "./valuation";
 
 export { detectPortfolioColumns, parsePortfolioFromMapping, parsePortfolioInput };

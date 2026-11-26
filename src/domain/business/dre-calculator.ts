@@ -10,7 +10,7 @@
  *     && !card_id && payment_method !== 'credit_card'.
  */
 
-import { sumWeightedCents } from "@/domain/money";
+import { sumWeightedCents } from "@/domain/money/totals";
 import type { ChargeKind, DebtType, InternalTransferKind, PaymentMethod, TransactionScope } from "@/types";
 
 export interface DreIncomeInput {

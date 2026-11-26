@@ -1,4 +1,4 @@
-import { generatePixBrCode } from "@/domain/pix";
+import { generatePixBrCode } from "@/domain/pix/pix-br-code";
 
 export const DEMO_PIX_KEY = "financeiro.demo@exemplo.com";
 

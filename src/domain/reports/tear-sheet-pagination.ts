@@ -1,9 +1,4 @@
-import {
-  calculateFiiExposure,
-  calculateFixedIncomeExposure,
-  calculateInternationalExposure,
-  calculateStocksExposure,
-} from "@/domain/portfolio";
+import { calculateFiiExposure, calculateFixedIncomeExposure, calculateInternationalExposure, calculateStocksExposure } from "@/domain/portfolio/class-breakdown";
 import type { PortfolioAsset } from "@/types";
 import type { TearSheetModel } from "./tear-sheet-types";
 

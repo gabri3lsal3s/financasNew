@@ -27,3 +27,5 @@ export { ToolsShowcase } from "./tools-showcase";
 export { UnifiedEcosystemSection } from "./unified-ecosystem-section";
 export type { EcosystemDestination, UnifiedEcosystemSectionProps } from "./unified-ecosystem-section";
 
+
+export { DeferredWealthSimulator } from "./deferred-wealth-simulator";

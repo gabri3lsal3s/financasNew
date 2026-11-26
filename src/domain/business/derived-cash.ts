@@ -12,7 +12,7 @@
  * 100% puro — sem dependências de React/Supabase. Moeda em centavos inteiros.
  */
 
-import { numberToCents } from "@/domain/money";
+import { numberToCents } from "@/domain/money/parse";
 import type { Expense, Income } from "@/types";
 
 export interface DerivedBusinessCashComponents {

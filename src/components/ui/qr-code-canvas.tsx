@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { generateQrCodeMatrix } from "@/domain/pix";
+import { generateQrCodeMatrix } from "@/domain/pix/qr-code";
 
 export interface QrCodeCanvasProps {
   /** Texto a ser codificado no QR Code (ex.: Pix Copia e Cola, URL) */

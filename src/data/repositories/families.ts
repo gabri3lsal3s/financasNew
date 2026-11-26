@@ -199,60 +199,59 @@ export async function getMyFamily(): Promise<MyFamilyData | null> {
   const currentMember = mapFamilyMember(memberData);
   const familyId = currentMember.family_id;
 
-  // 2. Buscar metadados da família
-  const { data: familyData, error: familyError } = await resolveQuery<Record<string, unknown> | null>(
-    getSupabase()
-      .from("families")
-      .select("*")
-      .eq("id", familyId)
-      .maybeSingle(),
-  );
+  const canManageInvites = currentMember.role === "owner" || currentMember.role === "admin";
 
-  if (familyError) {
-    const classified = classifyError(familyError);
-    throw new AppError(classified.kind, classified.message, familyError);
+  // 2, 3, 4. Buscar metadados da família, membros e convites (quando admin/owner) em paralelo
+  const [familyRes, allMembersRes, invitesRes] = await Promise.all([
+    resolveQuery<Record<string, unknown> | null>(
+      getSupabase()
+        .from("families")
+        .select("*")
+        .eq("id", familyId)
+        .maybeSingle(),
+    ),
+    resolveQuery<Record<string, unknown>[]>(
+      getSupabase()
+        .from("family_members")
+        .select("*")
+        .eq("family_id", familyId)
+        .order("created_at", { ascending: true }),
+    ),
+    canManageInvites
+      ? resolveQuery<Record<string, unknown>[]>(
+          getSupabase()
+            .from("family_invites")
+            .select("*")
+            .eq("family_id", familyId)
+            .order("created_at", { ascending: false }),
+        )
+      : Promise.resolve({ data: [] as Record<string, unknown>[], error: null }),
+  ]);
+
+  if (familyRes.error) {
+    const classified = classifyError(familyRes.error);
+    throw new AppError(classified.kind, classified.message, familyRes.error);
   }
 
-  if (!familyData) {
+  if (!familyRes.data) {
     return null;
   }
 
-  const family = mapFamily(familyData);
+  const family = mapFamily(familyRes.data);
 
-  // 3. Buscar todos os membros da família
-  const { data: allMembersData, error: allMembersError } = await resolveQuery<Record<string, unknown>[]>(
-    getSupabase()
-      .from("family_members")
-      .select("*")
-      .eq("family_id", familyId)
-      .order("created_at", { ascending: true }),
-  );
-
-  if (allMembersError) {
-    const classified = classifyError(allMembersError);
-    throw new AppError(classified.kind, classified.message, allMembersError);
+  if (allMembersRes.error) {
+    const classified = classifyError(allMembersRes.error);
+    throw new AppError(classified.kind, classified.message, allMembersRes.error);
   }
 
-  const members = (allMembersData ?? []).map(mapFamilyMember);
+  const members = (allMembersRes.data ?? []).map(mapFamilyMember);
 
-  // 4. Se for admin ou owner, buscar convites pendentes e recentes da família
-  let invites: FamilyInvite[] = [];
-  if (currentMember.role === "owner" || currentMember.role === "admin") {
-    const { data: invitesData, error: invitesError } = await resolveQuery<Record<string, unknown>[]>(
-      getSupabase()
-        .from("family_invites")
-        .select("*")
-        .eq("family_id", familyId)
-        .order("created_at", { ascending: false }),
-    );
-
-    if (invitesError) {
-      const classified = classifyError(invitesError);
-      throw new AppError(classified.kind, classified.message, invitesError);
-    }
-
-    invites = (invitesData ?? []).map(mapFamilyInvite);
+  if (invitesRes.error) {
+    const classified = classifyError(invitesRes.error);
+    throw new AppError(classified.kind, classified.message, invitesRes.error);
   }
+
+  const invites: FamilyInvite[] = canManageInvites ? (invitesRes.data ?? []).map(mapFamilyInvite) : [];
 
   return {
     family,
@@ -506,23 +505,23 @@ export async function getFamilyInviteByToken(
 
   const invite = mapFamilyInvite(inviteData);
 
-  // Buscar metadados básicos da família convidante
-  const { data: familyData } = await resolveQuery<Record<string, unknown> | null>(
-    getSupabase()
-      .from("families")
-      .select("id, name, owner_id")
-      .eq("id", invite.family_id)
-      .maybeSingle(),
-  );
-
-  // Buscar nome do convidador no perfil
-  const { data: inviterProfile } = await resolveQuery<Record<string, unknown> | null>(
-    getSupabase()
-      .from("profiles")
-      .select("name")
-      .eq("id", invite.invited_by)
-      .maybeSingle(),
-  );
+  // Buscar metadados básicos da família convidante e nome do convidador em paralelo
+  const [{ data: familyData }, { data: inviterProfile }] = await Promise.all([
+    resolveQuery<Record<string, unknown> | null>(
+      getSupabase()
+        .from("families")
+        .select("id, name, owner_id")
+        .eq("id", invite.family_id)
+        .maybeSingle(),
+    ),
+    resolveQuery<Record<string, unknown> | null>(
+      getSupabase()
+        .from("profiles")
+        .select("name")
+        .eq("id", invite.invited_by)
+        .maybeSingle(),
+    ),
+  ]);
 
   return {
     ...invite,

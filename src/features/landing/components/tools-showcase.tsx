@@ -1,6 +1,8 @@
 import { Link } from "react-router";
 import { ArrowRight, ExternalLink, PieChart, ShieldAlert, Sparkles, TrendingUp } from "lucide-react";
-import { Badge, Card, CardTitle, buttonVariants } from "@/components/ui";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardTitle } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { ScrollReveal } from "./scroll-reveal";
 import { cn } from "@/lib/utils";
 

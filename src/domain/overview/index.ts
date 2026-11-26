@@ -8,8 +8,8 @@
  *   • Comparativo com o período anterior.
  */
 
-import { autoSelectBillMonth, buildCompetenceSummaries } from "@/domain/cards";
-import { todayISO } from "@/domain/debts";
+import { autoSelectBillMonth, buildCompetenceSummaries } from "@/domain/cards/index";
+import { todayISO } from "@/domain/debts/index";
 import { monthRange, shiftMonth } from "@/lib/date";
 
 // ---------------------------------------------------------------------------

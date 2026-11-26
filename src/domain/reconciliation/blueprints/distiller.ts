@@ -1,5 +1,5 @@
 import type { ColumnMapping, RawParsedRow, StatementTransaction } from "../contracts";
-import { buildTransactionsFromRows } from "../extractors";
+import { buildTransactionsFromRows } from "@/domain/reconciliation/extractors/index";
 import {
   buildSpatialLinesFromRawLines,
   extractTransactionsFromSpatialLines,

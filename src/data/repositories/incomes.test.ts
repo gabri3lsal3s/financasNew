@@ -7,6 +7,8 @@ interface Builder {
   gte: ReturnType<typeof vi.fn>;
   lt: ReturnType<typeof vi.fn>;
   order: ReturnType<typeof vi.fn>;
+  limit: ReturnType<typeof vi.fn>;
+  gt: ReturnType<typeof vi.fn>;
   abortSignal: ReturnType<typeof vi.fn>;
   then: (onFulfilled: (value: unknown) => unknown) => Promise<unknown>;
 }
@@ -18,6 +20,8 @@ function makeBuilder(result: unknown): Builder {
     gte: vi.fn(),
     lt: vi.fn(),
     order: vi.fn(),
+    limit: vi.fn(),
+    gt: vi.fn(),
     abortSignal: vi.fn(),
     then: (onFulfilled: (value: unknown) => unknown) => Promise.resolve(result).then(onFulfilled),
   } as Builder;
@@ -26,6 +30,8 @@ function makeBuilder(result: unknown): Builder {
   builder.gte.mockReturnValue(builder);
   builder.lt.mockReturnValue(builder);
   builder.order.mockReturnValue(builder);
+  builder.limit.mockReturnValue(builder);
+  builder.gt.mockReturnValue(builder);
   builder.abortSignal.mockReturnValue(builder);
   return builder;
 }

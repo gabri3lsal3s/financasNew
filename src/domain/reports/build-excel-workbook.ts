@@ -1,5 +1,7 @@
-import { calculatePortfolioQualityScore, type PointInTimeResult, type XIRRResult } from "@/domain/portfolio";
-import { todayISO } from "@/domain/debts";
+import { calculatePortfolioQualityScore } from "@/domain/portfolio/allocation";
+import { type PointInTimeResult } from "@/domain/portfolio/point-in-time";
+import { type XIRRResult } from "@/domain/portfolio/irr";
+import { todayISO } from "@/domain/debts/index";
 import { formatDateBR } from "@/lib/date";
 import type { ExcelBusinessDreData, ExcelWorkbookData } from "@/services/excel-export";
 import type { AssetAllocationStatus, Debt, PortfolioAsset, PortfolioDividend } from "@/types";

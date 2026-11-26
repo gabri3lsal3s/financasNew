@@ -11,10 +11,8 @@ import { resetAppState } from "@/services/auth-cleanup";
 import { clearNativeBankMonitoring } from "@/services/native/bank-listener";
 import { clearDeviceSessionSync, getOrCreateDeviceId } from "@/services/native/device-info";
 import { cancelDailyReminder, clearAllDueNotifications } from "@/services/native/local-notifications";
-import {
-  unsubscribeBrowserWebPush,
-  unregisterNativeFcmPush,
-} from "@/services/push";
+import { unsubscribeBrowserWebPush } from "@/services/push/web-push";
+import { unregisterNativeFcmPush } from "@/services/push/fcm-push";
 import { getActiveUserId } from "@/services/user-storage";
 import { userDevicesKey } from "@/state/queries/use-devices";
 

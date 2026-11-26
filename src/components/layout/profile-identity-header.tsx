@@ -1,5 +1,5 @@
 import { ShieldCheck, Sparkles, ArrowUpRight } from "lucide-react";
-import { Button } from "@/components/ui";
+import { Button } from "@/components/ui/button";
 import { SubscriptionBadge } from "@/components/modules/subscription/subscription-badge";
 import type { SubscriptionStatus } from "@/types";
 

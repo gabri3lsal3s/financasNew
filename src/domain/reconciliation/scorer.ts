@@ -1,4 +1,4 @@
-import { jaccardTokens, tokenize } from "@/domain/predictions";
+import { jaccardTokens, tokenize } from "@/domain/predictions/index";
 import { addMonthsClamped, toISODate } from "@/domain/money/parcelar";
 import { findAppDuplicateCandidates } from "./app-duplicates";
 import type {

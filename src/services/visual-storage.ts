@@ -2,7 +2,7 @@
  * Persistência local (localStorage isolado por usuário) e sincronização de atributos
  * DOM das preferências visuais e sensoriais do Axir.
  */
-import { detectActivePreset } from "@/domain/preferences";
+import { detectActivePreset } from "@/domain/preferences/index";
 import {
   DEFAULT_CONFIG,
   DEFAULT_HEADER_BUTTONS,

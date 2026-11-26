@@ -1,10 +1,7 @@
-import {
-  isCashAssetClass,
-  isDividendType,
-  isHistoricalWithdrawal,
-  type PointInTimeResult,
-  type PriceSource,
-} from "@/domain/portfolio";
+import { isCashAssetClass, type PriceSource } from "@/domain/portfolio/valuation";
+import { isDividendType } from "@/domain/portfolio/dividends";
+import { isHistoricalWithdrawal } from "@/domain/portfolio/irr";
+import { type PointInTimeResult } from "@/domain/portfolio/point-in-time";
 import type { PortfolioAsset, PortfolioDividend, PortfolioTransaction } from "@/types";
 
 export interface PeriodInvestmentFlowResult {

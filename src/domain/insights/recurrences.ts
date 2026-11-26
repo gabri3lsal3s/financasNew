@@ -22,7 +22,7 @@ import {
 } from "./subscriptions";
 import { normalizeText, stripTemporalSuffixes } from "./shared";
 import type { FeedbackMap } from "./feedback";
-import { shiftMonth } from "@/domain/cards";
+import { shiftMonth } from "@/domain/cards/index";
 import { detectWeeklyCommitments } from "./extended-periodicity";
 import { evaluateBudgetImpact, type BudgetImpactEvaluation } from "./recurrence-budget-impact";
 import type { Expense } from "@/types";

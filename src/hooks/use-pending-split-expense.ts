@@ -1,6 +1,6 @@
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { useAuth } from "./use-auth";
-import { useSaveSplitExpense, useSignalSplitPayment } from "@/state";
+import { useSaveSplitExpense, useSignalSplitPayment } from "@/state/mutations/use-public-share-mutations";
 import { isAppLocked, subscribeAppLock } from "@/services/native/app-lock";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";

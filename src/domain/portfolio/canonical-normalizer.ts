@@ -19,7 +19,7 @@
  * Cumpre rigorosamente todas as regras do AGENTS.md e do FINANCIAL_MATH_SPEC.md.
  */
 
-import { numberToCents } from "@/domain/money";
+import { numberToCents } from "@/domain/money/parse";
 import type {
   AssetCurrency,
   FixedIncomeMetadata,

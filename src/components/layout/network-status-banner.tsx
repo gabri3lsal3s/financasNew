@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useNetworkStatus } from "@/hooks";
+import { useNetworkStatus } from "@/hooks/use-network-status";
 import { subscribeNetworkStatus } from "@/services/network-status";
 import { triggerSensory } from "@/services/sensory";
 

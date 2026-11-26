@@ -1,4 +1,4 @@
-import { todayISO } from "./index";
+import { todayISO } from "@/domain/debts/index";
 
 /** Limite máximo de multa por mora sob o Código de Defesa do Consumidor (CDC art. 52 § 1º): 2%. */
 export const CDC_STANDARD_FINE_PERCENT = 2;

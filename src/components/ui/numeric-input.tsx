@@ -2,7 +2,8 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { ChangeEvent, FocusEvent, InputHTMLAttributes, KeyboardEvent, MouseEvent } from "react";
 import { Calculator } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { extractDigits, formatDecimalNumber, parseDecimalNumber } from "@/domain/money";
+import { extractDigits } from "@/domain/money/currency-input";
+import { formatDecimalNumber, parseDecimalNumber } from "@/domain/money/parse";
 import {
   registerCalculatorTarget,
   unregisterCalculatorTarget,

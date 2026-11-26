@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { Calendar, Coins, CreditCard, HandCoins, TrendingDown } from "lucide-react";
-import { Badge, Button, Card, MoneyText } from "@/components/ui";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { MoneyText } from "@/components/ui/money-text";
 import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
 

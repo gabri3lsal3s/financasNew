@@ -1,9 +1,9 @@
 import { Navigate, Outlet, useLocation } from "react-router";
-import { LoadingScreen } from "@/components/layout";
-import { IdleSessionWarningModal } from "@/components/modules";
+import { LoadingScreen } from "@/components/layout/loading-screen";
+import { IdleSessionWarningModal } from "@/components/modules/idle-session-warning-modal";
 import { useAuth } from "@/hooks/use-auth";
 import { useIdleSessionTimeout } from "@/hooks/use-idle-session-timeout";
-import { useUserAccess } from "@/state";
+import { useUserAccess } from "@/state/queries/use-user-access";
 
 /**
  * Guarda de rota estrita que restringe o acesso exclusivamente a administradores e superadministradores.

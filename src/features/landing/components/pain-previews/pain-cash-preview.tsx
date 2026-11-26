@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { AlertTriangle, TrendingUp } from "lucide-react";
-import { Badge, Card, Checkbox, MoneyText } from "@/components/ui";
-import { useAnimatedNumber } from "@/features/landing/hooks";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { MoneyText } from "@/components/ui/money-text";
+import { useAnimatedNumber } from "@/features/landing/hooks/use-animated-number";
 import { cn } from "@/lib/utils";
 
 interface CommitmentItem {

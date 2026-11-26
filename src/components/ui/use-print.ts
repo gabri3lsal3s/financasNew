@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { flushSync } from "react-dom";
-import { isNativePlatform, printCurrentWebView } from "@/services/native";
+import { isNativePlatform } from "@/services/native/platform";
+import { printCurrentWebView } from "@/services/native/native-export";
 import { pushToast } from "@/services/toast";
 
 /**

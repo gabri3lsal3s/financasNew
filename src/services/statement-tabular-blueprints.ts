@@ -1,7 +1,4 @@
-import {
-  StatementLayoutBlueprintSchema,
-  type StatementLayoutBlueprint,
-} from "@/domain/reconciliation";
+import { StatementLayoutBlueprintSchema, type StatementLayoutBlueprint } from "@/domain/reconciliation/blueprints/types";
 
 export const LOCAL_TABULAR_BLUEPRINT_ID_PREFIX = "local-tab:";
 const STORAGE_KEY_PREFIX = "financas:tabular_blueprints:v1:";

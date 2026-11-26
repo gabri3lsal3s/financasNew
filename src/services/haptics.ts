@@ -23,7 +23,8 @@ const PATTERNS: Record<HapticPattern, number | number[]> = {
 };
 
 import { getVisualCustomization } from "@/hooks/use-visual-customization";
-import { isNativePlatform, triggerNativeHaptic } from "./native";
+import { isNativePlatform } from "@/services/native/platform";
+import { triggerNativeHaptic } from "@/services/native/haptics";
 
 export function isHapticsSupported(): boolean {
   if (isNativePlatform()) return true;

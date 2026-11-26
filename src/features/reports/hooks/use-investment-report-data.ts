@@ -28,6 +28,7 @@ import {
 
 export interface UseInvestmentReportDataParams {
   enabled: boolean;
+  contributionsEnabled?: boolean;
   mode: ReportPeriodMode;
   month: string;
   year: number;
@@ -46,6 +47,7 @@ export interface UseInvestmentReportDataParams {
  */
 export function useInvestmentReportData({
   enabled,
+  contributionsEnabled = enabled,
   mode,
   month,
   year,
@@ -68,14 +70,14 @@ export function useInvestmentReportData({
   const assetsQuery = usePortfolioAssets({ enabled });
   const dividendsQuery = usePortfolioDividends({ enabled });
   const transactionsQuery = useAllPortfolioTransactions({ enabled });
-  const contributionsQuery = usePortfolioContributions({ enabled });
+  const contributionsQuery = usePortfolioContributions({ enabled: contributionsEnabled });
   const classTargetsQuery = useGroupTargets("class", { enabled });
   const sectorTargetsQuery = useGroupTargets("sector", { enabled });
 
   const assets = useMemo(() => (enabled ? assetsQuery.data ?? [] : []), [enabled, assetsQuery.data]);
   const dividends = useMemo(() => (enabled ? dividendsQuery.data ?? [] : []), [enabled, dividendsQuery.data]);
   const transactions = useMemo(() => (enabled ? transactionsQuery.data ?? [] : []), [enabled, transactionsQuery.data]);
-  const contributions = useMemo(() => (enabled ? contributionsQuery.data ?? [] : []), [enabled, contributionsQuery.data]);
+  const contributions = useMemo(() => (contributionsEnabled ? contributionsQuery.data ?? [] : []), [contributionsEnabled, contributionsQuery.data]);
   const snapshots = useMemo(() => (enabled ? snapshotsQuery.data ?? [] : []), [enabled, snapshotsQuery.data]);
   const classTargets = useMemo(() => (enabled ? classTargetsQuery.data ?? [] : []), [enabled, classTargetsQuery.data]);
 
@@ -225,12 +227,12 @@ export function useInvestmentReportData({
     [positionRows, cashBalanceBRL],
   );
 
-  const loading = enabled
+  const loading = (contributionsEnabled && contributionsQuery.isLoading) || (enabled
     ? positionQuery.isLoading || snapshotsQuery.isLoading || assetsQuery.isLoading || transactionsQuery.isLoading || sectorTargetsQuery.isLoading
-    : false;
-  const error = enabled
+    : false);
+  const error = (contributionsEnabled ? contributionsQuery.error : null) ?? (enabled
     ? positionQuery.error ?? snapshotsQuery.error ?? transactionsQuery.error ?? sectorTargetsQuery.error
-    : null;
+    : null);
 
   const refetchInvestments = useCallback(async () => {
     if (!enabled) return;

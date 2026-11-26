@@ -5,7 +5,7 @@
 
 import type { PositionRow } from "@/components/modules/position-table";
 import type { ReportClassGroup } from "@/components/modules/reports/report-class-tables";
-import { numberToCents } from "@/domain/money";
+import { numberToCents } from "@/domain/money/parse";
 import { formatMonthYear } from "@/lib/date";
 import type { PortfolioAsset, PortfolioSnapshot } from "@/types";
 import { calculatePortfolioQualityScore } from "./allocation";

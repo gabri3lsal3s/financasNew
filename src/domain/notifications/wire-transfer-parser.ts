@@ -7,7 +7,7 @@
  * Função 100% pura: sem efeitos colaterais, sem dependências de UI, DOM ou banco de dados.
  */
 
-import { toISODate } from "@/domain/money";
+import { toISODate } from "@/domain/money/parcelar";
 import {
   cleanMerchantName,
   extractDateFromReceipt,

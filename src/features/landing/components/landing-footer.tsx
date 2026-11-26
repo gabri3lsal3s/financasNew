@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { Building2, Lock, Mail, MapPin, ShieldCheck, User } from "lucide-react";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { LegalDialog, type LegalTab } from "./legal-dialog";
-import { useLandingCta } from "@/features/landing/hooks";
+import { useLandingCta } from "@/features/landing/hooks/use-landing-cta";
 import { INSTITUTIONAL_CONFIG } from "@/lib/institutional";
 
 export function LandingFooter() {

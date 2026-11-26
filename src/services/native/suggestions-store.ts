@@ -1,13 +1,5 @@
 import { useSyncExternalStore } from "react";
-import {
-  areMerchantsCompatible,
-  DEDUPLICATION_WINDOW_MS,
-  isCardBrand,
-  isDigitalWallet,
-  isWithinTemporalWindow,
-  mergeWalletWithBank,
-  type ParsedBankTransaction,
-} from "@/domain/notifications";
+import { areMerchantsCompatible, DEDUPLICATION_WINDOW_MS, isCardBrand, isDigitalWallet, isWithinTemporalWindow, mergeWalletWithBank, type ParsedBankTransaction } from "@/domain/notifications/bank-parser";
 import {
   getUserStorageItem,
   setUserStorageItem,

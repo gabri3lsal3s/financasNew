@@ -1,5 +1,5 @@
-import { addDaysISO, todayISO } from "@/domain/debts";
-import { APP_START_DATE } from "@/types";
+import { addDaysISO, todayISO } from "@/domain/debts/index";
+import { APP_START_DATE } from "@/types/schema";
 import type { ColumnMapping, RawParsedRow } from "../contracts";
 
 const MONTH_NAMES_DICT: Record<string, string> = {

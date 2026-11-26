@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { SUBSCRIPTION_TIERS } from "@/types";
-import { cleanTextSchema } from "@/domain/validation";
+import { SUBSCRIPTION_TIERS } from "@/types/subscription";
+import { cleanTextSchema } from "@/domain/validation/sanitization";
 
 export const createModularInviteSchema = z.object({
   code: z

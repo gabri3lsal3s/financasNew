@@ -1,5 +1,8 @@
 import { ArrowRight, CheckCircle2, PieChart, Target } from "lucide-react";
-import { Badge, Button, Card, MoneyText } from "@/components/ui";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { MoneyText } from "@/components/ui/money-text";
 
 export interface PainInvestPreviewProps {
   onExploreDeep?: () => void;

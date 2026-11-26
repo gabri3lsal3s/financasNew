@@ -7,17 +7,9 @@
  * 100% puro — zero dependências de React, UI ou Supabase.
  */
 
-import {
-  budgetLimitsByCategory,
-  resolveEffectiveLimit,
-  spentByCategoryMap,
-} from "@/domain/budgets";
-import { numberToCents } from "@/domain/money";
-import {
-  buildLimitSuggestions,
-  type BudgetUsage,
-  type LimitSuggestion,
-} from "@/domain/savings";
+import { budgetLimitsByCategory, resolveEffectiveLimit, spentByCategoryMap } from "@/domain/budgets/index";
+import { numberToCents } from "@/domain/money/parse";
+import { buildLimitSuggestions, type BudgetUsage, type LimitSuggestion } from "@/domain/savings/index";
 import { shiftMonth } from "@/lib/date";
 import type { Budget, Category, Expense, Income } from "@/types";
 import { resolveCategorySemantics } from "./category-semantics";

@@ -1,4 +1,4 @@
-import { inferBusinessTaxDeductibility } from "@/domain/business";
+import { inferBusinessTaxDeductibility } from "@/domain/business/tax-shield";
 import type { TransactionScope } from "@/types";
 import { projectFutureInstallments } from "./series-detector";
 import type {

@@ -8,7 +8,9 @@ import {
   FileText,
   Scale,
 } from "lucide-react";
-import { Badge, Card, MoneyText } from "@/components/ui";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { MoneyText } from "@/components/ui/money-text";
 import { cn } from "@/lib/utils";
 import { triggerSensory } from "@/services/sensory";
 

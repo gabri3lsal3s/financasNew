@@ -12,8 +12,8 @@
  * persistido em `reminder_states` (user_id + occurrence_key).
  */
 
-import { invoiceDueDate, invoiceStatus } from "@/domain/cards";
-import { addDaysISO, todayISO } from "@/domain/debts";
+import { invoiceDueDate, invoiceStatus } from "@/domain/cards/index";
+import { addDaysISO, todayISO } from "@/domain/debts/index";
 
 // ---------------------------------------------------------------------------
 // Tipos

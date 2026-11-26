@@ -160,7 +160,7 @@ export function ReportsPage() {
             icon: <FileSpreadsheet className="size-4" aria-hidden="true" />,
             content: (
               <TaxTab
-                workbookData={data.workbookData}
+                buildWorkbookData={data.buildWorkbookData}
                 excelDescription={data.excelDescription}
                 onOpenTaxReport={() => state.setTaxReportOpen(true)}
                 onOpenDarfMonitor={() => state.setDarfMonitorOpen(true)}

@@ -1,12 +1,7 @@
 import { CheckCircle2, Layers, Monitor, ShieldCheck, Smartphone, Zap } from "lucide-react";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-  Badge,
-  Card,
-} from "@/components/ui";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { ScrollReveal } from "./scroll-reveal";
 import { PlatformComparisonTable } from "./platform-comparison-table";
 

@@ -3,7 +3,7 @@
  * Funções 100% puras sem dependência de UI ou Supabase (AGENTS.md §3).
  */
 
-import { formatCentsAsBRL } from "@/services/masks";
+import { formatCentsAsBRL } from "@/services/masks/money";
 import type { AssetCurrency, GroupTarget, PortfolioAsset } from "@/types";
 import { calculateEffectiveAssetTargets } from "./allocation";
 import {

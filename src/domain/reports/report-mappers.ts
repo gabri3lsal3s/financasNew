@@ -1,5 +1,5 @@
-import { numberToCents } from "@/domain/money";
-import { isCashAssetClass } from "@/domain/portfolio";
+import { numberToCents } from "@/domain/money/parse";
+import { isCashAssetClass } from "@/domain/portfolio/valuation";
 import { formatDateBR } from "@/lib/date";
 import type { ChargeKind, PortfolioAsset } from "@/types";
 import { calculateFreedomIndex } from "./freedom-index";

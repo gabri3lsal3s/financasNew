@@ -1,7 +1,9 @@
 import { useId } from "react";
-import { FormField, MoneyInput, MoneyText } from "@/components/ui";
-import { STRATEGY_PRESETS, type StrategyPresetKey } from "@/domain/portfolio";
-import { numberToCents } from "@/domain/money";
+import { FormField } from "@/components/ui/form-field";
+import { MoneyInput } from "@/components/ui/money-input";
+import { MoneyText } from "@/components/ui/money-text";
+import { STRATEGY_PRESETS, type StrategyPresetKey } from "@/domain/portfolio/simulation-presets";
+import { numberToCents } from "@/domain/money/parse";
 import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
 

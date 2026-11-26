@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { Navigate, Outlet } from "react-router";
-import { LoadingScreen } from "@/components/layout";
+import { LoadingScreen } from "@/components/layout/loading-screen";
 import { useAuth } from "@/hooks/use-auth";
-import { useUserAccess } from "@/state";
+import { useUserAccess } from "@/state/queries/use-user-access";
 
 /**
  * Guarda de rota que garante que o usuário possui conta com status 'active' (§F43).

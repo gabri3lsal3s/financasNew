@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Sparkles } from "lucide-react";
-import { Badge } from "@/components/ui";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { useLandingCta } from "@/features/landing/hooks";
+import { useLandingCta } from "@/features/landing/hooks/use-landing-cta";
 import { triggerSensory } from "@/services/sensory";
 import { ScrollReveal } from "./scroll-reveal";
 import { PricingCardsGrid } from "./pricing-cards-grid";

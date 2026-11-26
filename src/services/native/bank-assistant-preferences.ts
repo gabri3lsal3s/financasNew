@@ -1,9 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  DEFAULT_BANK_ASSISTANT_PREFERENCES,
-  normalizeBankPreferences,
-  type BankAssistantPreferences,
-} from "@/domain/notifications";
+import { DEFAULT_BANK_ASSISTANT_PREFERENCES, normalizeBankPreferences, type BankAssistantPreferences } from "@/domain/notifications/preferences";
 import {
   getUserStorageItem,
   setUserStorageItem,

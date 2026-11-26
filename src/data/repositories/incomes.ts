@@ -1,6 +1,6 @@
 import { getSupabase } from "@/data/client";
 import { currentUserId } from "@/data/session";
-import { resolveQuery } from "@/data/query";
+import { readAllPages, resolveQuery } from "@/data/query";
 import { AppError, classifyError } from "@/services/errors";
 import { monthRange } from "@/lib/date";
 import { materializeRecurrencesForMonth, materializeRecurrencesForRange } from "./recurrences";
@@ -28,21 +28,16 @@ export async function listIncomesByMonth(month: string): Promise<Income[]> {
   // listar (idempotente; sob demanda, ver repositories/recurrences).
   await materializeRecurrencesForMonth(month, "income");
   const range = monthRange(month);
-  const { data, error } = await resolveQuery<Income[]>(
-    getSupabase()
+  const data = await readAllPages<Income>((afterId, pageSize) => {
+    let page = getSupabase()
       .from("incomes")
       .select("*")
       .gte("date", range.start)
-      .lt("date", range.end)
-      .order("date", { ascending: false })
-      .order("created_at", { ascending: false }),
-  );
-
-  if (error) {
-    const classified = classifyError(error);
-    throw new AppError(classified.kind, classified.message, error);
-  }
-  return (data ?? []).map(mapIncome);
+      .lt("date", range.end).order("id", { ascending: true }).limit(pageSize);
+    if (afterId) page = page.gt("id", afterId);
+    return resolveQuery<Income[]>(page);
+  }, undefined);
+  return data.map(mapIncome).sort((left, right) => right.date.localeCompare(left.date) || right.created_at.localeCompare(left.created_at) || left.id.localeCompare(right.id));
 }
 
 export interface RangeQueryOptions {
@@ -59,38 +54,36 @@ export async function listIncomesByRange(
     throw new DOMException("The user aborted a request.", "AbortError");
   }
   await materializeRecurrencesForRange(start, end, "income");
+  const createQuery = () => {
   let query = getSupabase()
     .from("incomes")
     .select("*")
     .gte("date", start)
-    .lt("date", end)
-    .order("date", { ascending: true });
+    .lt("date", end);
 
   if (options?.signal) {
     query = query.abortSignal(options.signal);
   }
 
-  const { data, error } = await resolveQuery<Income[]>(query);
-  if (error) {
-    if (options?.signal?.aborted || error.message?.includes("AbortError")) {
-      throw new DOMException("The user aborted a request.", "AbortError");
-    }
-    const classified = classifyError(error);
-    throw new AppError(classified.kind, classified.message, error);
-  }
-  return (data ?? []).map(mapIncome);
+
+    return query;
+  };
+  const data = await readAllPages<Income>((afterId, pageSize) => {
+    let page = createQuery().order("id", { ascending: true }).limit(pageSize);
+    if (afterId) page = page.gt("id", afterId);
+    return resolveQuery<Income[]>(page);
+  }, options?.signal);
+  return data.map(mapIncome).sort((left, right) => left.date.localeCompare(right.date) || left.id.localeCompare(right.id));
 }
 
 /** Todas as rendas do usuário (busca global §3.9). */
 export async function listAllIncomes(): Promise<Income[]> {
-  const { data, error } = await resolveQuery<Income[]>(
-    getSupabase().from("incomes").select("*").order("date", { ascending: false }),
-  );
-  if (error) {
-    const classified = classifyError(error);
-    throw new AppError(classified.kind, classified.message, error);
-  }
-  return (data ?? []).map(mapIncome);
+  const data = await readAllPages<Income>((afterId, pageSize) => {
+    let page = getSupabase().from("incomes").select("*").order("id", { ascending: true }).limit(pageSize);
+    if (afterId) page = page.gt("id", afterId);
+    return resolveQuery<Income[]>(page);
+  }, undefined);
+  return data.map(mapIncome).sort((left, right) => right.date.localeCompare(left.date) || left.id.localeCompare(right.id));
 }
 
 /** Rendas automáticas ([REFUND], etc.) são somente-leitura — excluídas do CRUD. */

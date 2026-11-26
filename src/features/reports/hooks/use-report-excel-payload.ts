@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import {
   buildReportExcelWorkbook,
   type AllocationAnalysisResult,
@@ -67,8 +67,8 @@ export function useReportExcelPayload(params: UseReportExcelPayloadParams) {
     businessDre,
   } = params;
 
-  const workbookData: ExcelWorkbookData = useMemo(
-    () =>
+  const buildWorkbookData = useCallback(
+    (): ExcelWorkbookData =>
       buildReportExcelWorkbook({
         month,
         isCurrentPeriod,
@@ -116,8 +116,8 @@ export function useReportExcelPayload(params: UseReportExcelPayloadParams) {
   }, [hasFinanceFeatures, hasInvestmentsFeature]);
 
   const isExcelDisabled = useMemo(() => {
-    const hasCustody = (workbookData.positions?.length ?? 0) > 0;
-    const hasDividends = (workbookData.dividends?.length ?? 0) > 0;
+    const hasCustody = positionRows.length > 0;
+    const hasDividends = dividends.length > 0;
     return (
       !hasCustody &&
       !hasDividends &&
@@ -126,7 +126,7 @@ export function useReportExcelPayload(params: UseReportExcelPayloadParams) {
       debts.length === 0 &&
       periodRedemptions.length === 0
     );
-  }, [workbookData.positions, workbookData.dividends, expenses.length, incomes.length, debts.length, periodRedemptions.length]);
+  }, [positionRows.length, dividends.length, expenses.length, incomes.length, debts.length, periodRedemptions.length]);
 
-  return { workbookData, excelDescription, isExcelDisabled };
+  return { buildWorkbookData, excelDescription, isExcelDisabled };
 }

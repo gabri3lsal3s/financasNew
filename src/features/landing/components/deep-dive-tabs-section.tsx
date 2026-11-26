@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Briefcase, Cpu, FileBarChart2, Layers, PieChart, ShieldCheck } from "lucide-react";
-import { Tabs, type TabItem } from "@/components/ui";
+import { Tabs, type TabItem } from "@/components/ui/tabs";
 import { triggerSensory } from "@/services/sensory";
 import { ScrollReveal } from "./scroll-reveal";
 import { InvestmentsProPreview } from "./deep-dive-previews/investments-pro-preview";

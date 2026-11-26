@@ -1,35 +1,18 @@
-import {
-  budgetLimitsByCategory,
-  isInheritedLimit,
-  resolveEffectiveLimit,
-  spentByCategoryMap,
-  spentGrossByCategoryMap,
-} from "@/domain/budgets";
-import { resolveOpenCardInvoices } from "@/domain/cards";
+import { budgetLimitsByCategory, isInheritedLimit, resolveEffectiveLimit, spentByCategoryMap, spentGrossByCategoryMap } from "@/domain/budgets/index";
+import { resolveOpenCardInvoices } from "@/domain/cards/index";
 import { isParticipantFullySettled, isSplitFullyCompleted } from "@/domain/finance/split-math";
-import {
-  resolveGoalComposition,
-  type AccountCompositionItem,
-  type PortfolioAssetCompositionItem,
-} from "@/domain/goals";
+import { resolveGoalComposition, type AccountCompositionItem, type PortfolioAssetCompositionItem } from "@/domain/goals/goal-composition";
 import type {
   PaydayProfile,
   ReferenceBudgetSource,
   UserFinancialContext,
 } from "@/domain/insights";
-import { numberToCents, sumGrossCents, sumWeightedCents } from "@/domain/money";
-import { contributionsInMonthCents } from "@/domain/portfolio";
-import {
-  analyzeCashGap,
-  computeWeeklyDueRadar,
-  dailyBudget,
-  endOfMonthProjection,
-  projectCardInvoiceObligations,
-  spendingPace,
-  type CashGapAnalysisResult,
-  type CashGapInflow,
-  type WeeklyRadarSummary,
-} from "@/domain/projection";
+import { numberToCents } from "@/domain/money/parse";
+import { sumGrossCents, sumWeightedCents } from "@/domain/money/totals";
+import { contributionsInMonthCents } from "@/domain/portfolio/contributions";
+import { analyzeCashGap, projectCardInvoiceObligations, type CashGapAnalysisResult, type CashGapInflow } from "@/domain/projection/cash-gap";
+import { computeWeeklyDueRadar, type WeeklyRadarSummary } from "@/domain/projection/weekly-radar";
+import { dailyBudget, endOfMonthProjection, spendingPace } from "@/domain/projection/index";
 import type {
   Budget,
   CardBillRollover,
@@ -47,14 +30,7 @@ import type {
   SplitSharePayload,
 } from "@/types";
 import { shouldShowGoalAlert } from "./alert-dismissals";
-import {
-  buildDailyCumulativeSeries,
-  buildDailyFlow,
-  computeOverview,
-  type DailyFlowItem,
-  type DailySeriesAccumulator,
-  type OverviewTotals,
-} from "./index";
+import { buildDailyCumulativeSeries, buildDailyFlow, computeOverview, type DailyFlowItem, type DailySeriesAccumulator, type OverviewTotals } from "@/domain/overview/index";
 
 export interface OverviewPortfolioPositionLike {
   assetId: string;

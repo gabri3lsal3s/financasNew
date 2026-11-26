@@ -16,7 +16,7 @@
  */
 
 import { MAX_MONEY_CENTS } from "@/domain/validation/sanitization";
-import { divideIntoInstallments } from "@/domain/cards";
+import { divideIntoInstallments } from "@/domain/cards/index";
 import type { SplitParticipantInstallment } from "@/types";
 
 /**

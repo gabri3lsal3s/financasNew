@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import { App } from "@capacitor/app";
-import {
-  parseClipboardTransactionCandidate,
-  resolveMerchantIdentity,
-} from "@/domain/notifications";
+import { parseClipboardTransactionCandidate } from "@/domain/notifications/pix-clipboard";
+import { resolveMerchantIdentity } from "@/domain/notifications/merchant-resolver";
 import { canReadClipboardSilently, readClipboardText } from "@/services/clipboard";
 import { useMerchantLearning } from "@/services/merchant-learning";
-import { isNativePlatform } from "@/services/native";
+import { isNativePlatform } from "@/services/native/platform";
 import {
   canTriggerNativeClipboardCheck,
   consumeCurrentDetectedPix,

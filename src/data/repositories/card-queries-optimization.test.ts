@@ -18,6 +18,8 @@ interface MockBuilder {
   gte: ReturnType<typeof vi.fn>;
   or: ReturnType<typeof vi.fn>;
   order: ReturnType<typeof vi.fn>;
+  limit: ReturnType<typeof vi.fn>;
+  gt: ReturnType<typeof vi.fn>;
   then: (onFulfilled: (value: unknown) => unknown) => Promise<unknown>;
 }
 
@@ -29,6 +31,8 @@ function createMockBuilder(result: unknown = { data: [], error: null }): MockBui
     gte: vi.fn(),
     or: vi.fn(),
     order: vi.fn(),
+    limit: vi.fn(),
+    gt: vi.fn(),
     then: (onFulfilled: (value: unknown) => unknown) => Promise.resolve(result).then(onFulfilled),
   } as MockBuilder;
 
@@ -38,6 +42,8 @@ function createMockBuilder(result: unknown = { data: [], error: null }): MockBui
   builder.gte.mockReturnValue(builder);
   builder.or.mockReturnValue(builder);
   builder.order.mockReturnValue(builder);
+  builder.limit.mockReturnValue(builder);
+  builder.gt.mockReturnValue(builder);
 
   return builder;
 }
@@ -66,7 +72,7 @@ describe("Otimização de Consultas de Cartões (Janela Temporal de 24 meses)", 
       expect(builder.or).toHaveBeenCalledWith(
         `bill_competence.gte.${expectedSinceMonth},date.gte.${expectedSinceDate}`,
       );
-      expect(builder.order).toHaveBeenCalledWith("date", { ascending: false });
+      expect(builder.order).toHaveBeenCalledWith("id", { ascending: true });
     });
 
     it("aplica sinceMonth customizado quando fornecido", async () => {
@@ -82,7 +88,7 @@ describe("Otimização de Consultas de Cartões (Janela Temporal de 24 meses)", 
 
       expect(builder.not).toHaveBeenCalledWith("card_id", "is", null);
       expect(builder.or).not.toHaveBeenCalled();
-      expect(builder.order).toHaveBeenCalledWith("date", { ascending: false });
+      expect(builder.order).toHaveBeenCalledWith("id", { ascending: true });
     });
   });
 

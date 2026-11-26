@@ -1,4 +1,4 @@
-import { jaccardTokens, tokenize } from "@/domain/predictions";
+import { jaccardTokens, tokenize } from "@/domain/predictions/index";
 import type {
   AppDuplicateCandidate,
   ExistingExpenseForReconciliation,

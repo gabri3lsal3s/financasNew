@@ -14,8 +14,8 @@ import type {
   ConsensusRule,
   ValuationStatusResult,
 } from "./ceiling-types";
-import { formatCentsAsCurrency } from "@/services/masks";
-import { numberToCents } from "@/domain/money";
+import { formatCentsAsCurrency } from "@/services/masks/money";
+import { numberToCents } from "@/domain/money/parse";
 
 /** Formata valor monetário com precisão canônica em centavos e suporte a BRL/USD. */
 export function formatCeilingCurrency(amount: number, currency: "BRL" | "USD" = "BRL"): string {

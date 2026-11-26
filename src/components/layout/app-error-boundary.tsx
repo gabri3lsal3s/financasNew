@@ -1,7 +1,8 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
+import { ContentLoading } from "@/components/ui/content-loading";
 import { AlertTriangle, RefreshCw, RotateCcw, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SupportChatDialog } from "@/components/modules/support/support-chat-dialog";
+const SupportChatDialog = lazy(() => import("@/components/modules/support/support-chat-dialog").then((module) => ({ default: module.SupportChatDialog })));
 import { reportError } from "@/services/observability";
 
 export interface AppErrorBoundaryProps {
@@ -129,12 +130,14 @@ export class AppErrorBoundary extends React.Component<
           </div>
 
           {/* Diálogo de Suporte com Categoria Bug Pré-Selecionada */}
+          {this.state.supportChatOpen && <Suspense fallback={<ContentLoading />}>
           <SupportChatDialog
             open={this.state.supportChatOpen}
             onOpenChange={(open) => this.setState({ supportChatOpen: open })}
             defaultType="bug"
             initialMessage={`[Falha de renderização capturada pelo ErrorBoundary]\nDetalhe: ${errorMessage}`}
           />
+          </Suspense>}
         </div>
       );
     }

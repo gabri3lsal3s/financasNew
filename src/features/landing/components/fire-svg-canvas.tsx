@@ -1,5 +1,5 @@
 import { useId } from "react";
-import { formatCentsAsBRL } from "@/services/masks";
+import { formatCentsAsBRL } from "@/services/masks/money";
 import type { FireChartGeometry, LinePoint } from "@/domain/simulators/fire-curve";
 
 export interface FireSvgCanvasProps {

@@ -1,30 +1,12 @@
 import { useCallback, useMemo } from "react";
-import { todayISO } from "@/domain/debts";
-import {
-  buildNotificationCenter,
-  detectClosedCardBills,
-  detectConsolidatedBudgetOverrun,
-  detectDividendNotificationAlerts,
-  detectTripAndFamilyPendingAlerts,
-  resolveNotificationCategoryPreferences,
-  type BudgetOverrunAlert,
-  type ClosedCardBillAlert,
-  type DividendNotificationAlert,
-  type NotificationCenterSummary,
-  type TripFamilyAlert,
-} from "@/domain/notifications/hub";
-import { FALLBACK_USD_RATE, type SuggestedDividendItem } from "@/domain/portfolio";
-import {
-  coreOnboardingProgress,
-  shouldShowOnboardingBanner,
-  type OnboardingCounts,
-} from "@/domain/onboarding";
-import {
-  isSnoozeExpired,
-  type ReminderItem,
-  type ReminderPreferences,
-  type ReminderState,
-} from "@/domain/reminders";
+import { todayISO } from "@/domain/debts/index";
+import { buildNotificationCenter } from "@/domain/notifications/hub/build-notification-center";
+import { detectClosedCardBills, detectConsolidatedBudgetOverrun, detectDividendNotificationAlerts, detectTripAndFamilyPendingAlerts, resolveNotificationCategoryPreferences, type BudgetOverrunAlert, type ClosedCardBillAlert, type DividendNotificationAlert, type TripFamilyAlert } from "@/domain/notifications/hub/event-detectors";
+import { type NotificationCenterSummary } from "@/domain/notifications/hub/types";
+import { FALLBACK_USD_RATE } from "@/domain/portfolio/valuation";
+import { type SuggestedDividendItem } from "@/domain/portfolio/dividend-suggester";
+import { coreOnboardingProgress, shouldShowOnboardingBanner, type OnboardingCounts } from "@/domain/onboarding/index";
+import { isSnoozeExpired, type ReminderItem, type ReminderPreferences, type ReminderState } from "@/domain/reminders/index";
 import * as overviewHooks from "@/features/overview/hooks";
 import * as state from "@/state";
 import type {

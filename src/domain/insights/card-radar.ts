@@ -8,8 +8,8 @@
  * Motor 100% puro, sem dependências de UI ou Supabase.
  */
 
-import { clampDay } from "@/domain/competence";
-import { todayISO as getTodayISO } from "@/domain/debts";
+import { clampDay } from "@/domain/competence/index";
+import { todayISO as getTodayISO } from "@/domain/debts/index";
 import { formatBRL, type RecurrenceOccurrence } from "./recurrences";
 import { findMatchingServiceKey } from "./subscriptions";
 import { normalizeText, stripTemporalSuffixes } from "./shared";

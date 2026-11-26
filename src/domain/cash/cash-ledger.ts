@@ -11,8 +11,8 @@
  * Motor 100% puro — testável isoladamente sem Supabase ou dependências de UI.
  */
 
-import { todayISO } from "@/domain/debts";
-import { numberToCents } from "@/domain/money";
+import { todayISO } from "@/domain/debts/index";
+import { numberToCents } from "@/domain/money/parse";
 
 export interface CashCheckpointData {
   id?: string;

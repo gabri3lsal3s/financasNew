@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { Sparkles } from "lucide-react";
 import { MoneyText } from "@/components/ui/money-text";
-import { formatCentsAsBRL } from "@/services/masks";
+import { formatCentsAsBRL } from "@/services/masks/money";
 import type { PatrimonyProjectionYear } from "@/domain/portfolio";
 import type { FireChartGeometry } from "@/domain/simulators/fire-curve";
 import { cn } from "@/lib/utils";

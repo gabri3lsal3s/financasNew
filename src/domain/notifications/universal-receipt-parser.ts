@@ -12,7 +12,7 @@
  * Função 100% pura: sem efeitos colaterais, sem dependências de UI, DOM ou banco de dados.
  */
 
-import { toISODate } from "@/domain/money";
+import { toISODate } from "@/domain/money/parcelar";
 import { cleanCPF } from "@/domain/validation/cpf";
 import type { PaymentMethod } from "@/types/schema";
 import {

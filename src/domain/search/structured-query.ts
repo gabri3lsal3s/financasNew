@@ -8,7 +8,7 @@
  * Motor 100% puro — zero dependências de UI ou Supabase.
  */
 
-import { shiftMonth } from "@/domain/cards";
+import { shiftMonth } from "@/domain/cards/index";
 import type { MerchantLearningMemory } from "@/domain/notifications/merchant-memory";
 
 export type StructuredMonthScope =

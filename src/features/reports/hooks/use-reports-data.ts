@@ -46,13 +46,17 @@ export function useReportsData(params: UseReportsDataParams) {
     mode, month, year, debouncedCustomStart, debouncedCustomEnd, customStart, customEnd,
   });
 
+  const needsFinance = activeTab !== "investimentos";
+  const needsInvestments = activeTab !== "financas";
+
   const finance = useFinanceReportData({
-    enabled: hasFinanceFeatures, weightsEnabled, mode, month, year,
+    enabled: hasFinanceFeatures && needsFinance, weightsEnabled, mode, month, year,
     range: period.range, isYear: period.isYear, isCustom: period.isCustom, customValid: period.customValid,
   });
 
   const investments = useInvestmentReportData({
-    enabled: hasInvestmentsFeature, mode, month, year,
+    enabled: hasInvestmentsFeature && needsInvestments,
+    contributionsEnabled: hasInvestmentsFeature, mode, month, year,
     customValid: period.customValid, debouncedCustomStart, debouncedCustomEnd,
     isCurrentPeriod: period.isCurrentPeriod, selectedYearNum: period.selectedYearNum,
     periodLabel: period.periodLabel, isDateInPeriod: period.isDateInPeriod,
@@ -168,8 +172,8 @@ export function useReportsData(params: UseReportsDataParams) {
     ...(businessDreForExcel ? { businessDre: businessDreForExcel } : {}),
   });
 
-  const needsFinanceLoading = activeTab === "financas" || activeTab === "balanco" || !activeTab;
-  const needsInvestmentsLoading = activeTab === "investimentos" || activeTab === "fiscal" || activeTab === "balanco" || !activeTab;
+  const needsFinanceLoading = needsFinance;
+  const needsInvestmentsLoading = true;
   const loading = (needsFinanceLoading && finance.loading) || (needsInvestmentsLoading && investments.loading);
   const error = (needsFinanceLoading ? finance.error : null) ?? (needsInvestmentsLoading ? investments.error : null);
 
@@ -210,7 +214,7 @@ export function useReportsData(params: UseReportsDataParams) {
     concentrationRisk: investments.concentrationRisk,
     investmentDonutData: investments.investmentDonutData,
     freedomAnalysis,
-    workbookData: excel.workbookData,
+    buildWorkbookData: excel.buildWorkbookData,
     excelDescription: excel.excelDescription,
     isExcelDisabled: excel.isExcelDisabled,
     positionQuery: investments.positionQuery,

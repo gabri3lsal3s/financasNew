@@ -8,7 +8,11 @@ import {
   ShieldCheck,
   Trash2,
 } from "lucide-react";
-import { Badge, Button, Modal, ModalFooter, Tabs } from "@/components/ui";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
+import { ModalFooter } from "@/components/ui/modal-footer";
+import { Tabs } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
 export type LegalTab = "terms" | "privacy";

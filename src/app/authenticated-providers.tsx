@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useContext, useEffect, useRef, useState } from "react";
 import { QueryClientContext } from "@tanstack/react-query";
-import { parseTimeHHMM } from "@/domain/notifications";
+import { parseTimeHHMM } from "@/domain/notifications/schedule";
 import { NativeUpdateToast } from "@/components/modules/native-update-toast";
 import { AppLockOverlay } from "@/app/app-lock-overlay";
 import { PendingDividendsDialogHost } from "@/features/investments/components/pending-dividends-dialog";
@@ -15,19 +15,13 @@ import { useUserPreferences } from "@/state/queries/use-user-preferences";
 import { syncVisualWithCloud, useVisualCustomization } from "@/hooks/use-visual-customization";
 import { useDynamicFavicon } from "@/hooks/use-dynamic-favicon";
 import { useDynamicAppIcon } from "@/hooks/use-dynamic-app-icon";
-import {
-  cancelDailyReminder,
-  clearAllDueNotifications,
-  scheduleDailyReminder,
-  setPrivacyShieldEnabled,
-  syncDueReminderNotifications,
-  syncBankAssistantWithCloud,
-  syncDeviceNotificationsWithCloud,
-  syncMonitoredBanksWithNative,
-  isNativePlatform,
-} from "@/services/native";
-import { useReminders } from "@/state";
-import { useDemoSession } from "@/state/demo-mode";
+import { cancelDailyReminder, clearAllDueNotifications, scheduleDailyReminder, syncDueReminderNotifications, syncDeviceNotificationsWithCloud } from "@/services/native/local-notifications";
+import { setPrivacyShieldEnabled } from "@/services/native/app-lock";
+import { syncBankAssistantWithCloud } from "@/services/native/bank-assistant-preferences";
+import { syncMonitoredBanksWithNative } from "@/services/native/bank-listener";
+import { isNativePlatform } from "@/services/native/platform";
+import { useReminders } from "@/state/queries/use-reminders";
+import { useDemoSession } from "@/state/demo-mode/demo-session-store";
 import { useAuth } from "@/hooks/use-auth";
 
 function CloudPreferencesSync({ children }: { children: ReactNode }) {

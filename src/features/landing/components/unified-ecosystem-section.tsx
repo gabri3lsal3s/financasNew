@@ -10,7 +10,8 @@ import {
   Share2,
   Wallet,
 } from "lucide-react";
-import { Badge, Card } from "@/components/ui";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { ScrollReveal } from "./scroll-reveal";
 
 export type EcosystemDestination =

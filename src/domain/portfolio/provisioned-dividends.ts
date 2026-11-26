@@ -9,7 +9,7 @@
  *    nem ao saldo de Caixa (`CAIXA`), atuando somente em linhas auxiliares informativas.
  */
 
-import { numberToCents } from "@/domain/money";
+import { numberToCents } from "@/domain/money/parse";
 import type { UserDividendEvent } from "@/types";
 import type { SuggestedDividendItem } from "./dividend-suggester";
 import { FALLBACK_USD_RATE } from "./valuation";

@@ -58,6 +58,8 @@ export function PixRenewalCheckoutModal({
           <div className="flex flex-col items-center gap-3">
             <div className="p-2.5 rounded-xl bg-surface border border-border/80 shadow-xs">
               <img
+                width={208}
+                height={208}
                 src={`data:image/png;base64,${pixData.qrCodeBase64}`}
                 alt="QR Code Pix"
                 className="size-48 sm:size-52 object-contain rounded-lg"

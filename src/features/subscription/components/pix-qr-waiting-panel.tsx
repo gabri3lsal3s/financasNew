@@ -32,6 +32,8 @@ export function PixQrWaitingPanel({
       <div className="rounded-xl bg-surface p-3 border border-border/80 shadow-xs flex flex-col items-center justify-center">
         {pixResult.qrCodeBase64 ? (
           <img
+                width={176}
+                height={176}
             src={`data:image/png;base64,${pixResult.qrCodeBase64}`}
             alt="QR Code PIX"
             className="size-44 object-contain rounded-lg"

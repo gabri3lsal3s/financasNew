@@ -1,22 +1,34 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { ArrowLeft, ArrowRight, Download, Menu, X } from "lucide-react";
-import { Button, buttonVariants } from "@/components/ui";
-import { BrandLogo, ThemeToggle } from "@/components/layout";
+import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { BrandLogo } from "@/components/layout/brand-logo";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { cn } from "@/lib/utils";
-import { useLandingCta, useScrollSpy } from "@/features/landing/hooks";
+import { useLandingCta } from "@/features/landing/hooks/use-landing-cta";
+import { useScrollSpy } from "@/features/landing/hooks/use-scroll-spy";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
-import { registerBackHandler } from "@/services/native";
+import { registerBackHandler } from "@/services/native/back-button";
 import { scrollToTop } from "@/services/scroll";
 import { LANDING_NAV_LINKS } from "./landing-nav-links";
 import { LandingMobileDrawer } from "./landing-mobile-drawer";
 
-export function LandingHeader() {
+interface LandingScrollState {
+  showBackToTop: boolean;
+  resetKey: number;
+  activeSection: string;
+}
+
+export function LandingHeader({ onScrollStateChange }: { onScrollStateChange?: (state: LandingScrollState) => void }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { isLoggedIn } = useLandingCta();
-  const { activeSection, scrollProgress, isScrolled } = useScrollSpy();
+  const { activeSection, scrollProgress, isScrolled, showBackToTop, resetKey } = useScrollSpy();
+  useEffect(() => {
+    onScrollStateChange?.({ activeSection, showBackToTop, resetKey });
+  }, [onScrollStateChange, activeSection, showBackToTop, resetKey]);
   const { canInstall, install } = usePWAInstall();
 
   const isSubpage =

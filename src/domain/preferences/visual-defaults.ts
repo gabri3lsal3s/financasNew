@@ -3,12 +3,7 @@
  * Sem dependências de DOM, React, storage ou Supabase.
  */
 import type { UserCustomSettings } from "@/types";
-import {
-  applyExperiencePreset,
-  detectActivePreset,
-  type ExperiencePreset,
-  type SensoryIntent,
-} from "./index";
+import { applyExperiencePreset, detectActivePreset, type ExperiencePreset, type SensoryIntent } from "@/domain/preferences/index";
 
 export type AccentTheme = "teal" | "gold" | "mono";
 export type SurfaceStyle = "glass" | "flat";

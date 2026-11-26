@@ -1,5 +1,6 @@
 import { ArrowLeftRight, BarChart3, Briefcase, ShieldAlert, ShieldCheck, Target } from "lucide-react";
-import { Badge, Card } from "@/components/ui";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 
 const BUSINESS_PILLARS = [
   {

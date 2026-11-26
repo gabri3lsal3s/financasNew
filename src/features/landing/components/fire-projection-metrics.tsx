@@ -1,7 +1,8 @@
 import { Flag } from "lucide-react";
 import { MoneyText } from "@/components/ui/money-text";
 import { Switch } from "@/components/ui/switch";
-import { formatCentsAsBRL, formatPercent } from "@/services/masks";
+import { formatCentsAsBRL } from "@/services/masks/money";
+import { formatPercent } from "@/services/masks/percent";
 import type { PatrimonyProjectionResult, PatrimonyProjectionYear } from "@/domain/portfolio";
 import { cn } from "@/lib/utils";
 

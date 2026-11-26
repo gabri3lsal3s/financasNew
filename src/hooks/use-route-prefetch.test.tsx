@@ -44,7 +44,7 @@ describe("useRoutePrefetch (F23)", () => {
     vi.useRealTimers();
   });
 
-  it("pré-carrega as rotas primárias e as vizinhas no primeiro idle", () => {
+  it("limita o prefetch a duas rotas no primeiro idle", () => {
     renderHarness("/");
 
     expect(prefetchMock).not.toHaveBeenCalled();
@@ -56,8 +56,7 @@ describe("useRoutePrefetch (F23)", () => {
     // Primárias (sem a atual "/").
     expect(paths).toContain("/transacoes");
     expect(paths).toContain("/cartoes");
-    expect(paths).toContain("/relatorios");
-    expect(paths).toContain("/investments");
+    expect(paths).toHaveLength(2);
     // Vizinho seguinte da Home na ordem da navegação.
     expect(paths).toContain("/transacoes");
     // A rota atual nunca é pré-carregada.

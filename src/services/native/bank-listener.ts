@@ -1,13 +1,6 @@
 import { registerPlugin, type PluginListenerHandle } from "@capacitor/core";
-import {
-  parseBankNotification,
-  parsePixShareText,
-  resolveBankName,
-  isBankMonitored,
-  getPackagesForMonitoredBanks,
-  type BankNotificationPayload,
-  type ParsedBankTransaction,
-} from "@/domain/notifications";
+import { parseBankNotification, parsePixShareText, resolveBankName, type BankNotificationPayload, type ParsedBankTransaction } from "@/domain/notifications/bank-parser";
+import { isBankMonitored, getPackagesForMonitoredBanks } from "@/domain/notifications/preferences";
 import { isNativePlatform } from "./platform";
 import { addPendingSuggestion } from "./suggestions-store";
 import {

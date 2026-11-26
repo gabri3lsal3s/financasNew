@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "./use-auth";
-import { useUpdateCustomSettings, useUserPreferences } from "@/state";
+import { useUpdateCustomSettings } from "@/state/mutations/use-preference-mutations";
+import { useUserPreferences } from "@/state/queries/use-user-preferences";
 import { isQueryPending } from "@/state/query-readiness";
 import type { PortfolioAlertDismissalEntry, PortfolioAlertDismissalsMap } from "@/types";
 

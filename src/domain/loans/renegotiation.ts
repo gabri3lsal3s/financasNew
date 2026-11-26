@@ -8,8 +8,8 @@
  */
 
 import type { AmortizationSystem, Debt, Loan, LoanType } from "@/types";
-import { numberToCents } from "@/domain/money";
-import { calculateLoanSchedule } from "./index";
+import { numberToCents } from "@/domain/money/parse";
+import { calculateLoanSchedule } from "@/domain/loans/index";
 
 export type LoanRenegotiationStrategy = "amortize_remaining" | "reset";
 

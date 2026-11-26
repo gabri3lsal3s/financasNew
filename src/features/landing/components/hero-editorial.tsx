@@ -1,8 +1,8 @@
 import { Link } from "react-router";
 import { ArrowRight, CheckCircle2, ChevronRight, Layers, Lock, ShieldCheck } from "lucide-react";
-import { buttonVariants } from "@/components/ui";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
-import { useLandingCta } from "@/features/landing/hooks";
+import { useLandingCta } from "@/features/landing/hooks/use-landing-cta";
 import { HeroDashboardMockup } from "./hero-dashboard-mockup";
 
 export function HeroEditorial() {

@@ -1,5 +1,5 @@
 import type { KeyboardEvent, ReactNode } from "react";
-import { computeDonutGeometry } from "@/domain/charts";
+import { computeDonutGeometry } from "@/domain/charts/donut-geometry";
 import type { DonutComputedSlice, DonutInputSlice } from "@/domain/charts";
 import { cn } from "@/lib/utils";
 import { triggerSensory } from "@/services/sensory";

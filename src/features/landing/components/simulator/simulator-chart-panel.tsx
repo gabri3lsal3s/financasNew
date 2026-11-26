@@ -1,7 +1,9 @@
-import { Badge, Popover, PopoverContent, PopoverTrigger, Tabs } from "@/components/ui";
+import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tabs } from "@/components/ui/tabs";
 import { AllocationDonut, type AllocationSlice } from "@/components/modules/allocation-donut";
-import { annualRateToMonthlyRate } from "@/domain/portfolio";
-import { formatPercent } from "@/services/masks";
+import { annualRateToMonthlyRate } from "@/domain/portfolio/compound-interest";
+import { formatPercent } from "@/services/masks/percent";
 import { FireProjectionCurve } from "../fire-projection-curve";
 
 export interface SimulatorChartPanelProps {

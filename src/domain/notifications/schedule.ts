@@ -1,4 +1,4 @@
-import { addDaysISO } from "@/domain/debts";
+import { addDaysISO } from "@/domain/debts/index";
 
 export interface QuietHoursConfig {
   enabled: boolean;

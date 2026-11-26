@@ -9,31 +9,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { updateCustomSettings } from "@/data/repositories/user-preferences";
-import {
-  type CardDigitsMapping,
-  type LearnedCutTier,
-  type LearnedIncomeProfile,
-  type LearnedReceiptPreference,
-  type LearnedServiceSegment,
-  LEARNED_CUT_TIERS,
-  LEARNED_SERVICE_SEGMENTS,
-  type MerchantLearningMemory,
-  type MerchantLearningRecord,
-  type RecordMerchantLearningParams,
-  RECEIPT_LEARNING_STORAGE_KEY,
-  findLearnedMerchant,
-  normalizeSemanticTag,
-  recordCardDigitsLearning,
-  forgetCardDigitsLearning,
-  lookupCardByDigits,
-  migrateLegacyReceiptDictToMerchantMemory,
-  recordMerchantLearning,
-  forgetMerchantLearning,
-  registerReceiptLearningBridge,
-  type ResolveMerchantIdentityParams,
-  type ResolvedMerchantIdentity,
-  resolveMerchantIdentity,
-} from "@/domain/notifications";
+import { type CardDigitsMapping, type LearnedCutTier, type LearnedIncomeProfile, type LearnedServiceSegment, LEARNED_CUT_TIERS, LEARNED_SERVICE_SEGMENTS, type MerchantLearningMemory, type MerchantLearningRecord, type RecordMerchantLearningParams, findLearnedMerchant, normalizeSemanticTag, recordCardDigitsLearning, forgetCardDigitsLearning, lookupCardByDigits, recordMerchantLearning, forgetMerchantLearning } from "@/domain/notifications/merchant-memory";
+import { type LearnedReceiptPreference, RECEIPT_LEARNING_STORAGE_KEY, migrateLegacyReceiptDictToMerchantMemory, registerReceiptLearningBridge } from "@/domain/notifications/receipt-learning";
+import { type ResolveMerchantIdentityParams, type ResolvedMerchantIdentity, resolveMerchantIdentity } from "@/domain/notifications/merchant-resolver";
 import {
   getUserStorageItem,
   setUserStorageItem,

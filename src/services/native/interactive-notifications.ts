@@ -1,17 +1,14 @@
 import { LocalNotifications } from "@capacitor/local-notifications";
-import {
-  inferCategoryKeyword,
-  matchCategoryBySlug,
-  type ParsedBankTransaction,
-} from "@/domain/notifications";
+import { inferCategoryKeyword, matchCategoryBySlug } from "@/domain/notifications/category-inference";
+import { type ParsedBankTransaction } from "@/domain/notifications/bank-parser";
 import { isNativePlatform } from "./platform";
 import { addPendingSuggestion, dismissPendingSuggestion } from "./suggestions-store";
 import { listCategories } from "@/data/repositories/categories";
 import { listActiveCreditCards } from "@/data/repositories/credit-cards";
-import { createExpenseWithDebt, createIncomeInstallments, deleteExpenseInstallments } from "@/data/rpc";
+import { createExpenseWithDebt, createIncomeInstallments, deleteExpenseInstallments } from "@/data/rpc/transactions";
 import { createIncome, deleteIncome } from "@/data/repositories/incomes";
 import { buildExpenseInstallments, buildIncomeInstallments } from "@/features/transactions/wizard/wizard-state";
-import { getErrorMessage } from "@/services/errors";
+import { getErrorMessage } from "@/services/errors/index";
 import { getBankAssistantPreferences } from "./bank-assistant-preferences";
 import type { Category, ReceiveType } from "@/types";
 

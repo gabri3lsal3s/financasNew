@@ -1,6 +1,6 @@
 import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { formatCentsAsCurrency } from "@/services/masks";
+import { formatCentsAsCurrency } from "@/services/masks/money";
 import type { AssetCurrency } from "@/types";
 import { NumberTicker } from "./number-ticker";
 

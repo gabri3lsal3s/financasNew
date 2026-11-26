@@ -9,7 +9,7 @@
  * - Caixa da Corretora e Liquidez Operacional.
  */
 
-import { numberToCents } from "@/domain/money";
+import { numberToCents } from "@/domain/money/parse";
 import type { CustodyReconciliationSummary } from "@/domain/portfolio/custody-reconciliation";
 import type { ProvisionedDividendsSummary } from "@/domain/portfolio/provisioned-dividends";
 import type {

@@ -1,8 +1,8 @@
+import { ContentLoading } from "@/components/ui/content-loading";
 import { lazy, Suspense, useMemo } from "react";
 import { resolveEffectiveLimit } from "@/domain/budgets";
-import type { ProvisionedDividendsSummary } from "@/domain/portfolio";
-import { getOptionalHook } from "@/hooks/use-notification-center";
-import * as stateHooks from "@/state";
+import { useCorporateDividends } from "@/state/queries/use-corporate-dividends";
+import { useUserAccess } from "@/state/queries/use-user-access";
 import {
   evaluateBalancoReadiness,
   evaluateDossiePosicaoReadiness,
@@ -18,10 +18,10 @@ import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
 import { ExpenseDetailDialog } from "@/features/transactions";
 import { PortfolioDarfMonitor } from "@/features/investments/components";
 import type { useReportModalsState, useReportsData } from "../hooks";
-import { ConsolidatedWealthModal } from "./consolidated-wealth-modal";
-import { DividendFreedomModal } from "./dividend-freedom-modal";
+const ConsolidatedWealthModal = lazy(() => import("./consolidated-wealth-modal").then((module) => ({ default: module.ConsolidatedWealthModal })));
+const DividendFreedomModal = lazy(() => import("./dividend-freedom-modal").then((module) => ({ default: module.DividendFreedomModal })));
 import { ReportDetailDialog } from "./report-detail-dialog";
-import { TaxFacilitatorModal } from "./tax-facilitator-modal";
+const TaxFacilitatorModal = lazy(() => import("./tax-facilitator-modal").then((module) => ({ default: module.TaxFacilitatorModal })));
 
 const FinancialCloseReportModal = lazy(() =>
   import("./financial-close-report-modal").then((m) => ({
@@ -45,14 +45,8 @@ export interface ReportsModalsHostProps {
  * Orquestrador dos modais executivos A4, DARF e drilldown de lançamentos da Central de Relatórios.
  */
 export function ReportsModalsHost({ weightsEnabled, state, data }: ReportsModalsHostProps) {
-  const useCorporateDividendsSafe = getOptionalHook(stateHooks, "useCorporateDividends", () => ({
-    provisionedSummary: null as ProvisionedDividendsSummary | null,
-  }));
-  const corporateDividendsState = useCorporateDividendsSafe();
-  const useUserAccessSafe = getOptionalHook(stateHooks, "useUserAccess", () => ({
-    profile: null as { name?: string | null } | null,
-  }));
-  const userAccess = useUserAccessSafe();
+  const corporateDividendsState = useCorporateDividends({ enabled: state.tearSheetOpen });
+  const userAccess = useUserAccess();
   const accountHolder = userAccess?.profile?.name ?? undefined;
   // 1. DRE Pessoal
   const dreReadiness = useMemo(
@@ -180,7 +174,7 @@ export function ReportsModalsHost({ weightsEnabled, state, data }: ReportsModals
   ]);
 
   return (
-    <>
+    <Suspense fallback={<ContentLoading />}>
       {state.financialReportOpen && dreReadiness.status === "blocked" && (
         <ReportInsufficientDataModal
           open={state.financialReportOpen}
@@ -191,7 +185,7 @@ export function ReportsModalsHost({ weightsEnabled, state, data }: ReportsModals
         />
       )}
       {state.financialReportOpen && dreReadiness.canGenerate && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<ContentLoading />}>
           <FinancialCloseReportModal
             open={state.financialReportOpen}
             onOpenChange={state.setFinancialReportOpen}
@@ -231,7 +225,7 @@ export function ReportsModalsHost({ weightsEnabled, state, data }: ReportsModals
         />
       )}
       {state.tearSheetOpen && tearSheetReadiness.canGenerate && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<ContentLoading />}>
           <WealthTearSheetModal
             open={state.tearSheetOpen}
             onOpenChange={state.setTearSheetOpen}
@@ -363,6 +357,6 @@ export function ReportsModalsHost({ weightsEnabled, state, data }: ReportsModals
           onSelectExpense={state.setSelectedExpense}
         />
       ) : null}
-    </>
+    </Suspense>
   );
 }

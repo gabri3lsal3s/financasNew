@@ -3,7 +3,7 @@
  * Funções 100% puras sem dependência de React ou Supabase (AGENTS.md §3).
  */
 
-import { formatCentsAsBRL } from "@/services/masks";
+import { formatCentsAsBRL } from "@/services/masks/money";
 import { sanitizeReportText } from "@/domain/reports/sanitize-text";
 import type { PortfolioAsset, PortfolioDividend, PortfolioTransaction } from "@/types";
 import {

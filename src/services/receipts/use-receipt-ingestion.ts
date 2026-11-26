@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { toISODate } from "@/domain/money";
-import {
-  parseClipboardTransactionCandidate,
-  type ParsedBankTransaction,
-  type ReceiptUserContext,
-} from "@/domain/notifications";
+import { toISODate } from "@/domain/money/parcelar";
+import { parseClipboardTransactionCandidate } from "@/domain/notifications/pix-clipboard";
+import { type ParsedBankTransaction } from "@/domain/notifications/bank-parser";
+import { type ReceiptUserContext } from "@/domain/notifications/receipt-types";
 import type { AiCategoryOptionInput } from "@/services/ai-assistant";
 import { readClipboardText } from "@/services/clipboard";
 import {

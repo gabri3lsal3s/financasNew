@@ -1,6 +1,6 @@
 import { registerSW } from "virtual:pwa-register";
 import { hasActiveDialogInDom, isLaunchWizardActive } from "@/hooks/use-active-overlays";
-import { isNativePlatform } from "@/services/native";
+import { isNativePlatform } from "@/services/native/platform";
 
 /**
  * Registro do Service Worker + fluxo de instalação/atualização (PWA_GUIDELINES §6).
