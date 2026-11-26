@@ -394,6 +394,7 @@ export function useCorporateDividends(
             manualDate: m.date.slice(0, 10),
             manualAmount: Number(m.amount),
             reason: link.reason,
+            groupEventIds: link.eventos.length > 1 ? [...link.eventos] : undefined,
           });
         }
       }

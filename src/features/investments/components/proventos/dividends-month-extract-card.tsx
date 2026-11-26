@@ -11,6 +11,10 @@ export interface DividendsMonthExtractCardProps {
   extract: readonly PortfolioDividend[];
   assetById: ReadonlyMap<string, PortfolioAsset>;
   rowByAssetId: ReadonlyMap<string, DividendPositionRef>;
+  monthTotal?: number;
+  projectedTotal?: number;
+  projectedCount?: number;
+  onOpenPendingDividends?: () => void;
   onEditDividend: (entry: PortfolioDividend) => void;
   onDeleteDividend: (entry: PortfolioDividend) => void;
 }
@@ -20,9 +24,26 @@ export function DividendsMonthExtractCard({
   extract,
   assetById,
   rowByAssetId,
+  monthTotal,
+  projectedTotal = 0,
+  projectedCount = 0,
+  onOpenPendingDividends,
   onEditDividend,
   onDeleteDividend,
 }: DividendsMonthExtractCardProps) {
+  const computedExtractTotal =
+    typeof monthTotal === "number"
+      ? monthTotal
+      : extract.reduce((sum, entry) => {
+          const asset = entry.asset_id ? assetById.get(entry.asset_id) : null;
+          const row = entry.asset_id ? rowByAssetId.get(entry.asset_id) : null;
+          const currency = asset?.currency ?? row?.currency ?? "BRL";
+          const rate = currency === "USD" ? row?.usdRate || FALLBACK_USD_RATE : 1;
+          return sum + entry.amount * rate;
+        }, 0);
+  const expectedTotal = computedExtractTotal + Math.max(0, projectedTotal);
+  const showReconciliationBar = computedExtractTotal > 0 || projectedTotal > 0;
+
   return (
     <section
       aria-label={`Extrato de ${monthLabel(month)}`}
@@ -33,10 +54,67 @@ export function DividendsMonthExtractCard({
           <Coins className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
           <h2 className="text-sm font-semibold text-foreground">Extrato do mês</h2>
         </div>
-        <Badge variant="muted" size="sm">
-          {monthLabel(month)}
-        </Badge>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {showReconciliationBar ? (
+            projectedCount > 0 || projectedTotal > 0.01 ? (
+              <Badge variant="warning" size="xs">
+                Diferença a conferir
+              </Badge>
+            ) : (
+              <Badge variant="positive" size="xs">
+                Tudo batido
+              </Badge>
+            )
+          ) : null}
+          <Badge variant="muted" size="sm">
+            {monthLabel(month)}
+          </Badge>
+        </div>
       </div>
+
+      {showReconciliationBar ? (
+        <div className="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-2.5 rounded-xl border border-border/70 bg-muted/20 p-3">
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <span className="text-[11px] text-muted-foreground">Lançado no extrato</span>
+            <MoneyText
+              cents={numberToCents(computedExtractTotal)}
+              currency="BRL"
+              tone="positive"
+              className="text-sm font-semibold"
+            />
+          </div>
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <span className="text-[11px] text-muted-foreground">Pendente / previsto</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <MoneyText
+                cents={numberToCents(Math.max(0, projectedTotal))}
+                currency="BRL"
+                tone="default"
+                className="text-sm font-semibold"
+              />
+              {projectedCount > 0 && onOpenPendingDividends ? (
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="outline"
+                  onClick={onOpenPendingDividends}
+                >
+                  Conferir ({projectedCount})
+                </Button>
+              ) : null}
+            </div>
+          </div>
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <span className="text-[11px] text-muted-foreground">Total esperado (corretora)</span>
+            <MoneyText
+              cents={numberToCents(expectedTotal)}
+              currency="BRL"
+              tone="default"
+              className="text-sm font-semibold"
+            />
+          </div>
+        </div>
+      ) : null}
 
       {extract.length === 0 ? (
         <p className="py-6 text-center text-sm text-muted-foreground">

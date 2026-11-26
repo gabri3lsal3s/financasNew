@@ -164,6 +164,10 @@ export function DividendsHistoryPanel({
             extract={extract}
             assetById={assetById}
             rowByAssetId={rowByAssetId}
+            monthTotal={monthTotal}
+            projectedTotal={projectedTotal}
+            projectedCount={projectedCount}
+            onOpenPendingDividends={onOpenPendingDividends}
             onEditDividend={onEditDividend}
             onDeleteDividend={onDeleteDividend}
           />

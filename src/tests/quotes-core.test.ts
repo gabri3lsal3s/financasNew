@@ -1113,6 +1113,34 @@ describe("parseB3OfficialDividends (Provedor oficial gratuito B3)", () => {
       payment_date: "2026-10-15",
       rate: 0.42,
     });
+
+    const bdrPayload = [
+      {
+        cashDividends: [
+          {
+            isinCode: "BRAAPLBDR004",
+            label: "DIVIDENDO",
+            lastDatePrior: "05/11/2026",
+            paymentDate: "14/11/2026",
+            rate: "0,18",
+          },
+          {
+            isinCode: "BRAAPLACNOR9",
+            label: "DIVIDENDO",
+            lastDatePrior: "05/11/2026",
+            paymentDate: "14/11/2026",
+            rate: "0,99",
+          },
+        ],
+      },
+    ];
+    const aapl34 = parseB3OfficialDividends("AAPL34", bdrPayload);
+    expect(aapl34).toHaveLength(1);
+    expect(aapl34[0]).toMatchObject({
+      ticker: "AAPL34",
+      rate: 0.18,
+      payment_date: "2026-11-14",
+    });
   });
 });
 

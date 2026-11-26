@@ -1029,6 +1029,9 @@ function matchesB3IsinShareClass(ticker: string, isinCode: string): boolean {
     return isin.includes("ACNPR");
   }
   if (suffix === "11") return isin.includes("CDAM") || isin.includes("UNT") || isin.includes("CTF");
+  if (suffix === "32" || suffix === "33" || suffix === "34" || suffix === "35") {
+    return isin.includes("BDR");
+  }
   return true;
 }
 

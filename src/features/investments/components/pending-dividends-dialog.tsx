@@ -14,6 +14,7 @@ import {
   Button,
   Checkbox,
   DatePicker,
+  Dropzone,
   EmptyState,
   ErrorState,
   FormField,
@@ -26,6 +27,7 @@ import {
   Select,
   Skeleton,
   Tabs,
+  Textarea,
   type SelectOption,
   type TabItem,
 } from "@/components/ui";
@@ -40,6 +42,7 @@ import {
   isTesouroAsset,
   isValidDividendSettlementDate,
   isValidDividendTrackingDate,
+  parseDividendImportText,
   summarizeCalibrationPlan,
   todaySaoPauloISO,
   type SuggestedDividendItem,
@@ -70,6 +73,7 @@ import type {
   ConfirmDividendEventItem,
   CorporateDividendType,
   PortfolioAsset,
+  PortfolioDividend,
   SetDividendTrackingAtomicResult,
 } from "@/types";
 
@@ -111,6 +115,44 @@ const useOptionalUpdateUserDividendEvent = getOptionalStateHook<
   mutateAsync: async () => undefined,
   isPending: false,
 }));
+
+const useOptionalUpdatePortfolioDividend = getOptionalStateHook<
+  () => {
+    mutateAsync: (params: {
+      id: string;
+      patch: { date?: string };
+    }) => Promise<unknown>;
+    isPending: boolean;
+  }
+>("useUpdatePortfolioDividend", () => ({
+  mutateAsync: async () => undefined,
+  isPending: false,
+}));
+
+const useOptionalCreatePortfolioDividend = getOptionalStateHook<
+  () => {
+    mutateAsync: (params: {
+      asset_id?: string | null;
+      ticker: string;
+      amount: number;
+      date: string;
+      notes?: string | null;
+      sync_cash?: boolean;
+      cash_amount?: number | null;
+      create_transaction?: boolean;
+      tx_type?: "dividend" | "jcp" | "yield" | "other";
+      fx_rate?: number | null;
+    }) => Promise<unknown>;
+    isPending: boolean;
+  }
+>("useCreatePortfolioDividend", () => ({
+  mutateAsync: async () => undefined,
+  isPending: false,
+}));
+
+const useOptionalPortfolioDividends = getOptionalStateHook<
+  () => { data?: PortfolioDividend[] }
+>("usePortfolioDividends", () => ({ data: [] }));
 
 type OriginFilterValue = "all" | "official" | "community_verified" | "estimated" | "manual";
 
@@ -257,6 +299,9 @@ export function PendingDividendsDialog({
   const createManualMutation = useCreateManualUserDividendEvent();
   const deleteManualMutation = useDeleteUserDividendEvent();
   const updateDividendEventMutation = useOptionalUpdateUserDividendEvent();
+  const updatePortfolioDividendMutation = useOptionalUpdatePortfolioDividend();
+  const createPortfolioDividendMutation = useOptionalCreatePortfolioDividend();
+  const portfolioDividendsQuery = useOptionalPortfolioDividends();
   const setDividendTracking = useOptionalSetDividendTracking();
 
   const [searchTicker, setSearchTicker] = useState("");
@@ -335,9 +380,15 @@ export function PendingDividendsDialog({
   const [manualType, setManualType] = useState<CorporateDividendType>("DIVIDENDO");
   const [manualComDate, setManualComDate] = useState<string>(() => todaySaoPauloISO());
   const [manualPaymentDate, setManualPaymentDate] = useState<string>("");
+  const [manualAmountMode, setManualAmountMode] = useState<"total" | "per_unit">("total");
   const [manualNetCents, setManualNetCents] = useState<number>(0);
+  const [manualPerUnitCents, setManualPerUnitCents] = useState<number>(0);
+  const [manualAlreadyReceived, setManualAlreadyReceived] = useState<boolean>(false);
   const [manualTaxPctOverride, setManualTaxPctOverride] = useState<number | null>(null);
   const [manualNotes, setManualNotes] = useState<string>("");
+  const [manualSubMode, setManualSubMode] = useState<"single" | "import">("single");
+  const [importRawText, setImportRawText] = useState<string>("");
+  const [isImportingDividends, setIsImportingDividends] = useState<boolean>(false);
 
   const availableKeys = useMemo(
     () => availableDividends.map(getItemKey),
@@ -366,7 +417,12 @@ export function PendingDividendsDialog({
       setManualType("DIVIDENDO");
       setManualComDate(todaySaoPauloISO());
       setManualPaymentDate("");
+      setManualAmountMode("total");
       setManualNetCents(0);
+      setManualPerUnitCents(0);
+      setManualAlreadyReceived(false);
+      setManualSubMode("single");
+      setImportRawText("");
       setManualTaxPctOverride(null);
       setManualNotes("");
       setSearchTicker("");
@@ -768,39 +824,131 @@ export function PendingDividendsDialog({
     );
   }, [selectedManualAsset, transactionsQuery.data, manualComDate]);
 
+  const manualEffectiveQty =
+    manualCustodyQty > 0 ? manualCustodyQty : (selectedManualAsset?.quantity ?? 0);
+
+  const parsedImport = useMemo(
+    () =>
+      parseDividendImportText(
+        importRawText,
+        assetsQuery.data ?? [],
+        portfolioDividendsQuery.data ?? [],
+      ),
+    [importRawText, assetsQuery.data, portfolioDividendsQuery.data],
+  );
+
+  const handleImportDividendsBatch = () => {
+    const toImport = parsedImport.items.filter((it) => !it.alreadyImported);
+    if (toImport.length === 0 || isImportingDividends) return;
+    guardAction(() => {
+      void (async () => {
+        setIsImportingDividends(true);
+        try {
+          for (const item of toImport) {
+            const isUsd = item.currency === "USD";
+            const cashAmount = syncCash
+              ? isUsd
+                ? Math.round(item.amount * effectiveFx * 100) / 100
+                : item.amount
+              : null;
+            await createPortfolioDividendMutation.mutateAsync({
+              asset_id: item.matchedAssetId,
+              ticker: item.ticker,
+              amount: item.amount,
+              date: item.date,
+              notes: item.notes,
+              sync_cash: syncCash,
+              cash_amount: cashAmount,
+              create_transaction: syncCash,
+              tx_type: item.txType,
+              fx_rate: isUsd ? effectiveFx : null,
+            });
+          }
+          setImportRawText("");
+          setManualSubMode("single");
+          onRetry?.();
+          setActiveTabOverride("review");
+        } catch {
+          // O hook já exibe toast de erro
+        } finally {
+          setIsImportingDividends(false);
+        }
+      })();
+    });
+  };
+
+  const manualEffectiveNetCents = useMemo(() => {
+    if (manualAmountMode === "total") return manualNetCents;
+    if (manualPerUnitCents <= 0 || manualEffectiveQty <= 0) return 0;
+    const gross = manualEffectiveQty * (manualPerUnitCents / 100);
+    const net = gross * (1 - manualTaxPct / 100);
+    return Math.max(0, Math.round(net * 100));
+  }, [manualAmountMode, manualNetCents, manualPerUnitCents, manualEffectiveQty, manualTaxPct]);
+
   const handleCreateManual = () => {
     if (
       !selectedManualAsset ||
-      manualNetCents <= 0 ||
+      manualEffectiveNetCents <= 0 ||
       !manualComDate ||
-      createManualMutation.isPending
+      createManualMutation.isPending ||
+      createPortfolioDividendMutation.isPending
     ) {
       return;
     }
     guardAction(() => {
       void (async () => {
-        const netAmount = manualNetCents / 100;
+        const netAmount = manualEffectiveNetCents / 100;
         const today = todaySaoPauloISO();
         const cleanPay = manualPaymentDate ? manualPaymentDate.slice(0, 10) : null;
-        const status =
-          cleanPay !== null && cleanPay <= today ? "PENDING_CONFIRMATION" : "PROVISIONED";
 
         try {
-          await createManualMutation.mutateAsync({
-            asset_id: selectedManualAsset.id,
-            ticker: selectedManualAsset.ticker,
-            type: manualType,
-            com_date: manualComDate.slice(0, 10),
-            payment_date: cleanPay,
-            quantity_on_com_date: manualCustodyQty > 0 ? manualCustodyQty : selectedManualAsset.quantity,
-            tax_rate_pct: manualTaxPct,
-            net_amount: netAmount,
-            currency: selectedManualAsset.currency === "USD" ? "USD" : "BRL",
-            status,
-            notes: manualNotes.trim() || null,
-          });
+          if (manualAlreadyReceived) {
+            const receivedDate = cleanPay ?? manualComDate.slice(0, 10);
+            const isUsd = selectedManualAsset.currency === "USD";
+            const cashAmount = syncCash
+              ? isUsd
+                ? Math.round(netAmount * effectiveFx * 100) / 100
+                : netAmount
+              : null;
+            const txType =
+              manualType === "JCP"
+                ? "jcp"
+                : manualType === "RENDIMENTO"
+                  ? "yield"
+                  : "dividend";
+            await createPortfolioDividendMutation.mutateAsync({
+              asset_id: selectedManualAsset.id,
+              ticker: selectedManualAsset.ticker,
+              amount: netAmount,
+              date: receivedDate,
+              notes: manualNotes.trim() || null,
+              sync_cash: syncCash,
+              cash_amount: cashAmount,
+              create_transaction: syncCash,
+              tx_type: txType,
+              fx_rate: isUsd ? effectiveFx : null,
+            });
+          } else {
+            const status =
+              cleanPay !== null && cleanPay <= today ? "PENDING_CONFIRMATION" : "PROVISIONED";
+            await createManualMutation.mutateAsync({
+              asset_id: selectedManualAsset.id,
+              ticker: selectedManualAsset.ticker,
+              type: manualType,
+              com_date: manualComDate.slice(0, 10),
+              payment_date: cleanPay,
+              quantity_on_com_date: manualEffectiveQty,
+              tax_rate_pct: manualTaxPct,
+              net_amount: netAmount,
+              currency: selectedManualAsset.currency === "USD" ? "USD" : "BRL",
+              status,
+              notes: manualNotes.trim() || null,
+            });
+          }
 
           setManualNetCents(0);
+          setManualPerUnitCents(0);
+          setManualAlreadyReceived(false);
           setManualTaxPctOverride(null);
           setManualNotes("");
           setManualPaymentDate("");
@@ -826,31 +974,161 @@ export function PendingDividendsDialog({
     });
   };
 
-  const handleLinkToExistingManual = (item: SuggestedDividendItem) => {
+  const handleLinkToExistingManual = (
+    item: SuggestedDividendItem,
+    adoptOfficialDate = false,
+  ) => {
     if (
       !item.eventId ||
       !item.suggestedManualMatch ||
-      updateDividendEventMutation.isPending
+      updateDividendEventMutation.isPending ||
+      updatePortfolioDividendMutation.isPending
     ) {
       return;
     }
     const manualId = item.suggestedManualMatch.manualId;
-    const eventId = item.eventId;
+    const targetIds =
+      item.suggestedManualMatch.groupEventIds &&
+      item.suggestedManualMatch.groupEventIds.length > 0
+        ? item.suggestedManualMatch.groupEventIds
+        : [item.eventId];
+    const officialDate =
+      adoptOfficialDate && item.paymentDate ? item.paymentDate.slice(0, 10) : null;
+
     guardAction(() => {
-      void updateDividendEventMutation
-        .mutateAsync({
-          id: eventId,
-          patch: {
-            status: "SETTLED",
-            settlement_origin: "dedup",
-            settled_dividend_id: manualId,
-          },
-        })
-        .then(() => {
+      void (async () => {
+        try {
+          if (officialDate && officialDate !== item.suggestedManualMatch?.manualDate) {
+            await updatePortfolioDividendMutation.mutateAsync({
+              id: manualId,
+              patch: { date: officialDate },
+            });
+          }
+          for (const evId of targetIds) {
+            await updateDividendEventMutation.mutateAsync({
+              id: evId,
+              patch: {
+                status: "SETTLED",
+                settlement_origin: "dedup",
+                settled_dividend_id: manualId,
+              },
+            });
+          }
           onRetry?.();
-        })
-        .catch(() => undefined);
+        } catch {
+          // O hook já exibe toast de erro
+        }
+      })();
     });
+  };
+
+  const suggestedAvailableItems = useMemo(
+    () =>
+      filteredAvailableDividends.filter((d) =>
+        Boolean(d.suggestedManualMatch && d.eventId),
+      ),
+    [filteredAvailableDividends],
+  );
+
+  const handleLinkAllSuggested = () => {
+    if (
+      suggestedAvailableItems.length === 0 ||
+      updateDividendEventMutation.isPending
+    ) {
+      return;
+    }
+    guardAction(() => {
+      void (async () => {
+        try {
+          const seenEventIds = new Set<string>();
+          for (const item of suggestedAvailableItems) {
+            if (!item.eventId || !item.suggestedManualMatch) continue;
+            const ids =
+              item.suggestedManualMatch.groupEventIds &&
+              item.suggestedManualMatch.groupEventIds.length > 0
+                ? item.suggestedManualMatch.groupEventIds
+                : [item.eventId];
+            for (const evId of ids) {
+              if (seenEventIds.has(evId)) continue;
+              seenEventIds.add(evId);
+              await updateDividendEventMutation.mutateAsync({
+                id: evId,
+                patch: {
+                  status: "SETTLED",
+                  settlement_origin: "dedup",
+                  settled_dividend_id: item.suggestedManualMatch.manualId,
+                },
+              });
+            }
+          }
+          onRetry?.();
+        } catch {
+          // O hook já exibe toast de erro
+        }
+      })();
+    });
+  };
+
+  const renderSuggestedMatchBanner = (div: SuggestedDividendItem) => {
+    if (!div.suggestedManualMatch || !div.eventId) return null;
+    const isGroup =
+      Boolean(div.suggestedManualMatch.groupEventIds) &&
+      (div.suggestedManualMatch.groupEventIds?.length ?? 0) > 1;
+    const canAdoptDate =
+      Boolean(div.paymentDate) &&
+      div.paymentDate !== div.suggestedManualMatch.manualDate &&
+      !isGroup;
+
+    return (
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 py-2 bg-muted/40 border-t border-border/60 text-[11px]">
+        <span className="text-muted-foreground">
+          {isGroup ? (
+            <>
+              Soma de{" "}
+              <strong className="text-foreground">
+                {div.suggestedManualMatch.groupEventIds?.length} eventos
+              </strong>{" "}
+              corresponde ao lançamento em{" "}
+            </>
+          ) : (
+            "Possível correspondência no extrato em "
+          )}
+          <strong className="text-foreground">
+            {formatDateBR(div.suggestedManualMatch.manualDate)}
+          </strong>
+          {div.suggestedManualMatch.reason && !isGroup
+            ? ` (${div.suggestedManualMatch.reason})`
+            : ""}
+        </span>
+        <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-center shrink-0">
+          {canAdoptDate ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={
+                isReadOnlyMode ||
+                updateDividendEventMutation.isPending ||
+                updatePortfolioDividendMutation.isPending
+              }
+              onClick={() => handleLinkToExistingManual(div, true)}
+              className="text-xs"
+            >
+              Vincular e adotar data oficial
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={isReadOnlyMode || updateDividendEventMutation.isPending}
+            onClick={() => handleLinkToExistingManual(div, false)}
+          >
+            {isGroup ? "Vincular grupo (sem novo crédito)" : "Vincular (sem novo crédito)"}
+          </Button>
+        </div>
+      </div>
+    );
   };
 
   const handleDeleteManualEvent = (eventId: string) => {
@@ -1294,6 +1572,17 @@ export function PendingDividendsDialog({
                 Dispensar selecionados ({selectedItems.length})
               </Button>
             ) : null}
+            {suggestedAvailableItems.length >= 2 ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isReadOnlyMode || updateDividendEventMutation.isPending}
+                onClick={handleLinkAllSuggested}
+              >
+                Vincular {suggestedAvailableItems.length} sugeridos (sem novo crédito)
+              </Button>
+            ) : null}
           </div>
           {selectedSummary.totalBRLCents > 0 ? (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap">
@@ -1394,29 +1683,7 @@ export function PendingDividendsDialog({
                     </div>
                   </div>
 
-                  {div.suggestedManualMatch && div.eventId ? (
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 py-2 bg-muted/40 border-t border-border/60 text-[11px]">
-                      <span className="text-muted-foreground">
-                        Possível correspondência no extrato em{" "}
-                        <strong className="text-foreground">
-                          {formatDateBR(div.suggestedManualMatch.manualDate)}
-                        </strong>
-                        {div.suggestedManualMatch.reason
-                          ? ` (${div.suggestedManualMatch.reason})`
-                          : ""}
-                      </span>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={isReadOnlyMode || updateDividendEventMutation.isPending}
-                        onClick={() => handleLinkToExistingManual(div)}
-                        className="self-start sm:self-center shrink-0"
-                      >
-                        Vincular (sem novo crédito)
-                      </Button>
-                    </div>
-                  ) : null}
+                  {renderSuggestedMatchBanner(div)}
 
                   {isEditing ? renderInlineRowEditor(div, eff) : null}
                 </div>
@@ -1618,6 +1885,7 @@ export function PendingDividendsDialog({
                       )}
                     </div>
                   </div>
+                  {renderSuggestedMatchBanner(div)}
                   {isEditing
                     ? renderInlineRowEditor(div, eff, { allowDirectConfirm: true })
                     : null}
@@ -1632,7 +1900,100 @@ export function PendingDividendsDialog({
 
   const manualContent = (
     <div className="flex flex-col gap-4 py-1">
-      {eligibleAssets.length === 0 ? (
+      <div className="inline-flex items-center self-start rounded-lg border border-border/80 bg-muted/30 p-0.5 text-xs">
+        <button
+          type="button"
+          onClick={() => setManualSubMode("single")}
+          className={`px-3 py-1 rounded-md transition-colors ${
+            manualSubMode === "single"
+              ? "bg-surface text-foreground font-semibold shadow-2xs"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Lançamento individual
+        </button>
+        <button
+          type="button"
+          onClick={() => setManualSubMode("import")}
+          className={`px-3 py-1 rounded-md transition-colors ${
+            manualSubMode === "import"
+              ? "bg-surface text-foreground font-semibold shadow-2xs"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Importar extrato B3 / CSV
+        </button>
+      </div>
+
+      {manualSubMode === "import" ? (
+        <div className="flex flex-col gap-3">
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Envie um arquivo CSV/TSV ou cole as linhas exportadas da Área do Investidor B3
+            (colunas Produto, Pagamento, Tipo de Evento e Valor líquido). Lançamentos já existentes no extrato são ignorados automaticamente.
+          </p>
+          <Dropzone
+            accept=".csv,.txt,.tsv"
+            label="Arraste um CSV da B3/corretora ou clique para selecionar"
+            onFiles={(files) => {
+              const file = files[0];
+              if (!file) return;
+              void file.text().then((txt) => setImportRawText(txt));
+            }}
+          />
+          <Textarea
+            value={importRawText}
+            onChange={(e) => setImportRawText(e.target.value)}
+            placeholder={"Produto;Pagamento;Tipo de Evento;Valor líquido\nHGRU11 - CSHG RENDA URBANA FII;15/10/2026;Rendimento;R$ 120,00"}
+            rows={5}
+            aria-label="Conteúdo CSV ou tabela da B3 para importar proventos"
+          />
+          {parsedImport.items.length > 0 || parsedImport.skippedInvalid > 0 ? (
+            <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-muted/20 p-3">
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <Badge size="xs" variant="positive">
+                  {parsedImport.newCount} novos
+                </Badge>
+                {parsedImport.duplicateCount > 0 ? (
+                  <Badge size="xs" variant="muted">
+                    {parsedImport.duplicateCount} já lançados
+                  </Badge>
+                ) : null}
+                {parsedImport.skippedInvalid > 0 ? (
+                  <Badge size="xs" variant="warning">
+                    {parsedImport.skippedInvalid} ignorados
+                  </Badge>
+                ) : null}
+              </div>
+              <div className="max-h-44 overflow-y-auto divide-y divide-border/60 rounded-lg border border-border/70 bg-surface">
+                {parsedImport.items.map((it) => (
+                  <div
+                    key={`${it.rowIndex}-${it.ticker}-${it.date}`}
+                    className="flex items-center justify-between gap-2 px-3 py-2 text-xs"
+                  >
+                    <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                      <span className="font-mono font-semibold text-foreground">{it.ticker}</span>
+                      <span className="text-[11px] text-muted-foreground">
+                        {formatDateBR(it.date)}
+                      </span>
+                      {it.alreadyImported ? (
+                        <Badge size="xs" variant="muted">
+                          Já lançado
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <MoneyText
+                      cents={numberToCents(it.amount)}
+                      currency={it.currency}
+                      tone={it.alreadyImported ? "default" : "positive"}
+                      className="text-xs font-semibold shrink-0"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : eligibleAssets.length === 0 ? (
         <EmptyState
           title="Nenhum ativo elegível em custódia"
           description="Cadastre uma ação, FII, ETF ou BDR com saldo em custódia para provisionar proventos manualmente."
@@ -1712,16 +2073,65 @@ export function PendingDividendsDialog({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="manual-div-net" className="text-xs font-semibold text-foreground">
-                Valor líquido total ({selectedManualAsset?.currency ?? "BRL"})
-              </label>
-              <MoneyInput
-                id="manual-div-net"
-                currency={selectedManualAsset?.currency === "USD" ? "USD" : "BRL"}
-                cents={manualNetCents}
-                onCentsChange={setManualNetCents}
-                aria-label="Valor líquido total do provisionamento"
-              />
+              <div className="flex items-center justify-between gap-2">
+                <label htmlFor="manual-div-net" className="text-xs font-semibold text-foreground">
+                  {manualAmountMode === "total"
+                    ? `Valor líquido total (${selectedManualAsset?.currency ?? "BRL"})`
+                    : `Valor bruto por cota (${selectedManualAsset?.currency ?? "BRL"})`}
+                </label>
+                <div className="inline-flex items-center rounded-md border border-border/80 bg-muted/30 p-0.5 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => setManualAmountMode("total")}
+                    className={`px-2 py-0.5 rounded transition-colors ${
+                      manualAmountMode === "total"
+                        ? "bg-surface text-foreground font-semibold shadow-2xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Total
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setManualAmountMode("per_unit")}
+                    className={`px-2 py-0.5 rounded transition-colors ${
+                      manualAmountMode === "per_unit"
+                        ? "bg-surface text-foreground font-semibold shadow-2xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Por cota
+                  </button>
+                </div>
+              </div>
+              {manualAmountMode === "total" ? (
+                <MoneyInput
+                  id="manual-div-net"
+                  currency={selectedManualAsset?.currency === "USD" ? "USD" : "BRL"}
+                  cents={manualNetCents}
+                  onCentsChange={setManualNetCents}
+                  aria-label="Valor líquido total do provisionamento"
+                />
+              ) : (
+                <>
+                  <MoneyInput
+                    id="manual-div-net"
+                    currency={selectedManualAsset?.currency === "USD" ? "USD" : "BRL"}
+                    cents={manualPerUnitCents}
+                    onCentsChange={setManualPerUnitCents}
+                    aria-label="Valor bruto por cota"
+                  />
+                  <span className="text-[11px] text-muted-foreground">
+                    Total líquido calculado ({formatAssetQuantity(manualEffectiveQty)} cotas):{" "}
+                    <MoneyText
+                      cents={manualEffectiveNetCents}
+                      currency={selectedManualAsset?.currency === "USD" ? "USD" : "BRL"}
+                      tone="default"
+                      className="inline text-[11px] font-semibold text-foreground"
+                    />
+                  </span>
+                </>
+              )}
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -1749,6 +2159,21 @@ export function PendingDividendsDialog({
               placeholder="Ex.: Aviso aos acionistas ou corretora EUA"
             />
           </div>
+
+          <label className="inline-flex items-center gap-2 text-xs text-foreground cursor-pointer">
+            <Checkbox
+              checked={manualAlreadyReceived}
+              onCheckedChange={(checked) => {
+                const isChecked = Boolean(checked);
+                setManualAlreadyReceived(isChecked);
+                if (isChecked && !manualPaymentDate) {
+                  setManualPaymentDate(todaySaoPauloISO());
+                }
+              }}
+              aria-label="Já recebido na conta (lançar direto no extrato)"
+            />
+            <span>Já recebido na conta (lançar direto no extrato)</span>
+          </label>
         </>
       )}
     </div>
@@ -1831,21 +2256,38 @@ export function PendingDividendsDialog({
               >
                 Voltar para Conferência
               </Button>
-              <Button
-                type="button"
-                size="sm"
-                loading={createManualMutation.isPending}
-                disabled={
-                  isReadOnlyMode ||
-                  !selectedManualAsset ||
-                  manualNetCents <= 0 ||
-                  !manualComDate ||
-                  createManualMutation.isPending
-                }
-                onClick={handleCreateManual}
-              >
-                Provisionar
-              </Button>
+              {manualSubMode === "import" ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  loading={isImportingDividends}
+                  disabled={
+                    isReadOnlyMode ||
+                    parsedImport.newCount === 0 ||
+                    isImportingDividends
+                  }
+                  onClick={handleImportDividendsBatch}
+                >
+                  Importar {parsedImport.newCount} provento{parsedImport.newCount === 1 ? "" : "s"}
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  size="sm"
+                  loading={createManualMutation.isPending || createPortfolioDividendMutation.isPending}
+                  disabled={
+                    isReadOnlyMode ||
+                    !selectedManualAsset ||
+                    manualEffectiveNetCents <= 0 ||
+                    !manualComDate ||
+                    createManualMutation.isPending ||
+                    createPortfolioDividendMutation.isPending
+                  }
+                  onClick={handleCreateManual}
+                >
+                  {manualAlreadyReceived ? "Registrar recebido" : "Provisionar"}
+                </Button>
+              )}
             </ModalFooter>
           )
         }

@@ -1543,6 +1543,7 @@ Deno.serve(async (req) => {
           }
         }
 
+        const promotedIds = new Set<string>();
         for (const item of allCorporateDividends) {
           const cand = findCompatibleCorporateCandidateEdge(item, existingCorpList);
           if (cand) {
@@ -1551,6 +1552,32 @@ Deno.serve(async (req) => {
             if (candTierPrio > itemTierPrio) {
               // Nunca sobrescreve termos de tier superior com observação inferior
               continue;
+            }
+            if (
+              cand.is_type_uncertain &&
+              cand.type !== item.type &&
+              itemTierPrio > candTierPrio &&
+              !promotedIds.has(cand.id)
+            ) {
+              const { error: promoteTypeErr } = await supabase
+                .from("corporate_dividends")
+                .update({
+                  type: item.type,
+                  rate: item.rate,
+                  net_rate: item.net_rate,
+                  tax_rate_pct: item.tax_rate_pct,
+                  payment_date: item.payment_date ?? cand.payment_date,
+                  provider: item.provider,
+                  trust_tier: item.trust_tier,
+                  is_type_uncertain: item.is_type_uncertain,
+                  external_terms: item.external_terms,
+                })
+                .eq("id", cand.id);
+              if (!promoteTypeErr) {
+                promotedIds.add(cand.id);
+                promoted += 1;
+                continue;
+              }
             }
             normalizedRowsForUpsert.push({
               ...item,
@@ -2105,6 +2132,15 @@ Deno.serve(async (req) => {
           const instrumentKind = classifyDividendInstrumentKindEdge(lookupTicker, grp.currency);
           const tickerManualDivs = manDivsByCanonTicker.get(lookupTicker) ?? [];
 
+          // Pré-calcula custódia/valores e executa conciliação bipartida ótima na partição inteira do ticker
+          const eligibleEntries: Array<{
+            corp: CorpEventRow;
+            existing: ReturnType<typeof existingByCorpId.get>;
+            qtyOnCom: number;
+            grossAmount: number;
+            netAmount: number;
+            statusEval: ReturnType<typeof resolveOpenDividendEventStatusEdge>;
+          }> = [];
           for (const corp of corpList) {
             if (corp.com_date > todayBR) continue;
             if (dismissedCorpIds.has(corp.id)) continue;
@@ -2136,7 +2172,6 @@ Deno.serve(async (req) => {
             }
             qtyOnCom = Math.round(qtyOnCom * 100_000_000) / 100_000_000;
 
-            // Caso inelegível ou zerado: se já existe evento aberto automático desprotegido com valor > 0, zera com trava de revisão
             if (qtyOnCom <= 0) {
               if (
                 existing &&
@@ -2180,6 +2215,47 @@ Deno.serve(async (req) => {
               isManual: existing?.is_manual,
               manualReviewRequired: existing?.manual_review_required,
             });
+            eligibleEntries.push({ corp, existing, qtyOnCom, grossAmount, netAmount, statusEval });
+          }
+
+          const partitionAvailableManuals = tickerManualDivs.filter((m) => !consumedManualIds.has(m.id));
+          const partitionMatchInputs = eligibleEntries
+            .filter((e) => e.statusEval.status !== "PROVISIONED")
+            .map((e) => ({
+              id: e.corp.id,
+              ticker: e.corp.ticker,
+              currency: e.corp.currency,
+              com_date: e.corp.com_date,
+              payment_date: e.corp.payment_date,
+              gross_amount: e.grossAmount,
+              net_amount: e.netAmount,
+              type: e.corp.type,
+              is_type_uncertain: e.corp.is_type_uncertain,
+              manual_review_required: false,
+              status: "PENDING_CONFIRMATION" as const,
+            }));
+          const partitionLinks =
+            partitionMatchInputs.length > 0 && partitionAvailableManuals.length > 0
+              ? reconcilePartition1to1Edge(
+                  partitionMatchInputs,
+                  partitionAvailableManuals.map((m) => ({
+                    id: m.id,
+                    ticker: lookupTicker,
+                    currency: grp.currency,
+                    date: m.date,
+                    amount: Number(m.amount),
+                  })),
+                )
+              : [];
+          const partitionMatchedManualByCorpId = new Map<string, string>();
+          for (const link of partitionLinks) {
+            for (const eid of link.event_ids) {
+              partitionMatchedManualByCorpId.set(eid, link.manual_id);
+            }
+          }
+
+          for (const entry of eligibleEntries) {
+            const { corp, existing, qtyOnCom, grossAmount, netAmount, statusEval } = entry;
             const isProvisioned = statusEval.status === "PROVISIONED";
 
             if (isProvisioned) {
@@ -2247,6 +2323,7 @@ Deno.serve(async (req) => {
                     .from("user_dividend_events")
                     .update({
                       status: "PROVISIONED",
+                      type: corp.type,
                       asset_id: primaryLot.id,
                       payment_date: corp.payment_date,
                       quantity_on_com_date: qtyOnCom,
@@ -2285,17 +2362,19 @@ Deno.serve(async (req) => {
               corp.payment_date >= corp.com_date &&
               corp.payment_date <= todayBR;
 
-            // Se linha pendente sofreu alteração de elegibilidade/corte/data ou voltou a ficar elegível, recompõe com trava de revisão
+            // Se linha pendente sofreu alteração de elegibilidade/corte/data/tipo, recompõe antes de conciliar/liquidar
             if (existing?.status === "PENDING_CONFIRMATION") {
               const shouldRecomposePending =
                 Math.abs(existing.quantity_on_com_date - qtyOnCom) > 1e-6 ||
                 (corp.payment_date !== null && existing.payment_date !== corp.payment_date) ||
-                Math.abs(existing.net_amount - netAmount) > 0.005;
+                Math.abs(existing.net_amount - netAmount) > 0.005 ||
+                existing.is_type_uncertain !== corp.is_type_uncertain;
               if (shouldRecomposePending) {
                 const { data: recompRow, error: recompErr } = await supabase
                   .from("user_dividend_events")
                   .update({
                     asset_id: primaryLot.id,
+                    type: corp.type,
                     payment_date: corp.payment_date,
                     quantity_on_com_date: qtyOnCom,
                     gross_rate: corp.rate,
@@ -2321,35 +2400,14 @@ Deno.serve(async (req) => {
                   existing.revision = Number(recompRow.revision ?? existing.revision + 1);
                 }
               }
-              continue;
             }
 
             const availableManuals = tickerManualDivs.filter((m) => !consumedManualIds.has(m.id));
-            const edgeMatchList = reconcilePartition1to1Edge(
-              [
-                {
-                  id: corp.id,
-                  ticker: corp.ticker,
-                  currency: corp.currency,
-                  com_date: corp.com_date,
-                  payment_date: corp.payment_date,
-                  gross_amount: grossAmount,
-                  net_amount: netAmount,
-                  type: corp.type,
-                  is_type_uncertain: corp.is_type_uncertain,
-                  manual_review_required: false,
-                  status: "PENDING_CONFIRMATION",
-                },
-              ],
-              availableManuals.map((m) => ({
-                id: m.id,
-                ticker: corp.ticker,
-                currency: corp.currency,
-                date: m.date,
-                amount: Number(m.amount),
-              })),
-            );
-            const matchedManualId = edgeMatchList[0]?.manual_id ?? null;
+            const partitionManualId = partitionMatchedManualByCorpId.get(corp.id) ?? null;
+            const matchedManualId =
+              partitionManualId && availableManuals.some((m) => m.id === partitionManualId)
+                ? partitionManualId
+                : null;
             const fuzzyDup =
               matchedManualId !== null
                 ? { matched: true, matchedDividendId: matchedManualId }
@@ -2361,6 +2419,7 @@ Deno.serve(async (req) => {
                   .from("user_dividend_events")
                   .update({
                     asset_id: primaryLot.id,
+                    type: corp.type,
                     status: "SETTLED",
                     settlement_origin: "dedup",
                     manual_review_required: false,
@@ -2456,6 +2515,10 @@ Deno.serve(async (req) => {
               corp.is_type_uncertain ||
               settlementMode === "manual_confirm" ||
               (corp.payment_date !== null && corp.payment_date < cutoffDate);
+
+            if (existing?.status === "PENDING_CONFIRMATION" && mustManualConfirm) {
+              continue;
+            }
 
             let upsertedEvent: { id: string; revision?: number | null } | null = null;
             let upEvErr: unknown = null;

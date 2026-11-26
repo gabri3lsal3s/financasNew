@@ -60,6 +60,7 @@ export interface SuggestedDividendItem {
     manualDate: string;
     manualAmount: number;
     reason?: string;
+    groupEventIds?: string[];
   } | null;
 }
 

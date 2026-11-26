@@ -518,6 +518,7 @@ export * from "./closing-validator";
 export * from "./dividend-engine";
 export * from "./dividend-consensus";
 export * from "./dividend-deduplication";
+export * from "./dividend-import";
 export * from "./dividend-suggester";
 export * from "./dividend-cash-governance";
 export * from "./provisioned-dividends";

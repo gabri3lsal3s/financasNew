@@ -428,4 +428,114 @@ describe("PendingDividendsDialog (S1 — Calibração coletiva e confirmação s
       expect(onRetry).toHaveBeenCalled();
     });
   });
+
+  it("permite vincular múltiplos sugeridos em lote e exibe sugestão também na aba Provisionados", async () => {
+    const user = userEvent.setup();
+    mockUpdateEventMutateAsync.mockResolvedValue({ status: "SETTLED" });
+
+    render(
+      <PendingDividendsDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        availableDividends={[
+          {
+            corporateDividendId: "c-1",
+            eventId: "ev-1",
+            assetId: "a-1",
+            ticker: "HGRU11",
+            type: "RENDIMENTO",
+            comDate: "2026-09-30",
+            paymentDate: null,
+            quantityOnComDate: 100,
+            rate: 1.2,
+            netRate: 1.2,
+            taxRatePct: 0,
+            grossAmount: 120,
+            totalAmount: 120,
+            currency: "BRL",
+            status: "available",
+            provider: "yahoo",
+            trustTier: "raw_fallback",
+            isManual: false,
+            revision: 1,
+            suggestedManualMatch: {
+              manualId: "man-1",
+              manualDate: "2026-10-15",
+              manualAmount: 120,
+              reason: "ambiguous_1to1",
+            },
+          },
+          {
+            corporateDividendId: "c-2",
+            eventId: "ev-2",
+            assetId: "a-2",
+            ticker: "MXRF11",
+            type: "RENDIMENTO",
+            comDate: "2026-09-30",
+            paymentDate: null,
+            quantityOnComDate: 100,
+            rate: 0.1,
+            netRate: 0.1,
+            taxRatePct: 0,
+            grossAmount: 10,
+            totalAmount: 10,
+            currency: "BRL",
+            status: "available",
+            provider: "yahoo",
+            trustTier: "raw_fallback",
+            isManual: false,
+            revision: 1,
+            suggestedManualMatch: {
+              manualId: "man-2",
+              manualDate: "2026-10-15",
+              manualAmount: 10,
+              reason: "ambiguous_1to1",
+            },
+          },
+        ]}
+        projectedDividends={[
+          {
+            corporateDividendId: "c-proj-match",
+            eventId: "ev-proj-match",
+            assetId: "a-3",
+            ticker: "LVBI11",
+            type: "RENDIMENTO",
+            comDate: "2026-11-30",
+            paymentDate: "2026-12-08",
+            quantityOnComDate: 50,
+            rate: 0.9,
+            netRate: 0.9,
+            taxRatePct: 0,
+            grossAmount: 45,
+            totalAmount: 45,
+            currency: "BRL",
+            status: "projected",
+            provider: "b3",
+            trustTier: "official",
+            isManual: false,
+            revision: 1,
+            suggestedManualMatch: {
+              manualId: "man-3",
+              manualDate: "2026-12-08",
+              manualAmount: 45,
+              reason: "ambiguous_1to1",
+            },
+          },
+        ]}
+        assetsNeedingCalibration={[]}
+      />,
+    );
+
+    const batchLinkBtn = screen.getByRole("button", {
+      name: /Vincular 2 sugeridos \(sem novo crédito\)/i,
+    });
+    await user.click(batchLinkBtn);
+
+    await waitFor(() => {
+      expect(mockUpdateEventMutateAsync).toHaveBeenCalledTimes(2);
+    });
+
+    await user.click(screen.getByRole("tab", { name: /Provisionados \(1\)/i }));
+    expect(screen.getByText(/Possível correspondência no extrato em/i)).toBeInTheDocument();
+  });
 });
