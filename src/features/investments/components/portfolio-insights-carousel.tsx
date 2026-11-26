@@ -43,6 +43,7 @@ export function PortfolioInsightsCarousel({ className }: PortfolioInsightsCarous
     projected,
     totalAvailableAmount,
     totalProjectedAmount,
+    monthlyForecast,
     isLoading: isDividendsLoading,
   } = useCorporateDividends();
 
@@ -96,13 +97,17 @@ export function PortfolioInsightsCarousel({ className }: PortfolioInsightsCarous
 
   const handleApproveAll = async () => {
     if (confirmMutation.isPending) return;
-    if (available.length === 0 || hasUncertainTax) {
+    if (
+      available.length === 0 ||
+      hasUncertainTax ||
+      available.some((d) => !d.paymentDate)
+    ) {
       openDividendReviewModal({ initialTab: "review" });
       return;
     }
 
     const items: ConfirmDividendEventItem[] = available
-      .filter((d) => d.totalAmount > 0)
+      .filter((d) => d.totalAmount > 0 && Boolean(d.paymentDate))
       .map((d) => {
         const taxPct =
           d.taxRatePct !== undefined
@@ -195,9 +200,9 @@ export function PortfolioInsightsCarousel({ className }: PortfolioInsightsCarous
     }),
     ...buildDividendInsightItems({
       availableCount: available.length,
-      projectedCount: projected.length,
+      projectedCount: monthlyForecast ? monthlyForecast.count : projected.length,
       totalAvailableAmount,
-      totalProjectedAmount,
+      totalProjectedAmount: monthlyForecast ? monthlyForecast.totalBRL : totalProjectedAmount,
       hasUncertainTax,
       autoCreditCash,
       isApproving: confirmMutation.isPending,

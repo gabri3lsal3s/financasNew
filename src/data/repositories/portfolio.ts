@@ -4,6 +4,8 @@ import { readAllPages, resolveQuery } from "@/data/query";
 import { AppError, classifyError } from "@/services/errors";
 import { currentMonth } from "@/lib/date";
 import { normalizeDividendTickerKey } from "@/domain/portfolio/dividend-deduplication";
+import { computeOperationalDiscoveryFloor } from "@/domain/portfolio/dividend-engine";
+import { todaySaoPauloISO } from "@/domain/portfolio/dividend-suggester";
 import type {
   DbInsert,
   DbUpdate,
@@ -41,6 +43,7 @@ function mapAsset(row: PortfolioAsset): PortfolioAsset {
     last_reviewed_at: row.last_reviewed_at ?? null,
     review_frequency_months: row.review_frequency_months != null ? Number(row.review_frequency_months) : 6,
     thesis_summary: row.thesis_summary ?? null,
+    dividends_start_date: row.dividends_start_date ? String(row.dividends_start_date).slice(0, 10) : null,
   };
 }
 
@@ -83,6 +86,8 @@ function mapDividend(row: PortfolioDividend): PortfolioDividend {
     sync_cash: row.sync_cash ? Boolean(row.sync_cash) : false,
     cash_amount:
       row.cash_amount !== undefined && row.cash_amount !== null ? Number(row.cash_amount) : null,
+    request_id: row.request_id ?? null,
+    entry_origin: row.entry_origin ?? "legacy",
   };
 }
 
@@ -758,6 +763,9 @@ function mapCorporateDividend(row: CorporateDividend): CorporateDividend {
     net_rate: Number(row.net_rate),
     tax_rate_pct: Number(row.tax_rate_pct ?? 0),
     is_type_uncertain: Boolean(row.is_type_uncertain),
+    trust_tier: row.trust_tier ?? "raw_fallback",
+    external_terms: row.external_terms ?? null,
+    published: row.published ?? true,
   };
 }
 
@@ -775,14 +783,23 @@ function mapUserDividendEvent(row: UserDividendEvent): UserDividendEvent {
     fx_rate_applied: row.fx_rate_applied != null ? Number(row.fx_rate_applied) : null,
     is_manual: Boolean(row.is_manual),
     is_type_uncertain: Boolean(row.is_type_uncertain),
+    manual_review_required: Boolean(row.manual_review_required),
+    revision: row.revision != null ? Number(row.revision) : 1,
   };
 }
 
+const CORPORATE_DIVIDEND_COLUMNS =
+  "id,ticker,type,com_date,payment_date,rate,currency,net_rate,provider,tax_rate_pct,is_type_uncertain,trust_tier,external_terms,published";
+
 /**
- * Consulta proventos corporativos capturados (B3 e EUA).
- * Quando `tickers` é informado, filtra estritamente pelos ativos do usuário (sem limite cego global).
+ * Consulta proventos corporativos capturados (B3 e EUA) na janela operacional padrão (120d).
+ * Pagina por ID em ambos os caminhos (com e sem filtro de tickers) para evitar limite cego.
  */
 export async function listCorporateDividends(tickers?: string[]): Promise<CorporateDividend[]> {
+  const todayBR = todaySaoPauloISO();
+  const floorDate = computeOperationalDiscoveryFloor(todayBR);
+  const windowFilter = `com_date.gte.${floorDate},payment_date.gte.${floorDate}`;
+
   if (Array.isArray(tickers)) {
     const normalizedSet = new Set<string>();
     for (const raw of tickers) {
@@ -802,18 +819,22 @@ export async function listCorporateDividends(tickers?: string[]): Promise<Corpor
       const batches = Array.from({ length: concurrency }, (_, index) =>
         uniqueTickers.slice(offset + index * CHUNK_SIZE, offset + (index + 1) * CHUNK_SIZE),
       ).filter((batch) => batch.length > 0);
-      const pages = await Promise.all(batches.map((tickersBatch) =>
-        readAllPages<CorporateDividend>((afterId, pageSize) => {
-          let query = getSupabase()
-            .from("corporate_dividends")
-            .select("id,ticker,type,com_date,payment_date,rate,currency,net_rate,provider,tax_rate_pct,is_type_uncertain")
-            .in("ticker", tickersBatch)
-            .order("id", { ascending: true })
-            .limit(pageSize);
-          if (afterId) query = query.gt("id", afterId);
-          return resolveQuery<CorporateDividend[]>(query);
-        }),
-      ));
+      const pages = await Promise.all(
+        batches.map((tickersBatch) =>
+          readAllPages<CorporateDividend>((afterId, pageSize) => {
+            let query = getSupabase()
+              .from("corporate_dividends")
+              .select(CORPORATE_DIVIDEND_COLUMNS)
+              .in("ticker", tickersBatch)
+              .lte("com_date", todayBR)
+              .or(windowFilter)
+              .order("id", { ascending: true })
+              .limit(pageSize);
+            if (afterId) query = query.gt("id", afterId);
+            return resolveQuery<CorporateDividend[]>(query);
+          }),
+        ),
+      );
       for (const rows of pages) {
         for (const row of rows) byId.set(row.id, mapCorporateDividend(row));
       }
@@ -822,20 +843,19 @@ export async function listCorporateDividends(tickers?: string[]): Promise<Corpor
     return Array.from(byId.values()).sort((a, b) => b.com_date.localeCompare(a.com_date));
   }
 
-  const { data, error } = await resolveQuery(
-    getSupabase()
+  const rows = await readAllPages<CorporateDividend>((afterId, pageSize) => {
+    let query = getSupabase()
       .from("corporate_dividends")
-      .select("*")
-      .order("com_date", { ascending: false })
-      .limit(500),
-  );
+      .select(CORPORATE_DIVIDEND_COLUMNS)
+      .lte("com_date", todayBR)
+      .or(windowFilter)
+      .order("id", { ascending: true })
+      .limit(pageSize);
+    if (afterId) query = query.gt("id", afterId);
+    return resolveQuery<CorporateDividend[]>(query);
+  });
 
-  if (error) {
-    const classified = classifyError(error);
-    throw new AppError(classified.kind, classified.message, error);
-  }
-
-  return ((data ?? []) as CorporateDividend[]).map(mapCorporateDividend);
+  return rows.map(mapCorporateDividend).sort((a, b) => b.com_date.localeCompare(a.com_date));
 }
 
 /**
@@ -971,6 +991,7 @@ export async function updateUserDividendEvent(
       .from("user_dividend_events")
       .update({
         ...patch,
+        manual_review_required: true,
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)

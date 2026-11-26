@@ -62,6 +62,7 @@ import type {
   UserDividendEvent,
   ApproveDividendsBatchResult,
   ConfirmDividendEventsResult,
+  SetDividendTrackingAtomicResult,
   MonthlyClosingResult,
   UserDevice,
   UserPushSubscription,
@@ -190,6 +191,14 @@ export interface Database {
           corporate_dividend_id: string | null;
         };
       };
+      set_dividend_tracking_atomic: {
+        Args: {
+          p_tracking_start?: string | null;
+          p_assets?: unknown;
+          p_expected_tracking_start?: string | null;
+        };
+        Returns: SetDividendTrackingAtomicResult;
+      };
       set_manual_asset_price: {
         Args: {
           p_ticker: string;
@@ -224,6 +233,18 @@ export interface Database {
         Returns: {
           success: boolean;
           snapshot: PortfolioSnapshot;
+        };
+      };
+      dismiss_user_dividend_events_atomic: {
+        Args: {
+          p_ids: string[];
+          p_revisions: number[] | null;
+          p_reason?: string;
+        };
+        Returns: {
+          success: boolean;
+          dismissed_ids: string[];
+          revisions: number[];
         };
       };
       reset_manual_snapshot_calibration: {

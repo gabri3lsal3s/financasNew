@@ -19,7 +19,7 @@ describe("CorporateDividendsBanner", () => {
     );
 
     expect(screen.getByRole("region", { name: /Aviso de proventos/i })).toBeInTheDocument();
-    const heading = screen.getByRole("heading", { name: /Proventos Creditados na Corretora/i });
+    const heading = screen.getByRole("heading", { name: /Proventos a Conferir/i });
     expect(heading).toHaveClass("text-sm");
     expect(screen.getByText(/1 provento disponível totalizando/i)).toBeInTheDocument();
   });

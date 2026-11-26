@@ -13,6 +13,7 @@ import {
   useSetManualPrice,
   useUpdatePortfolioAsset,
 } from "@/state";
+import * as stateHooks from "@/state";
 import type {
   AssetCeilingMetadata,
   AssetCeilingMethod,
@@ -20,12 +21,55 @@ import type {
   FixedIncomeMetadata,
   FixedIncomeRateType,
   PortfolioAsset,
+  SetDividendTrackingAtomicResult,
+  UserPreferences,
 } from "@/types";
 import { buildEmergencyConfigWithAssetToggle, isAssetInEmergencyConfig } from "../emergency-fund-sync";
 import { CLASSES_WITH_EDITABLE_CURRENCY } from "./asset-form-constants";
 
+function getOptionalStateHook<T>(key: string, fallback: T): T {
+  if (Reflect.ownKeys(stateHooks).includes(key)) {
+    const candidate = (stateHooks as Record<string, unknown>)[key];
+    if (typeof candidate === "function") return candidate as T;
+  }
+  return fallback;
+}
+
+const useOptionalSetDividendTracking = getOptionalStateHook<
+  () => {
+    mutateAsync: (input: {
+      trackingStartDate?: string | null;
+      assets?: Array<{
+        asset_id: string;
+        expected_start: string | null;
+        start_date: string | null;
+      }>;
+      expectedTrackingStartDate?: string | null;
+      silent?: boolean;
+    }) => Promise<SetDividendTrackingAtomicResult>;
+    isPending: boolean;
+  }
+>("useSetDividendTracking", () => ({
+  mutateAsync: async () => ({
+    success: true,
+    tracking_start_date: null,
+    updated_assets: [],
+    updated_assets_count: 0,
+    affected_events_count: 0,
+    protected_events_count: 0,
+    invalidated_event_ids: [],
+  }),
+  isPending: false,
+}));
+
+const useOptionalUserPreferences = getOptionalStateHook<
+  () => { data?: UserPreferences | null }
+>("useUserPreferences", () => ({ data: null }));
+
 export function useAssetEditForm(asset: PortfolioAsset, onClose: () => void) {
   const updateAsset = useUpdatePortfolioAsset();
+  const setDividendTracking = useOptionalSetDividendTracking();
+  const { data: userPreferences } = useOptionalUserPreferences();
   const pricesQuery = useAssetPrices();
   const setManualPrice = useSetManualPrice();
   const emergencyFund = useEmergencyFundComposition();
@@ -55,6 +99,12 @@ export function useAssetEditForm(asset: PortfolioAsset, onClose: () => void) {
   const [accumulatedDividendsCents, setAccumulatedDividendsCents] = useState(numberToCents(asset.accumulated_dividends ?? 0));
   const [estimatedDividendPerShareCents, setEstimatedDividendPerShareCents] = useState(
     numberToCents(asset.estimated_monthly_dividend_per_share ?? 0),
+  );
+  const initialDividendsStartDate = asset.dividends_start_date
+    ? asset.dividends_start_date.slice(0, 10)
+    : null;
+  const [dividendsStartDate, setDividendsStartDate] = useState<string | null>(
+    initialDividendsStartDate,
   );
   const [fixedIncomeRateType, setFixedIncomeRateType] = useState<FixedIncomeRateType>(asset.fixed_income_metadata?.rate_type ?? "cdi");
   const [fixedIncomeRateValue, setFixedIncomeRateValue] = useState<number>(asset.fixed_income_metadata?.rate_value ?? 0);
@@ -128,7 +178,15 @@ export function useAssetEditForm(asset: PortfolioAsset, onClose: () => void) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (updateAsset.isPending || setManualPrice.isPending || isSubmittingRef.current || isSubmitting) return;
+    if (
+      updateAsset.isPending ||
+      setManualPrice.isPending ||
+      setDividendTracking.isPending ||
+      isSubmittingRef.current ||
+      isSubmitting
+    ) {
+      return;
+    }
     isSubmittingRef.current = true;
     setIsSubmitting(true);
     setError(null);
@@ -178,6 +236,7 @@ export function useAssetEditForm(asset: PortfolioAsset, onClose: () => void) {
       ceiling_price: !isCash && !isFixedIncome && ceilingPrice && ceilingPrice > 0 ? ceilingPrice : null,
       ceiling_method: !isCash && !isFixedIncome && ceilingPrice && ceilingPrice > 0 ? ceilingMethod : null,
       ceiling_metadata: !isCash && !isFixedIncome && ceilingMetadata ? (ceilingMetadata as unknown as Record<string, unknown>) : null,
+      dividends_start_date: saveDividends ? dividendsStartDate : null,
     });
 
     if (!validation.success) {
@@ -188,16 +247,35 @@ export function useAssetEditForm(asset: PortfolioAsset, onClose: () => void) {
     }
 
     try {
+      const { dividends_start_date: validatedDividendsStartDate, ...assetPatchData } =
+        validation.data;
       const effectiveFamily = isFamilyModeEnabled ? isFamily : Boolean(asset.is_family);
       await updateAsset.mutateAsync({
         id: asset.id,
         patch: {
-          ...validation.data,
-          review_frequency_months: validation.data.review_frequency_months ?? undefined,
+          ...assetPatchData,
+          review_frequency_months: assetPatchData.review_frequency_months ?? undefined,
           is_family: effectiveFamily,
           family_id: effectiveFamily ? (myFamilyData?.family?.id ?? asset.family_id ?? null) : null,
         },
       });
+      const nextStartDate = saveDividends ? (validatedDividendsStartDate ?? null) : null;
+      if (nextStartDate !== initialDividendsStartDate) {
+        const expectedTracking =
+          userPreferences?.custom_settings?.dividendAutomation?.trackingStartDate ?? null;
+        await setDividendTracking.mutateAsync({
+          trackingStartDate: null,
+          assets: [
+            {
+              asset_id: asset.id,
+              expected_start: initialDividendsStartDate,
+              start_date: nextStartDate,
+            },
+          ],
+          expectedTrackingStartDate: expectedTracking,
+          silent: false,
+        });
+      }
       if (isTotalValueMode) {
         const priceToSave = currentPriceCents > 0 ? currentPriceCents / 100 : initialPriceCents / 100;
         if (priceToSave > 0) await setManualPrice.mutateAsync({ ticker: validation.data.ticker, price: priceToSave });
@@ -227,7 +305,11 @@ export function useAssetEditForm(asset: PortfolioAsset, onClose: () => void) {
     ceilingPrice, setCeilingPrice, ceilingMethod, setCeilingMethod, ceilingMetadata, setCeilingMetadata,
     notes, setNotes,
     accumulatedDividendsCents, setAccumulatedDividendsCents, estimatedDividendPerShareCents,
-    setEstimatedDividendPerShareCents, fixedIncomeRateType, setFixedIncomeRateType, fixedIncomeRateValue,
+    setEstimatedDividendPerShareCents,
+    initialDividendsStartDate,
+    dividendsStartDate,
+    setDividendsStartDate,
+    fixedIncomeRateType, setFixedIncomeRateType, fixedIncomeRateValue,
     setFixedIncomeRateValue, fixedIncomeBaseDate, setFixedIncomeBaseDate, fixedIncomeInitialInvestmentDate,
     setFixedIncomeInitialInvestmentDate, fixedIncomeMaturityDate, setFixedIncomeMaturityDate,
     fixedIncomeIsTaxExempt, setFixedIncomeIsTaxExempt, fixedIncomeManualTaxRatePct,
@@ -236,6 +318,11 @@ export function useAssetEditForm(asset: PortfolioAsset, onClose: () => void) {
     currentPriceCents, setCurrentPriceCents, quantityStr, setQuantityStr, averagePriceCents,
     setAveragePriceCents, fxRateAtPurchase, setFxRateAtPurchase, totalCostBRLCents, setTotalCostBRLCents,
     distributesInterest, setDistributesInterest,
-    isBusy: updateAsset.isPending || setManualPrice.isPending || isSubmitting, handleSubmit,
+    isBusy:
+      updateAsset.isPending ||
+      setManualPrice.isPending ||
+      setDividendTracking.isPending ||
+      isSubmitting,
+    handleSubmit,
   };
 }

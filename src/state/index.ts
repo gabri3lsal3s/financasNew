@@ -131,6 +131,7 @@ export {
   useCreatePortfolioAsset,
   useUpdatePortfolioAsset,
   useDeletePortfolioAsset,
+  useSetDividendTracking,
   useUpsertPortfolioAssetsBatch,
   usePortfolioSnapshots,
   useUpsertPortfolioSnapshot,

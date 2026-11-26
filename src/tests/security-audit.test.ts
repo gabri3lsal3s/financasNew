@@ -55,7 +55,7 @@ describe("F6.2 — RLS: cobertura total (D4 — multiusuário isolado)", () => {
       .map((m) => m[1]?.toLowerCase())
       .filter((name): name is string => Boolean(name));
     const created = Array.from(new Set(createdMatches));
-    expect(created.length).toBe(75);
+    expect(created.length).toBe(78);
     for (const table of created) {
       expect(ALL_SQL).toMatch(
         new RegExp(`alter\\s+table\\s+(?:only\\s+)?public\\.${table}\\s+enable\\s+row\\s+level\\s+security`, "i"),
@@ -873,7 +873,7 @@ describe("Tarefa 3.4 — Expansão da Suíte de Auditoria Integral de Banco & Go
       .map((m) => m[1]?.toLowerCase())
       .filter((name): name is string => Boolean(name));
     const created = Array.from(new Set(createdMatches));
-    expect(created.length).toBe(75);
+    expect(created.length).toBe(78);
     for (const table of created) {
       expect(ALL_SQL).toMatch(
         new RegExp(`alter\\s+table\\s+(?:only\\s+)?public\\.${table}\\s+enable\\s+row\\s+level\\s+security`, "i"),
@@ -1878,5 +1878,160 @@ describe("Auditoria v3.30.0 — Regressões F-01 a F-11", () => {
     expect(adminSecPage).toContain("downloadCsv(");
     expect(adminSecPage).toContain("downloadJson(");
     expect(adminSecPage).not.toContain("function toCsvRow");
+  });
+});
+
+describe("S1 — Corte de Acompanhamento, Revisão e Endurecimento de Proventos (Migration 0159)", () => {
+  const mig0159Path = resolve(
+    root,
+    "supabase/migrations/20260101000159_dividend_tracking_and_confirmation.sql",
+  );
+
+  it("migration 0159 cria colunas, triggers de revisão/preferências e RPC atômica set_dividend_tracking_atomic com tolerância 0.02", () => {
+    expect(existsSync(mig0159Path)).toBe(true);
+    const sql = readFileSync(mig0159Path, "utf8");
+
+    expect(sql).toMatch(/ADD COLUMN IF NOT EXISTS dividends_start_date date/i);
+    expect(sql).toMatch(/CHECK\s*\(dividends_start_date IS NULL OR dividends_start_date >= DATE '2000-01-01'\)/i);
+    expect(sql).toMatch(/ADD COLUMN IF NOT EXISTS revision bigint NOT NULL DEFAULT 1/i);
+    expect(sql).toMatch(/trg_bump_user_dividend_event_revision/i);
+    expect(sql).toMatch(/CREATE INDEX IF NOT EXISTS idx_dividend_manual_asset_date/i);
+    expect(sql).toMatch(/ADD COLUMN IF NOT EXISTS trust_tier text NOT NULL DEFAULT 'raw_fallback'/i);
+    expect(sql).toMatch(/trg_preserve_dividend_tracking_start[\s\S]*BEFORE INSERT OR UPDATE ON public\.user_preferences/i);
+
+    expect(sql).toMatch(/CREATE OR REPLACE FUNCTION public\.set_dividend_tracking_atomic/i);
+    expect(sql).toMatch(/set_dividend_tracking_atomic[\s\S]*pg_advisory_xact_lock/i);
+    expect(sql).toMatch(/set_dividend_tracking_atomic[\s\S]*can_current_user_write_module\('investments'\)/i);
+    expect(sql).toMatch(/set_dividend_tracking_atomic[\s\S]*0\.02/i);
+    expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.set_dividend_tracking_atomic\(date, jsonb, date\) FROM PUBLIC, anon/i);
+    expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.set_dividend_tracking_atomic\(date, jsonb, date\) TO authenticated/i);
+  });
+
+  it("migration 0159 endurece liquidação/confirmação sem coalesce para today e atualiza restore_backup da 0154", () => {
+    const sql = readFileSync(mig0159Path, "utf8");
+
+    expect(sql).toMatch(/confirm_user_dividend_events_atomic[\s\S]*expected_revision/i);
+    expect(sql).toMatch(/approve_dividends_batch_atomic[\s\S]*expected_revision/i);
+    expect(sql).toMatch(/settle_user_dividend_event_system[\s\S]*REVOKE ALL ON FUNCTION public\.settle_user_dividend_event_system[\s\S]*FROM PUBLIC, anon, authenticated/i);
+    expect(sql).toMatch(/settle_user_dividend_event_system[\s\S]*GRANT EXECUTE ON FUNCTION public\.settle_user_dividend_event_system[\s\S]*TO service_role/i);
+
+    const settleFn = sql.match(
+      /CREATE OR REPLACE FUNCTION public\.settle_user_dividend_event_system[\s\S]*?\$\$;/i,
+    )?.[0];
+    expect(settleFn).toBeDefined();
+    expect(settleFn).not.toMatch(/coalesce\([^;]*(?:America\/Sao_Paulo|CURRENT_DATE|v_today_br)/i);
+    expect(sql).toMatch(/restore_backup[\s\S]*set_config\('app\.snapshot_rpc',\s*'on',\s*true\)/i);
+    expect(sql).toMatch(/restore_backup[\s\S]*set_config\('app\.dividend_tracking_rpc',\s*'on',\s*true\)/i);
+    expect(sql).toMatch(/restore_backup[\s\S]*card_bill_rollovers/i);
+    expect(sql).toMatch(/restore_backup[\s\S]*dividends_start_date/i);
+    expect(sql).toMatch(/restore_backup[\s\S]*ON CONFLICT \(user_id, ticker\) WHERE user_id IS NOT NULL DO UPDATE/i);
+  });
+});
+
+describe("S3 — Escrita Atômica, Reconciliação e Restore de Proventos (Migration 0160)", () => {
+  const mig0160Path = resolve(
+    root,
+    "supabase/migrations/20260101000160_dividend_reconciliation.sql",
+  );
+
+  it("migration 0160 adiciona request_id, entry_origin, linked_dividend_id e expande bucket_kind", () => {
+    expect(existsSync(mig0160Path)).toBe(true);
+    const sql = readFileSync(mig0160Path, "utf8");
+
+    expect(sql).toMatch(/ADD COLUMN IF NOT EXISTS request_id uuid/i);
+    expect(sql).toMatch(/ADD COLUMN IF NOT EXISTS entry_origin text NOT NULL DEFAULT 'legacy'/i);
+    expect(sql).toMatch(/entry_origin IN \('legacy', 'manual', 'engine', 'restore'\)/i);
+    expect(sql).toMatch(/CREATE UNIQUE INDEX IF NOT EXISTS uq_dividend_manual_request/i);
+    expect(sql).toMatch(/ADD COLUMN IF NOT EXISTS linked_dividend_id uuid\s+REFERENCES public\.portfolio_dividends\(id\) ON DELETE SET NULL/i);
+    expect(sql).toMatch(/CREATE INDEX IF NOT EXISTS idx_dividend_tx_link/i);
+    expect(sql).toMatch(/'dividend_minute'/i);
+    expect(sql).toMatch(/'dividend_hour'/i);
+  });
+
+  it("migration 0160 protege RPCs de escrita/sync/dispensa e força entry_origin='restore' no restore_backup", () => {
+    const sql = readFileSync(mig0160Path, "utf8");
+
+    expect(sql).toMatch(/CREATE OR REPLACE FUNCTION public\.check_dividend_sync_rate_limit/i);
+    expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.check_dividend_sync_rate_limit\(uuid, integer, integer\) FROM PUBLIC, anon, authenticated/i);
+    expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.check_dividend_sync_rate_limit\(uuid, integer, integer\) TO service_role/i);
+
+    expect(sql).toMatch(/CREATE OR REPLACE FUNCTION public\.apply_dividend_reconciliation_system/i);
+    expect(sql).toMatch(/apply_dividend_reconciliation_system[\s\S]*pg_advisory_xact_lock/i);
+    expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.apply_dividend_reconciliation_system\(uuid, jsonb, jsonb, jsonb\) FROM PUBLIC, anon, authenticated/i);
+    expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.apply_dividend_reconciliation_system\(uuid, jsonb, jsonb, jsonb\) TO service_role/i);
+
+    expect(sql).toMatch(/CREATE OR REPLACE FUNCTION public\.dismiss_user_dividend_events_atomic/i);
+    expect(sql).toMatch(/dismiss_user_dividend_events_atomic[\s\S]*can_current_user_write_module\('investments'\)/i);
+    expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.dismiss_user_dividend_events_atomic\(uuid\[\], bigint\[\], text\) FROM PUBLIC, anon/i);
+    expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.dismiss_user_dividend_events_atomic\(uuid\[\], bigint\[\], text\) TO authenticated/i);
+
+    expect(sql).toMatch(/restore_backup[\s\S]*'restore'[\s\S]*user_dividend_events[\s\S]*portfolio_dividend_dismissals/i);
+  });
+});
+
+describe("S5 — Consenso Progressivo Privado e Governança LGPD (Migration 0161)", () => {
+  const mig0161Path = resolve(
+    root,
+    "supabase/migrations/20260101000161_dividend_consensus.sql",
+  );
+
+  it("migration 0161 blinda corporate_dividend_votes com FORCE RLS e exige published na policy de corporate_dividends", () => {
+    expect(existsSync(mig0161Path)).toBe(true);
+    const sql = readFileSync(mig0161Path, "utf8");
+
+    expect(sql).toMatch(/CREATE TABLE IF NOT EXISTS public\.corporate_dividend_votes/i);
+    expect(sql).toMatch(/ALTER TABLE public\.corporate_dividend_votes ENABLE ROW LEVEL SECURITY/i);
+    expect(sql).toMatch(/ALTER TABLE public\.corporate_dividend_votes FORCE ROW LEVEL SECURITY/i);
+    expect(sql).toMatch(/REVOKE ALL ON public\.corporate_dividend_votes FROM PUBLIC, anon, authenticated/i);
+    expect(sql).toMatch(/GRANT SELECT, INSERT, UPDATE, DELETE ON public\.corporate_dividend_votes TO service_role/i);
+
+    expect(sql).toMatch(/CREATE POLICY corporate_dividends_select ON public\.corporate_dividends[\s\S]*published[\s\S]*is_current_user_active\(\)[\s\S]*can_current_user_read_module\('investments'\)/i);
+    expect(sql).toMatch(/REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public\.corporate_dividends\s+FROM PUBLIC, anon, authenticated/i);
+  });
+
+  it("migration 0161 restringe coleta, expurgo LGPD e kill switch exclusivamente ao service_role", () => {
+    const sql = readFileSync(mig0161Path, "utf8");
+
+    expect(sql).toMatch(/CREATE OR REPLACE FUNCTION public\.record_dividend_consensus_signal_system/i);
+    expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.record_dividend_consensus_signal_system\([^)]+\) FROM PUBLIC, anon, authenticated/i);
+    expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.record_dividend_consensus_signal_system\([^)]+\) TO service_role/i);
+
+    expect(sql).toMatch(/CREATE OR REPLACE FUNCTION public\.purge_user_dividend_votes_system/i);
+    expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.purge_user_dividend_votes_system\(uuid\) FROM PUBLIC, anon, authenticated/i);
+    expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.purge_user_dividend_votes_system\(uuid\) TO service_role/i);
+
+    expect(sql).toMatch(/CREATE OR REPLACE FUNCTION public\.toggle_dividend_consensus_publication_system/i);
+    expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.toggle_dividend_consensus_publication_system\(text, boolean\) FROM PUBLIC, anon, authenticated/i);
+    expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.toggle_dividend_consensus_publication_system\(text, boolean\) TO service_role/i);
+  });
+});
+
+describe("S6 — Corte Definitivo, Backfill de Dispensas e Proteção DML (Migration 0162)", () => {
+  const mig0162Path = resolve(
+    root,
+    "supabase/migrations/20260101000162_dividend_legacy_cutover.sql",
+  );
+
+  it("migration 0162 protege metadados imutáveis em portfolio_dividends e restringe backfill/paridade ao service_role", () => {
+    expect(existsSync(mig0162Path)).toBe(true);
+    const sql = readFileSync(mig0162Path, "utf8");
+
+    expect(sql).toMatch(/trg_guard_dividend_immutable_metadata/i);
+    expect(sql).toMatch(/BEFORE INSERT OR UPDATE ON public\.portfolio_dividends/i);
+
+    expect(sql).toMatch(/CREATE OR REPLACE FUNCTION public\.backfill_legacy_dividend_dismissals_system/i);
+    expect(sql).toMatch(/WHERE public\.user_dividend_events\.status <> 'SETTLED'/i);
+    expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.backfill_legacy_dividend_dismissals_system\(integer\) FROM PUBLIC, anon, authenticated/i);
+    expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.backfill_legacy_dividend_dismissals_system\(integer\) TO service_role/i);
+
+    expect(sql).toMatch(/CREATE OR REPLACE FUNCTION public\.compare_dividend_dismissal_parity_system/i);
+    expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.compare_dividend_dismissal_parity_system\(uuid\) FROM PUBLIC, anon, authenticated/i);
+    expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.compare_dividend_dismissal_parity_system\(uuid\) TO service_role/i);
+  });
+
+  it("mantém os agendamentos canônicos de proventos em supabase/quotes-cron.sql", () => {
+    const cronSql = readFileSync(resolve(root, "supabase/quotes-cron.sql"), "utf8");
+    expect(cronSql).toMatch(/'dividends-sync-global'[\s\S]*'0 10 \* \* \*'/);
+    expect(cronSql).toMatch(/'dividends-process-user'[\s\S]*'30 11 \* \* \*'/);
   });
 });

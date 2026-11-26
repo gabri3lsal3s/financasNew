@@ -443,6 +443,8 @@ export type DividendAutomationPreferences = {
   notifyOnPayment?: boolean;
   /** Data civil YYYY-MM-DD (America/Sao_Paulo) da ativação da automação para trava Anti-Flood. */
   activatedAt?: string | null;
+  /** Piso inclusivo global em Data COM (YYYY-MM-DD, America/Sao_Paulo) do acompanhamento automático. */
+  trackingStartDate?: string | null;
 };
 
 export type PortfolioRiskPolicySettings = {
@@ -933,6 +935,8 @@ export type PortfolioAsset = {
   fx_rate_at_purchase?: number | null;
   /** Taxa cambial de referência do custo congelada no cadastro/fechamento retroativo (§Bloco 1 v6). */
   cost_fx_rate_snapshot?: number | null;
+  /** Data civil inclusiva de corte em Data COM (`YYYY-MM-DD`) para acompanhamento de proventos deste lote. */
+  dividends_start_date?: string | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -1008,6 +1012,12 @@ export type PortfolioSnapshot = {
 
 export type CorporateDividendType = "DIVIDENDO" | "JCP" | "RENDIMENTO" | "SOBRA" | "AMORTIZACAO" | "OUTROS";
 
+export type CorporateDividendTrustTier =
+  | "official"
+  | "community_verified"
+  | "enriched_fallback"
+  | "raw_fallback";
+
 export type CorporateDividend = {
   id: string;
   ticker: string;
@@ -1020,6 +1030,9 @@ export type CorporateDividend = {
   provider?: string | null;
   tax_rate_pct?: number;
   is_type_uncertain?: boolean;
+  trust_tier?: CorporateDividendTrustTier;
+  external_terms?: Record<string, unknown> | null;
+  published?: boolean;
   created_at?: string;
   updated_at?: string;
 };
@@ -1055,6 +1068,7 @@ export type UserDividendEvent = {
   manual_review_required?: boolean;
   dismiss_reason?: PortfolioDividendDismissalReason | null;
   notes?: string | null;
+  revision?: number;
   created_at?: string;
   updated_at?: string;
 };
@@ -1095,6 +1109,7 @@ export type ApproveDividendsBatchResult = {
 
 export type ConfirmDividendEventItem = {
   event_id?: string | null;
+  expected_revision?: number | null;
   corporate_dividend_id?: string | null;
   asset_id?: string | null;
   ticker: string;
@@ -1111,9 +1126,26 @@ export type ConfirmDividendEventItem = {
   notes?: string | null;
 };
 
+export type SetDividendTrackingAssetItem = {
+  asset_id: string;
+  expected_start: string | null;
+  start_date: string | null;
+};
+
+export type SetDividendTrackingAtomicResult = {
+  success: boolean;
+  tracking_start_date: string | null;
+  updated_assets: Array<{ asset_id: string; dividends_start_date: string | null }>;
+  updated_assets_count: number;
+  affected_events_count: number;
+  protected_events_count: number;
+  invalidated_event_ids: string[];
+};
+
 export type ConfirmDividendEventsPayload = {
   items: ConfirmDividendEventItem[];
   sync_cash?: boolean;
+  allow_consensus_contribution?: boolean;
 };
 
 export type ConfirmDividendEventsResult = {
@@ -1201,6 +1233,8 @@ export type PortfolioContribution = {
   created_at?: string;
 };
 
+export type PortfolioDividendEntryOrigin = "legacy" | "manual" | "engine" | "restore";
+
 export type PortfolioDividend = {
   id: string;
   user_id: string;
@@ -1212,7 +1246,78 @@ export type PortfolioDividend = {
   sync_cash?: boolean | null;
   cash_amount?: number | null;
   source_event_id?: string | null;
+  request_id?: string | null;
+  entry_origin?: PortfolioDividendEntryOrigin;
+  updated_at?: string;
   created_at?: string;
+};
+
+export type WriteUserDividendCommand =
+  | {
+      op: "create";
+      request_id: string;
+      asset_id: string | null;
+      ticker?: string | null;
+      date: string;
+      amount: number;
+      notes?: string | null;
+      sync_cash?: boolean;
+      cash_amount?: number | null;
+      fx_rate?: number | null;
+      create_transaction?: boolean;
+      tx_type?: "dividend" | "jcp" | "fii_yield";
+      skip_reconciliation?: boolean;
+    }
+  | {
+      op: "update";
+      id: string;
+      asset_id?: string | null;
+      ticker?: string | null;
+      date?: string;
+      amount?: number;
+      notes?: string | null;
+      sync_cash?: boolean;
+      cash_amount?: number | null;
+      fx_rate?: number | null;
+      expected_updated_at?: string | null;
+      unlink_existing?: boolean;
+      skip_reconciliation?: boolean;
+    }
+  | {
+      op: "delete";
+      id: string;
+      rollback_cash?: boolean;
+      expected_updated_at?: string | null;
+      skip_reconciliation?: boolean;
+    };
+
+export type WriteUserDividendResult = {
+  ok?: boolean;
+  success: boolean;
+  idempotent?: boolean;
+  noop?: boolean;
+  needs_reconciliation?: boolean;
+  conflict?: boolean;
+  dividend?: PortfolioDividend | null;
+  cash_asset_id?: string | null;
+  cash_delta_brl?: number;
+  reverted_cash_brl?: number;
+  cash_shortfall_brl?: number;
+  ambiguous_tx_preserved?: boolean;
+  reopened_event_ids?: string[];
+  linked_event_ids?: string[];
+};
+
+export type SyncUserDividendsResult = {
+  ok: boolean;
+  action?: string;
+  window_start?: string;
+  window_end?: string;
+  processed_users?: number;
+  provisioned?: number;
+  pending_confirmation?: number;
+  settled?: number;
+  retry_after?: number;
 };
 
 export type PortfolioTransaction = {
@@ -1234,6 +1339,8 @@ export type PortfolioTransaction = {
   notes?: string | null;
   /** Identificador único do lote de aporte inteligente vinculado (Fase 3). */
   batch_id?: string | null;
+  /** Vínculo explícito com lançamento em portfolio_dividends (S3). */
+  linked_dividend_id?: string | null;
 };
 
 export type GroupTarget = {

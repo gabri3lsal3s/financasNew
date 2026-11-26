@@ -49,6 +49,7 @@ export interface QuickTransactionSubmitParams {
     syncCash: boolean;
     previousSyncCash: boolean;
     previousCashAmount: number;
+    expected_updated_at?: string | null;
   }) => Promise<unknown>;
   deleteContribution?: (payload: { id: string; skipTransactionCascade?: boolean; suppressToast?: boolean }) => Promise<unknown>;
   createContribution?: (payload: {
@@ -165,6 +166,7 @@ export async function executeQuickTransactionSubmit(
         syncCash: p.creditCash,
         previousSyncCash: Boolean(p.editDividend.sync_cash),
         previousCashAmount: p.editDividend.cash_amount ?? p.editDividend.amount,
+        expected_updated_at: p.editDividend.updated_at ?? null,
       });
       return null;
     }

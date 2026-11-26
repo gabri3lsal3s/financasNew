@@ -142,6 +142,9 @@ function AssetEditFormContent({ asset, open, onOpenChange, onClose }: AssetEditF
           onAccumulatedDividendsCentsChange={form.setAccumulatedDividendsCents}
           estimatedDividendPerShareCents={form.estimatedDividendPerShareCents}
           onEstimatedDividendPerShareCentsChange={form.setEstimatedDividendPerShareCents}
+          dividendsStartDate={form.dividendsStartDate}
+          onDividendsStartDateChange={form.setDividendsStartDate}
+          originalDividendsStartDate={form.initialDividendsStartDate}
           notes={form.notes}
           onNotesChange={form.setNotes}
         />

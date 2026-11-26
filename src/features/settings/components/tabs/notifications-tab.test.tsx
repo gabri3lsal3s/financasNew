@@ -23,6 +23,7 @@ let mockListenerGranted = true;
 let mockDueNotificationsPrefCloud: boolean | undefined;
 const mockUpdateCustomSettings = vi.fn();
 const mockUpdateReminderPreferences = vi.fn();
+const mockSetDividendTracking = vi.fn();
 let mockWeeklyDigestEnabled = false;
 
 vi.mock("@/state", () => ({
@@ -46,6 +47,8 @@ vi.mock("@/state", () => ({
   }),
   useUpdateCustomSettings: () => ({ mutate: mockUpdateCustomSettings, isPending: false }),
   useUpdateReminderPreferences: () => ({ mutate: mockUpdateReminderPreferences, isPending: false }),
+  useSetDividendTracking: () => ({ mutateAsync: mockSetDividendTracking, isPending: false }),
+  usePortfolioAssets: () => ({ data: [] }),
   useUserAccess: () => ({
     role: "admin",
     hasFeature: () => mockHasFeature(),
@@ -727,6 +730,33 @@ describe("NotificationsTab - Lembretes e Assistente Bancário (Fase 1 — Tarefa
           }),
         }),
       );
+    });
+
+    it("permite salvar Início do acompanhamento (Marco Zero) via set_dividend_tracking_atomic sem alterar activatedAt (S1)", async () => {
+      mockSetDividendTracking.mockResolvedValue({
+        success: true,
+        tracking_start_date: "2026-11-26",
+        updated_assets: [],
+        updated_assets_count: 0,
+        affected_events_count: 0,
+        protected_events_count: 0,
+        invalidated_event_ids: [],
+      });
+
+      const user = userEvent.setup();
+      renderNotificationsTab();
+
+      await user.click(screen.getByRole("button", { name: "Início do acompanhamento (Marco Zero)" }));
+      await user.click(await screen.findByRole("button", { name: /^Hoje$/i }));
+      await user.click(screen.getByRole("button", { name: "Aplicar data de corte" }));
+
+      expect(mockSetDividendTracking).toHaveBeenCalledWith({
+        trackingStartDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        assets: [],
+        expectedTrackingStartDate: null,
+        silent: false,
+      });
+      expect(mockUpdateCustomSettings).not.toHaveBeenCalled();
     });
   });
 });

@@ -1,7 +1,10 @@
-export type DividendReviewModalTab = "review" | "manual";
+export type DividendReviewModalTab = "review" | "provisioned" | "manual";
+
+export type DividendReviewModalFilter = "all" | "missing_date" | "over_120_days";
 
 export interface OpenDividendReviewModalOptions {
   initialTab?: DividendReviewModalTab;
+  initialFilter?: DividendReviewModalFilter;
 }
 
 type Listener = (options: OpenDividendReviewModalOptions) => void;

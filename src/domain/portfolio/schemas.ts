@@ -1,5 +1,27 @@
 import { z } from "zod";
 import { cleanTextSchema, MAX_MONEY_AMOUNT, sanitizeString } from "@/domain/validation/sanitization";
+import { DIVIDEND_TRACKING_MIN_DATE, addCalendarDaysIso, isValidCivilDate } from "./dividend-engine";
+import { getMarketZonedParts } from "./market-calendar";
+
+const dividendsStartDateSchema = z
+  .string()
+  .nullable()
+  .optional()
+  .transform((val) => {
+    if (!val) return null;
+    const clean = val.trim();
+    return clean.length > 0 ? clean : null;
+  })
+  .refine(
+    (val) => {
+      if (val === null) return true;
+      if (!isValidCivilDate(val)) return false;
+      const todayBr = getMarketZonedParts(new Date(), "America/Sao_Paulo").isoDate;
+      const maxDate = addCalendarDaysIso(todayBr, 1);
+      return val >= DIVIDEND_TRACKING_MIN_DATE && val <= maxDate;
+    },
+    { message: "Informe uma data válida entre 01/01/2000 e amanhã" },
+  );
 
 /**
  * Regex para validação de tickers de ativos:
@@ -201,6 +223,8 @@ export const newAssetSchema = z.object({
     .max(1000, "A taxa de câmbio informada é inválida")
     .nullable()
     .optional(),
+  /** Data civil inclusiva de corte (`YYYY-MM-DD`) para acompanhamento de proventos deste lote. */
+  dividends_start_date: dividendsStartDateSchema,
 });
 
 export type NewAssetInput = z.infer<typeof newAssetSchema>;
@@ -338,6 +362,8 @@ export const assetMetadataSchema = z.object({
     .max(1000, "A taxa de câmbio informada é inválida")
     .nullable()
     .optional(),
+  /** Data civil inclusiva de corte (`YYYY-MM-DD`) para acompanhamento de proventos deste lote. */
+  dividends_start_date: dividendsStartDateSchema,
 });
 
 export type AssetMetadataInput = z.infer<typeof assetMetadataSchema>;

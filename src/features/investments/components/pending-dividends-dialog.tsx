@@ -9,12 +9,14 @@ import {
   Trash2,
 } from "lucide-react";
 import {
+  Alert,
   Badge,
   Button,
   Checkbox,
   DatePicker,
   EmptyState,
   ErrorState,
+  FormField,
   Input,
   Modal,
   ModalFooter,
@@ -31,18 +33,24 @@ import { numberToCents } from "@/domain/money";
 import {
   FALLBACK_USD_RATE,
   getCustodyAtComDate,
+  isAssetPendingDividendCalibration,
   isCashAssetClass,
   isFixedIncomeClass,
   isPrivateFixedIncomeTicker,
   isTesouroAsset,
+  isValidDividendSettlementDate,
+  isValidDividendTrackingDate,
+  summarizeCalibrationPlan,
   todaySaoPauloISO,
   type SuggestedDividendItem,
 } from "@/domain/portfolio";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { formatDateBR } from "@/lib/date";
+import { getErrorMessage } from "@/services/errors";
 import { formatAssetQuantity } from "@/services/formatting";
 import {
   subscribeDividendReviewModal,
+  type DividendReviewModalFilter,
   type DividendReviewModalTab,
 } from "@/services/dividend-review-modal";
 import { formatFxRate } from "@/services/masks/money";
@@ -57,13 +65,106 @@ import {
   usePortfolioAssets,
   useUserPreferences,
 } from "@/state";
-import type { ConfirmDividendEventItem, CorporateDividendType } from "@/types";
+import * as stateHooks from "@/state";
+import type {
+  ConfirmDividendEventItem,
+  CorporateDividendType,
+  PortfolioAsset,
+  SetDividendTrackingAtomicResult,
+} from "@/types";
+
+function getOptionalStateHook<T>(key: string, fallback: T): T {
+  if (Reflect.ownKeys(stateHooks).includes(key)) {
+    const candidate = (stateHooks as Record<string, unknown>)[key];
+    if (typeof candidate === "function") return candidate as T;
+  }
+  return fallback;
+}
+
+const useOptionalDismissUserDividendEventsBatch = getOptionalStateHook<
+  () => {
+    mutateAsync: (params: {
+      ids: string[];
+      revisions?: number[] | null;
+      reason?: string;
+    }) => Promise<{ success: boolean; dismissed_ids: string[]; revisions: number[] }>;
+    isPending: boolean;
+  }
+>("useDismissUserDividendEventsBatch", () => ({
+  mutateAsync: async () => ({ success: true, dismissed_ids: [], revisions: [] }),
+  isPending: false,
+}));
+
+type OriginFilterValue = "all" | "official" | "community_verified" | "estimated" | "manual";
+
+function resolveItemOriginKey(item: SuggestedDividendItem): Exclude<OriginFilterValue, "all"> {
+  if (item.isManual) return "manual";
+  if (item.trustTier === "official") return "official";
+  if (item.trustTier === "community_verified") return "community_verified";
+  return "estimated";
+}
+
+function resolveItemOriginBadge(item: SuggestedDividendItem): {
+  label: string;
+  variant: "positive" | "portfolio" | "warning" | "muted";
+} {
+  const origin = resolveItemOriginKey(item);
+  if (origin === "manual") return { label: "Manual", variant: "muted" };
+  if (origin === "official") return { label: "Oficial", variant: "positive" };
+  if (origin === "community_verified") {
+    return { label: "Verificado pela Comunidade", variant: "portfolio" };
+  }
+  return { label: "Estimado — conferir", variant: "warning" };
+}
+
+const ORIGIN_FILTER_OPTIONS: SelectOption[] = [
+  { value: "all", label: "Todas as origens" },
+  { value: "official", label: "Oficial" },
+  { value: "community_verified", label: "Verificado pela Comunidade" },
+  { value: "estimated", label: "Estimado — conferir" },
+  { value: "manual", label: "Manual" },
+];
+
+const CURRENCY_FILTER_OPTIONS: SelectOption[] = [
+  { value: "all", label: "Todas moedas" },
+  { value: "BRL", label: "BRL" },
+  { value: "USD", label: "USD" },
+];
+
+const useOptionalSetDividendTracking = getOptionalStateHook<
+  () => {
+    mutateAsync: (input: {
+      trackingStartDate?: string | null;
+      assets?: Array<{
+        asset_id: string;
+        expected_start: string | null;
+        start_date: string | null;
+      }>;
+      expectedTrackingStartDate?: string | null;
+      silent?: boolean;
+    }) => Promise<SetDividendTrackingAtomicResult>;
+    isPending: boolean;
+  }
+>("useSetDividendTracking", () => ({
+  mutateAsync: async () => ({
+    success: true,
+    tracking_start_date: null,
+    updated_assets: [],
+    updated_assets_count: 0,
+    affected_events_count: 0,
+    protected_events_count: 0,
+    invalidated_event_ids: [],
+  }),
+  isPending: false,
+}));
 
 export interface PendingDividendsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   availableDividends: SuggestedDividendItem[];
   projectedDividends: SuggestedDividendItem[];
+  assetsNeedingCalibration?: PortfolioAsset[];
+  trackingStartDate?: string | null;
   fxRate?: number;
   initialTab?: DividendReviewModalTab;
   requestSeq?: number;
@@ -77,6 +178,7 @@ interface RowOverrideState {
   taxRatePct: number;
   netAmount: number;
   grossBase: number;
+  paymentDate: string;
 }
 
 const DIVIDEND_TYPE_OPTIONS: SelectOption[] = [
@@ -117,6 +219,8 @@ export function PendingDividendsDialog({
   onOpenChange,
   availableDividends,
   projectedDividends,
+  assetsNeedingCalibration: assetsNeedingCalibrationProp,
+  trackingStartDate: trackingStartDateProp,
   fxRate: fxRateProp,
   initialTab = "review",
   requestSeq = 0,
@@ -132,12 +236,43 @@ export function PendingDividendsDialog({
   const transactionsQuery = useAllPortfolioTransactions();
   const confirmMutation = useConfirmUserDividendEvents();
   const dismissMutation = useDismissUserDividendEvent();
+  const dismissBatchMutation = useOptionalDismissUserDividendEventsBatch();
   const createManualMutation = useCreateManualUserDividendEvent();
   const deleteManualMutation = useDeleteUserDividendEvent();
+  const setDividendTracking = useOptionalSetDividendTracking();
+
+  const [searchTicker, setSearchTicker] = useState("");
+  const [currencyFilter, setCurrencyFilter] = useState<"all" | "BRL" | "USD">("all");
+  const [originFilter, setOriginFilter] = useState<OriginFilterValue>("all");
+  const [missingDateOnly, setMissingDateOnly] = useState(false);
+  const [includeOldOver120, setIncludeOldOver120] = useState(true);
 
   const effectiveFx = fxRateProp && fxRateProp > 0 ? fxRateProp : FALLBACK_USD_RATE;
   const defaultAutoCreditCash =
     userPreferences?.custom_settings?.dividendAutomation?.autoCreditCash !== false;
+  const effectiveTrackingStartDate = useMemo(() => {
+    if (typeof trackingStartDateProp === "string" && /^\d{4}-\d{2}-\d{2}$/.test(trackingStartDateProp)) {
+      return trackingStartDateProp;
+    }
+    const fromPref = userPreferences?.custom_settings?.dividendAutomation?.trackingStartDate;
+    return typeof fromPref === "string" && /^\d{4}-\d{2}-\d{2}$/.test(fromPref.trim())
+      ? fromPref.trim()
+      : null;
+  }, [trackingStartDateProp, userPreferences]);
+
+  const pendingCalibrationAssets = useMemo(() => {
+    const raw =
+      assetsNeedingCalibrationProp ??
+      (assetsQuery.data ?? []).filter(isAssetPendingDividendCalibration);
+    const seen = new Set<string>();
+    const unique: PortfolioAsset[] = [];
+    for (const a of raw) {
+      if (!a?.id || seen.has(a.id)) continue;
+      seen.add(a.id);
+      unique.push(a);
+    }
+    return unique;
+  }, [assetsNeedingCalibrationProp, assetsQuery.data]);
 
   const [activeTabOverride, setActiveTabOverride] = useState<DividendReviewModalTab | null>(null);
   const [prevRequestKey, setPrevRequestKey] = useState<string>(`${initialTab}:${requestSeq}`);
@@ -148,9 +283,20 @@ export function PendingDividendsDialog({
   }
 
   const [syncCashOverride, setSyncCashOverride] = useState<boolean | null>(null);
+  const [contributePublicly, setContributePublicly] = useState(true);
   const [deselectedKeys, setDeselectedKeys] = useState<Set<string>>(() => new Set());
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [overrides, setOverrides] = useState<Record<string, RowOverrideState>>({});
+  const [paymentDateErrorKeys, setPaymentDateErrorKeys] = useState<Set<string>>(() => new Set());
+  const [reviewError, setReviewError] = useState<string | null>(null);
+
+  // Estado da calibração em lote ("Calibrar N ativos")
+  const [deselectedCalibrationIds, setDeselectedCalibrationIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [commonCalibrationDate, setCommonCalibrationDate] = useState<string>("");
+  const [rowCalibrationDates, setRowCalibrationDates] = useState<Record<string, string>>({});
+  const [calibrationError, setCalibrationError] = useState<string | null>(null);
 
   const activeTab = activeTabOverride ?? initialTab;
   const syncCash = syncCashOverride ?? defaultAutoCreditCash;
@@ -190,6 +336,12 @@ export function PendingDividendsDialog({
       setDeselectedKeys(new Set());
       setEditingKey(null);
       setOverrides({});
+      setPaymentDateErrorKeys(new Set());
+      setReviewError(null);
+      setDeselectedCalibrationIds(new Set());
+      setCommonCalibrationDate("");
+      setRowCalibrationDates({});
+      setCalibrationError(null);
       setActiveTabOverride(null);
       setSyncCashOverride(null);
       setManualAssetId("");
@@ -199,6 +351,11 @@ export function PendingDividendsDialog({
       setManualNetCents(0);
       setManualTaxPctOverride(null);
       setManualNotes("");
+      setSearchTicker("");
+      setCurrencyFilter("all");
+      setOriginFilter("all");
+      setMissingDateOnly(false);
+      setIncludeOldOver120(true);
     }
     onOpenChange(next);
   };
@@ -213,6 +370,7 @@ export function PendingDividendsDialog({
         taxRatePct: item.taxRatePct ?? getDefaultTaxForType(item.type, item.currency),
         netAmount: item.totalAmount,
         grossBase: computeInitialGrossBase(item),
+        paymentDate: item.paymentDate ? item.paymentDate.slice(0, 10) : "",
       };
     },
     [overrides],
@@ -229,16 +387,60 @@ export function PendingDividendsDialog({
         taxRatePct: item.taxRatePct ?? getDefaultTaxForType(item.type, item.currency),
         netAmount: item.totalAmount,
         grossBase: computeInitialGrossBase(item),
+        paymentDate: item.paymentDate ? item.paymentDate.slice(0, 10) : "",
       };
       return { ...prev, [key]: updater(current) };
     });
   };
 
+  const oldOver120Count = useMemo(
+    () => availableDividends.filter((d) => Boolean(d.isOver120DaysWithoutPayment && !d.paymentDate)).length,
+    [availableDividends],
+  );
+
+  const datelessProjectedCount = useMemo(
+    () => projectedDividends.filter((d) => !d.paymentDate).length,
+    [projectedDividends],
+  );
+
+  const matchesCommonFilters = useCallback(
+    (item: SuggestedDividendItem) => {
+      const q = searchTicker.trim().toUpperCase();
+      if (q && !item.ticker.toUpperCase().includes(q)) return false;
+      if (currencyFilter !== "all" && item.currency !== currencyFilter) return false;
+      if (originFilter !== "all" && resolveItemOriginKey(item) !== originFilter) return false;
+      if (missingDateOnly && Boolean(item.paymentDate)) return false;
+      return true;
+    },
+    [searchTicker, currencyFilter, originFilter, missingDateOnly],
+  );
+
+  const filteredAvailableDividends = useMemo(
+    () =>
+      availableDividends.filter((item) => {
+        if (!includeOldOver120 && item.isOver120DaysWithoutPayment && !item.paymentDate) {
+          return false;
+        }
+        return matchesCommonFilters(item);
+      }),
+    [availableDividends, includeOldOver120, matchesCommonFilters],
+  );
+
+  const filteredProjectedDividends = useMemo(
+    () => projectedDividends.filter(matchesCommonFilters),
+    [projectedDividends, matchesCommonFilters],
+  );
+
+  const filteredAvailableKeys = useMemo(
+    () => filteredAvailableDividends.map(getItemKey),
+    [filteredAvailableDividends],
+  );
+
   const allAvailableSelected = useMemo(
     () =>
-      availableDividends.length > 0 &&
-      availableDividends.every((d) => selectedKeys.has(getItemKey(d))),
-    [availableDividends, selectedKeys],
+      filteredAvailableDividends.length > 0 &&
+      filteredAvailableDividends.every((d) => selectedKeys.has(getItemKey(d))),
+    [filteredAvailableDividends, selectedKeys],
   );
 
   const selectedItems = useMemo(
@@ -271,7 +473,15 @@ export function PendingDividendsDialog({
   }, [selectedItems, getEffectiveRow, effectiveFx]);
 
   const handleToggleAll = (checked: boolean) => {
-    setDeselectedKeys(checked ? new Set() : new Set(availableKeys));
+    setDeselectedKeys((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        for (const k of filteredAvailableKeys) next.delete(k);
+      } else {
+        for (const k of filteredAvailableKeys) next.add(k);
+      }
+      return next;
+    });
   };
 
   const handleToggleOne = (item: SuggestedDividendItem, checked: boolean) => {
@@ -284,24 +494,110 @@ export function PendingDividendsDialog({
     });
   };
 
+  const todayForValidation = todaySaoPauloISO();
+
+  const calibrationPlan = useMemo(() => {
+    return pendingCalibrationAssets.map((asset) => {
+      const selected = !deselectedCalibrationIds.has(asset.id);
+      const rawDate = (rowCalibrationDates[asset.id] || commonCalibrationDate || "").trim();
+      const targetDate = isValidDividendTrackingDate(rawDate, todayForValidation) ? rawDate : null;
+      return { asset, selected, rawDate, targetDate };
+    });
+  }, [
+    pendingCalibrationAssets,
+    deselectedCalibrationIds,
+    rowCalibrationDates,
+    commonCalibrationDate,
+    todayForValidation,
+  ]);
+
+  const calibrationSummary = useMemo(
+    () =>
+      summarizeCalibrationPlan(
+        calibrationPlan.map((p) => ({
+          assetId: p.asset.id,
+          selected: p.selected,
+          targetDate: p.targetDate,
+        })),
+        effectiveTrackingStartDate,
+      ),
+    [calibrationPlan, effectiveTrackingStartDate],
+  );
+
+  const missingCalibrationDatesCount = useMemo(
+    () => calibrationPlan.filter((p) => p.selected && !p.targetDate).length,
+    [calibrationPlan],
+  );
+
+  const handleToggleCalibrationAsset = (assetId: string, checked: boolean) => {
+    setCalibrationError(null);
+    setDeselectedCalibrationIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.delete(assetId);
+      else next.add(assetId);
+      return next;
+    });
+  };
+
+  const handleApplyCalibration = () => {
+    if (setDividendTracking.isPending) return;
+    if (calibrationSummary.selectedCount === 0) {
+      setCalibrationError("Selecione ao menos um ativo para calibrar.");
+      return;
+    }
+    const invalidItem = calibrationPlan.find((p) => p.selected && !p.targetDate);
+    if (invalidItem) {
+      setCalibrationError(
+        `Informe uma data válida entre 01/01/2000 e amanhã para ${invalidItem.asset.ticker}.`,
+      );
+      return;
+    }
+    setCalibrationError(null);
+    guardAction(() => {
+      void (async () => {
+        const dedupedByAssetId = new Map<
+          string,
+          { asset_id: string; expected_start: string | null; start_date: string | null }
+        >();
+        for (const item of calibrationPlan) {
+          if (!item.selected || !item.targetDate) continue;
+          dedupedByAssetId.set(item.asset.id, {
+            asset_id: item.asset.id,
+            expected_start: item.asset.dividends_start_date
+              ? item.asset.dividends_start_date.slice(0, 10)
+              : null,
+            start_date: item.targetDate,
+          });
+        }
+        try {
+          await setDividendTracking.mutateAsync({
+            trackingStartDate: null,
+            assets: Array.from(dedupedByAssetId.values()),
+            expectedTrackingStartDate: effectiveTrackingStartDate,
+            silent: false,
+          });
+          setCalibrationError(null);
+        } catch (err) {
+          setCalibrationError(getErrorMessage(err));
+        }
+      })();
+    });
+  };
+
   const hasInvalidSelectedAmount = useMemo(
     () => selectedItems.some((item) => getEffectiveRow(item).netAmount <= 0),
     [selectedItems, getEffectiveRow],
   );
 
-  const buildConfirmItem = (
-    d: SuggestedDividendItem,
-    options?: { capEarlyDate?: boolean },
-  ): ConfirmDividendEventItem => {
+  const buildConfirmItem = (d: SuggestedDividendItem): ConfirmDividendEventItem => {
     const eff = getEffectiveRow(d);
-    const today = todaySaoPauloISO();
-    const rawPayDate = d.paymentDate ?? today;
-    const paymentIso = options?.capEarlyDate && rawPayDate > today ? today : rawPayDate;
+    const paymentIso = eff.paymentDate.trim().slice(0, 10);
     const qty = Math.max(0, d.quantityOnComDate);
     const netRate = qty > 0 ? Math.round((eff.netAmount / qty) * 100_000_000) / 100_000_000 : d.netRate;
 
     return {
       event_id: d.eventId ?? null,
+      expected_revision: d.revision ?? null,
       corporate_dividend_id: d.isManual ? null : d.corporateDividendId,
       asset_id: d.assetId,
       ticker: d.ticker,
@@ -323,32 +619,115 @@ export function PendingDividendsDialog({
 
   const handleConfirmSelected = () => {
     if (selectedItems.length === 0 || hasInvalidSelectedAmount || confirmMutation.isPending) return;
+    const today = todaySaoPauloISO();
+    const invalidPayKeys: string[] = [];
+    for (const item of selectedItems) {
+      const eff = getEffectiveRow(item);
+      if (!isValidDividendSettlementDate(eff.paymentDate, item.comDate, today)) {
+        invalidPayKeys.push(getItemKey(item));
+      }
+    }
+    if (invalidPayKeys.length > 0) {
+      setPaymentDateErrorKeys(new Set(invalidPayKeys));
+      setEditingKey(invalidPayKeys[0]!);
+      setReviewError(
+        "Informe a data real de pagamento (entre a Data COM e hoje) para todos os itens selecionados antes de confirmar.",
+      );
+      return;
+    }
+    setPaymentDateErrorKeys(new Set());
+    setReviewError(null);
     guardAction(() => {
       void (async () => {
         try {
           await confirmMutation.mutateAsync({
             items: selectedItems.map((item) => buildConfirmItem(item)),
             sync_cash: syncCash,
+            ...(contributePublicly ? {} : { allow_consensus_contribution: false }),
           });
           handleOpenChange(false);
-        } catch {
-          // O hook já exibe toast de erro; mantém modal aberto
+        } catch (err) {
+          const msg = getErrorMessage(err);
+          setReviewError(msg);
+          if (/conflit|revis[aã]o|atualizad|409/i.test(msg)) {
+            onRetry?.();
+          }
         }
       })();
     });
   };
 
   const handleSettleProvisionedNow = (item: SuggestedDividendItem) => {
-    if (confirmMutation.isPending || getEffectiveRow(item).netAmount <= 0) return;
+    const eff = getEffectiveRow(item);
+    if (confirmMutation.isPending || eff.netAmount <= 0) return;
+    const today = todaySaoPauloISO();
+    const key = getItemKey(item);
+    if (!isValidDividendSettlementDate(eff.paymentDate, item.comDate, today)) {
+      if (eff.paymentDate > today) {
+        setRowOverride(item, (curr) => ({ ...curr, paymentDate: "" }));
+      }
+      setPaymentDateErrorKeys((prev) => {
+        const next = new Set(prev);
+        next.add(key);
+        return next;
+      });
+      setEditingKey(key);
+      setReviewError(
+        `Informe a data real de recebimento de ${item.ticker} (entre ${formatDateBR(item.comDate)} e hoje) antes de efetivar.`,
+      );
+      return;
+    }
+    setPaymentDateErrorKeys((prev) => {
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+    setReviewError(null);
     guardAction(() => {
       void (async () => {
         try {
           await confirmMutation.mutateAsync({
-            items: [buildConfirmItem(item, { capEarlyDate: true })],
+            items: [buildConfirmItem(item)],
             sync_cash: syncCash,
           });
-        } catch {
-          // O hook já exibe toast de erro
+          setEditingKey(null);
+        } catch (err) {
+          const msg = getErrorMessage(err);
+          setReviewError(msg);
+          if (/conflit|revis[aã]o|atualizad|409/i.test(msg)) {
+            onRetry?.();
+          }
+        }
+      })();
+    });
+  };
+
+  const handleDismissSelectedBatch = () => {
+    if (selectedItems.length === 0 || dismissBatchMutation.isPending || dismissMutation.isPending) {
+      return;
+    }
+    const persisted = selectedItems.filter((item) => Boolean(item.eventId));
+    const legacy = selectedItems.filter((item) => !item.eventId);
+    guardAction(() => {
+      void (async () => {
+        if (persisted.length > 0) {
+          await dismissBatchMutation
+            .mutateAsync({
+              ids: persisted.map((item) => item.eventId!),
+              revisions: persisted.map((item) => item.revision ?? 1),
+              reason: "manual_ignore",
+            })
+            .catch(() => undefined);
+        }
+        for (const item of legacy) {
+          await dismissMutation
+            .mutateAsync({
+              eventId: null,
+              corporateDividendId: item.isManual ? null : item.corporateDividendId,
+              assetId: item.assetId,
+              reason: "manual_ignore",
+            })
+            .catch(() => undefined);
         }
       })();
     });
@@ -436,32 +815,177 @@ export function PendingDividendsDialog({
     });
   };
 
-  const renderTaxAndSourceBadges = (item: SuggestedDividendItem, eff: RowOverrideState) => (
-    <div className="flex items-center gap-1.5 flex-wrap">
-      <Badge size="xs" variant={eff.type === "JCP" ? "warning" : "muted"}>
-        {eff.type}
-      </Badge>
-      {item.currency === "USD" ? (
-        <Badge size="xs" variant="portfolio">
-          EUA · {formatPercent(eff.taxRatePct)}% IR
+  const renderTaxAndSourceBadges = (item: SuggestedDividendItem, eff: RowOverrideState) => {
+    const originBadge = resolveItemOriginBadge(item);
+    return (
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <Badge size="xs" variant={eff.type === "JCP" ? "warning" : "muted"}>
+          {eff.type}
         </Badge>
-      ) : eff.taxRatePct > 0 ? (
-        <Badge size="xs" variant="warning">
-          {formatPercent(eff.taxRatePct)}% IR
+        {item.currency === "USD" ? (
+          <Badge size="xs" variant="portfolio">
+            EUA · {formatPercent(eff.taxRatePct)}% IR
+          </Badge>
+        ) : eff.taxRatePct > 0 ? (
+          <Badge size="xs" variant="warning">
+            {formatPercent(eff.taxRatePct)}% IR
+          </Badge>
+        ) : null}
+        <Badge size="xs" variant={originBadge.variant}>
+          {originBadge.label}
         </Badge>
-      ) : null}
-      {item.isTypeUncertain ? (
-        <Badge size="xs" variant="warning">
-          Alíquota a conferir (Yahoo)
-        </Badge>
-      ) : null}
-      {item.isManual ? (
-        <Badge size="xs" variant="muted">
-          Manual
-        </Badge>
-      ) : null}
-    </div>
-  );
+        {item.isOver120DaysWithoutPayment && !item.paymentDate ? (
+          <Badge size="xs" variant="muted">
+            Antiga &gt;120d
+          </Badge>
+        ) : null}
+      </div>
+    );
+  };
+
+  const renderInlineRowEditor = (
+    div: SuggestedDividendItem,
+    eff: RowOverrideState,
+    options?: { allowDirectConfirm?: boolean },
+  ) => {
+    const key = getItemKey(div);
+    const today = todaySaoPauloISO();
+    const hasValidPayment = isValidDividendSettlementDate(eff.paymentDate, div.comDate, today);
+    const showPayError =
+      paymentDateErrorKeys.has(key) || (eff.paymentDate.length > 0 && !hasValidPayment);
+
+    return (
+      <div className="px-3 pb-3 pt-2.5 bg-muted/25 border-t border-border/80 flex flex-col gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <FormField label="Tipo" htmlFor={`edit-type-${key}`}>
+            <Select
+              id={`edit-type-${key}`}
+              value={eff.type}
+              options={DIVIDEND_TYPE_OPTIONS}
+              ariaLabel={`Tipo do provento de ${div.ticker}`}
+              onValueChange={(nextType) => {
+                const typed = nextType as CorporateDividendType;
+                setRowOverride(div, (curr) => {
+                  const nextTax = getDefaultTaxForType(typed, div.currency);
+                  const nextNet =
+                    Math.round(curr.grossBase * (1 - nextTax / 100) * 100) / 100;
+                  return {
+                    ...curr,
+                    type: typed,
+                    taxRatePct: nextTax,
+                    netAmount: nextNet > 0 ? nextNet : curr.netAmount,
+                  };
+                });
+              }}
+            />
+          </FormField>
+
+          <FormField label="Data real de pagamento" htmlFor={`edit-pay-date-${key}`}>
+            <DatePicker
+              id={`edit-pay-date-${key}`}
+              value={eff.paymentDate}
+              onValueChange={(nextDate) => {
+                setRowOverride(div, (curr) => ({ ...curr, paymentDate: nextDate }));
+                setPaymentDateErrorKeys((prev) => {
+                  const next = new Set(prev);
+                  next.delete(key);
+                  return next;
+                });
+                if (reviewError) setReviewError(null);
+              }}
+              placeholder="Selecionar data recebida"
+              ariaLabel={`Data real de pagamento de ${div.ticker}`}
+            />
+            {showPayError ? (
+              <span role="alert" className="text-[11px] text-critical-strong">
+                Informe uma data entre {formatDateBR(div.comDate)} e hoje
+              </span>
+            ) : null}
+          </FormField>
+
+          <FormField label="IR Retido (%)" htmlFor={`edit-tax-${key}`}>
+            <PercentInput
+              id={`edit-tax-${key}`}
+              size="sm"
+              maxValue={100}
+              value={eff.taxRatePct}
+              aria-label={`Alíquota IR de ${div.ticker}`}
+              onValueChange={(nextPct) => {
+                const clamped = Math.max(0, Math.min(100, nextPct));
+                setRowOverride(div, (curr) => {
+                  const nextNet =
+                    Math.round(curr.grossBase * (1 - clamped / 100) * 100) / 100;
+                  return {
+                    ...curr,
+                    taxRatePct: clamped,
+                    netAmount: nextNet,
+                  };
+                });
+              }}
+            />
+          </FormField>
+
+          <FormField
+            label={`Valor Líquido (${div.currency})`}
+            htmlFor={`edit-net-${key}`}
+            error={eff.netAmount <= 0 ? "Deve ser maior que zero" : undefined}
+          >
+            <MoneyInput
+              id={`edit-net-${key}`}
+              size="sm"
+              currency={div.currency}
+              cents={numberToCents(eff.netAmount)}
+              aria-label={`Valor líquido de ${div.ticker}`}
+              aria-invalid={eff.netAmount <= 0}
+              onCentsChange={(cents) => {
+                setRowOverride(div, (curr) => ({
+                  ...curr,
+                  netAmount: cents / 100,
+                }));
+              }}
+            />
+          </FormField>
+        </div>
+        <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground flex-wrap">
+          <span>
+            Fonte: {div.provider ?? (div.isManual ? "Manual" : "Yahoo")}
+            {div.trustTier !== "official" && !div.isManual
+              ? " · Campos estimados (tipo/IR/pagamento) sujeitos à conferência"
+              : ""}
+          </span>
+        </div>
+        <div className="flex items-center justify-end gap-2 flex-wrap">
+          {options?.allowDirectConfirm ? (
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              loading={confirmMutation.isPending}
+              disabled={
+                isReadOnlyMode ||
+                confirmMutation.isPending ||
+                eff.netAmount <= 0 ||
+                !hasValidPayment
+              }
+              onClick={() => handleSettleProvisionedNow(div)}
+            >
+              Confirmar recebimento
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="gap-1 text-xs"
+            onClick={() => setEditingKey(null)}
+          >
+            <Check className="size-3.5" aria-hidden="true" />
+            Concluir edição
+          </Button>
+        </div>
+      </div>
+    );
+  };
 
   const reviewContent = isLoading ? (
     <div className="flex flex-col gap-3 py-2" aria-busy="true">
@@ -478,6 +1002,169 @@ export function PendingDividendsDialog({
     </div>
   ) : (
     <div className="flex flex-col gap-4 py-1">
+      {pendingCalibrationAssets.length > 0 ? (
+        <section
+          aria-label={`Calibrar ${pendingCalibrationAssets.length} ativos`}
+          className="flex flex-col gap-3 rounded-xl border border-warning/30 bg-warning/10 p-3.5"
+        >
+          <div className="flex items-start gap-2.5">
+            <CalendarClock
+              className="size-4 text-warning-strong shrink-0 mt-0.5"
+              aria-hidden="true"
+            />
+            <div className="flex flex-col gap-0.5 min-w-0">
+              <span className="text-xs font-semibold text-foreground">
+                Calibrar {pendingCalibrationAssets.length}{" "}
+                {pendingCalibrationAssets.length === 1 ? "ativo" : "ativos"}
+              </span>
+              <span className="text-[11px] text-muted-foreground leading-relaxed">
+                Lotes com proventos acumulados anteriores ao extrato exigem uma data inicial (Data COM) antes que novos eventos sejam sugeridos.
+              </span>
+            </div>
+          </div>
+
+          <FormField
+            label="Data inicial comum (Data COM)"
+            htmlFor="batch-calibration-common-date"
+            helperText="Aplicada aos ativos selecionados sem exceção individual."
+          >
+            <DatePicker
+              id="batch-calibration-common-date"
+              value={commonCalibrationDate}
+              onValueChange={(nextDate) => {
+                setCommonCalibrationDate(nextDate);
+                if (calibrationError) setCalibrationError(null);
+              }}
+              placeholder="Selecionar data comum"
+              ariaLabel="Data inicial comum para calibração"
+            />
+          </FormField>
+
+          <div className="flex flex-col divide-y divide-border/80 rounded-xl border border-border/80 bg-surface">
+            {calibrationPlan.map(({ asset, selected, rawDate }) => {
+              const rowDateValue = rowCalibrationDates[asset.id] ?? "";
+              return (
+                <div
+                  key={asset.id}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-2.5"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Checkbox
+                      checked={selected}
+                      onCheckedChange={(checked) =>
+                        handleToggleCalibrationAsset(asset.id, Boolean(checked))
+                      }
+                      aria-label={`Selecionar ${asset.ticker} para calibração`}
+                    />
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs font-semibold font-mono text-foreground">
+                        {asset.ticker}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">
+                        Acumulado:{" "}
+                        <MoneyText
+                          cents={numberToCents(asset.accumulated_dividends ?? 0)}
+                          currency={asset.currency === "USD" ? "USD" : "BRL"}
+                          tone="default"
+                          className="inline text-[11px] font-medium text-foreground"
+                        />
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 sm:w-52 shrink-0">
+                    <FormField
+                      label={`Exceção ${asset.ticker}`}
+                      htmlFor={`calibration-row-date-${asset.id}`}
+                      className="w-full"
+                    >
+                      <DatePicker
+                        id={`calibration-row-date-${asset.id}`}
+                        value={rowDateValue}
+                        onValueChange={(nextDate) => {
+                          setRowCalibrationDates((prev) => ({
+                            ...prev,
+                            [asset.id]: nextDate,
+                          }));
+                          if (calibrationError) setCalibrationError(null);
+                        }}
+                        placeholder={
+                          commonCalibrationDate && selected
+                            ? `Comum (${formatDateBR(commonCalibrationDate)})`
+                            : "Data individual"
+                        }
+                        ariaLabel={`Data inicial de ${asset.ticker}`}
+                      />
+                    </FormField>
+                  </div>
+                  {selected && !rawDate ? (
+                    <span className="sr-only">Aguardando data para {asset.ticker}</span>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+            <span>
+              Resumo:{" "}
+              {calibrationSummary.selectedCount === 0
+                ? "nenhum ativo selecionado"
+                : calibrationSummary.dateCounts.length > 0
+                  ? calibrationSummary.dateCounts
+                      .map(
+                        (item) =>
+                          `${item.count} ${item.count === 1 ? "ativo" : "ativos"} em ${formatDateBR(item.date)}`,
+                      )
+                      .join(", ")
+                  : "escolha a data para aplicar aos selecionados"}
+            </span>
+            {calibrationSummary.firstCoveredDay ? (
+              <span className="font-medium text-foreground">
+                Primeiro dia coberto pela automação: {formatDateBR(calibrationSummary.firstCoveredDay)}
+              </span>
+            ) : null}
+          </div>
+
+          {calibrationError ? (
+            <Alert variant="error">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span>{calibrationError}</span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleApplyCalibration}
+                  disabled={setDividendTracking.isPending}
+                >
+                  Tentar novamente
+                </Button>
+              </div>
+            </Alert>
+          ) : null}
+
+          <div className="flex items-center justify-end">
+            <Button
+              type="button"
+              size="sm"
+              variant="default"
+              loading={setDividendTracking.isPending}
+              disabled={
+                isReadOnlyMode ||
+                setDividendTracking.isPending ||
+                calibrationSummary.selectedCount === 0 ||
+                missingCalibrationDatesCount > 0
+              }
+              onClick={handleApplyCalibration}
+            >
+              Aplicar aos selecionados ({calibrationSummary.selectedCount})
+            </Button>
+          </div>
+        </section>
+      ) : null}
+
+      {reviewError ? <Alert variant="error">{reviewError}</Alert> : null}
+
       {selectedSummary.hasUncertain ? (
         <div
           role="note"
@@ -494,18 +1181,74 @@ export function PendingDividendsDialog({
         </div>
       ) : null}
 
+      <div className="flex flex-col gap-2.5 rounded-xl border border-border/80 bg-muted/20 p-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <Input
+            value={searchTicker}
+            onChange={(e) => setSearchTicker(e.target.value)}
+            placeholder="Buscar ticker (ex.: PETR4)"
+            aria-label="Buscar provento por ticker"
+          />
+          <Select
+            value={currencyFilter}
+            onValueChange={(val) => setCurrencyFilter(val as "all" | "BRL" | "USD")}
+            options={CURRENCY_FILTER_OPTIONS}
+            ariaLabel="Filtrar por moeda"
+          />
+          <Select
+            value={originFilter}
+            onValueChange={(val) => setOriginFilter(val as OriginFilterValue)}
+            options={ORIGIN_FILTER_OPTIONS}
+            ariaLabel="Filtrar por origem"
+          />
+        </div>
+        <div className="flex flex-wrap items-center gap-4 text-xs">
+          <label className="inline-flex items-center gap-2 cursor-pointer">
+            <Checkbox
+              checked={missingDateOnly}
+              onCheckedChange={(checked) => setMissingDateOnly(Boolean(checked))}
+              aria-label="Filtrar apenas proventos sem data de pagamento"
+            />
+            <span>Sem data de pagamento</span>
+          </label>
+          {oldOver120Count > 0 ? (
+            <label className="inline-flex items-center gap-2 cursor-pointer">
+              <Checkbox
+                checked={includeOldOver120}
+                onCheckedChange={(checked) => setIncludeOldOver120(Boolean(checked))}
+                aria-label="Incluir proventos antigos acima de 120 dias sem data"
+              />
+              <span>Incluir antigas &gt;120d ({oldOver120Count})</span>
+            </label>
+          ) : null}
+        </div>
+      </div>
+
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-border/80">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Checkbox
               checked={allAvailableSelected}
               onCheckedChange={(checked) => handleToggleAll(Boolean(checked))}
-              disabled={availableDividends.length === 0}
-              aria-label="Selecionar todos os proventos a confirmar"
+              disabled={filteredAvailableDividends.length === 0}
+              aria-label="Selecionar visíveis para conferência"
             />
             <span className="text-xs font-semibold text-foreground">
-              A Confirmar ({availableDividends.length})
+              Selecionar visíveis ({filteredAvailableDividends.length})
             </span>
+            {selectedItems.length > 0 ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground hover:text-foreground"
+                disabled={isReadOnlyMode || dismissBatchMutation.isPending || dismissMutation.isPending}
+                onClick={handleDismissSelectedBatch}
+              >
+                <EyeOff className="size-3.5 mr-1" aria-hidden="true" />
+                Dispensar selecionados ({selectedItems.length})
+              </Button>
+            ) : null}
           </div>
           {selectedSummary.totalBRLCents > 0 ? (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap">
@@ -533,7 +1276,7 @@ export function PendingDividendsDialog({
           ) : null}
         </div>
 
-        {availableDividends.length === 0 ? (
+        {filteredAvailableDividends.length === 0 ? (
           <EmptyState
             title="Nenhum provento aguardando confirmação"
             description="Quando a data de pagamento chegar ou você provisionar manualmente, os lançamentos aparecerão aqui para conferência."
@@ -541,7 +1284,7 @@ export function PendingDividendsDialog({
           />
         ) : (
           <div className="flex flex-col divide-y divide-border/80 rounded-xl border border-border/80 bg-surface">
-            {availableDividends.map((div) => {
+            {filteredAvailableDividends.map((div) => {
               const key = getItemKey(div);
               const eff = getEffectiveRow(div);
               const isEditing = editingKey === key;
@@ -566,8 +1309,8 @@ export function PendingDividendsDialog({
                         <span className="text-[11px] text-muted-foreground break-words">
                           {formatAssetQuantity(div.quantityOnComDate)} cotas em{" "}
                           {formatDateBR(div.comDate)} ·{" "}
-                          {div.paymentDate
-                            ? `Pagamento ${formatDateBR(div.paymentDate)}`
+                          {eff.paymentDate
+                            ? `Pagamento ${formatDateBR(eff.paymentDate)}`
                             : "Data a definir"}
                         </span>
                       </div>
@@ -585,7 +1328,7 @@ export function PendingDividendsDialog({
                         variant="ghost"
                         size="sm"
                         className="size-8 p-0 shrink-0 text-muted-foreground hover:text-foreground"
-                        title="Editar tipo, IR ou valor líquido"
+                        title="Editar tipo, data, IR ou valor líquido"
                         aria-label={`Editar provento de ${div.ticker}`}
                         onClick={() => setEditingKey(isEditing ? null : key)}
                       >
@@ -606,96 +1349,7 @@ export function PendingDividendsDialog({
                     </div>
                   </div>
 
-                  {isEditing ? (
-                    <div className="px-3 pb-3 pt-2 bg-muted/25 border-t border-border/80 flex flex-col gap-2.5">
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                        <div className="flex flex-col gap-1">
-                          <label className="text-xs font-semibold text-foreground">
-                            Tipo
-                          </label>
-                          <Select
-                            value={eff.type}
-                            options={DIVIDEND_TYPE_OPTIONS}
-                            ariaLabel={`Tipo do provento de ${div.ticker}`}
-                            onValueChange={(nextType) => {
-                              const typed = nextType as CorporateDividendType;
-                              setRowOverride(div, (curr) => {
-                                const nextTax = getDefaultTaxForType(typed, div.currency);
-                                const nextNet =
-                                  Math.round(curr.grossBase * (1 - nextTax / 100) * 100) / 100;
-                                return {
-                                  ...curr,
-                                  type: typed,
-                                  taxRatePct: nextTax,
-                                  netAmount: nextNet > 0 ? nextNet : curr.netAmount,
-                                };
-                              });
-                            }}
-                          />
-                        </div>
-
-                        <div className="flex flex-col gap-1">
-                          <label className="text-xs font-semibold text-foreground">
-                            IR Retido (%)
-                          </label>
-                          <PercentInput
-                            size="sm"
-                            maxValue={100}
-                            value={eff.taxRatePct}
-                            aria-label={`Alíquota IR de ${div.ticker}`}
-                            onValueChange={(nextPct) => {
-                              const clamped = Math.max(0, Math.min(100, nextPct));
-                              setRowOverride(div, (curr) => {
-                                const nextNet =
-                                  Math.round(curr.grossBase * (1 - clamped / 100) * 100) / 100;
-                                return {
-                                  ...curr,
-                                  taxRatePct: clamped,
-                                  netAmount: nextNet,
-                                };
-                              });
-                            }}
-                          />
-                        </div>
-
-                        <div className="flex flex-col gap-1">
-                          <label className="text-xs font-semibold text-foreground">
-                            Valor Líquido ({div.currency})
-                          </label>
-                          <MoneyInput
-                            size="sm"
-                            currency={div.currency}
-                            cents={numberToCents(eff.netAmount)}
-                            aria-label={`Valor líquido de ${div.ticker}`}
-                            aria-invalid={eff.netAmount <= 0}
-                            onCentsChange={(cents) => {
-                              setRowOverride(div, (curr) => ({
-                                ...curr,
-                                netAmount: cents / 100,
-                              }));
-                            }}
-                          />
-                          {eff.netAmount <= 0 ? (
-                            <span role="alert" className="text-[11px] text-critical-strong">
-                              Deve ser maior que zero
-                            </span>
-                          ) : null}
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-end">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="gap-1 text-xs"
-                          onClick={() => setEditingKey(null)}
-                        >
-                          <Check className="size-3.5" aria-hidden="true" />
-                          Concluir edição
-                        </Button>
-                      </div>
-                    </div>
-                  ) : null}
+                  {isEditing ? renderInlineRowEditor(div, eff) : null}
                 </div>
               );
             })}
@@ -728,94 +1382,182 @@ export function PendingDividendsDialog({
               ? `Ativos em USD permanecem na moeda nativa no extrato e creditam em R$ no Caixa pelo câmbio de referência (R$ ${formatFxRate(effectiveFx)}).`
               : "Ao manter marcado, o valor líquido confirmado entra imediatamente no ativo Caixa da carteira."}
           </p>
+          <div className="flex items-start gap-2.5 pt-2 mt-1 border-t border-border/60">
+            <Checkbox
+              id="consensus-lgpd-toggle"
+              checked={contributePublicly}
+              onCheckedChange={(checked) => setContributePublicly(Boolean(checked))}
+              aria-label="Contribuir anonimamente para o catálogo de proventos"
+            />
+            <label
+              htmlFor="consensus-lgpd-toggle"
+              className="text-[11px] text-muted-foreground leading-relaxed cursor-pointer"
+            >
+              Contribuir anonimamente com termos públicos corrigidos (LGPD). Desmarque para conferência privada.
+            </label>
+          </div>
         </div>
       ) : null}
+    </div>
+  );
 
-      {/* Fila Provisionada (futuros ou sem data confirmada) */}
-      {projectedDividends.length > 0 ? (
-        <div className="flex flex-col gap-2 pt-2 border-t border-border/80">
+  const provisionedContent = isLoading ? (
+    <div className="flex flex-col gap-3 py-2" aria-busy="true">
+      <Skeleton className="h-12 w-full rounded-xl" />
+      <Skeleton className="h-16 w-full rounded-xl" />
+    </div>
+  ) : isError ? (
+    <div className="py-2">
+      <ErrorState
+        message="Não foi possível carregar os proventos provisionados."
+        onRetry={onRetry}
+      />
+    </div>
+  ) : (
+    <div className="flex flex-col gap-4 py-1">
+      <div className="flex flex-col gap-2.5 rounded-xl border border-border/80 bg-muted/20 p-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <Input
+            value={searchTicker}
+            onChange={(e) => setSearchTicker(e.target.value)}
+            placeholder="Buscar ticker (ex.: PETR4)"
+            aria-label="Buscar provisionado por ticker"
+          />
+          <Select
+            value={currencyFilter}
+            onValueChange={(val) => setCurrencyFilter(val as "all" | "BRL" | "USD")}
+            options={CURRENCY_FILTER_OPTIONS}
+            ariaLabel="Filtrar provisionados por moeda"
+          />
+          <Select
+            value={originFilter}
+            onValueChange={(val) => setOriginFilter(val as OriginFilterValue)}
+            options={ORIGIN_FILTER_OPTIONS}
+            ariaLabel="Filtrar provisionados por origem"
+          />
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <label className="inline-flex items-center gap-2 cursor-pointer">
+            <Checkbox
+              checked={missingDateOnly}
+              onCheckedChange={(checked) => setMissingDateOnly(Boolean(checked))}
+              aria-label="Filtrar provisionados sem data de pagamento"
+            />
+            <span>Sem data de pagamento ({datelessProjectedCount})</span>
+          </label>
+          <span className="text-[11px] text-muted-foreground">
+            Fora do Patrimônio e do Caixa até o pagamento
+          </span>
+        </div>
+      </div>
+
+      {filteredProjectedDividends.length === 0 ? (
+        <EmptyState
+          title="Nenhum provento provisionado"
+          description="Proventos futuros anunciados ou provisionados manualmente aparecerão aqui até a data de pagamento."
+          headingLevel="h3"
+        />
+      ) : (
+        <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-1.5">
               <CalendarClock className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
               <span className="text-xs font-semibold text-foreground">
-                Provisionados — A Receber ({projectedDividends.length})
+                Provisionados — A Receber ({filteredProjectedDividends.length})
               </span>
             </div>
-            <span className="text-[11px] text-muted-foreground">
-              Fora do Patrimônio e do Caixa até o pagamento
-            </span>
+            {datelessProjectedCount > 0 ? (
+              <Badge size="xs" variant="muted">
+                {datelessProjectedCount} sem data
+              </Badge>
+            ) : null}
           </div>
           <div className="flex flex-col divide-y divide-border/80 rounded-xl border border-border/80 bg-surface">
-            {projectedDividends.map((div) => {
+            {filteredProjectedDividends.map((div) => {
+              const key = getItemKey(div);
               const eff = getEffectiveRow(div);
+              const isEditing = editingKey === key;
               return (
-                <div
-                  key={getItemKey(div)}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between py-2.5 px-3 gap-2.5 text-xs"
-                >
-                  <div className="flex flex-col min-w-0 gap-0.5">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-semibold font-mono text-foreground">{div.ticker}</span>
-                      {renderTaxAndSourceBadges(div, eff)}
+                <div key={key} className="flex flex-col">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2.5 px-3 gap-2.5 text-xs">
+                    <div className="flex flex-col min-w-0 gap-0.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-semibold font-mono text-foreground">{div.ticker}</span>
+                        {renderTaxAndSourceBadges(div, eff)}
+                      </div>
+                      <span className="text-[11px] text-muted-foreground">
+                        Data COM {formatDateBR(div.comDate)} ·{" "}
+                        {eff.paymentDate
+                          ? `Previsto para ${formatDateBR(eff.paymentDate)}`
+                          : "Data de pagamento a definir"}
+                      </span>
                     </div>
-                    <span className="text-[11px] text-muted-foreground">
-                      Data COM {formatDateBR(div.comDate)} ·{" "}
-                      {div.paymentDate
-                        ? `Previsto para ${formatDateBR(div.paymentDate)}`
-                        : "Data de pagamento a definir"}
-                    </span>
-                  </div>
 
-                  <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
-                    <MoneyText
-                      cents={numberToCents(eff.netAmount)}
-                      currency={div.currency}
-                      tone="portfolio"
-                      className="font-semibold"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={isReadOnlyMode || confirmMutation.isPending || eff.netAmount <= 0}
-                      onClick={() => handleSettleProvisionedNow(div)}
-                    >
-                      Confirmar agora
-                    </Button>
-                    {div.isManual && div.eventId ? (
+                    <div className="flex items-center justify-between sm:justify-end gap-1.5 shrink-0">
+                      <MoneyText
+                        cents={numberToCents(eff.netAmount)}
+                        currency={div.currency}
+                        tone="portfolio"
+                        className="font-semibold"
+                      />
                       <Button
                         type="button"
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        className="size-8 p-0 shrink-0 text-muted-foreground hover:text-destructive"
-                        title="Excluir provisionamento manual"
-                        aria-label={`Excluir provisionamento manual de ${div.ticker}`}
-                        disabled={isReadOnlyMode || deleteManualMutation.isPending}
-                        onClick={() => handleDeleteManualEvent(div.eventId!)}
+                        disabled={isReadOnlyMode || confirmMutation.isPending || eff.netAmount <= 0}
+                        onClick={() => handleSettleProvisionedNow(div)}
                       >
-                        <Trash2 className="size-3.5" aria-hidden="true" />
+                        Confirmar agora
                       </Button>
-                    ) : (
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         className="size-8 p-0 shrink-0 text-muted-foreground hover:text-foreground"
-                        title="Dispensar provento previsto"
-                        aria-label={`Dispensar provento previsto de ${div.ticker}`}
-                        disabled={isReadOnlyMode || dismissMutation.isPending}
-                        onClick={() => handleDismissItem(div)}
+                        title="Editar tipo, data de pagamento, IR ou valor líquido"
+                        aria-label={`Editar provento previsto de ${div.ticker}`}
+                        onClick={() => setEditingKey(isEditing ? null : key)}
                       >
-                        <EyeOff className="size-3.5" aria-hidden="true" />
+                        <Pencil className="size-3.5" aria-hidden="true" />
                       </Button>
-                    )}
+                      {div.isManual && div.eventId ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="size-8 p-0 shrink-0 text-muted-foreground hover:text-destructive"
+                          title="Excluir provisionamento manual"
+                          aria-label={`Excluir provisionamento manual de ${div.ticker}`}
+                          disabled={isReadOnlyMode || deleteManualMutation.isPending}
+                          onClick={() => handleDeleteManualEvent(div.eventId!)}
+                        >
+                          <Trash2 className="size-3.5" aria-hidden="true" />
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="size-8 p-0 shrink-0 text-muted-foreground hover:text-foreground"
+                          title="Dispensar provento previsto"
+                          aria-label={`Dispensar provento previsto de ${div.ticker}`}
+                          disabled={isReadOnlyMode || dismissMutation.isPending}
+                          onClick={() => handleDismissItem(div)}
+                        >
+                          <EyeOff className="size-3.5" aria-hidden="true" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
+                  {isEditing
+                    ? renderInlineRowEditor(div, eff, { allowDirectConfirm: true })
+                    : null}
                 </div>
               );
             })}
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 
@@ -946,8 +1688,13 @@ export function PendingDividendsDialog({
   const tabs: TabItem[] = [
     {
       value: "review",
-      label: `Conferência (${availableDividends.length + projectedDividends.length})`,
+      label: `A Conferir (${availableDividends.length})`,
       content: reviewContent,
+    },
+    {
+      value: "provisioned",
+      label: `Provisionados (${projectedDividends.length})`,
+      content: provisionedContent,
     },
     {
       value: "manual",
@@ -992,6 +1739,17 @@ export function PendingDividendsDialog({
                 {syncCash
                   ? `Aprovar no Caixa (${selectedItems.length})`
                   : `Confirmar no Extrato (${selectedItems.length})`}
+              </Button>
+            </ModalFooter>
+          ) : activeTab === "provisioned" ? (
+            <ModalFooter borderless>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleOpenChange(false)}
+              >
+                Fechar
               </Button>
             </ModalFooter>
           ) : (
@@ -1048,13 +1806,24 @@ function PendingDividendsDialogHostContent({
   initialTab: DividendReviewModalTab;
   requestSeq: number;
 }) {
-  const { available, projected, fxRate, isLoading, isError, refetch } = useCorporateDividends();
+  const {
+    available,
+    projected,
+    assetsNeedingCalibration,
+    trackingStartDate,
+    fxRate,
+    isLoading,
+    isError,
+    refetch,
+  } = useCorporateDividends();
   return (
     <PendingDividendsDialog
       open={open}
       onOpenChange={onOpenChange}
       availableDividends={available}
       projectedDividends={projected}
+      assetsNeedingCalibration={assetsNeedingCalibration}
+      trackingStartDate={trackingStartDate}
       fxRate={fxRate}
       initialTab={initialTab}
       requestSeq={requestSeq}
@@ -1072,11 +1841,13 @@ function PendingDividendsDialogHostContent({
 export function PendingDividendsDialogHost() {
   const [open, setOpen] = useState(false);
   const [initialTab, setInitialTab] = useState<DividendReviewModalTab>("review");
+  const [, setInitialFilter] = useState<DividendReviewModalFilter>("all");
   const [requestSeq, setRequestSeq] = useState(0);
 
   useEffect(() => {
     return subscribeDividendReviewModal((opts) => {
       setInitialTab(opts.initialTab ?? "review");
+      setInitialFilter(opts.initialFilter ?? "all");
       setRequestSeq((prev) => prev + 1);
       setOpen(true);
     });

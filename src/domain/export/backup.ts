@@ -23,7 +23,7 @@ export type BackupRow = Record<string, unknown>;
  * dependências FK (pais antes dos filhos) — usada no RPC de restauração e
  * na validação de integridade.
  */
-export const BACKUP_TABLE_KEYS = [
+export const REQUIRED_BACKUP_TABLE_KEYS = [
   "categories",
   "credit_cards",
   "card_competence_overrides",
@@ -47,6 +47,12 @@ export const BACKUP_TABLE_KEYS = [
   "user_preferences",
 ] as const;
 
+export const BACKUP_TABLE_KEYS = [
+  ...REQUIRED_BACKUP_TABLE_KEYS,
+  "user_dividend_events",
+  "portfolio_dividend_dismissals",
+] as const;
+
 export type BackupTableKey = (typeof BACKUP_TABLE_KEYS)[number];
 
 export interface BackupData {
@@ -66,6 +72,8 @@ export interface BackupData {
   portfolio_snapshots: BackupRow[];
   portfolio_contributions: BackupRow[];
   portfolio_dividends: BackupRow[];
+  user_dividend_events?: BackupRow[];
+  portfolio_dividend_dismissals?: BackupRow[];
   class_targets: BackupRow[];
   sector_targets: BackupRow[];
   asset_prices: BackupRow[];
@@ -156,7 +164,7 @@ const backupSchema = z.object({
   checksum: z.string().optional(),
   metadata: metadataSchema,
   data: z.record(z.string(), rowSchema.array()).refine(
-    (data) => BACKUP_TABLE_KEYS.every((key) => Array.isArray(data[key])),
+    (data) => REQUIRED_BACKUP_TABLE_KEYS.every((key) => Array.isArray(data[key])),
     "Backup incompleto: faltam tabelas do formato.",
   ),
 });
@@ -164,37 +172,44 @@ const backupSchema = z.object({
 /** Monta o payload de backup a partir dos dados brutos (fetch RLS) enriquecido com metadados e checksum. */
 export function buildBackupPayload(data: BackupData): BackupPayload {
   const exportedAt = new Date().toISOString();
-  const checksum = calculateBackupChecksum(data);
+  const normalizedData: BackupData = {
+    ...data,
+    user_dividend_events: data.user_dividend_events ?? [],
+    portfolio_dividend_dismissals: data.portfolio_dividend_dismissals ?? [],
+  };
+  const checksum = calculateBackupChecksum(normalizedData);
 
   const tableCounts = Object.fromEntries(
-    BACKUP_TABLE_KEYS.map((k) => [k, Array.isArray(data[k]) ? data[k].length : 0]),
+    BACKUP_TABLE_KEYS.map((k) => [k, Array.isArray(normalizedData[k]) ? normalizedData[k]!.length : 0]),
   ) as Record<string, number>;
 
   const totalRecords = Object.values(tableCounts).reduce((acc, count) => acc + count, 0);
 
   const modulesSummary = {
-    categories: data.categories?.length ?? 0,
+    categories: normalizedData.categories?.length ?? 0,
     cards:
-      (data.credit_cards?.length ?? 0) +
-      (data.card_payments?.length ?? 0) +
-      (data.card_competence_overrides?.length ?? 0),
-    transactions: (data.expenses?.length ?? 0) + (data.incomes?.length ?? 0),
-    debts: data.debts?.length ?? 0,
-    budgets: (data.budgets?.length ?? 0) + (data.income_goals?.length ?? 0),
+      (normalizedData.credit_cards?.length ?? 0) +
+      (normalizedData.card_payments?.length ?? 0) +
+      (normalizedData.card_competence_overrides?.length ?? 0),
+    transactions: (normalizedData.expenses?.length ?? 0) + (normalizedData.incomes?.length ?? 0),
+    debts: normalizedData.debts?.length ?? 0,
+    budgets: (normalizedData.budgets?.length ?? 0) + (normalizedData.income_goals?.length ?? 0),
     investments:
-      (data.portfolio_assets?.length ?? 0) +
-      (data.portfolio_transactions?.length ?? 0) +
-      (data.portfolio_snapshots?.length ?? 0) +
-      (data.portfolio_contributions?.length ?? 0) +
-      (data.portfolio_dividends?.length ?? 0) +
-      (data.class_targets?.length ?? 0) +
-      (data.sector_targets?.length ?? 0) +
-      (data.asset_prices?.length ?? 0) +
-      (data.cash_checkpoints?.length ?? 0),
+      (normalizedData.portfolio_assets?.length ?? 0) +
+      (normalizedData.portfolio_transactions?.length ?? 0) +
+      (normalizedData.portfolio_snapshots?.length ?? 0) +
+      (normalizedData.portfolio_contributions?.length ?? 0) +
+      (normalizedData.portfolio_dividends?.length ?? 0) +
+      (normalizedData.user_dividend_events?.length ?? 0) +
+      (normalizedData.portfolio_dividend_dismissals?.length ?? 0) +
+      (normalizedData.class_targets?.length ?? 0) +
+      (normalizedData.sector_targets?.length ?? 0) +
+      (normalizedData.asset_prices?.length ?? 0) +
+      (normalizedData.cash_checkpoints?.length ?? 0),
     preferences:
-      (data.user_preferences?.length ?? 0) +
-      (data.insight_feedback?.length ?? 0) +
-      (data.reminder_states?.length ?? 0),
+      (normalizedData.user_preferences?.length ?? 0) +
+      (normalizedData.insight_feedback?.length ?? 0) +
+      (normalizedData.reminder_states?.length ?? 0),
   };
 
   const metadata: BackupMetadata = {
@@ -213,7 +228,7 @@ export function buildBackupPayload(data: BackupData): BackupPayload {
     exportedAt,
     checksum,
     metadata,
-    data,
+    data: normalizedData,
   };
 }
 
@@ -249,9 +264,17 @@ export function parseBackupPayload(raw: unknown): BackupValidation {
   const expectedChecksum = parsed.data.checksum ?? parsed.data.metadata?.checksum;
   if (expectedChecksum) {
     const actualChecksum = calculateBackupChecksum(rawCanonicalData);
+    const legacyRequiredData = Object.fromEntries(
+      REQUIRED_BACKUP_TABLE_KEYS.map((key) => [key, dataByKey[key] ?? []]),
+    );
+    const legacyRequiredChecksum = calculateBackupChecksum(legacyRequiredData);
     const hasLegacyAlloc = Array.isArray(dataByKey.allocation_targets);
     const legacyChecksum = hasLegacyAlloc ? calculateBackupChecksum(dataByKey) : null;
-    if (actualChecksum !== expectedChecksum && legacyChecksum !== expectedChecksum) {
+    if (
+      actualChecksum !== expectedChecksum &&
+      legacyRequiredChecksum !== expectedChecksum &&
+      legacyChecksum !== expectedChecksum
+    ) {
       return {
         ok: false,
         errors: [
@@ -308,6 +331,7 @@ export function validateIntegrity(data: BackupData): string[] {
   const categoryIds = idsOf(data.categories);
   const cardIds = idsOf(data.credit_cards);
   const assetIds = idsOf(data.portfolio_assets);
+  const dividendIds = idsOf(data.portfolio_dividends);
 
   const checkRef = (rows: readonly BackupRow[] | undefined, fkKey: string, allowed: Set<string>, label: string): void => {
     if (!rows) return;
@@ -328,8 +352,11 @@ export function validateIntegrity(data: BackupData): string[] {
   checkRef(data.card_payments, "card_id", cardIds, "de pagamento");
   checkRef(data.card_competence_overrides, "card_id", cardIds, "de override de competência");
   checkRef(data.portfolio_transactions, "asset_id", assetIds, "de transação de ativo");
+  checkRef(data.portfolio_transactions, "linked_dividend_id", dividendIds, "de transação vinculada a provento");
   checkRef(data.portfolio_contributions, "asset_id", assetIds, "de contribuição de ativo");
   checkRef(data.portfolio_dividends, "asset_id", assetIds, "de provento de ativo");
+  checkRef(data.user_dividend_events, "asset_id", assetIds, "de evento de provento do usuário");
+  checkRef(data.user_dividend_events, "settled_dividend_id", dividendIds, "de liquidação de evento de provento");
 
   // Valida integridade simétrica de transferências internas pareadas PF x PJ (quando presentes no backup)
   const incomePairIds = new Set(

@@ -22,6 +22,7 @@ import {
   PORTFOLIO_QUERY_KEYS,
   invalidatePortfolioSuite,
   triggerSurgicalQuoteSync,
+  triggerUserDividendsSync,
 } from "./portfolio-keys";
 import {
   useCreatePortfolioAsset,
@@ -179,18 +180,23 @@ export function useRecordOrder() {
         }
       }
 
+      const isDividendOrder = type === "dividend" || type === "jcp" || type === "fii_yield";
+
       // 2. Grava a transação atual no ledger de transações (na moeda nativa do ativo)
-      await createTx.mutateAsync({
-        asset_id: asset.id,
-        type,
-        date,
-        quantity,
-        price,
-        total,
-        notes: notes ?? undefined,
-        fx_rate: asset.currency === "USD" ? rate : undefined,
-        total_cost_brl: txTotalCostBRL,
-      });
+      // Para proventos, o write_user_dividend grava provento + transação + Caixa em uma única transação atômica.
+      if (!isDividendOrder) {
+        await createTx.mutateAsync({
+          asset_id: asset.id,
+          type,
+          date,
+          quantity,
+          price,
+          total,
+          notes: notes ?? undefined,
+          fx_rate: asset.currency === "USD" ? rate : undefined,
+          total_cost_brl: txTotalCostBRL,
+        });
+      }
 
       // 3. Se for Compra ou Subscrição: atualiza o Preço Médio ponderado e quantidade
       if (type === "buy" || type === "subscription") {
@@ -480,8 +486,8 @@ export function useRecordOrder() {
         }
       }
 
-      // 4. Se for Provento (dividendo, jcp, fii_yield)
-      if (type === "dividend" || type === "jcp" || type === "fii_yield") {
+      // 4. Se for Provento (dividendo, jcp, fii_yield) — gravação atômica (provento + transação + Caixa)
+      if (isDividendOrder) {
         await createDiv.mutateAsync({
           amount: total,
           date,
@@ -490,29 +496,10 @@ export function useRecordOrder() {
           notes: notes ?? `Rendimento de ${asset.ticker}`,
           sync_cash: Boolean(syncCash && totalBRL > 0),
           cash_amount: syncCash && totalBRL > 0 ? totalBRL : null,
+          create_transaction: true,
+          tx_type: type,
+          fx_rate: asset.currency === "USD" ? rate : null,
         });
-
-        // Credita no caixa em BRL se solicitado
-        if (syncCash && totalBRL > 0) {
-          if (cashAsset) {
-            await updateAsset.mutateAsync({
-              id: cashAsset.id,
-              patch: {
-                quantity: cashAsset.quantity + totalBRL,
-                average_price: 1,
-              },
-            });
-          } else {
-            await createAsset.mutateAsync({
-              ticker: "CAIXA",
-              asset_class: "Caixa",
-              sector: "Reserva / Liquidez",
-              quantity: totalBRL,
-              average_price: 1,
-              currency: "BRL",
-            });
-          }
-        }
       }
 
       // 5. Se for Desdobramento / Grupamento (Split / Reverse Split)
@@ -548,6 +535,16 @@ export function useRecordOrder() {
           reason: "post_trade_stale",
           includeUsdFx: params.asset.currency === "USD",
         });
+      } else if (
+        (params.type === "buy" ||
+          params.type === "sell" ||
+          params.type === "subscription" ||
+          params.type === "split" ||
+          params.type === "reverse_split") &&
+        txDate.length === 10 &&
+        txDate < todaySaoPauloISO()
+      ) {
+        void triggerUserDividendsSync(queryClient);
       }
       pushToast({
         title: "Ordem executada",

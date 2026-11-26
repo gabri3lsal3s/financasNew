@@ -130,3 +130,25 @@ export async function triggerSurgicalQuoteSync(
   }
 }
 
+/**
+ * Dispara sincronização interativa de proventos para o titular após alterações retroativas de custódia (S3).
+ * Trata rate limit (429) e falhas de rede sem quebrar a operação de ordem que a acionou.
+ */
+export async function triggerUserDividendsSync(queryClient: QueryClient): Promise<void> {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    return;
+  }
+  try {
+    const { syncUserDividendsEdge } = await import("@/data/rpc");
+    const res = await syncUserDividendsEdge();
+    if (res.ok) {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.userDividendEvents }),
+        queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.corporateDividends }),
+      ]);
+    }
+  } catch {
+    // Degradação silenciosa; cron diário atua como recuperação automática
+  }
+}
+

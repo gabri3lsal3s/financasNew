@@ -27,6 +27,7 @@ import {
   PORTFOLIO_QUERY_KEYS,
   invalidatePortfolioSuite,
   triggerSurgicalQuoteSync,
+  triggerUserDividendsSync,
 } from "./portfolio-keys";
 
 export function useCreatePortfolioTransaction() {
@@ -141,8 +142,21 @@ export function useUpdatePortfolioTransaction() {
       }
       return updated;
     },
-    onSuccess: () => {
+    onSuccess: (updated) => {
       void invalidatePortfolioSuite(queryClient);
+      const txDate = (updated?.date ?? "").slice(0, 10);
+      if (
+        updated &&
+        (updated.type === "buy" ||
+          updated.type === "sell" ||
+          updated.type === "subscription" ||
+          updated.type === "split" ||
+          updated.type === "reverse_split") &&
+        txDate.length === 10 &&
+        txDate < todaySaoPauloISO()
+      ) {
+        void triggerUserDividendsSync(queryClient);
+      }
       pushToast({
         title: "Lançamento atualizado",
         description: "A movimentação foi alterada com sucesso.",
@@ -254,8 +268,24 @@ export function useDeletePortfolioTransaction() {
         fixedIncomeMetadata,
       });
     },
-    onSuccess: () => {
+    onSuccess: (_result, input) => {
       void invalidatePortfolioSuite(queryClient);
+      const cachedAll = queryClient.getQueryData<PortfolioTransaction[]>(PORTFOLIO_QUERY_KEYS.allTransactions) ?? [];
+      const txId = typeof input === "string" ? input : input.id;
+      const match = cachedAll.find((t) => t.id === txId);
+      const txType = typeof input === "string" ? match?.type : (input.type ?? match?.type);
+      const txDate = ((typeof input === "string" ? match?.date : (input.date ?? match?.date)) ?? "").slice(0, 10);
+      if (
+        (txType === "buy" ||
+          txType === "sell" ||
+          txType === "subscription" ||
+          txType === "split" ||
+          txType === "reverse_split") &&
+        txDate.length === 10 &&
+        txDate < todaySaoPauloISO()
+      ) {
+        void triggerUserDividendsSync(queryClient);
+      }
       pushToast({
         title: "Lançamento excluído",
         description: "A operação e seus lançamentos vinculados foram removidos.",

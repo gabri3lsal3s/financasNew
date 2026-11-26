@@ -264,5 +264,52 @@ describe("domain/export — backup JSON", () => {
     const invalid = parseBackupPayload(buildBackupPayload(broken));
     expect(invalid.ok).toBe(false);
   });
+
+  it("preserva e valida user_dividend_events, portfolio_dividend_dismissals, entry_origin e linked_dividend_id (S3)", () => {
+    const dataOk: BackupData = {
+      ...emptyData(),
+      portfolio_assets: [
+        { id: "a1", user_id: "u1", ticker: "PETR4", asset_class: "Ações", currency: "BRL" },
+      ],
+      portfolio_dividends: [
+        {
+          id: "d1",
+          user_id: "u1",
+          asset_id: "a1",
+          ticker: "PETR4",
+          amount: 100,
+          date: "2026-10-15",
+          entry_origin: "manual",
+          request_id: "11111111-1111-4111-8111-111111111111",
+        },
+      ],
+      portfolio_transactions: [
+        { id: "t1", user_id: "u1", asset_id: "a1", type: "dividend", date: "2026-10-15", quantity: 1, price: 100, total: 100, linked_dividend_id: "d1" },
+      ],
+      user_dividend_events: [
+        { id: "ev1", user_id: "u1", asset_id: "a1", ticker: "PETR4", settled_dividend_id: "d1", status: "SETTLED" },
+      ],
+      portfolio_dividend_dismissals: [
+        { id: "dis1", user_id: "u1", ticker: "PETR4", corporate_event_id: "corp-1", reason: "manual_ignore" },
+      ],
+    };
+
+    const parsedOk = parseBackupPayload(buildBackupPayload(dataOk));
+    expect(parsedOk.ok).toBe(true);
+    if (parsedOk.ok) {
+      expect(parsedOk.payload.data.user_dividend_events).toHaveLength(1);
+      expect(parsedOk.payload.data.portfolio_dividend_dismissals).toHaveLength(1);
+    }
+
+    const broken: BackupData = {
+      ...dataOk,
+      portfolio_dividends: [],
+    };
+    const parsedBroken = parseBackupPayload(buildBackupPayload(broken));
+    expect(parsedBroken.ok).toBe(false);
+    if (!parsedBroken.ok) {
+      expect(parsedBroken.errors.some((e) => e.includes("d1"))).toBe(true);
+    }
+  });
 });
 

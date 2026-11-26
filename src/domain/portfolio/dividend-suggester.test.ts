@@ -15,6 +15,7 @@ describe("dividend-suggester: Apuração de Proventos na Data COM", () => {
     currency: "BRL",
     quantity: 100,
     average_price: 30,
+    created_at: "2026-01-01T12:00:00Z",
   };
 
   const assetVale: PortfolioAsset = {
@@ -25,6 +26,7 @@ describe("dividend-suggester: Apuração de Proventos na Data COM", () => {
     currency: "BRL",
     quantity: 50,
     average_price: 60,
+    created_at: "2026-01-01T12:00:00Z",
   };
 
   describe("getCustodyAtComDate", () => {
@@ -241,6 +243,7 @@ describe("dividend-suggester: Apuração de Proventos na Data COM", () => {
         currency: "USD",
         quantity: 20, // baseline 10 antes de split 2:1 em 2026-11-05
         average_price: 150,
+        created_at: "2026-01-01T12:00:00Z",
       };
       const txs: PortfolioTransaction[] = [
         {
@@ -301,6 +304,195 @@ describe("dividend-suggester: Apuração de Proventos na Data COM", () => {
       expect(res.totalAvailableUSD).toBe(7);
       expect(res.totalAvailableAmount).toBe(38.5); // 7 * 5.50 BRL
       expect(resolveDividendAntiFloodCutoff("2026-11-08", "2026-11-10", 7)).toBe("2026-11-08");
+    });
+
+    it("S1: bloqueia ativos com acumulado positivo sem corte ou legado sem timestamp e aplica trackingStartDate", () => {
+      const legacyNoTimestamp: PortfolioAsset = {
+        id: "asset-leg",
+        user_id: "user-1",
+        ticker: "ITUB4",
+        asset_class: "Ações",
+        currency: "BRL",
+        quantity: 80,
+        average_price: 25,
+      };
+      const uncalibratedAccumulated: PortfolioAsset = {
+        id: "asset-acc",
+        user_id: "user-1",
+        ticker: "PETR4",
+        asset_class: "Ações",
+        currency: "BRL",
+        quantity: 100,
+        average_price: 30,
+        accumulated_dividends: 250,
+        created_at: "2026-01-01T12:00:00Z",
+      };
+
+      const res = calculateSuggestedDividends({
+        corporateEvents: [
+          ...corpEvents,
+          {
+            id: "corp-itub",
+            ticker: "ITUB4",
+            type: "DIVIDENDO",
+            com_date: "2026-10-18",
+            payment_date: "2026-11-05",
+            rate: 1.0,
+            net_rate: 1.0,
+            currency: "BRL",
+          },
+          {
+            id: "corp-stale",
+            ticker: "VALE3",
+            type: "DIVIDENDO",
+            com_date: "2026-05-01", // > 120d atrás em relação a 2026-11-06
+            payment_date: "2026-05-20",
+            rate: 1.0,
+            net_rate: 1.0,
+            currency: "BRL",
+          },
+        ],
+        dismissals: [],
+        assets: [legacyNoTimestamp, uncalibratedAccumulated, assetVale],
+        transactions: [],
+        manualDividends: [],
+        referenceDate: "2026-11-06",
+        trackingStartDate: "2026-10-18",
+      });
+
+      expect(res.available).toHaveLength(0);
+      expect(res.projected).toHaveLength(1);
+      expect(res.projected[0]?.corporateDividendId).toBe("corp-div-2"); // VALE3 COM 2026-10-20 >= 2026-10-18
+    });
+
+    it("agrupa PETR4 + PETR4F (com lote F maior) em 1 evento no lote padrão e soma antes de arredondar (S2)", () => {
+      const lotStandard: PortfolioAsset = {
+        id: "lot-std",
+        user_id: "user-1",
+        ticker: "PETR4",
+        asset_class: "Ações",
+        currency: "BRL",
+        quantity: 3,
+        average_price: 30,
+        dividends_start_date: "2026-01-01",
+      };
+      const lotFracLarger: PortfolioAsset = {
+        id: "lot-frac",
+        user_id: "user-1",
+        ticker: "PETR4F",
+        asset_class: "Ações",
+        currency: "BRL",
+        quantity: 7,
+        average_price: 30,
+        dividends_start_date: "2026-01-01",
+      };
+      const usFord: PortfolioAsset = {
+        id: "lot-ford",
+        user_id: "user-1",
+        ticker: "F",
+        asset_class: "Internacional",
+        currency: "USD",
+        quantity: 10,
+        average_price: 12,
+        dividends_start_date: "2026-01-01",
+      };
+
+      const res = calculateSuggestedDividends({
+        corporateEvents: [
+          {
+            id: "corp-petr-group",
+            ticker: "PETR4",
+            type: "DIVIDENDO",
+            com_date: "2026-10-10",
+            payment_date: "2026-10-25",
+            rate: 0.334,
+            net_rate: 0.334,
+            currency: "BRL",
+            provider: "brapi",
+            trust_tier: "official",
+          },
+          {
+            id: "corp-ford",
+            ticker: "F",
+            type: "DIVIDENDO",
+            com_date: "2026-10-10",
+            payment_date: "2026-10-28",
+            rate: 0.15,
+            net_rate: 0.105,
+            tax_rate_pct: 30,
+            currency: "USD",
+            provider: "yahoo",
+            trust_tier: "raw_fallback",
+          },
+        ],
+        dismissals: [],
+        assets: [lotFracLarger, lotStandard, usFord],
+        transactions: [],
+        manualDividends: [],
+        referenceDate: "2026-11-01",
+        trackingStartDate: "2026-01-01",
+      });
+
+      const petrItem = res.available.find((i) => i.ticker === "PETR4");
+      expect(res.available.filter((i) => i.ticker === "PETR4")).toHaveLength(1);
+      expect(petrItem?.assetId).toBe("lot-std");
+      expect(petrItem?.quantityOnComDate).toBe(10);
+      // 10 * 0.334 = 3.34 (arredondado apenas no fechamento do grupo, não 3*0.334=1.00 + 7*0.334=2.34)
+      expect(petrItem?.totalAmount).toBe(3.34);
+      expect(petrItem?.trustTier).toBe("official");
+
+      const fordItem = res.available.find((i) => i.ticker === "F");
+      expect(fordItem?.currency).toBe("USD");
+      expect(fordItem?.totalAmount).toBe(1.05);
+    });
+
+    it("promove FII sem payment_date para available após 15 pregões BR mantendo paymentDate null (S2)", () => {
+      const fii: PortfolioAsset = {
+        id: "lot-mxrf",
+        user_id: "user-1",
+        ticker: "MXRF11",
+        asset_class: "FIIs",
+        currency: "BRL",
+        quantity: 100,
+        average_price: 10,
+        dividends_start_date: "2026-01-01",
+      };
+      const corp: CorporateDividend = {
+        id: "corp-mxrf-nopay",
+        ticker: "MXRF11",
+        type: "RENDIMENTO",
+        com_date: "2026-09-30",
+        payment_date: null,
+        rate: 0.1,
+        net_rate: 0.1,
+        currency: "BRL",
+      };
+
+      // 2026-09-30 -> 2026-10-22 (15 pregões BR considerando feriado 12/10): ainda projected
+      const at15 = calculateSuggestedDividends({
+        corporateEvents: [corp],
+        dismissals: [],
+        assets: [fii],
+        transactions: [],
+        manualDividends: [],
+        referenceDate: "2026-10-22",
+        trackingStartDate: "2026-01-01",
+      });
+      expect(at15.projected).toHaveLength(1);
+      expect(at15.available).toHaveLength(0);
+
+      // 2026-10-23 (16º pregão BR): promove para available mantendo paymentDate null
+      const at16 = calculateSuggestedDividends({
+        corporateEvents: [corp],
+        dismissals: [],
+        assets: [fii],
+        transactions: [],
+        manualDividends: [],
+        referenceDate: "2026-10-23",
+        trackingStartDate: "2026-01-01",
+      });
+      expect(at16.available).toHaveLength(1);
+      expect(at16.available[0]?.paymentDate).toBeNull();
     });
   });
 });

@@ -1876,3 +1876,60 @@ export function isDiversifiedVehicle(asset: {
   return false;
 }
 
+export type CuratedDividendInstrumentKind =
+  | "fii_fiagro"
+  | "fi_infra"
+  | "etf"
+  | "unit"
+  | "acao_br"
+  | "bdr"
+  | "exterior"
+  | "unknown";
+
+/**
+ * Consulta o catálogo curado (`CURATED_TICKERS_CATALOG`) por ticker exato para identificar
+ * a natureza do instrumento sem inferência heurística por sufixo `11` (§4.1).
+ */
+export function getCuratedDividendInstrument(
+  rawTicker: string,
+  currencyHint?: string | null,
+): { kind: CuratedDividendInstrumentKind; item: CatalogTickerItem | null } {
+  const trimmed = rawTicker.trim().toUpperCase().replace(/\.SA$/, "");
+  if (!trimmed) return { kind: "unknown", item: null };
+
+  const curHint = (currencyHint ?? "").trim().toUpperCase();
+  const b3Match = curHint === "USD" ? null : trimmed.match(/^([A-Z][A-Z0-9]{3}\d{1,2})F$/);
+  const lookupKey = b3Match?.[1] ?? trimmed;
+
+  const item =
+    CURATED_TICKERS_CATALOG.find(
+      (c) => c.ticker.trim().toUpperCase() === lookupKey || c.ticker.trim().toUpperCase() === trimmed,
+    ) ?? null;
+
+  if (!item) {
+    return { kind: "unknown", item: null };
+  }
+
+  if (item.assetClass === "FIIs") {
+    return {
+      kind: item.sector === "Infraestrutura / FI-Infra" ? "fi_infra" : "fii_fiagro",
+      item,
+    };
+  }
+  if (item.assetClass === "ETFs") {
+    return { kind: "etf", item };
+  }
+  if (item.assetClass === "Internacional") {
+    return { kind: "exterior", item };
+  }
+  if (item.assetClass === "BDRs") {
+    return { kind: "bdr", item };
+  }
+  if (item.assetClass === "Ações") {
+    const isUnit = /\bunit\b/i.test(item.name);
+    return { kind: isUnit ? "unit" : "acao_br", item };
+  }
+
+  return { kind: "unknown", item };
+}
+

@@ -515,6 +515,8 @@ export * from "./compound-interest";
 export * from "./monthly-statement";
 export * from "./market-calendar";
 export * from "./closing-validator";
+export * from "./dividend-engine";
+export * from "./dividend-consensus";
 export * from "./dividend-deduplication";
 export * from "./dividend-suggester";
 export * from "./dividend-cash-governance";

@@ -44,7 +44,7 @@ export function buildDividendInsightItems({
           <InsightSlide
             tone={hasUncertainTax ? "warning" : "positive"}
             icon={<Coins className="size-4.5" />}
-            title="Proventos Creditados na Corretora"
+            title="Proventos a Conferir"
             badgeText={
               hasUncertainTax
                 ? "Alíquota a conferir"

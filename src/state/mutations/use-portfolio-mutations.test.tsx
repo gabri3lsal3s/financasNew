@@ -3,9 +3,11 @@ import { renderHook, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 import {
+  useCreatePortfolioDividend,
   useDeletePortfolioTransaction,
   useDeletePortfolioContribution,
   useDeletePortfolioDividend,
+  useDismissUserDividendEventsBatch,
   useRecordOrder,
   useExecutePortfolioBatchAporte,
   useRevertPortfolioBatchAporte,
@@ -16,7 +18,8 @@ import {
 } from "./use-portfolio-mutations";
 import * as repo from "@/data/repositories/portfolio";
 import * as rpc from "@/data/rpc";
-import type { PortfolioAsset, PortfolioDividend, PortfolioTransaction, PortfolioContribution } from "@/types";
+import * as toastService from "@/services/toast";
+import type { PortfolioAsset, PortfolioTransaction, PortfolioContribution } from "@/types";
 
 vi.mock("@/data/rpc", () => ({
   approveDividendsBatchRpc: vi.fn(),
@@ -31,6 +34,22 @@ vi.mock("@/data/rpc", () => ({
     success: true,
     event_id: null,
     corporate_dividend_id: null,
+  }),
+  dismissUserDividendEventsAtomicRpc: vi.fn().mockResolvedValue({
+    success: true,
+    dismissed_ids: [],
+    revisions: [],
+  }),
+  writeUserDividendEdge: vi.fn().mockResolvedValue({
+    success: true,
+    cash_delta_brl: 0,
+    cash_shortfall_brl: 0,
+    reopened_event_ids: [],
+    linked_event_ids: [],
+  }),
+  syncUserDividendsEdge: vi.fn().mockResolvedValue({
+    ok: true,
+    processed_users: 1,
   }),
   executePortfolioBatchAporte: vi.fn(),
   revertPortfolioBatchAporte: vi.fn(),
@@ -87,7 +106,7 @@ describe("use-portfolio-mutations (Sincronização em Cascata)", () => {
   const wrapper = ({ children }: { children: React.ReactNode }) =>
     React.createElement(QueryClientProvider, { client: queryClient }, children);
 
-  it("useDeletePortfolioDividend exclui o provento e remove a transação correspondente no histórico", async () => {
+  it("useDeletePortfolioDividend exclui o provento atomicamente via writeUserDividendEdge", async () => {
     const { result } = renderHook(() => useDeletePortfolioDividend(), { wrapper });
 
     await act(async () => {
@@ -99,12 +118,10 @@ describe("use-portfolio-mutations (Sincronização em Cascata)", () => {
       });
     });
 
-    expect(repo.deletePortfolioDividend).toHaveBeenCalledWith("div-123");
-    expect(repo.deletePortfolioTransactionsMatching).toHaveBeenCalledWith({
-      asset_id: "asset-petr4",
-      date: "2026-08-20",
-      types: ["dividend", "jcp", "fii_yield"],
-      total: 50.0,
+    expect(rpc.writeUserDividendEdge).toHaveBeenCalledWith({
+      op: "delete",
+      id: "div-123",
+      rollback_cash: false,
     });
   });
 
@@ -692,10 +709,14 @@ describe("use-portfolio-mutations (Sincronização em Cascata)", () => {
       );
     });
 
-    it("em provento com syncCash persiste sync_cash e cash_amount e credita Caixa", async () => {
-      vi.mocked(repo.createPortfolioTransaction).mockResolvedValue({ id: "tx-div-1" } as unknown as PortfolioTransaction);
-      vi.mocked(repo.createPortfolioDividend).mockResolvedValue({ id: "div-1", amount: 50 } as unknown as PortfolioDividend);
-      vi.mocked(repo.updatePortfolioAsset).mockResolvedValue({ id: "cash-1" } as unknown as PortfolioAsset);
+    it("em provento com syncCash persiste atomicamente via writeUserDividendEdge com create_transaction", async () => {
+      vi.mocked(rpc.writeUserDividendEdge).mockResolvedValueOnce({
+        success: true,
+        cash_delta_brl: 50,
+        cash_shortfall_brl: 0,
+        reopened_event_ids: [],
+        linked_event_ids: [],
+      });
 
       const { result } = renderHook(() => useRecordOrder(), { wrapper });
 
@@ -712,32 +733,35 @@ describe("use-portfolio-mutations (Sincronização em Cascata)", () => {
         });
       });
 
-      expect(repo.createPortfolioDividend).toHaveBeenCalledWith(
+      expect(rpc.writeUserDividendEdge).toHaveBeenCalledWith(
         expect.objectContaining({
+          op: "create",
           amount: 50,
           sync_cash: true,
           cash_amount: 50,
+          create_transaction: true,
+          tx_type: "dividend",
         }),
       );
-
-      expect(repo.updatePortfolioAsset).toHaveBeenCalledWith(
-        "cash-1",
-        expect.objectContaining({
-          quantity: 1050,
-          average_price: 1,
-        }),
-      );
+      expect(repo.createPortfolioTransaction).not.toHaveBeenCalled();
+      expect(repo.updatePortfolioAsset).not.toHaveBeenCalled();
     });
 
-    it("ao excluir provento com rollbackCash debita Caixa sem deixar saldo negativo", async () => {
-      vi.mocked(repo.deletePortfolioDividend).mockResolvedValue(undefined);
-      vi.mocked(repo.updatePortfolioAsset).mockResolvedValue({ id: "cash-1" } as unknown as PortfolioAsset);
+    it("ao excluir provento com rollbackCash envia rollback_cash: true e exibe aviso em shortfall", async () => {
+      vi.mocked(rpc.writeUserDividendEdge).mockResolvedValueOnce({
+        success: true,
+        cash_delta_brl: -30,
+        cash_shortfall_brl: 20,
+        reopened_event_ids: ["ev-1"],
+        linked_event_ids: [],
+      });
 
       queryClient.setQueryData(PORTFOLIO_QUERY_KEYS.assets, [mockCashAsset]);
       queryClient.setQueryData(PORTFOLIO_QUERY_KEYS.dividends, [
         {
           id: "div-1",
           asset_id: "stock-1",
+          ticker: "PETR4",
           date: "2026-08-27",
           amount: 50,
           sync_cash: true,
@@ -759,24 +783,27 @@ describe("use-portfolio-mutations (Sincronização em Cascata)", () => {
         });
       });
 
-      expect(repo.deletePortfolioDividend).toHaveBeenCalledWith("div-1");
-      expect(repo.updatePortfolioAsset).toHaveBeenCalledWith(
-        "cash-1",
+      expect(rpc.writeUserDividendEdge).toHaveBeenCalledWith({
+        op: "delete",
+        id: "div-1",
+        rollback_cash: true,
+      });
+      expect(toastService.pushToast).toHaveBeenCalledWith(
         expect.objectContaining({
-          quantity: 950, // 1000 - 50 = 950
-          average_price: 1,
+          title: "Provento excluído",
+          variant: "warning",
+          action: expect.objectContaining({ label: "Desfazer" }),
         }),
       );
     });
 
-    it("ao excluir provento com rollbackCash: false preserva o saldo de Caixa intacto", async () => {
-      vi.mocked(repo.deletePortfolioDividend).mockResolvedValue(undefined);
-
+    it("ao excluir provento com rollbackCash: false envia rollback_cash: false", async () => {
       queryClient.setQueryData(PORTFOLIO_QUERY_KEYS.assets, [mockCashAsset]);
       queryClient.setQueryData(PORTFOLIO_QUERY_KEYS.dividends, [
         {
           id: "div-2",
           asset_id: "stock-1",
+          ticker: "PETR4",
           date: "2026-08-27",
           amount: 50,
           sync_cash: true,
@@ -798,8 +825,85 @@ describe("use-portfolio-mutations (Sincronização em Cascata)", () => {
         });
       });
 
-      expect(repo.deletePortfolioDividend).toHaveBeenCalledWith("div-2");
-      expect(repo.updatePortfolioAsset).not.toHaveBeenCalled();
+      expect(rpc.writeUserDividendEdge).toHaveBeenCalledWith({
+        op: "delete",
+        id: "div-2",
+        rollback_cash: false,
+      });
+    });
+
+    it("S3: useCreatePortfolioDividend bloqueia offline com erro explícito e preserva request_id em retry", async () => {
+      const originalOnLine = navigator.onLine;
+      Object.defineProperty(navigator, "onLine", { value: false, configurable: true });
+      const { result } = renderHook(() => useCreatePortfolioDividend(), { wrapper });
+
+      await expect(
+        act(async () => {
+          await result.current.mutateAsync({
+            asset_id: "stock-1",
+            ticker: "PETR4",
+            amount: 25,
+            date: "2026-10-15",
+            request_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          });
+        }),
+      ).rejects.toThrow("Sem conexão. Conecte-se para salvar.");
+      expect(rpc.writeUserDividendEdge).not.toHaveBeenCalled();
+
+      Object.defineProperty(navigator, "onLine", { value: true, configurable: true });
+      await act(async () => {
+        await result.current.mutateAsync({
+          asset_id: "stock-1",
+          ticker: "PETR4",
+          amount: 25,
+          date: "2026-10-15",
+          request_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        });
+      });
+      expect(rpc.writeUserDividendEdge).toHaveBeenCalledWith(
+        expect.objectContaining({
+          op: "create",
+          request_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        }),
+      );
+      Object.defineProperty(navigator, "onLine", { value: originalOnLine, configurable: true });
+    });
+
+    it("S3: useRecordOrder retroativo dispara syncUserDividendsEdge e useDismissUserDividendEventsBatch oferece Desfazer", async () => {
+      vi.mocked(repo.createPortfolioTransaction).mockResolvedValue({ id: "tx-retro" } as unknown as PortfolioTransaction);
+      vi.mocked(repo.updatePortfolioAsset).mockResolvedValue({ id: "stock-1" } as unknown as PortfolioAsset);
+      const { result: orderHook } = renderHook(() => useRecordOrder(), { wrapper });
+
+      await act(async () => {
+        await orderHook.current.mutateAsync({
+          asset: mockStockAsset,
+          type: "buy",
+          date: "2020-01-10",
+          quantity: 10,
+          price: 20,
+          total: 200,
+          syncCash: false,
+        });
+      });
+      await vi.waitFor(() => {
+        expect(rpc.syncUserDividendsEdge).toHaveBeenCalled();
+      });
+
+      vi.mocked(rpc.dismissUserDividendEventsAtomicRpc).mockResolvedValueOnce({
+        success: true,
+        dismissed_ids: ["ev-1", "ev-2"],
+        revisions: [2, 3],
+      });
+      const { result: dismissHook } = renderHook(() => useDismissUserDividendEventsBatch(), { wrapper });
+      await act(async () => {
+        await dismissHook.current.mutateAsync({ ids: ["ev-1", "ev-2"], revisions: [1, 2] });
+      });
+      expect(toastService.pushToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "2 proventos dispensados",
+          action: expect.objectContaining({ label: "Desfazer" }),
+        }),
+      );
     });
   });
 
@@ -834,12 +938,11 @@ describe("use-portfolio-mutations (Sincronização em Cascata)", () => {
       });
     });
 
-    it("deve executar dismissCorporateDividend e invalidar queries", async () => {
-      vi.mocked(repo.dismissCorporateDividend).mockResolvedValueOnce({
-        id: "d1",
-        user_id: "u1",
+    it("deve executar dismissUserDividendEventRpc no corte S6 e invalidar queries", async () => {
+      vi.mocked(rpc.dismissUserDividendEventRpc).mockResolvedValueOnce({
+        success: true,
+        event_id: null,
         corporate_dividend_id: "corp-1",
-        reason: "manual_ignore",
       });
 
       const { result } = renderHook(() => useDismissCorporateDividend(), { wrapper });
@@ -850,7 +953,11 @@ describe("use-portfolio-mutations (Sincronização em Cascata)", () => {
         });
       });
 
-      expect(repo.dismissCorporateDividend).toHaveBeenCalledWith("corp-1", "manual_ignore");
+      expect(rpc.dismissUserDividendEventRpc).toHaveBeenCalledWith({
+        corporateDividendId: "corp-1",
+        reason: "manual_ignore",
+      });
+      expect(repo.dismissCorporateDividend).not.toHaveBeenCalled();
     });
 
     it("deve executar useExecutePortfolioBatchAporte com batchId, salvar em sessionStorage e permitir Undo", async () => {

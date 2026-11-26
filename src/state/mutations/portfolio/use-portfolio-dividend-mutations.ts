@@ -3,23 +3,18 @@ import {
   approveDividendsBatchRpc,
   confirmUserDividendEventsRpc,
   dismissUserDividendEventRpc,
+  dismissUserDividendEventsAtomicRpc,
   revertConfirmedDividendEventsRpc,
+  writeUserDividendEdge,
 } from "@/data/rpc";
 import { consolidateAssetPrices, type AssetPriceRow } from "@/data/repositories/asset-prices";
 import {
   createManualUserDividendEvent,
-  createPortfolioDividend,
-  deletePortfolioDividend,
-  deletePortfolioTransactionsMatching,
   deleteUserDividendEvent,
-  dismissCorporateDividend,
-  revertSettledUserDividendEvents,
-  updatePortfolioAsset,
-  updatePortfolioDividend,
   updateUserDividendEvent,
   type CreateManualUserDividendEventInput,
 } from "@/data/repositories/portfolio";
-import { FALLBACK_USD_RATE, isCashAssetClass, usdRateFromPrices } from "@/domain/portfolio/valuation";
+import { FALLBACK_USD_RATE, usdRateFromPrices } from "@/domain/portfolio/valuation";
 import { validateDividendReversalSafeguard } from "@/domain/portfolio/dividend-cash-governance";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
@@ -32,19 +27,68 @@ import type {
   PortfolioDividend,
   PortfolioDividendDismissalReason,
   UserDividendEvent,
+  WriteUserDividendResult,
 } from "@/types";
 import { PORTFOLIO_QUERY_KEYS, invalidatePortfolioSuite } from "./portfolio-keys";
+
+function assertDividendOnline(): void {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    throw new Error("Sem conexão. Conecte-se para salvar.");
+  }
+}
+
+function resolveDividendRequestId(requestId?: string | null): string {
+  if (requestId && requestId.trim().length > 0) {
+    return requestId.trim();
+  }
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = Math.floor(Math.random() * 16);
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+export type CreatePortfolioDividendMutationInput = Omit<DbInsert<PortfolioDividend>, "user_id"> & {
+  request_id?: string | null;
+  create_transaction?: boolean;
+  tx_type?: "dividend" | "jcp" | "fii_yield";
+  fx_rate?: number | null;
+};
 
 export function useCreatePortfolioDividend() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: Omit<DbInsert<PortfolioDividend>, "user_id">) =>
-      createPortfolioDividend(input),
-    onSuccess: () => {
-      void invalidatePortfolioSuite(queryClient);
+    networkMode: "always",
+    retry: false,
+    mutationFn: async (input: CreatePortfolioDividendMutationInput): Promise<WriteUserDividendResult> => {
+      assertDividendOnline();
+      return writeUserDividendEdge({
+        op: "create",
+        request_id: resolveDividendRequestId(input.request_id),
+        asset_id: input.asset_id,
+        ticker: input.ticker,
+        amount: input.amount,
+        date: input.date,
+        notes: input.notes ?? null,
+        sync_cash: Boolean(input.sync_cash),
+        cash_amount: input.cash_amount ?? null,
+        create_transaction: Boolean(input.create_transaction),
+        tx_type: input.tx_type ?? "dividend",
+        fx_rate: input.fx_rate ?? null,
+      });
+    },
+    onSuccess: (result) => {
+      void invalidatePortfolioSuite(queryClient, { invalidateAccounts: true });
+      const reconciledCount = result.linked_event_ids?.length ?? 0;
       pushToast({
-        title: "Provento registrado",
-        description: "O rendimento foi salvo no extrato de proventos.",
+        title: reconciledCount > 0 ? "Provento registrado e conciliado" : "Provento registrado",
+        description:
+          reconciledCount > 0
+            ? "O rendimento foi salvo no extrato e conciliado com os eventos da agenda."
+            : "O rendimento foi salvo no extrato de proventos.",
         variant: "success",
       });
       triggerSensory("success");
@@ -63,69 +107,60 @@ export function useCreatePortfolioDividend() {
 export function useUpdatePortfolioDividend() {
   const queryClient = useQueryClient();
   return useMutation({
+    networkMode: "always",
+    retry: false,
     mutationFn: async (params: {
       id: string;
       patch: Partial<Omit<PortfolioDividend, "id" | "user_id" | "created_at">>;
       syncCash?: boolean;
       previousSyncCash?: boolean;
       previousCashAmount?: number;
-    }) => {
-      const { id, patch, syncCash, previousSyncCash, previousCashAmount = 0 } = params;
-      const updated = await updatePortfolioDividend(id, patch);
+      expected_updated_at?: string | null;
+    }): Promise<WriteUserDividendResult> => {
+      assertDividendOnline();
+      const { id, patch, syncCash, expected_updated_at } = params;
+      const cachedDivs =
+        queryClient.getQueryData<PortfolioDividend[]>(PORTFOLIO_QUERY_KEYS.dividends) ?? [];
+      const existingDiv = cachedDivs.find((d) => d.id === id);
 
-      // Sincronização inteligente com Caixa (com conversão USD -> BRL quando necessário)
+      let resolvedCashAmount = patch.cash_amount;
       if (syncCash !== undefined) {
-        const cachedAssets = queryClient.getQueryData<PortfolioAsset[]>(PORTFOLIO_QUERY_KEYS.assets) ?? [];
-        const cashAsset = cachedAssets.find(
-          (a) => a.ticker.toUpperCase() === "CAIXA" || isCashAssetClass(a.asset_class),
-        );
-        if (cashAsset) {
-          let newAmount = 0;
-          if (patch.cash_amount !== undefined && patch.cash_amount !== null) {
-            newAmount = Number(patch.cash_amount) || 0;
-          } else if (patch.amount !== undefined) {
-            const rawAmount = Number(patch.amount) || 0;
-            const cachedDivs =
-              queryClient.getQueryData<PortfolioDividend[]>(PORTFOLIO_QUERY_KEYS.dividends) ?? [];
-            const existingDiv = cachedDivs.find((d) => d.id === id);
-            const targetAssetId = updated.asset_id ?? existingDiv?.asset_id;
-            const targetAsset = cachedAssets.find((a) => a.id === targetAssetId);
-            if (targetAsset?.currency === "USD") {
-              const cachedPrices =
-                queryClient.getQueryData<AssetPriceRow[]>(PORTFOLIO_QUERY_KEYS.assetPrices) ?? [];
-              const liveFx = usdRateFromPrices(
-                consolidateAssetPrices(cachedPrices),
-                FALLBACK_USD_RATE,
-              );
-              newAmount = Math.round(rawAmount * liveFx * 100) / 100;
-            } else {
-              newAmount = rawAmount;
-            }
-          }
-
-          let delta = 0;
-          if (syncCash && previousSyncCash) {
-            delta = newAmount - previousCashAmount;
-          } else if (syncCash && !previousSyncCash) {
-            delta = newAmount;
-          } else if (!syncCash && previousSyncCash) {
-            delta = -previousCashAmount;
-          }
-
-          if (delta !== 0) {
-            const newQty = Math.max(0, Math.round((cashAsset.quantity + delta) * 100) / 100);
-            await updatePortfolioAsset(cashAsset.id, {
-              quantity: newQty,
-              average_price: 1,
-            });
+        if (!syncCash) {
+          resolvedCashAmount = null;
+        } else if (patch.cash_amount !== undefined && patch.cash_amount !== null) {
+          resolvedCashAmount = Number(patch.cash_amount) || 0;
+        } else if (patch.amount !== undefined) {
+          const rawAmount = Number(patch.amount) || 0;
+          const cachedAssets = queryClient.getQueryData<PortfolioAsset[]>(PORTFOLIO_QUERY_KEYS.assets) ?? [];
+          const targetAssetId = patch.asset_id ?? existingDiv?.asset_id;
+          const targetAsset = cachedAssets.find((a) => a.id === targetAssetId);
+          if (targetAsset?.currency === "USD") {
+            const cachedPrices =
+              queryClient.getQueryData<AssetPriceRow[]>(PORTFOLIO_QUERY_KEYS.assetPrices) ?? [];
+            const liveFx = usdRateFromPrices(
+              consolidateAssetPrices(cachedPrices),
+              FALLBACK_USD_RATE,
+            );
+            resolvedCashAmount = Math.round(rawAmount * liveFx * 100) / 100;
+          } else {
+            resolvedCashAmount = rawAmount;
           }
         }
       }
 
-      return updated;
+      return writeUserDividendEdge({
+        op: "update",
+        id,
+        expected_updated_at: expected_updated_at !== undefined ? expected_updated_at : (existingDiv?.updated_at ?? null),
+        amount: patch.amount,
+        date: patch.date,
+        notes: patch.notes,
+        sync_cash: syncCash !== undefined ? syncCash : Boolean(patch.sync_cash),
+        cash_amount: resolvedCashAmount,
+      });
     },
     onSuccess: () => {
-      void invalidatePortfolioSuite(queryClient);
+      void invalidatePortfolioSuite(queryClient, { invalidateAccounts: true });
       pushToast({
         title: "Provento atualizado",
         description: "As alterações foram salvas com sucesso.",
@@ -159,69 +194,69 @@ export type DeletePortfolioDividendInput =
 export function useDeletePortfolioDividend() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: DeletePortfolioDividendInput) => {
+    networkMode: "always",
+    retry: false,
+    mutationFn: async (
+      input: DeletePortfolioDividendInput,
+    ): Promise<{ result: WriteUserDividendResult; deletedSnapshot: PortfolioDividend | null }> => {
+      assertDividendOnline();
       const id = typeof input === "string" ? input : input.id;
-      let assetId = typeof input !== "string" ? (input.asset_id ?? input.assetId) : undefined;
-      let date = typeof input !== "string" ? input.date : undefined;
-      let amount = typeof input !== "string" ? input.amount : undefined;
       const rollbackCash = typeof input !== "string" ? Boolean(input.rollbackCash) : false;
-      let cashAmount = typeof input !== "string" ? (input.cash_amount ?? amount) : undefined;
 
       const cached = queryClient.getQueryData<PortfolioDividend[]>(PORTFOLIO_QUERY_KEYS.dividends) ?? [];
-      const match = cached.find((d) => d.id === id);
-      if (match) {
-        assetId = assetId ?? match.asset_id;
-        date = date ?? match.date;
-        amount = amount ?? match.amount;
-        if (cashAmount === undefined) {
-          cashAmount = match.cash_amount ?? match.amount;
-        }
-      }
+      const match = cached.find((d) => d.id === id) ?? null;
 
-      // 1. Deleta o provento
-      await deletePortfolioDividend(id);
+      const result = await writeUserDividendEdge({
+        op: "delete",
+        id,
+        rollback_cash: rollbackCash,
+      });
 
-      // 2. Cascata em Transações de Ativos se vinculado
-      if (assetId && date && amount !== undefined && amount !== null) {
-        await deletePortfolioTransactionsMatching({
-          asset_id: assetId,
-          date,
-          types: ["dividend", "jcp", "fii_yield"],
-          total: amount,
-        });
-      }
-
-      // 3. Reverte eventual evento automático vinculado ao provento excluído
-      const cachedEvents =
-        queryClient.getQueryData<UserDividendEvent[]>(PORTFOLIO_QUERY_KEYS.userDividendEvents) ?? [];
-      const linkedEventIds = cachedEvents
-        .filter((ev) => ev.settled_dividend_id === id)
-        .map((ev) => ev.id);
-      if (linkedEventIds.length > 0) {
-        await revertSettledUserDividendEvents(linkedEventIds);
-      }
-
-      // 4. Estorno inteligente no saldo de Caixa se solicitado
-      if (rollbackCash && cashAmount !== undefined && cashAmount !== null && cashAmount > 0) {
-        const cachedAssets = queryClient.getQueryData<PortfolioAsset[]>(PORTFOLIO_QUERY_KEYS.assets) ?? [];
-        const cashAsset = cachedAssets.find(
-          (a) => a.ticker.toUpperCase() === "CAIXA" || isCashAssetClass(a.asset_class),
-        );
-        if (cashAsset) {
-          const newQty = Math.max(0, Math.round((cashAsset.quantity - cashAmount) * 100) / 100);
-          await updatePortfolioAsset(cashAsset.id, {
-            quantity: newQty,
-            average_price: 1,
-          });
-        }
-      }
+      return { result, deletedSnapshot: match };
     },
-    onSuccess: () => {
-      void invalidatePortfolioSuite(queryClient);
+    onSuccess: ({ result, deletedSnapshot }) => {
+      void invalidatePortfolioSuite(queryClient, { invalidateAccounts: true });
+      const hasShortfall = (result.cash_shortfall_brl ?? 0) > 0.01;
+      const description = hasShortfall
+        ? "O rendimento foi removido e o Caixa foi zerado sem ficar negativo (saldo insuficiente para estorno integral)."
+        : "O rendimento e a operação vinculada foram removidos.";
+
       pushToast({
         title: "Provento excluído",
-        description: "O rendimento e a operação vinculada foram removidos.",
-        variant: "info",
+        description,
+        variant: hasShortfall ? "warning" : "info",
+        duration: 10000,
+        ...(deletedSnapshot
+          ? {
+              action: {
+                label: "Desfazer",
+                onClick: () => {
+                  void writeUserDividendEdge({
+                    op: "create",
+                    request_id: resolveDividendRequestId(null),
+                    asset_id: deletedSnapshot.asset_id,
+                    ticker: deletedSnapshot.ticker,
+                    amount: deletedSnapshot.amount,
+                    date: deletedSnapshot.date,
+                    notes: deletedSnapshot.notes ?? null,
+                    sync_cash: Boolean(deletedSnapshot.sync_cash),
+                    cash_amount: deletedSnapshot.cash_amount ?? null,
+                  })
+                    .then(() => {
+                      void invalidatePortfolioSuite(queryClient, { invalidateAccounts: true });
+                      triggerSensory("success");
+                    })
+                    .catch((err) => {
+                      pushToast({
+                        title: "Não foi possível desfazer",
+                        description: getErrorMessage(err),
+                        variant: "destructive",
+                      });
+                    });
+                },
+              },
+            }
+          : {}),
       });
       triggerSensory("destructive");
     },
@@ -344,7 +379,10 @@ export function useDismissCorporateDividend() {
       corporateDividendId: string;
       reason?: PortfolioDividendDismissalReason;
     }) => {
-      return dismissCorporateDividend(corporateDividendId, reason);
+      return dismissUserDividendEventRpc({
+        corporateDividendId,
+        reason,
+      });
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.corporateDividends });
@@ -565,6 +603,76 @@ export function useDismissUserDividendEvent() {
       triggerSensory("error");
       pushToast({
         title: "Erro ao dispensar provento",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+/** Dispensa em lote eventos de provento com atomicidade e Undo. */
+export function useDismissUserDividendEventsBatch() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    networkMode: "always",
+    retry: false,
+    mutationFn: async (params: {
+      ids: string[];
+      revisions?: number[] | null;
+      reason?: string;
+    }) => {
+      assertDividendOnline();
+      const cachedEvents =
+        queryClient.getQueryData<UserDividendEvent[]>(PORTFOLIO_QUERY_KEYS.userDividendEvents) ?? [];
+      const previousStatuses = new Map(cachedEvents.map((ev) => [ev.id, ev.status]));
+      const result = await dismissUserDividendEventsAtomicRpc(params);
+      return { result, previousStatuses };
+    },
+    onSuccess: ({ result, previousStatuses }) => {
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.corporateDividends });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.dividendDismissals });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.userDividendEvents });
+      triggerSensory("action");
+      const count = result.dismissed_ids.length;
+      pushToast({
+        title: count > 1 ? `${count} proventos dispensados` : "Provento dispensado",
+        description: "Os itens foram removidos das pendências da carteira.",
+        variant: "default",
+        duration: 10000,
+        ...(count > 0
+          ? {
+              action: {
+                label: "Desfazer",
+                onClick: () => {
+                  void Promise.all(
+                    result.dismissed_ids.map((id) =>
+                      updateUserDividendEvent(id, {
+                        status: previousStatuses.get(id) ?? "PENDING_CONFIRMATION",
+                      }),
+                    ),
+                  )
+                    .then(() => {
+                      void invalidatePortfolioSuite(queryClient);
+                      triggerSensory("success");
+                    })
+                    .catch((err) => {
+                      pushToast({
+                        title: "Não foi possível desfazer",
+                        description: getErrorMessage(err),
+                        variant: "destructive",
+                      });
+                    });
+                },
+              },
+            }
+          : {}),
+      });
+    },
+    onError: (err) => {
+      triggerSensory("error");
+      pushToast({
+        title: "Erro ao dispensar proventos",
         description: getErrorMessage(err),
         variant: "destructive",
       });

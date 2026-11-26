@@ -215,7 +215,7 @@ export function countMarketBusinessDays(
   fromIso: string,
   toIso: string,
   market: QuoteMarket,
-  maxScanDays = 45,
+  maxScanDays = 120,
 ): number {
   const start = fromIso.slice(0, 10);
   const end = toIso.slice(0, 10);
@@ -230,6 +230,38 @@ export function countMarketBusinessDays(
     if (nextIso >= end) break;
   }
   return count;
+}
+
+/** Retorna o pregão imediatamente anterior a `isoDate` no mercado informado. */
+export function getPreviousMarketBusinessDay(isoDate: string, market: QuoteMarket): string {
+  const clean = isoDate.slice(0, 10);
+  for (let i = 1; i <= 10; i++) {
+    const candidate = addCalendarDaysIso(clean, -i);
+    if (isBusinessDayForMarket(candidate, market)) {
+      return candidate;
+    }
+  }
+  return addCalendarDaysIso(clean, -1);
+}
+
+/** Desloca `deltaBusinessDays` pregões (positivo ou negativo) no calendário do mercado informado. */
+export function shiftMarketBusinessDays(
+  isoDate: string,
+  deltaBusinessDays: number,
+  market: QuoteMarket,
+): string {
+  const clean = isoDate.slice(0, 10);
+  if (deltaBusinessDays === 0) return clean;
+  const step = deltaBusinessDays > 0 ? 1 : -1;
+  let remaining = Math.abs(deltaBusinessDays);
+  let cursor = clean;
+  for (let i = 0; i < 60 && remaining > 0; i++) {
+    cursor = addCalendarDaysIso(cursor, step);
+    if (isBusinessDayForMarket(cursor, market)) {
+      remaining -= 1;
+    }
+  }
+  return cursor;
 }
 
 export function getMarketTimeZone(market: QuoteMarket): string {

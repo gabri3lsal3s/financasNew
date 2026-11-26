@@ -4,11 +4,15 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
+  Alert,
+  Button,
   Checkbox,
+  DatePicker,
   FormField,
   Input,
   MoneyInput,
 } from "@/components/ui";
+import { formatDateBR } from "@/lib/date";
 import type { AssetCurrency } from "@/types";
 
 const CLASSES_WITHOUT_DIVIDENDS = new Set(["Cripto", "Caixa"]);
@@ -30,6 +34,9 @@ export interface AssetMetadataAccordionProps {
   onAccumulatedDividendsCentsChange: (cents: number) => void;
   estimatedDividendPerShareCents: number;
   onEstimatedDividendPerShareCentsChange: (cents: number) => void;
+  dividendsStartDate?: string | null;
+  onDividendsStartDateChange?: (next: string | null) => void;
+  originalDividendsStartDate?: string | null;
   notes: string;
   onNotesChange: (value: string) => void;
 }
@@ -51,6 +58,9 @@ export function AssetMetadataAccordion({
   onAccumulatedDividendsCentsChange,
   estimatedDividendPerShareCents,
   onEstimatedDividendPerShareCentsChange,
+  dividendsStartDate,
+  onDividendsStartDateChange,
+  originalDividendsStartDate,
   notes,
   onNotesChange,
 }: AssetMetadataAccordionProps) {
@@ -59,6 +69,7 @@ export function AssetMetadataAccordion({
     notes.trim().length > 0 ||
     accumulatedDividendsCents > 0 ||
     estimatedDividendPerShareCents > 0 ||
+    Boolean(dividendsStartDate) ||
     (isFixedIncome && distributesInterest);
 
   const [openAccordion, setOpenAccordion] = useState<string>(() =>
@@ -188,6 +199,58 @@ export function AssetMetadataAccordion({
                     />
                   </FormField>
                 </div>
+
+                {onDividendsStartDateChange ? (
+                  <div className="flex flex-col gap-2 pt-1">
+                    <div className="flex items-end gap-2">
+                      <div className="flex-1 min-w-0">
+                        <FormField
+                          label="Início do acompanhamento automático (Data COM)"
+                          htmlFor={`${idPrefix}-dividends-start-date`}
+                          optional
+                          helperText="Proventos com Data COM igual ou posterior a esta data serão considerados para este lote."
+                        >
+                          <DatePicker
+                            id={`${idPrefix}-dividends-start-date`}
+                            value={dividendsStartDate ?? ""}
+                            onValueChange={(next) =>
+                              onDividendsStartDateChange(next ? next : null)
+                            }
+                            placeholder="Selecionar data de corte"
+                            ariaLabel="Início do acompanhamento automático de proventos"
+                          />
+                        </FormField>
+                      </div>
+                      {dividendsStartDate ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onDividendsStartDateChange(null)}
+                        >
+                          Limpar
+                        </Button>
+                      ) : null}
+                    </div>
+
+                    {accumulatedDividendsCents > 0 && !dividendsStartDate ? (
+                      <p className="text-[11px] font-medium text-warning-strong">
+                        Informe o primeiro dia ainda não incluído no acumulado anterior para ativar o acompanhamento automático deste ativo.
+                      </p>
+                    ) : null}
+
+                    {accumulatedDividendsCents > 0 &&
+                    originalDividendsStartDate &&
+                    dividendsStartDate &&
+                    dividendsStartDate < originalDividendsStartDate ? (
+                      <Alert variant="warning">
+                        Proventos entre {formatDateBR(dividendsStartDate)} e{" "}
+                        {formatDateBR(originalDividendsStartDate)} podem já estar somados no saldo
+                        acumulado acima. Revise o valor acumulado se necessário para evitar contagem dupla.
+                      </Alert>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             )}
           </AccordionContent>

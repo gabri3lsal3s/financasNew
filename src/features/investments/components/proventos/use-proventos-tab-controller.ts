@@ -6,6 +6,9 @@ import {
   buildSnowballDashboardItems,
   buildYearlyDividendsSummary,
 } from "@/domain/portfolio/dividends-analytics";
+import { isAssetPendingDividendCalibration } from "@/domain/portfolio/dividend-engine";
+import { todaySaoPauloISO } from "@/domain/portfolio/dividend-suggester";
+import { filterMonthlyForecastDividends } from "@/domain/portfolio/provisioned-dividends";
 import { FALLBACK_USD_RATE, isCashAssetClass } from "@/domain/portfolio/valuation";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { currentMonth } from "@/lib/date";
@@ -141,24 +144,26 @@ export function useProventosTabController(defaultMonth?: string) {
 
   const projectedInSelectedMonth = useMemo(() => {
     const seen = new Set<string>();
-    return [...corporateDividends.available, ...corporateDividends.projected].filter((p) => {
-      if (typeof p.paymentDate !== "string" || !p.paymentDate.startsWith(month)) {
-        return false;
-      }
+    const forecast = filterMonthlyForecastDividends(
+      [...corporateDividends.available, ...corporateDividends.projected],
+      month,
+      todaySaoPauloISO(),
+    );
+    return forecast.filter((p) => {
       const key = p.eventId ?? `${p.corporateDividendId}:${p.assetId}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     });
   }, [corporateDividends.available, corporateDividends.projected, month]);
-  const projectedTotalInSelectedMonth = useMemo(
-    () =>
-      projectedInSelectedMonth.reduce(
-        (acc, p) => acc + (p.currency === "USD" ? Math.round(p.totalAmount * fxRate * 100) / 100 : p.totalAmount),
-        0,
-      ),
-    [projectedInSelectedMonth, fxRate],
-  );
+  const projectedTotalInSelectedMonth = useMemo(() => {
+    let totalBRLCents = 0;
+    for (const p of projectedInSelectedMonth) {
+      const cents = Math.round(p.totalAmount * 100);
+      totalBRLCents += p.currency === "USD" ? Math.round(cents * fxRate) : cents;
+    }
+    return totalBRLCents / 100;
+  }, [projectedInSelectedMonth, fxRate]);
 
   const assetsBreakdown = useMemo(
     () => buildAssetsDividendsBreakdown(assets, dividends, rowByAssetId),
@@ -184,6 +189,16 @@ export function useProventosTabController(defaultMonth?: string) {
     }
   };
 
+  const assetsNeedingCalibration = useMemo(() => {
+    if (
+      "assetsNeedingCalibration" in corporateDividends &&
+      Array.isArray(corporateDividends.assetsNeedingCalibration)
+    ) {
+      return corporateDividends.assetsNeedingCalibration;
+    }
+    return assets.filter(isAssetPendingDividendCalibration);
+  }, [corporateDividends, assets]);
+
   const hasAny =
     dividends.length > 0 ||
     assetsBreakdown.historicalTotal > 0 ||
@@ -207,6 +222,8 @@ export function useProventosTabController(defaultMonth?: string) {
       ]);
     },
     hasAny,
+    calibrationCount: assetsNeedingCalibration.length,
+    assetsNeedingCalibration,
     assetById,
     rowByAssetId,
     cashBalance,

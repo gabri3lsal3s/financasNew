@@ -10,9 +10,25 @@ const mockUseGroupTargets = vi.fn();
 const mockUsePortfolioAssets = vi.fn();
 const mockUpdateAssetMutateAsync = vi.fn();
 const mockNavigate = vi.fn();
+const mockUpdateCustomSettings = {
+  mutate: vi.fn(),
+  mutateAsync: vi.fn(),
+};
+const mockUserPreferencesState = () => ({
+  data: { custom_settings: {} },
+  isLoading: false,
+});
 
 vi.mock("react-router", () => ({
   useNavigate: () => mockNavigate,
+}));
+
+vi.mock("@/state/queries/use-user-preferences", () => ({
+  useUserPreferences: () => mockUserPreferencesState(),
+}));
+
+vi.mock("@/state/mutations/use-preference-mutations", () => ({
+  useUpdateCustomSettings: () => mockUpdateCustomSettings,
 }));
 
 vi.mock("@/state", async (importOriginal) => {
@@ -41,14 +57,8 @@ vi.mock("@/state", async (importOriginal) => {
       mutateAsync: mockUpdateAssetMutateAsync,
       isPending: false,
     }),
-    useUserPreferences: () => ({
-      data: { custom_settings: {} },
-      isLoading: false,
-    }),
-    useUpdateCustomSettings: () => ({
-      mutate: vi.fn(),
-      mutateAsync: vi.fn(),
-    }),
+    useUserPreferences: () => mockUserPreferencesState(),
+    useUpdateCustomSettings: () => mockUpdateCustomSettings,
   };
 });
 
@@ -125,7 +135,7 @@ describe("PortfolioInsightsCarousel (Regra 19)", () => {
 
     render(<PortfolioInsightsCarousel />);
 
-    expect(screen.getByText("Proventos Creditados na Corretora")).toBeInTheDocument();
+    expect(screen.getByText("Proventos a Conferir")).toBeInTheDocument();
     expect(screen.getByText("Aprovar no Caixa")).toBeInTheDocument();
     expect(screen.getByText("Ver detalhes")).toBeInTheDocument();
 

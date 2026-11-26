@@ -1,3 +1,5 @@
+import { getSupabase } from "@/data/client";
+import { AppError, classifyError } from "@/services/errors";
 import { callRpc, unwrapRpc } from "./client";
 import type {
   ApproveDividendsBatchPayload,
@@ -8,6 +10,11 @@ import type {
   MonthlyClosingPayload,
   MonthlyClosingResult,
   PortfolioSnapshot,
+  SetDividendTrackingAssetItem,
+  SetDividendTrackingAtomicResult,
+  SyncUserDividendsResult,
+  WriteUserDividendCommand,
+  WriteUserDividendResult,
 } from "@/types";
 
 /** Upsert de meta de grupo (classe ou setor escopado por classe) — §3.11.1. */
@@ -234,6 +241,24 @@ export async function dismissUserDividendEventRpc(payload: {
 }
 
 /**
+ * Calibra atomicamente o piso global e os cortes individuais de proventos por lote,
+ * saneando na mesma transação eventos abertos automáticos inelegíveis.
+ */
+export async function setDividendTrackingAtomicRpc(payload: {
+  trackingStartDate?: string | null;
+  assets?: SetDividendTrackingAssetItem[];
+  expectedTrackingStartDate?: string | null;
+}): Promise<SetDividendTrackingAtomicResult> {
+  return unwrapRpc(
+    callRpc("set_dividend_tracking_atomic", {
+      p_tracking_start: payload.trackingStartDate ?? null,
+      p_assets: payload.assets ?? [],
+      p_expected_tracking_start: payload.expectedTrackingStartDate ?? null,
+    }),
+  );
+}
+
+/**
  * Registra atomicamente um aporte/depósito em uma meta via RPC allocate_goal_deposit (§Plano 12).
  */
 export async function allocateGoalDeposit(input: {
@@ -286,6 +311,91 @@ export async function resetManualSnapshotCalibrationRpc(payload: {
   return unwrapRpc(
     callRpc("reset_manual_snapshot_calibration", {
       p_month: payload.month,
+    }),
+  );
+}
+
+/**
+ * Executa escrita transacional de provento manual (`create` / `update` / `delete`) via Edge Function
+ * `quotes` (`action: 'write_user_dividend'`), com timeout cliente de 10s e guarda explícita offline (§4.3).
+ */
+export async function writeUserDividendEdge(
+  command: WriteUserDividendCommand,
+  timeoutMs = 10_000,
+): Promise<WriteUserDividendResult> {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    throw new AppError("network", "Sem conexão. Conecte-se para salvar.", null);
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const { data, error } = await getSupabase().functions.invoke<WriteUserDividendResult>("quotes", {
+      body: { action: "write_user_dividend", command },
+      signal: controller.signal,
+    });
+    if (error) {
+      const classified = classifyError(error);
+      throw new AppError(classified.kind, classified.message, error);
+    }
+    if (!data || !data.success) {
+      throw new AppError("unknown", "Falha ao processar operação transacional de provento.", data);
+    }
+    return data;
+  } catch (err) {
+    if (err instanceof AppError) throw err;
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new AppError(
+        "network",
+        "Tempo limite excedido (10s). Recarregue o extrato antes de tentar novamente.",
+        err,
+      );
+    }
+    const classified = classifyError(err);
+    throw new AppError(classified.kind, classified.message, err);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Dispara sincronização interativa de proventos do titular (`action: 'sync_user_dividends'`)
+ * a partir do catálogo já persistido, respeitando cooldown de 60s e limite horário.
+ */
+export async function syncUserDividendsEdge(): Promise<SyncUserDividendsResult> {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    throw new AppError("network", "Sem conexão. Conecte-se para salvar.", null);
+  }
+  const { data, error } = await getSupabase().functions.invoke<SyncUserDividendsResult>("quotes", {
+    body: { action: "sync_user_dividends" },
+  });
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  if (!data) {
+    throw new AppError("unknown", "Resposta vazia ao sincronizar proventos.", null);
+  }
+  return data;
+}
+
+/**
+ * Dispensa em lote eventos de provento com revisão otimista (tudo ou nada).
+ */
+export async function dismissUserDividendEventsAtomicRpc(payload: {
+  ids: string[];
+  revisions?: number[] | null;
+  reason?: string;
+}): Promise<{
+  success: boolean;
+  dismissed_ids: string[];
+  revisions: number[];
+}> {
+  return unwrapRpc(
+    callRpc("dismiss_user_dividend_events_atomic", {
+      p_ids: payload.ids,
+      p_revisions: payload.revisions ?? null,
+      p_reason: payload.reason ?? "manual_ignore",
     }),
   );
 }

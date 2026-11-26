@@ -875,6 +875,22 @@ export function parseAwesomeApiResponse(ticker: string, payload: unknown): Parse
 // Proventos Corporativos (B3 Brapi + Fallback Yahoo B3 Incerto + EUA 30% IR)
 // ---------------------------------------------------------------------------
 
+export type EdgeDividendTrustTier =
+  | "official"
+  | "community_verified"
+  | "enriched_fallback"
+  | "raw_fallback";
+
+export type EdgeDividendInstrumentKind =
+  | "fii_fiagro"
+  | "fi_infra"
+  | "etf"
+  | "unit"
+  | "acao_br"
+  | "bdr"
+  | "exterior"
+  | "unknown";
+
 export interface ParsedCorporateDividend {
   ticker: string;
   type: "DIVIDENDO" | "JCP" | "RENDIMENTO" | "SOBRA" | "AMORTIZACAO" | "OUTROS";
@@ -886,27 +902,122 @@ export interface ParsedCorporateDividend {
   currency: "BRL" | "USD";
   provider: "brapi" | "yahoo";
   is_type_uncertain: boolean;
+  trust_tier: EdgeDividendTrustTier;
+  external_terms: Record<string, unknown>;
+  ex_date?: string | null;
+  external_id?: string | null;
 }
 
-function normalizeDividendType(rawLabel: string | undefined): ParsedCorporateDividend["type"] {
-  if (!rawLabel) return "DIVIDENDO";
+const TRUST_TIER_PRIORITY_EDGE: Record<EdgeDividendTrustTier, number> = {
+  official: 4,
+  community_verified: 3,
+  enriched_fallback: 2,
+  raw_fallback: 1,
+};
+
+export function getDividendTrustTierPriorityEdge(
+  tier: EdgeDividendTrustTier | string | null | undefined,
+): number {
+  if (!tier) return 1;
+  return TRUST_TIER_PRIORITY_EDGE[tier as EdgeDividendTrustTier] ?? 1;
+}
+
+/** Mapa curado mínimo espelhando `CURATED_TICKERS_CATALOG` para distinção de instrumento (§4.1). */
+export const CURATED_DIVIDEND_INSTRUMENT_KIND: Readonly<Record<string, EdgeDividendInstrumentKind>> = {
+  // FIIs & FIAGROs
+  MXRF11: "fii_fiagro",
+  HGLG11: "fii_fiagro",
+  KNIP11: "fii_fiagro",
+  KNCR11: "fii_fiagro",
+  XPLG11: "fii_fiagro",
+  XPML11: "fii_fiagro",
+  VISC11: "fii_fiagro",
+  BTLG11: "fii_fiagro",
+  CPTS11: "fii_fiagro",
+  HGRU11: "fii_fiagro",
+  TGAR11: "fii_fiagro",
+  HGCR11: "fii_fiagro",
+  VRTA11: "fii_fiagro",
+  IRDM11: "fii_fiagro",
+  RBRR11: "fii_fiagro",
+  PVBI11: "fii_fiagro",
+  VINO11: "fii_fiagro",
+  KNRI11: "fii_fiagro",
+  VGIR11: "fii_fiagro",
+  RZTR11: "fii_fiagro",
+  VGIA11: "fii_fiagro",
+  KNCA11: "fii_fiagro",
+  RURA11: "fii_fiagro",
+  // ETFs B3
+  BOVA11: "etf",
+  IVVB11: "etf",
+  SPXI11: "etf",
+  SMAL11: "etf",
+  HASH11: "etf",
+  GOLD11: "etf",
+  NASD11: "etf",
+  BDEF11: "etf",
+  BRAX11: "etf",
+  DIVO11: "etf",
+  // Units B3
+  TAEE11: "unit",
+  KLBN11: "unit",
+  BPAC11: "unit",
+  SANB11: "unit",
+  SAPR11: "unit",
+  ALUP11: "unit",
+  CPLE11: "unit",
+  ENGI11: "unit",
+};
+
+export function classifyDividendInstrumentKindEdge(
+  rawTicker: string,
+  currency?: string | null,
+): EdgeDividendInstrumentKind {
+  const cur = (currency ?? "").trim().toUpperCase();
+  if (cur === "USD" || classifyTickerMarket(rawTicker) === "US") {
+    return "exterior";
+  }
+  const canon = normalizeTickerForBrapi(rawTicker);
+  return CURATED_DIVIDEND_INSTRUMENT_KIND[canon] ?? "unknown";
+}
+
+function parseExplicitDividendTypeEdge(
+  rawLabel: string | undefined,
+): ParsedCorporateDividend["type"] | null {
+  if (!rawLabel) return null;
   const upper = rawLabel.trim().toUpperCase();
+  if (!upper) return null;
   if (upper.includes("JCP") || upper.includes("JUROS")) return "JCP";
   if (upper.includes("RENDIMENTO")) return "RENDIMENTO";
   if (upper.includes("SOBRA")) return "SOBRA";
   if (upper.includes("AMORTIZ")) return "AMORTIZACAO";
-  return "DIVIDENDO";
+  if (upper.includes("DIVIDEND")) return "DIVIDENDO";
+  return null;
 }
 
 function normalizeIsoDateOrNull(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
   const clean = raw.trim().slice(0, 10);
-  return /^\d{4}-\d{2}-\d{2}$/.test(clean) ? clean : null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) return clean;
+  return null;
+}
+
+function parseTimestampOrIsoDate(raw: unknown, tz: string): string | null {
+  const iso = normalizeIsoDateOrNull(raw);
+  if (iso) return iso;
+  const num = typeof raw === "number" ? raw : Number(raw);
+  if (Number.isFinite(num) && num > 0) {
+    const ms = num > 1e12 ? num : num * 1000;
+    return getZonedDateParts(new Date(ms), tz).isoDate;
+  }
+  return null;
 }
 
 /**
  * Extrai a lista de proventos corporativos do payload da Brapi (`/api/quote/{ticker}?dividends=true`).
- * Aceita `paymentDate` nula (eventos provisionados ainda sem data de pagamento anunciada).
+ * §4.1: só classifica como `official` quando há `lastDatePrior` (Data COM de direito, nunca `approvedOn`),
+ * `label` explícito reconhecido e `payment_date` consistente (`>= com_date` quando presente).
  */
 export function parseBrapiDividends(ticker: string, payload: unknown): ParsedCorporateDividend[] {
   if (!payload || typeof payload !== "object") return [];
@@ -933,16 +1044,25 @@ export function parseBrapiDividends(ticker: string, payload: unknown): ParsedCor
     const rate = typeof rawRate === "number" ? rawRate : Number(rawRate);
     if (!Number.isFinite(rate) || rate <= 0) continue;
 
-    const paymentDate = normalizeIsoDateOrNull(divRecord.paymentDate);
-    const comDate =
-      normalizeIsoDateOrNull(divRecord.lastDatePrior) ??
-      normalizeIsoDateOrNull(divRecord.approvedOn) ??
-      paymentDate;
+    // Aprovação societária (`approvedOn`) não comprova Data COM de direito
+    const comDate = normalizeIsoDateOrNull(divRecord.lastDatePrior);
     if (!comDate) continue;
 
-    const divType = normalizeDividendType(divRecord.label as string | undefined);
+    const rawPaymentDate = normalizeIsoDateOrNull(divRecord.paymentDate);
+    const paymentInconsistent = Boolean(rawPaymentDate && rawPaymentDate < comDate);
+    const paymentDate = paymentInconsistent ? null : rawPaymentDate;
+
+    const rawLabel = typeof divRecord.label === "string" ? divRecord.label.trim() : "";
+    const explicitType = parseExplicitDividendTypeEdge(rawLabel);
+    const isTypeUncertain = explicitType === null || paymentInconsistent;
+    const divType = explicitType ?? "DIVIDENDO";
     const taxRatePct = divType === "JCP" ? 15 : 0;
     const netRate = Math.round(rate * (1 - taxRatePct / 100) * 100000000) / 100000000;
+    const trustTier: EdgeDividendTrustTier = isTypeUncertain ? "raw_fallback" : "official";
+    const externalId =
+      typeof divRecord.id === "string" || typeof divRecord.id === "number"
+        ? String(divRecord.id)
+        : null;
 
     list.push({
       ticker: cleanTicker,
@@ -954,7 +1074,21 @@ export function parseBrapiDividends(ticker: string, payload: unknown): ParsedCor
       tax_rate_pct: taxRatePct,
       currency: "BRL",
       provider: "brapi",
-      is_type_uncertain: false,
+      is_type_uncertain: isTypeUncertain,
+      trust_tier: trustTier,
+      external_id: externalId,
+      external_terms: {
+        provider: "brapi",
+        label: rawLabel || null,
+        com_date: comDate,
+        payment_date: paymentDate,
+        type: divType,
+        rate,
+        net_rate: netRate,
+        tax_rate_pct: taxRatePct,
+        currency: "BRL",
+        ...(externalId ? { external_id: externalId } : {}),
+      },
     });
   }
 
@@ -962,10 +1096,11 @@ export function parseBrapiDividends(ticker: string, payload: unknown): ParsedCor
 }
 
 /**
- * Extrai proventos do payload Yahoo Finance (`events=div`):
+ * Extrai proventos do payload Yahoo Finance (`events=div`, e opcional `calendarEvents` para EUA):
  * - Mercado EUA (`US`): `currency = "USD"`, retenção padrão de 30% (`net_rate = rate * 0.70`), `com_date` = dia útil NYSE anterior à `ex-date`;
- * - Mercado BR (`BR`, fallback): Yahoo não distingue Dividendo isento (0%) vs JCP (15% IRRF),
- *   portanto marca `is_type_uncertain = true` para exigir confirmação manual do usuário.
+ *   aceita `dividendDate` de `calendarEvents` apenas quando moeda USD e `exDividendDate` correspondem inequivocamente ao evento;
+ * - Mercado BR (`BR`, fallback): inclusive para FIIs conhecidos (`MXRF11`, `VGIA11`), mantém `trust_tier = 'raw_fallback'`
+ *   e `is_type_uncertain = true` (§4.1), exigindo confirmação manual ou observação pública compatível.
  */
 export function parseYahooDividends(
   ticker: string,
@@ -973,7 +1108,8 @@ export function parseYahooDividends(
   marketOverride?: QuoteMarket,
 ): ParsedCorporateDividend[] {
   if (!payload || typeof payload !== "object") return [];
-  const chart = (payload as Record<string, unknown>).chart;
+  const rootRec = payload as Record<string, unknown>;
+  const chart = rootRec.chart;
   if (!chart || typeof chart !== "object") return [];
   const result = (chart as Record<string, unknown>).result;
   if (!Array.isArray(result) || result.length === 0) return [];
@@ -1000,6 +1136,27 @@ export function parseYahooDividends(
   const taxRatePct = isUS ? 30 : 0;
   const isTypeUncertain = !isUS;
 
+  // CalendarEvents opcional (apenas US quando ticker/moeda/ex-date conferem inequivocamente)
+  let calExDate: string | null = null;
+  let calPayDate: string | null = null;
+  if (isUS) {
+    const calRoot =
+      (entry?.calendarEvents as Record<string, unknown> | undefined) ??
+      (rootRec.calendarEvents as Record<string, unknown> | undefined);
+    const calSymbol =
+      typeof metaRec.symbol === "string" ? metaRec.symbol.trim().toUpperCase() : cleanTicker;
+    if (calRoot && typeof calRoot === "object" && calSymbol === normalizeTickerForApi(cleanTicker)) {
+      calExDate = parseTimestampOrIsoDate(
+        (calRoot.exDividendDate as Record<string, unknown> | undefined)?.raw ?? calRoot.exDividendDate,
+        tz,
+      );
+      calPayDate = parseTimestampOrIsoDate(
+        (calRoot.dividendDate as Record<string, unknown> | undefined)?.raw ?? calRoot.dividendDate,
+        tz,
+      );
+    }
+  }
+
   const list: ParsedCorporateDividend[] = [];
   for (const item of Object.values(rawDivs as Record<string, unknown>)) {
     if (!item || typeof item !== "object") continue;
@@ -1014,7 +1171,10 @@ export function parseYahooDividends(
     const exDateIso = getZonedDateParts(new Date(ts * 1000), tz).isoDate;
     const comDate = getPreviousMarketBusinessDay(exDateIso, market);
     const explicitPayDate = normalizeIsoDateOrNull(rec.paymentDate);
-    const paymentDate = explicitPayDate;
+    const matchedCalPayDate =
+      isUS && !explicitPayDate && calExDate && calExDate === exDateIso ? calPayDate : null;
+    const rawCandidatePay = explicitPayDate ?? matchedCalPayDate;
+    const paymentDate = rawCandidatePay && rawCandidatePay >= comDate ? rawCandidatePay : null;
     const netRate = Math.round(rate * (1 - taxRatePct / 100) * 100000000) / 100000000;
 
     list.push({
@@ -1028,10 +1188,338 @@ export function parseYahooDividends(
       currency,
       provider: "yahoo",
       is_type_uncertain: isTypeUncertain,
+      trust_tier: "raw_fallback",
+      ex_date: exDateIso,
+      external_terms: {
+        provider: "yahoo",
+        ex_date: exDateIso,
+        com_date: comDate,
+        payment_date: paymentDate,
+        type: "DIVIDENDO",
+        rate,
+        net_rate: netRate,
+        tax_rate_pct: taxRatePct,
+        currency,
+      },
     });
   }
 
   return list.sort((a, b) => a.com_date.localeCompare(b.com_date));
+}
+
+/**
+ * Seleciona o lote principal do grupo canônico (§3.1.4):
+ * prefere lote padrão existente (sem sufixo fracionário `F` em BRL), depois menor `id` estável.
+ */
+export function selectPrimaryLotForGroupEdge<
+  T extends { id: string; ticker: string; currency?: string | null },
+>(lots: readonly T[]): T | null {
+  if (lots.length === 0) return null;
+  const sorted = lots.slice().sort((a, b) => {
+    const aCur = (a.currency ?? "BRL").trim().toUpperCase();
+    const bCur = (b.currency ?? "BRL").trim().toUpperCase();
+    const aClean = a.ticker.trim().toUpperCase().replace(/\.SA$/, "");
+    const bClean = b.ticker.trim().toUpperCase().replace(/\.SA$/, "");
+    const aFrac = aCur !== "USD" && /^[A-Z][A-Z0-9]{3}\d{1,2}F$/.test(aClean) ? 1 : 0;
+    const bFrac = bCur !== "USD" && /^[A-Z][A-Z0-9]{3}\d{1,2}F$/.test(bClean) ? 1 : 0;
+    if (aFrac !== bFrac) return aFrac - bFrac;
+    return String(a.id).localeCompare(String(b.id));
+  });
+  return sorted[0] ?? null;
+}
+
+function diffCalendarDaysEdge(fromIso: string, toIso: string): number {
+  const a = normalizeIsoDateOrNull(fromIso);
+  const b = normalizeIsoDateOrNull(toIso);
+  if (!a || !b || a >= b) return 0;
+  const [ay, am, ad] = a.split("-").map(Number);
+  const [by, bm, bd] = b.split("-").map(Number);
+  const msA = Date.UTC(ay ?? 2026, (am ?? 1) - 1, ad ?? 1);
+  const msB = Date.UTC(by ?? 2026, (bm ?? 1) - 1, bd ?? 1);
+  return Math.max(0, Math.round((msB - msA) / 86_400_000));
+}
+
+/**
+ * Resolve o estado aberto (`PROVISIONED` vs `PENDING_CONFIRMATION`) segundo §3.2:
+ * - Pagamento conhecido futuro provisiona (regredindo abertos automáticos se fonte corrigir data);
+ * - Sem data de pagamento: após 15 pregões BR (fundos), 22 pregões US (exterior) ou 35 dias civis (ações BR/outros),
+ *   promove para `PENDING_CONFIRMATION` mantendo `payment_date = null` e sem liquidar por prazo.
+ */
+export function resolveOpenDividendEventStatusEdge(input: {
+  comDate: string;
+  paymentDate: string | null | undefined;
+  referenceDate: string;
+  market: "BR" | "US";
+  instrumentKind: EdgeDividendInstrumentKind;
+  currentStatus?: "PROVISIONED" | "PENDING_CONFIRMATION";
+  isManual?: boolean;
+  manualReviewRequired?: boolean;
+}): {
+  status: "PROVISIONED" | "PENDING_CONFIRMATION";
+  promotedByDeadline: boolean;
+  regressedToProvisioned: boolean;
+  isOver120DaysWithoutPayment: boolean;
+} {
+  const comClean = normalizeIsoDateOrNull(input.comDate);
+  const refClean = normalizeIsoDateOrNull(input.referenceDate);
+  const payClean = normalizeIsoDateOrNull(input.paymentDate);
+
+  if (payClean && refClean) {
+    if (payClean <= refClean) {
+      return {
+        status: "PENDING_CONFIRMATION",
+        promotedByDeadline: false,
+        regressedToProvisioned: false,
+        isOver120DaysWithoutPayment: false,
+      };
+    }
+    const regressed =
+      !input.isManual &&
+      !input.manualReviewRequired &&
+      input.currentStatus === "PENDING_CONFIRMATION";
+    return {
+      status: "PROVISIONED",
+      promotedByDeadline: false,
+      regressedToProvisioned: regressed,
+      isOver120DaysWithoutPayment: false,
+    };
+  }
+
+  if (!comClean || !refClean || refClean <= comClean) {
+    return {
+      status: "PROVISIONED",
+      promotedByDeadline: false,
+      regressedToProvisioned: false,
+      isOver120DaysWithoutPayment: false,
+    };
+  }
+
+  const calDays = diffCalendarDaysEdge(comClean, refClean);
+  const isOver120 = calDays > 120;
+
+  let elapsed: number;
+  let threshold: number;
+  if (input.market === "US" || input.instrumentKind === "exterior") {
+    elapsed = countMarketBusinessDays(comClean, refClean, "US");
+    threshold = 22;
+  } else if (input.instrumentKind === "fii_fiagro" || input.instrumentKind === "fi_infra") {
+    elapsed = countMarketBusinessDays(comClean, refClean, "BR");
+    threshold = 15;
+  } else {
+    elapsed = calDays;
+    threshold = 35;
+  }
+
+  const promoted = elapsed > threshold;
+  return {
+    status: promoted ? "PENDING_CONFIRMATION" : "PROVISIONED",
+    promotedByDeadline: promoted,
+    regressedToProvisioned: false,
+    isOver120DaysWithoutPayment: isOver120,
+  };
+}
+
+export interface EdgeCorporateCandidate {
+  id: string;
+  ticker: string;
+  currency: "BRL" | "USD";
+  com_date: string;
+  payment_date: string | null;
+  type: ParsedCorporateDividend["type"];
+  rate: number;
+  is_type_uncertain: boolean;
+  trust_tier?: EdgeDividendTrustTier | null;
+  ex_date?: string | null;
+  external_id?: string | null;
+}
+
+export function findCompatibleCorporateCandidateEdge<T extends EdgeCorporateCandidate>(
+  incoming: Omit<EdgeCorporateCandidate, "id">,
+  existingCandidates: readonly T[],
+): T | null {
+  const market: "BR" | "US" = incoming.currency === "USD" ? "US" : "BR";
+  const canonIncoming =
+    incoming.currency === "USD"
+      ? incoming.ticker.trim().toUpperCase().replace(/\.SA$/, "")
+      : normalizeTickerForBrapi(incoming.ticker);
+
+  const matches = existingCandidates.filter((cand) => {
+    if (cand.currency !== incoming.currency) return false;
+    const canonCand =
+      cand.currency === "USD"
+        ? cand.ticker.trim().toUpperCase().replace(/\.SA$/, "")
+        : normalizeTickerForBrapi(cand.ticker);
+    if (canonCand !== canonIncoming) return false;
+
+    const rateTol = Math.max(0.0001, Math.max(cand.rate, incoming.rate) * 0.01);
+    if (Math.abs(cand.rate - incoming.rate) > rateTol) return false;
+
+    if (
+      cand.payment_date &&
+      incoming.payment_date &&
+      cand.payment_date.slice(0, 10) !== incoming.payment_date.slice(0, 10)
+    ) {
+      return false;
+    }
+
+    if (!cand.is_type_uncertain && !incoming.is_type_uncertain && cand.type !== incoming.type) {
+      return false;
+    }
+
+    const dCand = cand.com_date.slice(0, 10);
+    const dInc = incoming.com_date.slice(0, 10);
+    if (dCand === dInc) return true;
+
+    const bDays =
+      dCand < dInc
+        ? countMarketBusinessDays(dCand, dInc, market)
+        : countMarketBusinessDays(dInc, dCand, market);
+
+    if (bDays <= 1) return true;
+    if (bDays === 2) {
+      const sameExDate =
+        Boolean(cand.ex_date && incoming.ex_date) &&
+        cand.ex_date!.slice(0, 10) === incoming.ex_date!.slice(0, 10);
+      const sameExternalId =
+        Boolean(cand.external_id && incoming.external_id) &&
+        cand.external_id === incoming.external_id;
+      return sameExDate || sameExternalId;
+    }
+    return false;
+  });
+
+  return matches.length === 1 ? matches[0]! : null;
+}
+
+export interface EdgeReconcileEvent {
+  id: string;
+  ticker: string;
+  currency: "BRL" | "USD";
+  com_date: string;
+  payment_date: string | null;
+  gross_amount: number;
+  net_amount: number;
+  type: string;
+  is_type_uncertain: boolean;
+  manual_review_required: boolean;
+  status: string;
+}
+
+export interface EdgeReconcileManual {
+  id: string;
+  ticker: string;
+  currency: "BRL" | "USD";
+  date: string;
+  amount: number;
+  monthly?: boolean;
+  source_event_id?: string | null;
+}
+
+/**
+ * Conciliação determinística 1:1 no servidor Deno quando `apply_dividend_reconciliation_system`
+ * detecta candidatos abertos na partição (`needs_reconciliation = true`).
+ * Só aplica automaticamente vínculos inequívocos (sem hipótese fiscal, sem mês estimado e sem empate).
+ */
+export function reconcilePartition1to1Edge(
+  events: readonly EdgeReconcileEvent[],
+  manuals: readonly EdgeReconcileManual[],
+): Array<{ manual_id: string; event_ids: string[] }> {
+  const openEvents = events
+    .filter(
+      (ev) =>
+        (ev.status === "PROVISIONED" || ev.status === "PENDING_CONFIRMATION") &&
+        !ev.manual_review_required &&
+        Number(ev.net_amount) > 0,
+    )
+    .sort((a, b) => a.id.localeCompare(b.id));
+
+  const freeManuals = manuals
+    .filter((m) => !m.source_event_id && Number(m.amount) > 0)
+    .sort((a, b) => a.id.localeCompare(b.id));
+
+  if (openEvents.length === 0 || freeManuals.length === 0) return [];
+
+  const candidateEdges: Array<{
+    eventId: string;
+    manualId: string;
+    errorCents: number;
+    dayDiff: number;
+  }> = [];
+
+  for (const ev of openEvents) {
+    const market: "BR" | "US" = ev.currency === "USD" ? "US" : "BR";
+    const evCanon =
+      ev.currency === "USD"
+        ? ev.ticker.trim().toUpperCase().replace(/\.SA$/, "")
+        : normalizeTickerForBrapi(ev.ticker);
+    const evCents = Math.round(Number(ev.net_amount) * 100);
+    const tol = Math.max(10, Math.floor(0.015 * evCents));
+
+    for (const man of freeManuals) {
+      if (man.currency !== ev.currency || man.monthly) continue;
+      const manCanon =
+        man.currency === "USD"
+          ? man.ticker.trim().toUpperCase().replace(/\.SA$/, "")
+          : normalizeTickerForBrapi(man.ticker);
+      if (manCanon !== evCanon) continue;
+
+      const manDate = man.date.slice(0, 10);
+      let dayDiff: number;
+      if (ev.payment_date) {
+        const pay = ev.payment_date.slice(0, 10);
+        dayDiff =
+          pay <= manDate
+            ? countMarketBusinessDays(pay, manDate, market)
+            : countMarketBusinessDays(manDate, pay, market);
+        if (dayDiff > 5) continue;
+      } else {
+        const com = ev.com_date.slice(0, 10);
+        const kind = classifyDividendInstrumentKindEdge(ev.ticker, ev.currency);
+        const maxDays =
+          market === "US" || kind === "exterior"
+            ? 22
+            : kind === "fii_fiagro" || kind === "fi_infra"
+              ? 15
+              : 35;
+        if (manDate < com) continue;
+        dayDiff =
+          market === "US" || kind === "exterior" || kind === "fii_fiagro" || kind === "fi_infra"
+            ? countMarketBusinessDays(com, manDate, market)
+            : Math.round((Date.parse(`${manDate}T00:00:00Z`) - Date.parse(`${com}T00:00:00Z`)) / 86_400_000);
+        if (dayDiff > maxDays) continue;
+      }
+
+      const manCents = Math.round(Number(man.amount) * 100);
+      const err = Math.abs(manCents - evCents);
+      if (err <= tol) {
+        candidateEdges.push({
+          eventId: ev.id,
+          manualId: man.id,
+          errorCents: err,
+          dayDiff,
+        });
+      }
+    }
+  }
+
+  // Só vincula automaticamente pares 1:1 isolados (grau 1 em ambos os lados, sem ambiguidade)
+  const degreeByEvent = new Map<string, number>();
+  const degreeByManual = new Map<string, number>();
+  for (const edge of candidateEdges) {
+    degreeByEvent.set(edge.eventId, (degreeByEvent.get(edge.eventId) ?? 0) + 1);
+    degreeByManual.set(edge.manualId, (degreeByManual.get(edge.manualId) ?? 0) + 1);
+  }
+
+  return candidateEdges
+    .filter(
+      (edge) =>
+        (degreeByEvent.get(edge.eventId) ?? 0) === 1 &&
+        (degreeByManual.get(edge.manualId) ?? 0) === 1,
+    )
+    .map((edge) => ({
+      manual_id: edge.manualId,
+      event_ids: [edge.eventId],
+    }));
 }
 
 export interface CustodyComDateTxInput {
@@ -1539,4 +2027,30 @@ export function isMarketQuotedAsset(asset: {
   }
 
   return true;
+}
+
+export interface EdgeConsensusSignal {
+  voter_hash: string;
+  signal: "dedup" | "edited" | "reverted";
+}
+
+export function scoreConsensusSignalsEdge(
+  signals: readonly EdgeConsensusSignal[],
+  anchored: boolean,
+): { decimos: number; positivosDistintos: number; elegivel: boolean } {
+  const latest = new Map<string, "dedup" | "edited" | "reverted">();
+  for (const s of signals) {
+    if (!s.voter_hash) continue;
+    latest.set(s.voter_hash, s.signal);
+  }
+  let decimos = 0;
+  let positivosDistintos = 0;
+  for (const sig of latest.values()) {
+    decimos += sig === "dedup" ? 10 : sig === "edited" ? 8 : -15;
+    if (sig === "dedup" || sig === "edited") positivosDistintos += 1;
+  }
+  const elegivel = anchored
+    ? positivosDistintos >= 2 && decimos >= 16
+    : positivosDistintos >= 3 && decimos >= 24;
+  return { decimos, positivosDistintos, elegivel };
 }

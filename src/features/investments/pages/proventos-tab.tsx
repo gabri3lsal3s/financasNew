@@ -1,4 +1,5 @@
-import { Checkbox, ConfirmDialog, ErrorState, SkeletonTable, Tabs, type TabItem } from "@/components/ui";
+import { CalendarClock } from "lucide-react";
+import { Button, Checkbox, ConfirmDialog, ErrorState, SkeletonTable, Tabs, type TabItem } from "@/components/ui";
 import { numberToCents } from "@/domain/money";
 import { getErrorMessage } from "@/services/errors";
 import { formatCentsAsBRL, formatCentsAsCurrency } from "@/services/masks";
@@ -112,6 +113,41 @@ export function ProventosTab({ defaultMonth }: ProventosTabProps) {
   return (
     <div className="flex flex-col gap-5 min-w-0" data-tour="investments-dividends">
       {ctrl.error ? <ErrorState message={getErrorMessage(ctrl.error)} onRetry={ctrl.refetch} /> : null}
+
+      {!ctrl.loading && ctrl.calibrationCount > 0 ? (
+        <div
+          role="region"
+          aria-label="Calibração de proventos pendente"
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-warning/30 bg-warning/10 p-3.5"
+        >
+          <div className="flex items-start gap-2.5 min-w-0">
+            <CalendarClock
+              className="size-4 text-warning-strong shrink-0 mt-0.5"
+              aria-hidden="true"
+            />
+            <div className="flex flex-col gap-0.5 min-w-0">
+              <span className="text-xs font-semibold text-foreground">
+                {ctrl.calibrationCount}{" "}
+                {ctrl.calibrationCount === 1
+                  ? "ativo aguarda calibração de proventos"
+                  : "ativos aguardam calibração de proventos"}
+              </span>
+              <span className="text-[11px] text-muted-foreground leading-relaxed">
+                Defina o primeiro dia (Data COM) ainda não incluído nos proventos acumulados para ativar o acompanhamento automático.
+              </span>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="shrink-0 self-stretch sm:self-center"
+            onClick={ctrl.openPendingDividendsModal}
+          >
+            Calibrar {ctrl.calibrationCount === 1 ? "1 ativo" : `${ctrl.calibrationCount} ativos`}
+          </Button>
+        </div>
+      ) : null}
 
       {ctrl.loading ? (
         <>

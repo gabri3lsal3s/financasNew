@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { AssetEditDialog } from "./asset-edit-dialog";
 import type { PortfolioAsset } from "@/types";
@@ -6,11 +7,25 @@ import type { PortfolioAsset } from "@/types";
 const mockUpdateAsset = vi.fn();
 const mockSetManualPrice = vi.fn();
 const mockUpdateEmergencyConfig = vi.fn().mockResolvedValue(undefined);
+const mockSetDividendTracking = vi.fn();
 
 vi.mock("@/state", () => ({
   useUpdatePortfolioAsset: () => ({
     mutateAsync: mockUpdateAsset,
     isPending: false,
+  }),
+  useSetDividendTracking: () => ({
+    mutateAsync: mockSetDividendTracking,
+    isPending: false,
+  }),
+  useUserPreferences: () => ({
+    data: {
+      custom_settings: {
+        dividendAutomation: {
+          trackingStartDate: "2026-01-01",
+        },
+      },
+    },
   }),
   useSetManualPrice: () => ({
     mutateAsync: mockSetManualPrice,
@@ -371,5 +386,65 @@ describe("AssetEditDialog", () => {
         }),
       );
     });
+  });
+
+  it("salva dividends_start_date via useSetDividendTracking e alerta ao recuar com saldo acumulado positivo (S1)", async () => {
+    const stockWithAcc: PortfolioAsset = {
+      ...mockStockAsset,
+      accumulated_dividends: 350,
+      dividends_start_date: "2026-10-15",
+    };
+    mockUpdateAsset.mockResolvedValue({ ...stockWithAcc });
+    mockSetDividendTracking.mockResolvedValue({
+      success: true,
+      tracking_start_date: "2026-01-01",
+      updated_assets: [{ asset_id: stockWithAcc.id, dividends_start_date: "2026-10-01" }],
+      updated_assets_count: 1,
+      affected_events_count: 0,
+      protected_events_count: 0,
+      invalidated_event_ids: [],
+    });
+
+    const user = userEvent.setup();
+    render(<AssetEditDialog asset={stockWithAcc} open={true} onOpenChange={vi.fn()} />);
+
+    // Ao recuar o corte com saldo acumulado > 0, exibe alerta explícito
+    await user.click(
+      screen.getByRole("button", { name: "Início do acompanhamento automático de proventos" }),
+    );
+    const grid = await screen.findByRole("grid");
+    const day1 = Array.from(grid.querySelectorAll('[role="gridcell"]')).find(
+      (cell) => cell.textContent?.trim() === "1",
+    );
+    if (!day1) throw new Error("Dia 1 não encontrado no calendário");
+    const dayBtn = day1.querySelector("button");
+    if (!dayBtn) throw new Error("Botão do dia 1 não encontrado");
+    await user.click(dayBtn);
+
+    expect(
+      await screen.findByText(/podem já estar somados no saldo acumulado acima/i),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Salvar Alterações/i }));
+
+    await waitFor(() => expect(mockSetDividendTracking).toHaveBeenCalledTimes(1));
+    expect(mockSetDividendTracking).toHaveBeenCalledWith({
+      trackingStartDate: null,
+      assets: [
+        {
+          asset_id: stockWithAcc.id,
+          expected_start: "2026-10-15",
+          start_date: "2026-10-01",
+        },
+      ],
+      expectedTrackingStartDate: "2026-01-01",
+      silent: false,
+    });
+    expect(mockUpdateAsset).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: stockWithAcc.id,
+        patch: expect.not.objectContaining({ dividends_start_date: expect.anything() }),
+      }),
+    );
   });
 });

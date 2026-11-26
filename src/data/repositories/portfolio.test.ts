@@ -9,17 +9,24 @@ import {
   deletePortfolioContribution,
   deletePortfolioDividend,
   listAllPortfolioTransactions,
+  listCorporateDividends,
   listPortfolioAssets,
   listPortfolioSnapshots,
   listPortfolioTransactions,
   resetManualSnapshotCalibration,
   updatePortfolioAsset,
+  updateUserDividendEvent,
   upsertPortfolioSnapshot,
 } from "./portfolio";
 
 interface Builder {
   select: ReturnType<typeof vi.fn>;
   eq: ReturnType<typeof vi.fn>;
+  gt: ReturnType<typeof vi.fn>;
+  in: ReturnType<typeof vi.fn>;
+  lte: ReturnType<typeof vi.fn>;
+  or: ReturnType<typeof vi.fn>;
+  limit: ReturnType<typeof vi.fn>;
   order: ReturnType<typeof vi.fn>;
   insert: ReturnType<typeof vi.fn>;
   upsert: ReturnType<typeof vi.fn>;
@@ -37,6 +44,11 @@ function makeBuilder(result: unknown): Builder {
   const builder = {
     select: vi.fn(),
     eq: vi.fn(),
+    gt: vi.fn(),
+    in: vi.fn(),
+    lte: vi.fn(),
+    or: vi.fn(),
+    limit: vi.fn(),
     order: vi.fn(),
     insert: vi.fn(),
     upsert: vi.fn(),
@@ -46,6 +58,11 @@ function makeBuilder(result: unknown): Builder {
   } as Builder;
   builder.select.mockReturnValue(builder);
   builder.eq.mockReturnValue(builder);
+  builder.gt.mockReturnValue(builder);
+  builder.in.mockReturnValue(builder);
+  builder.lte.mockReturnValue(builder);
+  builder.or.mockReturnValue(builder);
+  builder.limit.mockReturnValue(builder);
   builder.order.mockReturnValue(builder);
   builder.insert.mockImplementation((input: unknown) => {
     lastInsertInput = input;
@@ -53,17 +70,15 @@ function makeBuilder(result: unknown): Builder {
   });
   builder.update.mockImplementation((input: unknown) => {
     lastUpdateInput = input;
-    const chain = {
+    const eqChain: Record<string, unknown> = {
       ...builder,
-      eq: vi.fn(() => ({
+      select: () => ({
         ...builder,
-        select: () => ({
-          ...builder,
-          single: () => ({ then: (cb: (v: unknown) => unknown) => Promise.resolve(result).then(cb) }),
-        }),
-      })),
+        single: () => ({ then: (cb: (v: unknown) => unknown) => Promise.resolve(result).then(cb) }),
+      }),
     };
-    return chain;
+    eqChain.eq = vi.fn(() => eqChain);
+    return eqChain as unknown as Builder;
   });
   builder.upsert.mockImplementation((input: unknown) => {
     lastUpsertInput = input;
@@ -470,5 +485,94 @@ describe("portfolio repository (Fase 36 — Posição Consolidada)", () => {
     expect(res.action).toBe("restored_to_auto");
     expect(res.snapshot?.is_manually_calibrated).toBe(false);
     expect(res.snapshot?.total_value).toBe(90000);
+  });
+
+  it("listCorporateDividends aplica janela operacional de 120d e paginação em ambos os caminhos (S1)", async () => {
+    builder = makeBuilder({
+      data: [
+        {
+          id: "c1",
+          ticker: "petr4",
+          type: "DIVIDENDO",
+          com_date: "2026-10-15",
+          payment_date: null,
+          rate: "1.5",
+          net_rate: "1.5",
+          currency: "BRL",
+          tax_rate_pct: "0",
+          is_type_uncertain: false,
+        },
+      ],
+      error: null,
+    });
+
+    const withTickers = await listCorporateDividends(["PETR4F"]);
+    expect(withTickers).toHaveLength(1);
+    expect(withTickers[0]?.ticker).toBe("PETR4");
+    expect(withTickers[0]?.trust_tier).toBe("raw_fallback");
+    expect(builder.in).toHaveBeenCalledWith("ticker", ["PETR4F", "PETR4"]);
+    expect(builder.lte).toHaveBeenCalledWith("com_date", expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/));
+    expect(builder.or).toHaveBeenCalledWith(expect.stringMatching(/^com_date\.gte\.\d{4}-\d{2}-\d{2},payment_date\.gte\.\d{4}-\d{2}-\d{2}$/));
+
+    builder = makeBuilder({ data: [], error: null });
+    await listCorporateDividends();
+    expect(builder.lte).toHaveBeenCalledWith("com_date", expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/));
+    expect(builder.or).toHaveBeenCalledWith(expect.stringMatching(/^com_date\.gte\.\d{4}-\d{2}-\d{2},payment_date\.gte\.\d{4}-\d{2}-\d{2}$/));
+    expect(builder.order).toHaveBeenCalledWith("id", { ascending: true });
+  });
+
+  it("updateUserDividendEvent marca manual_review_required: true em toda edição humana e mapeia revision", async () => {
+    builder = makeBuilder({
+      data: {
+        id: "ev-1",
+        user_id: "u1",
+        asset_id: "a1",
+        ticker: "PETR4",
+        type: "JCP",
+        status: "PENDING_CONFIRMATION",
+        com_date: "2026-10-10",
+        payment_date: "2026-11-10",
+        quantity_on_com_date: 100,
+        gross_rate: 1,
+        net_rate: 0.85,
+        tax_rate_pct: 15,
+        gross_amount: 100,
+        net_amount: 85,
+        currency: "BRL",
+        is_manual: false,
+        is_type_uncertain: false,
+        manual_review_required: true,
+        revision: 2,
+      },
+      error: null,
+    });
+
+    const updated = await updateUserDividendEvent("ev-1", { net_amount: 85 });
+    expect(lastUpdateInput).toMatchObject({
+      net_amount: 85,
+      manual_review_required: true,
+    });
+    expect(updated.manual_review_required).toBe(true);
+    expect(updated.revision).toBe(2);
+  });
+
+  it("mapAsset mapeia dividends_start_date corretamente", async () => {
+    builder = makeBuilder({
+      data: [
+        {
+          id: "a1",
+          user_id: "u1",
+          ticker: "MXRF11",
+          asset_class: "FIIs",
+          currency: "BRL",
+          quantity: 100,
+          average_price: 10,
+          dividends_start_date: "2026-10-01",
+        },
+      ],
+      error: null,
+    });
+    const assets = await listPortfolioAssets();
+    expect(assets[0]?.dividends_start_date).toBe("2026-10-01");
   });
 });

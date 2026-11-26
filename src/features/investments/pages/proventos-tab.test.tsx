@@ -303,4 +303,29 @@ describe("ProventosTab — extrato e calendário (F18 e F36)", () => {
     expect(screen.queryByText("Proventos em Caixa Disponíveis")).not.toBeInTheDocument();
     expect(screen.queryByText("Efeito Bola de Neve em Ação")).not.toBeInTheDocument();
   });
+
+  it("exibe banner de calibração mesmo com extrato e filas vazias e abre o modal de conferência (S1)", async () => {
+    dividendsMock.mockReturnValue([]);
+    assetsMock.mockReturnValue([
+      {
+        id: "a-cal",
+        user_id: "u1",
+        ticker: "MXRF11",
+        asset_class: "FIIs",
+        currency: "BRL" as const,
+        quantity: 100,
+        average_price: 10,
+        accumulated_dividends: 250,
+        dividends_start_date: null,
+      },
+    ]);
+
+    const user = userEvent.setup();
+    renderTab(<ProventosTab defaultMonth="2026-08" />);
+
+    expect(screen.getByText(/1 ativo aguarda calibração de proventos/i)).toBeInTheDocument();
+    const calibrateBtn = screen.getByRole("button", { name: "Calibrar 1 ativo" });
+    await user.click(calibrateBtn);
+    expect(calibrateBtn).toBeEnabled();
+  });
 });

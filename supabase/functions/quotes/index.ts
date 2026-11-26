@@ -14,9 +14,11 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import {
   buildGlobalQuoteUpsertRow,
+  classifyDividendInstrumentKindEdge,
   classifyTickerMarket,
-  computeCustodyAtComDatePure,
   evaluateSpikeGuardrail,
+  findCompatibleCorporateCandidateEdge,
+  getDividendTrustTierPriorityEdge,
   getFirstNBusinessDaysOfMonthBR,
   getLastBusinessDayOfMonthBR,
   getZonedDateParts,
@@ -33,7 +35,10 @@ import {
   parseYahooChartDetailed,
   parseYahooDividends,
   parseYahooHistoricalClose,
+  reconcilePartition1to1Edge,
   resolveAntiFloodCutoffDate,
+  resolveOpenDividendEventStatusEdge,
+  selectPrimaryLotForGroupEdge,
   shouldSkipByEodGuard,
   type GlobalQuoteUpsertRow,
   type ParsedCorporateDividend,
@@ -432,10 +437,15 @@ async function fetchBrapiDividendsSingleChunk(
   }
 }
 
-/** Busca proventos corporativos na Brapi para um lote de tickers B3, com fallback individual em caso de 400/403/404. */
+/**
+ * Busca proventos corporativos na Brapi para um lote de tickers B3 (§4.1):
+ * - 401/403 de escopo abre circuito Brapi imediatamente sem fan-out individual;
+ * - 400/404 no lote isola símbolos individualmente;
+ * - 429/5xx respeita Retry-After no `fetchWithRetry`.
+ */
 async function fetchBrapiDividendsForTickers(
   tickers: string[],
-): Promise<{ dividends: ParsedCorporateDividend[]; coveredTickers: Set<string> }> {
+): Promise<{ dividends: ParsedCorporateDividend[]; coveredTickers: Set<string>; circuitOpened: boolean }> {
   const cleanTickers = [
     ...new Set(
       tickers
@@ -444,7 +454,7 @@ async function fetchBrapiDividendsForTickers(
     ),
   ];
   const coveredTickers = new Set<string>();
-  if (cleanTickers.length === 0) return { dividends: [], coveredTickers };
+  if (cleanTickers.length === 0) return { dividends: [], coveredTickers, circuitOpened: false };
 
   const brapiToken = getBrapiToken();
   const headers: Record<string, string> = { "User-Agent": USER_AGENT };
@@ -455,23 +465,35 @@ async function fetchBrapiDividendsForTickers(
 
   const batch = await fetchBrapiDividendsSingleChunk(cleanTickers, headers, tokenParam);
   if (batch.ok) {
-    return { dividends: batch.dividends, coveredTickers: batch.coveredTickers };
+    return { dividends: batch.dividends, coveredTickers: batch.coveredTickers, circuitOpened: false };
   }
 
-  // Plano básico Brapi ou 1 ticker inválido no lote de 15 falha o lote todo -> fallback por ticker individual
-  if (cleanTickers.length > 1) {
-    const individual = await runWithConcurrencyPool(cleanTickers, 4, async (single) =>
-      await fetchBrapiDividendsSingleChunk([single], headers, tokenParam),
-    );
+  if (batch.status === 401 || batch.status === 403) {
+    return { dividends: [], coveredTickers, circuitOpened: true };
+  }
+
+  // Isolamento de símbolos apenas em 400/404 de lote
+  if ((batch.status === 400 || batch.status === 404) && cleanTickers.length > 1) {
+    let circuitOpened = false;
+    const individual = await runWithConcurrencyPool(cleanTickers, 4, async (single) => {
+      if (circuitOpened) {
+        return { ok: false, status: 403, dividends: [] as ParsedCorporateDividend[], coveredTickers: new Set<string>() };
+      }
+      const singleRes = await fetchBrapiDividendsSingleChunk([single], headers, tokenParam);
+      if (singleRes.status === 401 || singleRes.status === 403) {
+        circuitOpened = true;
+      }
+      return singleRes;
+    });
     const allDividends: ParsedCorporateDividend[] = [];
     for (const res of individual) {
       allDividends.push(...res.dividends);
       for (const ct of res.coveredTickers) coveredTickers.add(ct);
     }
-    return { dividends: allDividends, coveredTickers };
+    return { dividends: allDividends, coveredTickers, circuitOpened };
   }
 
-  return { dividends: [], coveredTickers };
+  return { dividends: [], coveredTickers, circuitOpened: false };
 }
 
 /** Busca proventos via Yahoo Finance (`events=div`) para EUA ou fallback B3 incerto. */
@@ -496,6 +518,151 @@ async function fetchYahooDividendsForTicker(
     }
   }
   return [];
+}
+
+function isValidEdgeCivilDate(raw: string | null | undefined): raw is string {
+  if (typeof raw !== "string") return false;
+  const clean = raw.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(clean)) return false;
+  const [y, m, d] = clean.split("-").map(Number);
+  if (!y || !m || !d) return false;
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d;
+}
+
+function toEdgeSpDate(raw: string | null | undefined): string | null {
+  if (typeof raw !== "string") return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return isValidEdgeCivilDate(trimmed) ? trimmed : null;
+  const parsed = Date.parse(trimmed);
+  if (!Number.isFinite(parsed)) {
+    const prefix = trimmed.slice(0, 10);
+    return isValidEdgeCivilDate(prefix) ? prefix : null;
+  }
+  const iso = getZonedDateParts(new Date(parsed), "America/Sao_Paulo").isoDate;
+  return isValidEdgeCivilDate(iso) ? iso : null;
+}
+
+function edgeMaxDate(a: string | null, b: string | null): string | null {
+  if (!a) return b;
+  if (!b) return a;
+  return a >= b ? a : b;
+}
+
+function edgeMinDate(a: string | null, b: string | null): string | null {
+  if (!a) return b;
+  if (!b) return a;
+  return a <= b ? a : b;
+}
+
+function computeS1LotCustodyAtComEdge(
+  lot: {
+    quantity: number;
+    accumulated_dividends?: number | null;
+    dividends_start_date?: string | null;
+    created_at?: string | null;
+  },
+  txs: ReadonlyArray<{ id?: string; type: string; date: string; quantity: number; created_at?: string | null }>,
+  comDate: string,
+  trackingStartDate: string | null,
+): number {
+  const MIN_DATE = "2000-01-01";
+  const comClean = comDate.slice(0, 10);
+  if (!isValidEdgeCivilDate(comClean) || comClean < MIN_DATE) return 0;
+
+  const currentQty = Math.max(0, Number(lot.quantity) || 0);
+  const acc = Number(lot.accumulated_dividends ?? 0) || 0;
+  const divStart =
+    typeof lot.dividends_start_date === "string" && isValidEdgeCivilDate(lot.dividends_start_date) && lot.dividends_start_date >= MIN_DATE
+      ? lot.dividends_start_date
+      : null;
+  const createdRaw = toEdgeSpDate(lot.created_at ?? null);
+  const createdDay = createdRaw && createdRaw >= MIN_DATE ? createdRaw : null;
+  const validTracking =
+    trackingStartDate && isValidEdgeCivilDate(trackingStartDate) && trackingStartDate >= MIN_DATE
+      ? trackingStartDate
+      : null;
+
+  const weight = (t: string) =>
+    t === "split" || t === "reverse_split" ? 0 : t === "buy" || t === "subscription" ? 1 : 2;
+  const custodyTxs = txs
+    .filter((tx) => ["buy", "subscription", "sell", "split", "reverse_split"].includes(tx.type))
+    .slice()
+    .sort((a, b) => {
+      const da = a.date.slice(0, 10);
+      const db = b.date.slice(0, 10);
+      if (da !== db) return da.localeCompare(db);
+      const w = weight(a.type) - weight(b.type);
+      if (w !== 0) return w;
+      return String(a.id ?? "").localeCompare(String(b.id ?? ""));
+    });
+
+  let zeroQty = 0;
+  let hadClampedSell = false;
+  let firstLedgerDay: string | null = null;
+  const applyStep = (cur: number, tx: { type: string; quantity: number }) => {
+    const q = Math.max(0, Number(tx.quantity) || 0);
+    if (tx.type === "buy" || tx.type === "subscription") return cur + q;
+    if (tx.type === "sell") return Math.max(0, cur - q);
+    if (tx.type === "split") return q > 0 ? cur * q : cur;
+    if (tx.type === "reverse_split") return q > 0 ? cur / q : cur;
+    return cur;
+  };
+
+  for (const tx of custodyTxs) {
+    const q = Math.max(0, Number(tx.quantity) || 0);
+    if (tx.type === "sell" && zeroQty + 1e-6 < q) hadClampedSell = true;
+    zeroQty = applyStep(zeroQty, tx);
+    const d = tx.date.slice(0, 10);
+    if (!firstLedgerDay && zeroQty > 1e-6 && isValidEdgeCivilDate(d) && d >= MIN_DATE) {
+      firstLedgerDay = d;
+    }
+  }
+
+  let baselineQty = 0;
+  if (custodyTxs.length === 0) {
+    baselineQty = currentQty;
+  } else if (currentQty > zeroQty + 1e-6 || hadClampedSell) {
+    let q = currentQty;
+    for (let i = custodyTxs.length - 1; i >= 0; i--) {
+      const tx = custodyTxs[i]!;
+      const txQ = Math.max(0, Number(tx.quantity) || 0);
+      if (tx.type === "buy" || tx.type === "subscription") q -= txQ;
+      else if (tx.type === "sell") q += txQ;
+      else if (tx.type === "split") q /= txQ > 0 ? txQ : 1;
+      else if (tx.type === "reverse_split") q *= txQ > 0 ? txQ : 1;
+    }
+    baselineQty = q > 1e-6 ? Math.round(q * 1e8) / 1e8 : 0;
+  }
+
+  const baselineProvenDate = baselineQty > 1e-6 ? (divStart ?? createdDay ?? null) : null;
+  const firstProvenDay = edgeMinDate(firstLedgerDay, baselineProvenDate);
+
+  let effStart: string | null = null;
+  if (acc > 0) {
+    effStart = divStart ? edgeMaxDate(validTracking, divStart) : null;
+  } else if (divStart) {
+    effStart = edgeMaxDate(validTracking, divStart);
+  } else if (firstProvenDay) {
+    effStart = edgeMaxDate(validTracking, firstProvenDay);
+  }
+
+  if (!effStart || comClean < effStart) return 0;
+
+  let qty: number;
+  if (custodyTxs.length === 0) {
+    qty = baselineProvenDate && comClean >= baselineProvenDate ? currentQty : 0;
+  } else {
+    qty = baselineQty > 1e-6 && baselineProvenDate && comClean >= baselineProvenDate ? baselineQty : 0;
+    for (const tx of custodyTxs) {
+      if (tx.date.slice(0, 10) > comClean) break;
+      qty = applyStep(qty, tx);
+    }
+  }
+
+  if (qty <= 1e-6) return 0;
+  return Math.round(qty * 1e8) / 1e8;
 }
 
 function addDaysIsoServer(isoDate: string, days: number): string {
@@ -639,6 +806,7 @@ Deno.serve(async (req) => {
     }
 
     let action = "quotes";
+    let parsedBody: Record<string, unknown> = {};
     let requestedTickers: string[] = [];
     let requestedMonth: string | null = null;
     let requestMode: "swr" | "report_preflight" | "preview" = "swr";
@@ -647,6 +815,9 @@ Deno.serve(async (req) => {
     if (req.method === "POST") {
       try {
         const body = await req.json();
+        if (body && typeof body === "object") {
+          parsedBody = body as Record<string, unknown>;
+        }
         if (body && typeof body.action === "string") {
           action = body.action.trim();
         }
@@ -1251,12 +1422,17 @@ Deno.serve(async (req) => {
 
       const allCorporateDividends: ParsedCorporateDividend[] = [];
       const coveredBrTickers = new Set<string>();
+      let brapiCircuitOpen = false;
       const chunkSize = 15;
       for (let i = 0; i < brTickers.length; i += chunkSize) {
+        if (brapiCircuitOpen) break;
         const chunk = brTickers.slice(i, i + chunkSize);
-        const { dividends, coveredTickers } = await fetchBrapiDividendsForTickers(chunk);
+        const { dividends, coveredTickers, circuitOpened } = await fetchBrapiDividendsForTickers(chunk);
         allCorporateDividends.push(...dividends);
         for (const ct of coveredTickers) coveredBrTickers.add(ct);
+        if (circuitOpened) {
+          brapiCircuitOpen = true;
+        }
       }
 
       const uncoveredBrTickers = brTickers.filter((t) => !coveredBrTickers.has(t));
@@ -1282,12 +1458,77 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Similaridade ±1 / ±2 pregões contra catálogo existente (§4.1) sem degradar tier superior
+      const normalizedRowsForUpsert: ParsedCorporateDividend[] = [];
+      if (allCorporateDividends.length > 0) {
+        const syncTickers = [...new Set(allCorporateDividends.map((d) => d.ticker))];
+        const existingCorpList: Array<{
+          id: string;
+          ticker: string;
+          currency: "BRL" | "USD";
+          com_date: string;
+          payment_date: string | null;
+          type: ParsedCorporateDividend["type"];
+          rate: number;
+          is_type_uncertain: boolean;
+          trust_tier: ParsedCorporateDividend["trust_tier"] | null;
+          external_terms: Record<string, unknown> | null;
+          ex_date: string | null;
+          external_id: string | null;
+        }> = [];
+        for (const tChunk of chunkArray(syncTickers, 80)) {
+          const { data: exRows } = await supabase
+            .from("corporate_dividends")
+            .select("id, ticker, currency, com_date, payment_date, type, rate, is_type_uncertain, trust_tier, external_terms")
+            .in("ticker", tChunk);
+          for (const er of exRows ?? []) {
+            const extTerms =
+              er.external_terms && typeof er.external_terms === "object"
+                ? (er.external_terms as Record<string, unknown>)
+                : null;
+            existingCorpList.push({
+              id: String(er.id),
+              ticker: String(er.ticker).trim().toUpperCase(),
+              currency: er.currency === "USD" ? "USD" : "BRL",
+              com_date: String(er.com_date).slice(0, 10),
+              payment_date: er.payment_date ? String(er.payment_date).slice(0, 10) : null,
+              type: String(er.type) as ParsedCorporateDividend["type"],
+              rate: Number(er.rate),
+              is_type_uncertain: Boolean(er.is_type_uncertain),
+              trust_tier: (er.trust_tier as ParsedCorporateDividend["trust_tier"]) ?? null,
+              external_terms: extTerms,
+              ex_date: typeof extTerms?.ex_date === "string" ? extTerms.ex_date : null,
+              external_id: typeof extTerms?.external_id === "string" ? extTerms.external_id : null,
+            });
+          }
+        }
+
+        for (const item of allCorporateDividends) {
+          const cand = findCompatibleCorporateCandidateEdge(item, existingCorpList);
+          if (cand) {
+            const candTierPrio = getDividendTrustTierPriorityEdge(cand.trust_tier);
+            const itemTierPrio = getDividendTrustTierPriorityEdge(item.trust_tier);
+            if (candTierPrio > itemTierPrio) {
+              // Nunca sobrescreve termos de tier superior com observação inferior
+              continue;
+            }
+            normalizedRowsForUpsert.push({
+              ...item,
+              com_date: cand.com_date,
+              type: cand.is_type_uncertain ? item.type : cand.type,
+            });
+          } else {
+            normalizedRowsForUpsert.push(item);
+          }
+        }
+      }
+
       let upserted = 0;
       let promoted = 0;
-      if (allCorporateDividends.length > 0) {
+      if (normalizedRowsForUpsert.length > 0) {
         const rpcBatchSize = 200;
-        for (let i = 0; i < allCorporateDividends.length; i += rpcBatchSize) {
-          const chunk = allCorporateDividends.slice(i, i + rpcBatchSize);
+        for (let i = 0; i < normalizedRowsForUpsert.length; i += rpcBatchSize) {
+          const chunk = normalizedRowsForUpsert.slice(i, i + rpcBatchSize);
           const { data: rpcRes, error: divUpsertError } = await supabase.rpc(
             "upsert_corporate_dividend_system",
             { p_rows: chunk },
@@ -1298,6 +1539,30 @@ Deno.serve(async (req) => {
           const resObj = rpcRes as { upserted?: number; promoted?: number } | null;
           upserted += resObj?.upserted ?? 0;
           promoted += resObj?.promoted ?? 0;
+
+          // Atualiza metadados S2 (trust_tier / external_terms) sem degradar tiers superiores
+          for (const row of chunk) {
+            const allowedLowerTiers =
+              row.trust_tier === "official"
+                ? ["official", "community_verified", "enriched_fallback", "raw_fallback"]
+                : row.trust_tier === "enriched_fallback"
+                  ? ["enriched_fallback", "raw_fallback"]
+                  : ["raw_fallback"];
+            let metaQuery = supabase
+              .from("corporate_dividends")
+              .update({
+                trust_tier: row.trust_tier,
+                external_terms: row.external_terms,
+              })
+              .eq("ticker", row.ticker)
+              .eq("com_date", row.com_date)
+              .eq("type", row.type)
+              .in("trust_tier", allowedLowerTiers);
+            metaQuery = row.payment_date
+              ? metaQuery.eq("payment_date", row.payment_date)
+              : metaQuery.is("payment_date", null);
+            await metaQuery;
+          }
         }
       }
 
@@ -1307,6 +1572,7 @@ Deno.serve(async (req) => {
         synced_dividends: upserted + promoted,
         upserted,
         promoted,
+        brapi_circuit_open: brapiCircuitOpen,
         br_fallback_count: uncoveredBrTickers.length,
         us_count: usTickers.length,
         tickers: [...brTickers, ...usTickers],
@@ -1314,11 +1580,52 @@ Deno.serve(async (req) => {
     }
 
     // ---------------------------------------------------------------------------
-    // AÇÃO 3B: Materialização & Efetivação por Usuário (`process_user_dividends`) — Cron 11:30 UTC
+    // AÇÃO 3B: Materialização & Efetivação por Usuário (`process_user_dividends` / `sync_user_dividends`)
     // ---------------------------------------------------------------------------
-    if (action === "process_user_dividends") {
-      if (!isServiceRole) {
+    if (action === "process_user_dividends" || action === "sync_user_dividends") {
+      const isSingleUserSync = action === "sync_user_dividends";
+      if (!isSingleUserSync && !isServiceRole) {
         return jsonResponse(req, { error: "forbidden" }, 403);
+      }
+      if (isSingleUserSync) {
+        if (!callerUserId) {
+          return jsonResponse(req, { error: "unauthorized" }, 401);
+        }
+        const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+        if (anonKey && token) {
+          const userClient = createClient(supabaseUrl, anonKey, {
+            auth: { persistSession: false },
+            global: { headers: { Authorization: `Bearer ${token}` } },
+          });
+          const { data: canWrite, error: writeErr } = await userClient.rpc(
+            "can_current_user_write_module",
+            { p_module: "investments" },
+          );
+          if (writeErr || canWrite !== true) {
+            return jsonResponse(req, { error: "forbidden_readonly_or_module" }, 403);
+          }
+        }
+        const { data: rlData, error: rlErr } = await supabase.rpc("check_dividend_sync_rate_limit", {
+          p_user_id: callerUserId,
+          p_cooldown_seconds: 60,
+          p_max_per_hour: 6,
+        });
+        const rl = rlData as { allowed?: boolean; retry_after?: number; reason?: string } | null;
+        if (rlErr) {
+          return safeErrorResponse(req, 500, "Falha ao verificar limite de sincronização.", rlErr);
+        }
+        if (!rl?.allowed) {
+          return jsonResponse(
+            req,
+            {
+              ok: false,
+              error: "Aguarde antes de sincronizar proventos novamente.",
+              reason: rl?.reason ?? "cooldown",
+              retry_after: Number(rl?.retry_after ?? 60),
+            },
+            429,
+          );
+        }
       }
 
       const now = new Date();
@@ -1332,16 +1639,21 @@ Deno.serve(async (req) => {
         asset_class: string | null;
         currency: string;
         quantity: number;
+        accumulated_dividends: number | null;
+        dividends_start_date: string | null;
         fixed_income_metadata: unknown;
         notes: string | null;
         created_at: string | null;
-      }>((from, to) =>
-        supabase
+      }>((from, to) => {
+        let q = supabase
           .from("portfolio_assets")
-          .select("id, user_id, ticker, asset_class, currency, quantity, fixed_income_metadata, notes, created_at")
-          .order("id", { ascending: true })
-          .range(from, to),
-      );
+          .select("id, user_id, ticker, asset_class, currency, quantity, accumulated_dividends, dividends_start_date, fixed_income_metadata, notes, created_at")
+          .order("id", { ascending: true });
+        if (isSingleUserSync && callerUserId) {
+          q = q.eq("user_id", callerUserId);
+        }
+        return q.range(from, to);
+      });
 
       if (assetsErr) {
         return safeErrorResponse(req, 500, "Falha ao carregar custódias para proventos.", assetsErr);
@@ -1356,20 +1668,37 @@ Deno.serve(async (req) => {
       const zeroQtyIds = marketCandidateAssets
         .filter((a) => (Number(a.quantity) || 0) <= 0)
         .map((a) => String(a.id));
-      const recentlyTradedZeroIds = new Set<string>();
+      const ledgerTradedZeroIds = new Set<string>();
       for (const idChunk of chunkArray(zeroQtyIds, 150)) {
-        const { data: recentTxs } = await supabase
-          .from("portfolio_transactions")
-          .select("asset_id")
-          .in("asset_id", idChunk)
-          .gte("date", lookbackStart);
-        for (const r of recentTxs ?? []) {
-          recentlyTradedZeroIds.add(String(r.asset_id));
+        const [ledgerRes, openEvRes] = await Promise.all([
+          fetchAllPages<{ asset_id: string }>((from, to) =>
+            supabase
+              .from("portfolio_transactions")
+              .select("asset_id")
+              .in("asset_id", idChunk)
+              .order("id", { ascending: true })
+              .range(from, to),
+          ),
+          fetchAllPages<{ asset_id: string }>((from, to) =>
+            supabase
+              .from("user_dividend_events")
+              .select("asset_id")
+              .in("asset_id", idChunk)
+              .in("status", ["PROVISIONED", "PENDING_CONFIRMATION"])
+              .order("id", { ascending: true })
+              .range(from, to),
+          ),
+        ]);
+        for (const r of ledgerRes.data) {
+          if (r.asset_id) ledgerTradedZeroIds.add(String(r.asset_id));
+        }
+        for (const ev of openEvRes.data) {
+          if (ev.asset_id) ledgerTradedZeroIds.add(String(ev.asset_id));
         }
       }
 
       const quotedAssets = marketCandidateAssets.filter(
-        (a) => (Number(a.quantity) || 0) > 0 || recentlyTradedZeroIds.has(String(a.id)),
+        (a) => (Number(a.quantity) || 0) > 0 || ledgerTradedZeroIds.has(String(a.id)),
       );
 
       if (quotedAssets.length === 0) {
@@ -1412,7 +1741,8 @@ Deno.serve(async (req) => {
         supabase
           .from("corporate_dividends")
           .select("id, ticker, type, com_date, payment_date, rate, net_rate, tax_rate_pct, currency, is_type_uncertain")
-          .or(`payment_date.is.null,com_date.gte.${lookbackStart},payment_date.gte.${lookbackStart}`)
+          .lte("com_date", todayBR)
+          .or(`com_date.gte.${lookbackStart},payment_date.gte.${lookbackStart}`)
           .order("id", { ascending: true })
           .range(from, to),
       );
@@ -1421,7 +1751,7 @@ Deno.serve(async (req) => {
         return safeErrorResponse(req, 500, "Falha ao carregar agenda corporativa de proventos.", corpErr);
       }
 
-      const corpByTicker = new Map<string, Array<{
+      type CorpEventRow = {
         id: string;
         ticker: string;
         type: string;
@@ -1432,12 +1762,25 @@ Deno.serve(async (req) => {
         tax_rate_pct: number;
         currency: "BRL" | "USD";
         is_type_uncertain: boolean;
-      }>>();
+      };
 
-      for (const c of corpRows) {
+      const corpById = new Map<string, CorpEventRow>();
+      const corpByTicker = new Map<string, CorpEventRow[]>();
+
+      const indexCorpEvent = (c: {
+        id: string;
+        ticker: string;
+        type: string;
+        com_date: string;
+        payment_date: string | null;
+        rate: number;
+        net_rate: number;
+        tax_rate_pct: number | null;
+        currency: string;
+        is_type_uncertain: boolean;
+      }): CorpEventRow => {
         const key = String(c.ticker).trim().toUpperCase();
-        const list = corpByTicker.get(key) ?? [];
-        list.push({
+        const item: CorpEventRow = {
           id: String(c.id),
           ticker: key,
           type: String(c.type),
@@ -1448,8 +1791,18 @@ Deno.serve(async (req) => {
           tax_rate_pct: Number(c.tax_rate_pct ?? 0),
           currency: c.currency === "USD" ? "USD" : "BRL",
           is_type_uncertain: Boolean(c.is_type_uncertain),
-        });
-        corpByTicker.set(key, list);
+        };
+        corpById.set(item.id, item);
+        const list = corpByTicker.get(key) ?? [];
+        if (!list.some((x) => x.id === item.id)) {
+          list.push(item);
+          corpByTicker.set(key, list);
+        }
+        return item;
+      };
+
+      for (const c of corpRows) {
+        indexCorpEvent(c);
       }
 
       const assetsByUser = new Map<string, typeof quotedAssets>();
@@ -1473,6 +1826,7 @@ Deno.serve(async (req) => {
         const [prefRes, txRes, manDivRes, existingEventsRes, dismissalsRes] = await Promise.all([
           supabase.from("user_preferences").select("custom_settings").eq("user_id", uid).maybeSingle(),
           fetchAllPages<{
+            id: string;
             asset_id: string;
             type: string;
             date: string;
@@ -1481,7 +1835,7 @@ Deno.serve(async (req) => {
           }>((from, to) =>
             supabase
               .from("portfolio_transactions")
-              .select("asset_id, type, date, quantity, created_at")
+              .select("id, asset_id, type, date, quantity, created_at")
               .eq("user_id", uid)
               .in("type", ["buy", "subscription", "sell", "split", "reverse_split"])
               .order("id", { ascending: true })
@@ -1504,15 +1858,24 @@ Deno.serve(async (req) => {
           fetchAllPages<{
             id: string;
             corporate_dividend_id: string | null;
+            asset_id: string;
             status: string;
+            com_date: string;
             payment_date: string | null;
+            quantity_on_com_date: number;
+            gross_amount: number | null;
+            net_amount: number | null;
             settled_dividend_id: string | null;
+            is_manual: boolean;
             is_type_uncertain: boolean;
             manual_review_required: boolean | null;
+            revision: number | null;
+            ticker: string;
+            currency: string;
           }>((from, to) =>
             supabase
               .from("user_dividend_events")
-              .select("id, corporate_dividend_id, status, payment_date, settled_dividend_id, is_type_uncertain, manual_review_required")
+              .select("id, corporate_dividend_id, asset_id, status, com_date, payment_date, quantity_on_com_date, gross_amount, net_amount, settled_dividend_id, is_manual, is_type_uncertain, manual_review_required, revision, ticker, currency")
               .eq("user_id", uid)
               .order("id", { ascending: true })
               .range(from, to),
@@ -1547,6 +1910,7 @@ Deno.serve(async (req) => {
             notifyOnProvisioned?: boolean;
             notifyOnPayment?: boolean;
             activatedAt?: string | null;
+            trackingStartDate?: string | null;
           };
         };
         const divAuto = customSettings.dividendAutomation ?? {};
@@ -1558,12 +1922,46 @@ Deno.serve(async (req) => {
         const notifyOnProvisioned = divAuto.notifyOnProvisioned !== false;
         const notifyOnPayment = divAuto.notifyOnPayment !== false;
         const cutoffDate = resolveAntiFloodCutoffDate(divAuto.activatedAt, todayBR, 7);
+        const trackingStartDate =
+          typeof divAuto.trackingStartDate === "string" && isValidEdgeCivilDate(divAuto.trackingStartDate.trim())
+            ? divAuto.trackingStartDate.trim()
+            : null;
 
-        const txsByAsset = new Map<string, Array<{ type: string; date: string; quantity: number; created_at?: string | null }>>();
+        // Carrega também eventos corporativos de pendências abertas fora da janela de 120d para permitir recomposição ao recuar corte
+        const missingCorpIds = [
+          ...new Set(
+            existingEventsRes.data
+              .filter(
+                (ev) =>
+                  ev.corporate_dividend_id &&
+                  !corpById.has(String(ev.corporate_dividend_id)) &&
+                  (ev.status === "PROVISIONED" || ev.status === "PENDING_CONFIRMATION") &&
+                  !ev.is_manual &&
+                  !ev.manual_review_required,
+              )
+              .map((ev) => String(ev.corporate_dividend_id)),
+          ),
+        ];
+        const extraCorpByTicker = new Map<string, CorpEventRow[]>();
+        for (const idChunk of chunkArray(missingCorpIds, 100)) {
+          const { data: extraRows } = await supabase
+            .from("corporate_dividends")
+            .select("id, ticker, type, com_date, payment_date, rate, net_rate, tax_rate_pct, currency, is_type_uncertain")
+            .in("id", idChunk);
+          for (const er of extraRows ?? []) {
+            const parsed = indexCorpEvent(er);
+            const list = extraCorpByTicker.get(parsed.ticker) ?? [];
+            list.push(parsed);
+            extraCorpByTicker.set(parsed.ticker, list);
+          }
+        }
+
+        const txsByAsset = new Map<string, Array<{ id: string; type: string; date: string; quantity: number; created_at?: string | null }>>();
         for (const tx of txRes.data) {
           const aid = String(tx.asset_id);
           const list = txsByAsset.get(aid) ?? [];
           list.push({
+            id: String(tx.id),
             type: String(tx.type),
             date: String(tx.date),
             quantity: Number(tx.quantity),
@@ -1574,11 +1972,10 @@ Deno.serve(async (req) => {
 
         const assetTickerByAssetId = new Map<string, string>();
         for (const asset of userAssets) {
-          const market = classifyTickerMarket(asset.ticker);
           const canonical =
-            market === "BR" && asset.currency !== "USD"
+            asset.currency !== "USD"
               ? normalizeTickerForBrapi(asset.ticker)
-              : asset.ticker.trim().toUpperCase();
+              : asset.ticker.trim().toUpperCase().replace(/\.SA$/, "");
           assetTickerByAssetId.set(String(asset.id), canonical);
         }
 
@@ -1601,36 +1998,50 @@ Deno.serve(async (req) => {
 
         const existingByCorpId = new Map<string, {
           id: string;
+          asset_id: string;
           status: string;
           payment_date: string | null;
+          quantity_on_com_date: number;
+          gross_amount: number;
+          net_amount: number;
           settled_dividend_id: string | null;
+          is_manual: boolean;
           is_type_uncertain: boolean;
           manual_review_required: boolean;
+          revision: number;
         }>();
         for (const ev of existingEventsRes.data) {
           if (ev.corporate_dividend_id) {
             existingByCorpId.set(String(ev.corporate_dividend_id), {
               id: String(ev.id),
+              asset_id: String(ev.asset_id ?? ""),
               status: String(ev.status),
               payment_date: ev.payment_date ? String(ev.payment_date).slice(0, 10) : null,
+              quantity_on_com_date: Number(ev.quantity_on_com_date ?? 0),
+              gross_amount: Number(ev.gross_amount ?? 0),
+              net_amount: Number(ev.net_amount ?? 0),
               settled_dividend_id: ev.settled_dividend_id ? String(ev.settled_dividend_id) : null,
+              is_manual: Boolean(ev.is_manual),
               is_type_uncertain: Boolean(ev.is_type_uncertain),
               manual_review_required: Boolean(ev.manual_review_required),
+              revision: ev.revision != null ? Number(ev.revision) : 1,
             });
           }
         }
 
-        // Agrupa lotes do mesmo ticker canônico (ex.: PETR4 + PETR4F) evitando sobrescrita de UQ
-        const assetGroupsByTicker = new Map<string, { market: "BR" | "US"; lots: typeof userAssets }>();
+        // Agrupa lotes do mesmo ticker canônico + moeda (nunca remove F de USD)
+        const assetGroupsByKey = new Map<string, { lookupTicker: string; currency: "BRL" | "USD"; lots: typeof userAssets }>();
         for (const asset of userAssets) {
-          const market: "BR" | "US" =
-            classifyTickerMarket(asset.ticker) === "US" && asset.currency !== "BRL" ? "US" : "BR";
+          const currency: "BRL" | "USD" = asset.currency === "USD" ? "USD" : "BRL";
           const lookupTicker =
-            market === "BR" ? normalizeTickerForBrapi(asset.ticker) : asset.ticker.trim().toUpperCase();
+            currency === "BRL"
+              ? normalizeTickerForBrapi(asset.ticker)
+              : asset.ticker.trim().toUpperCase().replace(/\.SA$/, "");
           if (!lookupTicker) continue;
-          const grp = assetGroupsByTicker.get(lookupTicker) ?? { market, lots: [] };
+          const groupKey = `${currency}:${lookupTicker}`;
+          const grp = assetGroupsByKey.get(groupKey) ?? { lookupTicker, currency, lots: [] };
           grp.lots.push(asset);
-          assetGroupsByTicker.set(lookupTicker, grp);
+          assetGroupsByKey.set(groupKey, grp);
         }
 
         const consumedManualIds = new Set<string>();
@@ -1638,13 +2049,20 @@ Deno.serve(async (req) => {
         const newPendingTickers: string[] = [];
         const newSettledTickers: string[] = [];
 
-        for (const [lookupTicker, grp] of assetGroupsByTicker.entries()) {
-          const corpList = corpByTicker.get(lookupTicker) ?? [];
+        for (const grp of assetGroupsByKey.values()) {
+          const lookupTicker = grp.lookupTicker;
+          const corpMapForTicker = new Map<string, CorpEventRow>();
+          for (const c of corpByTicker.get(lookupTicker) ?? []) {
+            if (c.currency === grp.currency) corpMapForTicker.set(c.id, c);
+          }
+          for (const c of extraCorpByTicker.get(lookupTicker) ?? []) {
+            if (c.currency === grp.currency) corpMapForTicker.set(c.id, c);
+          }
+          const corpList = Array.from(corpMapForTicker.values());
           if (corpList.length === 0) continue;
 
-          const primaryLot = grp.lots
-            .slice()
-            .sort((a, b) => (Number(b.quantity) || 0) - (Number(a.quantity) || 0))[0]!;
+          const primaryLot = selectPrimaryLotForGroupEdge(grp.lots)!;
+          const instrumentKind = classifyDividendInstrumentKindEdge(lookupTicker, grp.currency);
           const tickerManualDivs = manDivsByCanonTicker.get(lookupTicker) ?? [];
 
           for (const corp of corpList) {
@@ -1652,25 +2070,77 @@ Deno.serve(async (req) => {
             if (dismissedCorpIds.has(corp.id)) continue;
 
             const existing = existingByCorpId.get(corp.id);
-            if (existing?.status === "SETTLED" || existing?.status === "DISMISSED") continue;
+            if (
+              existing?.status === "SETTLED" ||
+              existing?.status === "DISMISSED" ||
+              existing?.manual_review_required ||
+              existing?.is_manual
+            ) {
+              continue;
+            }
 
             let qtyOnCom = 0;
             for (const lot of grp.lots) {
               const lotTxs = txsByAsset.get(String(lot.id)) ?? [];
-              qtyOnCom += computeCustodyAtComDatePure(
-                { quantity: Number(lot.quantity), created_at: lot.created_at ? String(lot.created_at) : null },
+              qtyOnCom += computeS1LotCustodyAtComEdge(
+                {
+                  quantity: Number(lot.quantity),
+                  accumulated_dividends: lot.accumulated_dividends,
+                  dividends_start_date: lot.dividends_start_date,
+                  created_at: lot.created_at ? String(lot.created_at) : null,
+                },
                 lotTxs,
                 corp.com_date,
+                trackingStartDate,
               );
             }
             qtyOnCom = Math.round(qtyOnCom * 100_000_000) / 100_000_000;
-            if (qtyOnCom <= 0) continue;
+
+            // Caso inelegível ou zerado: se já existe evento aberto automático desprotegido com valor > 0, zera com trava de revisão
+            if (qtyOnCom <= 0) {
+              if (
+                existing &&
+                (existing.status === "PROVISIONED" || existing.status === "PENDING_CONFIRMATION") &&
+                existing.quantity_on_com_date > 0
+              ) {
+                const { data: zeroRow, error: zeroErr } = await supabase
+                  .from("user_dividend_events")
+                  .update({
+                    quantity_on_com_date: 0,
+                    gross_amount: 0,
+                    net_amount: 0,
+                    updated_at: now.toISOString(),
+                  })
+                  .eq("id", existing.id)
+                  .eq("revision", existing.revision)
+                  .eq("manual_review_required", false)
+                  .select("id, revision")
+                  .maybeSingle();
+                if (!zeroErr && zeroRow?.id) {
+                  existing.quantity_on_com_date = 0;
+                  existing.gross_amount = 0;
+                  existing.net_amount = 0;
+                  existing.revision = Number(zeroRow.revision ?? existing.revision + 1);
+                }
+              }
+              continue;
+            }
 
             const grossAmount = Math.round(qtyOnCom * corp.rate * 100) / 100;
             const netAmount = Math.round(qtyOnCom * corp.net_rate * 100) / 100;
             if (!Number.isFinite(netAmount) || netAmount <= 0) continue;
 
-            const isProvisioned = !corp.payment_date || corp.payment_date > todayBR;
+            const statusEval = resolveOpenDividendEventStatusEdge({
+              comDate: corp.com_date,
+              paymentDate: corp.payment_date,
+              referenceDate: todayBR,
+              market: grp.currency === "USD" ? "US" : "BR",
+              instrumentKind,
+              currentStatus: existing?.status === "PENDING_CONFIRMATION" ? "PENDING_CONFIRMATION" : "PROVISIONED",
+              isManual: existing?.is_manual,
+              manualReviewRequired: existing?.manual_review_required,
+            });
+            const isProvisioned = statusEval.status === "PROVISIONED";
 
             if (isProvisioned) {
               if (!existing) {
@@ -1696,30 +2166,96 @@ Deno.serve(async (req) => {
                       is_manual: false,
                       is_type_uncertain: corp.is_type_uncertain,
                     },
-                    { onConflict: "user_id,corporate_dividend_id" },
+                    { onConflict: "user_id,corporate_dividend_id", ignoreDuplicates: true },
                   )
-                  .select("id")
-                  .single();
+                  .select("id, revision")
+                  .maybeSingle();
                 if (insErr) {
                   upsertErrors += 1;
-                } else {
+                } else if (upRow?.id) {
                   provisionedCount += 1;
                   newProvisionedTickers.push(lookupTicker);
-                  if (upRow?.id) {
-                    existingByCorpId.set(corp.id, {
-                      id: String(upRow.id),
+                  existingByCorpId.set(corp.id, {
+                    id: String(upRow.id),
+                    asset_id: primaryLot.id,
+                    status: "PROVISIONED",
+                    payment_date: corp.payment_date,
+                    quantity_on_com_date: qtyOnCom,
+                    gross_amount: grossAmount,
+                    net_amount: netAmount,
+                    settled_dividend_id: null,
+                    is_manual: false,
+                    is_type_uncertain: corp.is_type_uncertain,
+                    manual_review_required: false,
+                    revision: Number(upRow.revision ?? 1),
+                  });
+                }
+              } else if (
+                (existing.status === "PROVISIONED" || statusEval.regressedToProvisioned) &&
+                !existing.manual_review_required
+              ) {
+                const provChanged =
+                  existing.status !== "PROVISIONED" ||
+                  existing.asset_id !== primaryLot.id ||
+                  existing.payment_date !== corp.payment_date ||
+                  Math.abs(existing.quantity_on_com_date - qtyOnCom) > 1e-6 ||
+                  Math.abs(existing.gross_amount - grossAmount) > 0.005 ||
+                  Math.abs(existing.net_amount - netAmount) > 0.005 ||
+                  existing.is_type_uncertain !== corp.is_type_uncertain;
+                if (provChanged) {
+                  const { data: updRow, error: updErr } = await supabase
+                    .from("user_dividend_events")
+                    .update({
                       status: "PROVISIONED",
+                      asset_id: primaryLot.id,
                       payment_date: corp.payment_date,
-                      settled_dividend_id: null,
+                      quantity_on_com_date: qtyOnCom,
+                      gross_rate: corp.rate,
+                      net_rate: corp.net_rate,
+                      tax_rate_pct: corp.tax_rate_pct,
+                      gross_amount: grossAmount,
+                      net_amount: netAmount,
                       is_type_uncertain: corp.is_type_uncertain,
-                      manual_review_required: false,
-                    });
+                      updated_at: now.toISOString(),
+                    })
+                    .eq("id", existing.id)
+                    .eq("revision", existing.revision)
+                    .eq("manual_review_required", false)
+                    .select("id, revision")
+                    .maybeSingle();
+                  if (!updErr && updRow?.id) {
+                    existing.status = "PROVISIONED";
+                    existing.asset_id = primaryLot.id;
+                    existing.payment_date = corp.payment_date;
+                    existing.quantity_on_com_date = qtyOnCom;
+                    existing.gross_amount = grossAmount;
+                    existing.net_amount = netAmount;
+                    existing.is_type_uncertain = corp.is_type_uncertain;
+                    existing.revision = Number(updRow.revision ?? existing.revision + 1);
                   }
                 }
-              } else if (existing.status === "PROVISIONED" && !existing.manual_review_required) {
-                await supabase
+              }
+              continue;
+            }
+
+            // Data de pagamento vencida (`corp.payment_date !== null && corp.payment_date <= todayBR`)
+            const hasValidPaymentDate =
+              corp.payment_date !== null &&
+              corp.payment_date >= "2000-01-01" &&
+              corp.payment_date >= corp.com_date &&
+              corp.payment_date <= todayBR;
+
+            // Se linha pendente sofreu alteração de elegibilidade/corte/data ou voltou a ficar elegível, recompõe com trava de revisão
+            if (existing?.status === "PENDING_CONFIRMATION") {
+              const shouldRecomposePending =
+                Math.abs(existing.quantity_on_com_date - qtyOnCom) > 1e-6 ||
+                (corp.payment_date !== null && existing.payment_date !== corp.payment_date) ||
+                Math.abs(existing.net_amount - netAmount) > 0.005;
+              if (shouldRecomposePending) {
+                const { data: recompRow, error: recompErr } = await supabase
                   .from("user_dividend_events")
                   .update({
+                    asset_id: primaryLot.id,
                     payment_date: corp.payment_date,
                     quantity_on_com_date: qtyOnCom,
                     gross_rate: corp.rate,
@@ -1730,12 +2266,24 @@ Deno.serve(async (req) => {
                     is_type_uncertain: corp.is_type_uncertain,
                     updated_at: now.toISOString(),
                   })
-                  .eq("id", existing.id);
+                  .eq("id", existing.id)
+                  .eq("revision", existing.revision)
+                  .eq("manual_review_required", false)
+                  .select("id, revision")
+                  .maybeSingle();
+                if (!recompErr && recompRow?.id) {
+                  existing.asset_id = primaryLot.id;
+                  existing.payment_date = corp.payment_date;
+                  existing.quantity_on_com_date = qtyOnCom;
+                  existing.gross_amount = grossAmount;
+                  existing.net_amount = netAmount;
+                  existing.is_type_uncertain = corp.is_type_uncertain;
+                  existing.revision = Number(recompRow.revision ?? existing.revision + 1);
+                }
               }
               continue;
             }
 
-            // Data de pagamento vencida (`payment_date <= todayBR`)
             const availableManuals = tickerManualDivs.filter((m) => !consumedManualIds.has(m.id));
             const fuzzyDup = isFuzzyDuplicateManualDividend(
               corp.payment_date,
@@ -1744,7 +2292,136 @@ Deno.serve(async (req) => {
             );
             if (fuzzyDup.matched) {
               if (fuzzyDup.matchedDividendId) consumedManualIds.add(fuzzyDup.matchedDividendId);
-              const { data: dedupRow, error: dedupErr } = await supabase
+              if (existing) {
+                const { data: dedupRow, error: dedupErr } = await supabase
+                  .from("user_dividend_events")
+                  .update({
+                    asset_id: primaryLot.id,
+                    status: "SETTLED",
+                    settlement_origin: "dedup",
+                    manual_review_required: false,
+                    payment_date: corp.payment_date,
+                    quantity_on_com_date: qtyOnCom,
+                    gross_rate: corp.rate,
+                    net_rate: corp.net_rate,
+                    tax_rate_pct: corp.tax_rate_pct,
+                    gross_amount: grossAmount,
+                    net_amount: netAmount,
+                    settled_dividend_id: fuzzyDup.matchedDividendId,
+                    is_type_uncertain: corp.is_type_uncertain,
+                    notes: "Conciliado automaticamente com lançamento manual",
+                    updated_at: now.toISOString(),
+                  })
+                  .eq("id", existing.id)
+                  .eq("revision", existing.revision)
+                  .eq("manual_review_required", false)
+                  .select("id, revision")
+                  .maybeSingle();
+                if (dedupErr) upsertErrors += 1;
+                else if (dedupRow?.id) {
+                  existingByCorpId.set(corp.id, {
+                    id: String(dedupRow.id),
+                    asset_id: primaryLot.id,
+                    status: "SETTLED",
+                    payment_date: corp.payment_date,
+                    quantity_on_com_date: qtyOnCom,
+                    gross_amount: grossAmount,
+                    net_amount: netAmount,
+                    settled_dividend_id: fuzzyDup.matchedDividendId,
+                    is_manual: false,
+                    is_type_uncertain: corp.is_type_uncertain,
+                    manual_review_required: false,
+                    revision: Number(dedupRow.revision ?? existing.revision + 1),
+                  });
+                }
+              } else {
+                const { data: dedupRow, error: dedupErr } = await supabase
+                  .from("user_dividend_events")
+                  .upsert(
+                    {
+                      user_id: uid,
+                      corporate_dividend_id: corp.id,
+                      asset_id: primaryLot.id,
+                      ticker: lookupTicker,
+                      type: corp.type,
+                      status: "SETTLED",
+                      settlement_origin: "dedup",
+                      manual_review_required: false,
+                      com_date: corp.com_date,
+                      payment_date: corp.payment_date,
+                      quantity_on_com_date: qtyOnCom,
+                      gross_rate: corp.rate,
+                      net_rate: corp.net_rate,
+                      tax_rate_pct: corp.tax_rate_pct,
+                      gross_amount: grossAmount,
+                      net_amount: netAmount,
+                      currency: corp.currency,
+                      settled_dividend_id: fuzzyDup.matchedDividendId,
+                      is_manual: false,
+                      is_type_uncertain: corp.is_type_uncertain,
+                      notes: "Conciliado automaticamente com lançamento manual",
+                      updated_at: now.toISOString(),
+                    },
+                    { onConflict: "user_id,corporate_dividend_id", ignoreDuplicates: true },
+                  )
+                  .select("id, revision")
+                  .maybeSingle();
+                if (dedupErr) upsertErrors += 1;
+                else if (dedupRow?.id) {
+                  existingByCorpId.set(corp.id, {
+                    id: String(dedupRow.id),
+                    asset_id: primaryLot.id,
+                    status: "SETTLED",
+                    payment_date: corp.payment_date,
+                    quantity_on_com_date: qtyOnCom,
+                    gross_amount: grossAmount,
+                    net_amount: netAmount,
+                    settled_dividend_id: fuzzyDup.matchedDividendId,
+                    is_manual: false,
+                    is_type_uncertain: corp.is_type_uncertain,
+                    manual_review_required: false,
+                    revision: Number(dedupRow.revision ?? 1),
+                  });
+                }
+              }
+              continue;
+            }
+
+            const mustManualConfirm =
+              !hasValidPaymentDate ||
+              corp.is_type_uncertain ||
+              settlementMode === "manual_confirm" ||
+              (corp.payment_date !== null && corp.payment_date < cutoffDate);
+
+            let upsertedEvent: { id: string; revision?: number | null } | null = null;
+            let upEvErr: unknown = null;
+
+            if (existing) {
+              const res = await supabase
+                .from("user_dividend_events")
+                .update({
+                  asset_id: primaryLot.id,
+                  type: corp.type,
+                  status: "PENDING_CONFIRMATION",
+                  payment_date: corp.payment_date,
+                  quantity_on_com_date: qtyOnCom,
+                  gross_rate: corp.rate,
+                  net_rate: corp.net_rate,
+                  tax_rate_pct: corp.tax_rate_pct,
+                  gross_amount: grossAmount,
+                  net_amount: netAmount,
+                  is_type_uncertain: corp.is_type_uncertain,
+                  updated_at: now.toISOString(),
+                })
+                .eq("id", existing.id)
+                .eq("revision", existing.revision)
+                .eq("manual_review_required", false)
+                .select("id, revision")
+                .maybeSingle();
+              upsertedEvent = res.data;
+              upEvErr = res.error;
+            } else {
+              const res = await supabase
                 .from("user_dividend_events")
                 .upsert(
                   {
@@ -1753,9 +2430,7 @@ Deno.serve(async (req) => {
                     asset_id: primaryLot.id,
                     ticker: lookupTicker,
                     type: corp.type,
-                    status: "SETTLED",
-                    settlement_origin: "dedup",
-                    manual_review_required: false,
+                    status: "PENDING_CONFIRMATION",
                     com_date: corp.com_date,
                     payment_date: corp.payment_date,
                     quantity_on_com_date: qtyOnCom,
@@ -1765,70 +2440,20 @@ Deno.serve(async (req) => {
                     gross_amount: grossAmount,
                     net_amount: netAmount,
                     currency: corp.currency,
-                    settled_dividend_id: fuzzyDup.matchedDividendId,
                     is_manual: false,
                     is_type_uncertain: corp.is_type_uncertain,
-                    notes: "Conciliado automaticamente com lançamento manual",
                     updated_at: now.toISOString(),
                   },
-                  { onConflict: "user_id,corporate_dividend_id" },
+                  { onConflict: "user_id,corporate_dividend_id", ignoreDuplicates: true },
                 )
-                .select("id")
-                .single();
-              if (dedupErr) upsertErrors += 1;
-              else if (dedupRow?.id) {
-                existingByCorpId.set(corp.id, {
-                  id: String(dedupRow.id),
-                  status: "SETTLED",
-                  payment_date: corp.payment_date,
-                  settled_dividend_id: fuzzyDup.matchedDividendId,
-                  is_type_uncertain: corp.is_type_uncertain,
-                  manual_review_required: false,
-                });
-              }
-              continue;
+                .select("id, revision")
+                .maybeSingle();
+              upsertedEvent = res.data;
+              upEvErr = res.error;
             }
-
-            // Preserva edições/Undos pendentes de revisão manual do usuário
-            if (existing?.status === "PENDING_CONFIRMATION" || existing?.manual_review_required) {
-              continue;
-            }
-
-            const mustManualConfirm =
-              corp.is_type_uncertain ||
-              settlementMode === "manual_confirm" ||
-              (corp.payment_date !== null && corp.payment_date < cutoffDate);
-
-            const { data: upsertedEvent, error: upEvErr } = await supabase
-              .from("user_dividend_events")
-              .upsert(
-                {
-                  user_id: uid,
-                  corporate_dividend_id: corp.id,
-                  asset_id: primaryLot.id,
-                  ticker: lookupTicker,
-                  type: corp.type,
-                  status: "PENDING_CONFIRMATION",
-                  com_date: corp.com_date,
-                  payment_date: corp.payment_date,
-                  quantity_on_com_date: qtyOnCom,
-                  gross_rate: corp.rate,
-                  net_rate: corp.net_rate,
-                  tax_rate_pct: corp.tax_rate_pct,
-                  gross_amount: grossAmount,
-                  net_amount: netAmount,
-                  currency: corp.currency,
-                  is_manual: false,
-                  is_type_uncertain: corp.is_type_uncertain,
-                  updated_at: now.toISOString(),
-                },
-                { onConflict: "user_id,corporate_dividend_id" },
-              )
-              .select("id")
-              .single();
 
             if (upEvErr || !upsertedEvent?.id) {
-              upsertErrors += 1;
+              if (upEvErr) upsertErrors += 1;
               continue;
             }
 
@@ -1837,11 +2462,17 @@ Deno.serve(async (req) => {
               newPendingTickers.push(lookupTicker);
               existingByCorpId.set(corp.id, {
                 id: String(upsertedEvent.id),
+                asset_id: primaryLot.id,
                 status: "PENDING_CONFIRMATION",
                 payment_date: corp.payment_date,
+                quantity_on_com_date: qtyOnCom,
+                gross_amount: grossAmount,
+                net_amount: netAmount,
                 settled_dividend_id: null,
+                is_manual: false,
                 is_type_uncertain: corp.is_type_uncertain,
                 manual_review_required: false,
+                revision: Number(upsertedEvent.revision ?? (existing ? existing.revision + 1 : 1)),
               });
             } else {
               const { data: settleRes, error: settleErr } = await supabase.rpc(
@@ -1857,11 +2488,17 @@ Deno.serve(async (req) => {
                 newSettledTickers.push(lookupTicker);
                 existingByCorpId.set(corp.id, {
                   id: String(upsertedEvent.id),
+                  asset_id: primaryLot.id,
                   status: "SETTLED",
                   payment_date: corp.payment_date,
+                  quantity_on_com_date: qtyOnCom,
+                  gross_amount: grossAmount,
+                  net_amount: netAmount,
                   settled_dividend_id: null,
+                  is_manual: false,
                   is_type_uncertain: corp.is_type_uncertain,
                   manual_review_required: false,
+                  revision: Number(upsertedEvent.revision ?? 1) + 1,
                 });
               }
             }
@@ -1938,7 +2575,9 @@ Deno.serve(async (req) => {
 
       return jsonResponse(req, {
         ok: true,
-        action: "process_user_dividends",
+        action: isSingleUserSync ? "sync_user_dividends" : "process_user_dividends",
+        window_start: lookbackStart,
+        window_end: todayBR,
         processed_users: processedUsers,
         skipped_user_errors: skippedUserErrors,
         provisioned: provisionedCount,
@@ -1947,6 +2586,252 @@ Deno.serve(async (req) => {
         upsert_errors: upsertErrors,
         push_dispatched: pushDispatchedCount,
       });
+    }
+
+    // ---------------------------------------------------------------------------
+    // AÇÃO 3C: Escrita Transacional & Conciliação de Proventos (`write_user_dividend`)
+    // ---------------------------------------------------------------------------
+    if (action === "write_user_dividend") {
+      if (!callerUserId) {
+        return jsonResponse(req, { error: "unauthorized" }, 401);
+      }
+      const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+      if (anonKey && token) {
+        const userClient = createClient(supabaseUrl, anonKey, {
+          auth: { persistSession: false },
+          global: { headers: { Authorization: `Bearer ${token}` } },
+        });
+        const { data: canWrite, error: writeErr } = await userClient.rpc(
+          "can_current_user_write_module",
+          { p_module: "investments" },
+        );
+        if (writeErr || canWrite !== true) {
+          return jsonResponse(req, { error: "forbidden_readonly_or_module" }, 403);
+        }
+      }
+
+      const command =
+        parsedBody.command && typeof parsedBody.command === "object"
+          ? (parsedBody.command as Record<string, unknown>)
+          : null;
+      if (!command || typeof command.op !== "string") {
+        return jsonResponse(req, { error: "invalid_dividend_command" }, 400);
+      }
+
+      // 1) Caminho curto (§4.3): RPC verifica sob lock se há candidatos abertos ou vínculos
+      const { data: shortRes, error: shortErr } = await supabase.rpc(
+        "apply_dividend_reconciliation_system",
+        {
+          p_user_id: callerUserId,
+          p_command: command,
+          p_snapshot: null,
+          p_links: null,
+        },
+      );
+      if (shortErr) {
+        const isConflict = (shortErr as { code?: string }).code === "40001";
+        return safeErrorResponse(
+          req,
+          isConflict ? 409 : 400,
+          shortErr.message || "Falha ao registrar operação de provento.",
+          shortErr,
+        );
+      }
+
+      const shortObj = (shortRes ?? {}) as {
+        needs_reconciliation?: boolean;
+        partition_keys?: string[];
+      };
+
+      if (!shortObj.needs_reconciliation) {
+        return jsonResponse(req, { ok: true, action: "write_user_dividend", ...(shortObj as object) });
+      }
+
+      // 2) Caminho completo: calcula conciliação 1:1 sobre snapshot e envia sob lock (até 2 tentativas)
+      const partKeys = new Set(shortObj.partition_keys ?? []);
+      const opName = String(command.op).toLowerCase();
+
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const [{ data: allEvents }, { data: allManuals }] = await Promise.all([
+          fetchAllPages<{
+            id: string;
+            ticker: string;
+            currency: string;
+            com_date: string;
+            payment_date: string | null;
+            gross_amount: number;
+            net_amount: number;
+            type: string;
+            is_type_uncertain: boolean;
+            manual_review_required: boolean;
+            status: string;
+            settled_dividend_id: string | null;
+            revision: number;
+          }>((from, to) =>
+            supabase
+              .from("user_dividend_events")
+              .select("id, ticker, currency, com_date, payment_date, gross_amount, net_amount, type, is_type_uncertain, manual_review_required, status, settled_dividend_id, revision")
+              .eq("user_id", callerUserId!)
+              .order("id", { ascending: true })
+              .range(from, to),
+          ),
+          fetchAllPages<{
+            id: string;
+            asset_id: string | null;
+            ticker: string | null;
+            date: string;
+            amount: number;
+            notes: string | null;
+            source_event_id: string | null;
+            updated_at: string | null;
+          }>((from, to) =>
+            supabase
+              .from("portfolio_dividends")
+              .select("id, asset_id, ticker, date, amount, notes, source_event_id, updated_at")
+              .eq("user_id", callerUserId!)
+              .order("id", { ascending: true })
+              .range(from, to),
+          ),
+        ]);
+
+        const relevantEvents = (allEvents ?? []).filter((ev) => {
+          const cur = ev.currency === "USD" ? "USD" : "BRL";
+          const canon =
+            cur === "USD"
+              ? ev.ticker.trim().toUpperCase().replace(/\.SA$/, "")
+              : normalizeTickerForBrapi(ev.ticker);
+          const inPartition =
+            (ev.status === "PROVISIONED" || ev.status === "PENDING_CONFIRMATION") &&
+            (partKeys.size === 0 || partKeys.has(`${cur}:${canon}`));
+          const linkedToTarget =
+            typeof command.id === "string" && ev.settled_dividend_id === command.id;
+          return inPartition || linkedToTarget;
+        });
+
+        const eventsSignature = relevantEvents
+          .slice()
+          .sort((a, b) => a.id.localeCompare(b.id))
+          .map(
+            (u) =>
+              `${u.id}:${u.revision}:${u.status}:${Number(u.net_amount ?? 0)}:${u.settled_dividend_id ?? ""}`,
+          )
+          .join("|");
+
+        // Monta lista de manuais simulando o estado pós-comando para matching 1:1
+        const virtualManuals = (allManuals ?? [])
+          .filter((m) => !(opName === "delete" && m.id === command.id))
+          .map((m) => {
+            const isEditedTarget = opName === "update" && m.id === command.id;
+            const amount = isEditedTarget && command.amount != null ? Number(command.amount) : Number(m.amount);
+            const date = isEditedTarget && typeof command.date === "string" ? command.date : m.date;
+            const ticker =
+              isEditedTarget && typeof command.ticker === "string"
+                ? command.ticker
+                : (m.ticker ?? "");
+            const cur: "BRL" | "USD" = partKeys.has(`USD:${ticker.trim().toUpperCase()}`) ? "USD" : "BRL";
+            return {
+              id: m.id,
+              ticker,
+              currency: cur,
+              date,
+              amount,
+              monthly: Boolean(m.notes && /\[MENSAL\]/i.test(m.notes)),
+              source_event_id: m.source_event_id,
+            };
+          });
+
+        const syntheticCreateId = "00000000-0000-0000-0000-000000000000";
+        if (opName === "create" && typeof command.ticker === "string" && typeof command.date === "string") {
+          const tkr = String(command.ticker).trim().toUpperCase();
+          const cur: "BRL" | "USD" = partKeys.has(`USD:${tkr}`) ? "USD" : "BRL";
+          virtualManuals.push({
+            id: syntheticCreateId,
+            ticker: tkr,
+            currency: cur,
+            date: String(command.date),
+            amount: Number(command.amount ?? 0),
+            monthly: typeof command.notes === "string" && /\[MENSAL\]/i.test(command.notes),
+            source_event_id: null,
+          });
+        }
+
+        const matchedLinks = reconcilePartition1to1Edge(
+          relevantEvents.map((ev) => ({
+            ...ev,
+            currency: ev.currency === "USD" ? "USD" : "BRL",
+          })),
+          virtualManuals,
+        ).map((link) => ({
+          manual_id: link.manual_id === syntheticCreateId ? null : link.manual_id,
+          event_ids: link.event_ids,
+        }));
+
+        const { data: fullRes, error: fullErr } = await supabase.rpc(
+          "apply_dividend_reconciliation_system",
+          {
+            p_user_id: callerUserId,
+            p_command: command,
+            p_snapshot: { events_signature: eventsSignature },
+            p_links: matchedLinks,
+          },
+        );
+        if (fullErr) {
+          const isConflict = (fullErr as { code?: string }).code === "40001";
+          return safeErrorResponse(
+            req,
+            isConflict ? 409 : 400,
+            fullErr.message || "Falha ao conciliar provento.",
+            fullErr,
+          );
+        }
+
+        const fullObj = (fullRes ?? {}) as { conflict?: boolean };
+        if (!fullObj.conflict) {
+          // S5: Coleta privada de evidência independente em dedup 1:1 diário ancorado (não bloqueia a escrita)
+          if (
+            command.op === "create" &&
+            !(typeof command.notes === "string" && /\[MENSAL\]/i.test(command.notes)) &&
+            matchedLinks.length > 0
+          ) {
+            const evById = new Map(relevantEvents.map((ev) => [ev.id, ev]));
+            for (const link of matchedLinks) {
+              if (link.event_ids.length !== 1) continue;
+              const matchedEv = evById.get(link.event_ids[0]!);
+              if (!matchedEv || !matchedEv.corporate_dividend_id || !matchedEv.payment_date) continue;
+              try {
+                await supabase.rpc("record_dividend_consensus_signal_system", {
+                  p_user_id: callerUserId,
+                  p_event_key: matchedEv.corporate_dividend_id,
+                  p_corporate_id: matchedEv.corporate_dividend_id,
+                  p_anchor_terms: {
+                    ticker: matchedEv.ticker,
+                    currency: matchedEv.currency,
+                    com_date: matchedEv.com_date,
+                    gross_rate: matchedEv.gross_amount,
+                  },
+                  p_ticker: matchedEv.ticker,
+                  p_currency: matchedEv.currency === "USD" ? "USD" : "BRL",
+                  p_com_date: matchedEv.com_date,
+                  p_payment_date: matchedEv.payment_date,
+                  p_type: matchedEv.type,
+                  p_gross_rate: matchedEv.gross_amount,
+                  p_tax_rate_pct: 0,
+                  p_signal: "dedup",
+                });
+              } catch {
+                // Degradação silenciosa na coleta privada
+              }
+            }
+          }
+          return jsonResponse(req, { ok: true, action: "write_user_dividend", ...(fullObj as object) });
+        }
+      }
+
+      return jsonResponse(
+        req,
+        { error: "Conflito de concorrência ao conciliar provento; tente novamente." },
+        409,
+      );
     }
 
     // ---------------------------------------------------------------------------

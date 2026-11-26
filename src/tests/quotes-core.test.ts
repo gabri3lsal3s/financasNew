@@ -9,9 +9,11 @@ import {
   applySpikeGuardrail,
   buildGlobalQuoteUpsertRow,
   buildQuoteUpsertRow,
+  classifyDividendInstrumentKindEdge,
   classifyTickerMarket,
   computeCustodyAtComDatePure,
   evaluateSpikeGuardrail,
+  findCompatibleCorporateCandidateEdge,
   isBusinessDayForMarket,
   isCashClass,
   isFuzzyDuplicateManualDividend,
@@ -28,7 +30,11 @@ import {
   parseYahooChartResponse,
   parseYahooDividends,
   parseYahooHistoricalClose,
+  reconcilePartition1to1Edge,
   resolveAntiFloodCutoffDate,
+  resolveOpenDividendEventStatusEdge,
+  scoreConsensusSignalsEdge,
+  selectPrimaryLotForGroupEdge,
   shouldSkipByEodGuard,
 } from "../../supabase/functions/_shared/quotes-core";
 
@@ -286,7 +292,7 @@ describe("parseBrapiDividends — extração de proventos B3", () => {
     const divs = parseBrapiDividends("PETR4", payload);
     expect(divs).toHaveLength(2);
 
-    expect(divs[0]).toEqual({
+    expect(divs[0]).toMatchObject({
       ticker: "PETR4",
       type: "DIVIDENDO",
       com_date: "2026-10-30",
@@ -297,9 +303,10 @@ describe("parseBrapiDividends — extração de proventos B3", () => {
       currency: "BRL",
       provider: "brapi",
       is_type_uncertain: false,
+      trust_tier: "official",
     });
 
-    expect(divs[1]).toEqual({
+    expect(divs[1]).toMatchObject({
       ticker: "PETR4",
       type: "JCP",
       com_date: "2026-11-30",
@@ -310,6 +317,7 @@ describe("parseBrapiDividends — extração de proventos B3", () => {
       currency: "BRL",
       provider: "brapi",
       is_type_uncertain: false,
+      trust_tier: "official",
     });
   });
 
@@ -765,6 +773,257 @@ describe("Bloco C — Proventos B3/EUA, Custódia na Data COM, Anti-Flood e Dedu
     expect(row.user_id).toBeNull();
     expect(row.ticker).toBe("PETR4");
     expect(row.source).toBe("api");
+  });
+
+  it("Fatia S2 — parseBrapiDividends rejeita approvedOn sem lastDatePrior, rebaixa label desconhecido e pagamento < COM", () => {
+    const divs = parseBrapiDividends("PETR4", {
+      results: [
+        {
+          symbol: "PETR4",
+          dividendsData: {
+            cashDividends: [
+              // Aprovação societária sem lastDatePrior não fabrica COM oficial
+              { rate: 1.0, approvedOn: "2026-10-01", paymentDate: "2026-11-10", label: "DIVIDENDO" },
+              // Label desconhecido rebaixa para raw_fallback + is_type_uncertain
+              { rate: 0.5, lastDatePrior: "2026-10-15", paymentDate: "2026-11-20", label: "EVENTO X" },
+              // Pagamento anterior à COM zera pagamento e rebaixa para raw_fallback
+              { rate: 0.7, lastDatePrior: "2026-10-20", paymentDate: "2026-10-10", label: "JCP" },
+              // Completo e válido -> official
+              { rate: 1.2, lastDatePrior: "2026-10-25", paymentDate: "2026-11-25", label: "JCP" },
+            ],
+          },
+        },
+      ],
+    });
+
+    expect(divs).toHaveLength(3);
+    expect(divs[0]?.trust_tier).toBe("raw_fallback");
+    expect(divs[0]?.is_type_uncertain).toBe(true);
+    expect(divs[1]?.payment_date).toBeNull();
+    expect(divs[1]?.trust_tier).toBe("raw_fallback");
+    expect(divs[2]?.trust_tier).toBe("official");
+    expect(divs[2]?.is_type_uncertain).toBe(false);
+    expect(divs[2]?.tax_rate_pct).toBe(15);
+  });
+
+  it("Fatia S2 — parseYahooDividends mantém MXRF11/VGIA11 em raw_fallback incerto e aceita calendarEvents US apenas com ex-date coincidente", () => {
+    const mondayExTs = Math.floor(Date.parse("2026-06-15T14:00:00Z") / 1000);
+    const fiiDivs = parseYahooDividends(
+      "MXRF11",
+      {
+        chart: {
+          result: [
+            {
+              meta: { currency: "BRL", symbol: "MXRF11.SA" },
+              events: { dividends: { [String(mondayExTs)]: { amount: 0.1, date: mondayExTs } } },
+            },
+          ],
+        },
+      },
+      "BR",
+    );
+    expect(fiiDivs[0]?.trust_tier).toBe("raw_fallback");
+    expect(fiiDivs[0]?.is_type_uncertain).toBe(true);
+
+    const usMatchedCal = parseYahooDividends(
+      "AAPL",
+      {
+        chart: {
+          result: [
+            {
+              meta: { currency: "USD", symbol: "AAPL" },
+              events: { dividends: { [String(mondayExTs)]: { amount: 0.25, date: mondayExTs } } },
+              calendarEvents: {
+                exDividendDate: "2026-06-15",
+                dividendDate: "2026-06-30",
+              },
+            },
+          ],
+        },
+      },
+      "US",
+    );
+    expect(usMatchedCal[0]?.payment_date).toBe("2026-06-30");
+
+    // Não extrapola calendarEvents futuro sobre evento histórico de ex-date diferente
+    const oldExTs = Math.floor(Date.parse("2026-03-16T14:00:00Z") / 1000);
+    const usOldNoLeak = parseYahooDividends(
+      "AAPL",
+      {
+        chart: {
+          result: [
+            {
+              meta: { currency: "USD", symbol: "AAPL" },
+              events: { dividends: { [String(oldExTs)]: { amount: 0.25, date: oldExTs } } },
+              calendarEvents: {
+                exDividendDate: "2026-06-15",
+                dividendDate: "2026-06-30",
+              },
+            },
+          ],
+        },
+      },
+      "US",
+    );
+    expect(usOldNoLeak[0]?.payment_date).toBeNull();
+  });
+
+  it("Fatia S2 — paridade Edge/TS para lote principal, prazos 15/22/35 e similaridade ±1/±2 pregões", () => {
+    expect(
+      selectPrimaryLotForGroupEdge([
+        { id: "a-frac", ticker: "PETR4F", currency: "BRL" },
+        { id: "z-std", ticker: "PETR4", currency: "BRL" },
+      ])?.id,
+    ).toBe("z-std");
+
+    expect(classifyDividendInstrumentKindEdge("MXRF11", "BRL")).toBe("fii_fiagro");
+    expect(classifyDividendInstrumentKindEdge("BOVA11", "BRL")).toBe("etf");
+    expect(classifyDividendInstrumentKindEdge("ENGI11", "BRL")).toBe("unit");
+    expect(classifyDividendInstrumentKindEdge("XXXX11", "BRL")).toBe("unknown");
+
+    const at15 = resolveOpenDividendEventStatusEdge({
+      comDate: "2026-09-30",
+      paymentDate: null,
+      referenceDate: "2026-10-22",
+      market: "BR",
+      instrumentKind: "fii_fiagro",
+    });
+    expect(at15.status).toBe("PROVISIONED");
+
+    const at16 = resolveOpenDividendEventStatusEdge({
+      comDate: "2026-09-30",
+      paymentDate: null,
+      referenceDate: "2026-10-23",
+      market: "BR",
+      instrumentKind: "fii_fiagro",
+    });
+    expect(at16.status).toBe("PENDING_CONFIRMATION");
+    expect(at16.promotedByDeadline).toBe(true);
+
+    const cand = findCompatibleCorporateCandidateEdge(
+      {
+        ticker: "PETR4",
+        currency: "BRL",
+        com_date: "2026-10-16",
+        payment_date: null,
+        type: "JCP",
+        rate: 1.0,
+        is_type_uncertain: false,
+      },
+      [
+        {
+          id: "c1",
+          ticker: "PETR4",
+          currency: "BRL",
+          com_date: "2026-10-15",
+          payment_date: null,
+          type: "DIVIDENDO",
+          rate: 1.0,
+          is_type_uncertain: true,
+        },
+      ],
+    );
+    expect(cand?.id).toBe("c1");
+  });
+});
+
+describe("reconcilePartition1to1Edge (S3 Edge Mirror)", () => {
+  it("vincula pares 1:1 isolados (grau 1) e omite arestas ambíguas ou empates", () => {
+    const isolated = reconcilePartition1to1Edge(
+      [
+        {
+          id: "e1",
+          ticker: "PETR4",
+          currency: "BRL",
+          com_date: "2026-10-01",
+          payment_date: "2026-10-15",
+          gross_amount: 100.0,
+          net_amount: 100.0,
+          type: "DIVIDENDO",
+          is_type_uncertain: false,
+          manual_review_required: false,
+          status: "PENDING_CONFIRMATION",
+        },
+        {
+          id: "e2",
+          ticker: "VALE3",
+          currency: "BRL",
+          com_date: "2026-10-01",
+          payment_date: "2026-10-15",
+          gross_amount: 50.0,
+          net_amount: 50.0,
+          type: "DIVIDENDO",
+          is_type_uncertain: false,
+          manual_review_required: false,
+          status: "PENDING_CONFIRMATION",
+        },
+      ],
+      [
+        { id: "d1", ticker: "PETR4", currency: "BRL", date: "2026-10-15", amount: 100.05 },
+        { id: "d2", ticker: "VALE3", currency: "BRL", date: "2026-10-15", amount: 50.0 },
+      ],
+    );
+    expect(isolated).toHaveLength(2);
+    expect(isolated.find((m) => m.manual_id === "d1")?.event_ids).toEqual(["e1"]);
+    expect(isolated.find((m) => m.manual_id === "d2")?.event_ids).toEqual(["e2"]);
+
+    const tied = reconcilePartition1to1Edge(
+      [
+        {
+          id: "t1",
+          ticker: "PETR4",
+          currency: "BRL",
+          com_date: "2026-10-01",
+          payment_date: "2026-10-15",
+          gross_amount: 50.0,
+          net_amount: 50.0,
+          type: "DIVIDENDO",
+          is_type_uncertain: false,
+          manual_review_required: false,
+          status: "PENDING_CONFIRMATION",
+        },
+        {
+          id: "t2",
+          ticker: "PETR4",
+          currency: "BRL",
+          com_date: "2026-10-01",
+          payment_date: "2026-10-15",
+          gross_amount: 50.0,
+          net_amount: 50.0,
+          type: "DIVIDENDO",
+          is_type_uncertain: false,
+          manual_review_required: false,
+          status: "PENDING_CONFIRMATION",
+        },
+      ],
+      [{ id: "dm", ticker: "PETR4", currency: "BRL", date: "2026-10-15", amount: 50.0 }],
+    );
+    expect(tied).toHaveLength(0);
+  });
+});
+
+describe("scoreConsensusSignalsEdge (S5 Edge Mirror)", () => {
+  it("conta último sinal por votante e exige quórum ancorado/não-ancorado", () => {
+    expect(
+      scoreConsensusSignalsEdge(
+        [
+          { voter_hash: "h1", signal: "edited" },
+          { voter_hash: "h2", signal: "edited" },
+        ],
+        true,
+      ),
+    ).toEqual({ decimos: 16, positivosDistintos: 2, elegivel: true });
+
+    expect(
+      scoreConsensusSignalsEdge(
+        [
+          { voter_hash: "h1", signal: "edited" },
+          { voter_hash: "h2", signal: "edited" },
+          { voter_hash: "h2", signal: "reverted" },
+        ],
+        true,
+      ),
+    ).toEqual({ decimos: -7, positivosDistintos: 1, elegivel: false });
   });
 });
 

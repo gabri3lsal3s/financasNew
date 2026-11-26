@@ -16,14 +16,20 @@ import {
 } from "@/data/repositories/portfolio";
 import {
   calculateSuggestedDividends,
+  countMarketBusinessDays,
+  evaluateGroupCutoffEligibility,
   FALLBACK_USD_RATE,
+  getCuratedDividendInstrument,
+  isAssetPendingDividendCalibration,
   isCashAssetClass,
   isCorporateDividendDeduplicated,
   isCustomValuationAsset,
   isFixedIncomeClass,
   isPrivateFixedIncomeTicker,
   isTesouroAsset,
+  normalizeCanonicalDividendTicker,
   normalizeDividendTickerKey,
+  resolveOpenDividendEventStatus,
   suggestedDividendToSummaryItem,
   summarizeProvisionedDividends,
   todaySaoPauloISO,
@@ -33,13 +39,19 @@ import {
   type SuggestedDividendsResult,
 } from "@/domain/portfolio";
 import { useDemoSession } from "@/state/demo-mode";
-import type { UserDividendEvent } from "@/types";
+import type { CorporateDividend, PortfolioAsset, UserDividendEvent } from "@/types";
 import { useAssetPrices } from "./use-asset-prices";
+import * as userPreferencesHooks from "./use-user-preferences";
 import {
   useAllPortfolioTransactions,
   usePortfolioAssets,
   usePortfolioDividends,
 } from "./use-portfolio";
+
+const useOptionalUserPreferencesHook: typeof userPreferencesHooks.useUserPreferences =
+  typeof userPreferencesHooks.useUserPreferences === "function"
+    ? userPreferencesHooks.useUserPreferences
+    : ((() => ({ data: null, isLoading: false, isError: false })) as unknown as typeof userPreferencesHooks.useUserPreferences);
 
 export const CORPORATE_DIVIDENDS_QUERY_KEY = ["corporate_dividends"] as const;
 export const PORTFOLIO_DIVIDEND_DISMISSALS_QUERY_KEY = ["portfolio_dividend_dismissals"] as const;
@@ -50,7 +62,17 @@ export interface UseCorporateDividendsState extends SuggestedDividendsResult {
   provisioned: SuggestedDividendItem[];
   recentlySettled: UserDividendEvent[];
   userEvents: UserDividendEvent[];
+  assetsNeedingCalibration: PortfolioAsset[];
+  trackingStartDate: string | null;
   provisionedSummary: ProvisionedDividendsSummary;
+  monthlyForecast?: {
+    month: string;
+    count: number;
+    totalBRLCents: number;
+    totalBRL: number;
+    nativeBRLCents: number;
+    usdCents: number;
+  };
   fxRate: number;
   isLoading: boolean;
   isError: boolean;
@@ -70,13 +92,28 @@ export interface UseCorporateDividendsOptions {
 function mapUserEventToSuggestedItem(
   ev: UserDividendEvent,
   referenceDate: string,
+  corpById: ReadonlyMap<string, CorporateDividend>,
 ): SuggestedDividendItem {
   const paymentDateClean = ev.payment_date ? ev.payment_date.slice(0, 10) : null;
+  const corp = ev.corporate_dividend_id ? corpById.get(ev.corporate_dividend_id) : undefined;
+  const instrument = getCuratedDividendInstrument(ev.ticker, ev.currency);
+  const statusEval = resolveOpenDividendEventStatus({
+    comDate: ev.com_date,
+    paymentDate: paymentDateClean,
+    referenceDate,
+    market: ev.currency === "USD" ? "US" : "BR",
+    instrumentKind: instrument.kind,
+    currentStatus: ev.status === "PENDING_CONFIRMATION" ? "PENDING_CONFIRMATION" : "PROVISIONED",
+    isManual: ev.is_manual,
+    manualReviewRequired: ev.manual_review_required,
+    countBusinessDays: (fromIso, toIso, market) => countMarketBusinessDays(fromIso, toIso, market),
+  });
+
   const isAvailable =
-    ev.status === "PENDING_CONFIRMATION" ||
-    (ev.status === "PROVISIONED" &&
-      paymentDateClean !== null &&
-      paymentDateClean <= referenceDate);
+    ev.manual_review_required || ev.is_manual
+      ? ev.status === "PENDING_CONFIRMATION" ||
+        (paymentDateClean !== null && paymentDateClean <= referenceDate)
+      : statusEval.status === "PENDING_CONFIRMATION";
 
   return {
     corporateDividendId: ev.corporate_dividend_id ?? null,
@@ -94,10 +131,13 @@ function mapUserEventToSuggestedItem(
     totalAmount: Number(ev.net_amount),
     currency: ev.currency,
     status: isAvailable ? "available" : "projected",
-    provider: ev.is_manual ? "manual" : ev.is_type_uncertain ? "yahoo" : "brapi",
+    provider: ev.is_manual ? "manual" : (corp?.provider ?? null),
+    trustTier: corp?.trust_tier ?? null,
     isTypeUncertain: Boolean(ev.is_type_uncertain),
+    isOver120DaysWithoutPayment: statusEval.isOver120DaysWithoutPayment,
     isManual: Boolean(ev.is_manual),
     notes: ev.notes ?? null,
+    revision: ev.revision ?? 1,
   };
 }
 
@@ -122,22 +162,31 @@ export function useCorporateDividends(
   const transactionsQuery = useAllPortfolioTransactions({ enabled });
   const manualDividendsQuery = usePortfolioDividends({ enabled });
   const assetPricesQuery = useAssetPrices({ enabled });
+  const userPrefsQuery = useOptionalUserPreferencesHook({ enabled: enabled && !isDemoActive });
+
+  const trackingStartDate = useMemo(() => {
+    const raw = userPrefsQuery.data?.custom_settings?.dividendAutomation?.trackingStartDate;
+    return typeof raw === "string" && /^\d{4}-\d{2}-\d{2}$/.test(raw.trim()) ? raw.trim() : null;
+  }, [userPrefsQuery.data]);
+
+  const assetsNeedingCalibration = useMemo(
+    () => (assetsQuery.data ?? []).filter(isAssetPendingDividendCalibration),
+    [assetsQuery.data],
+  );
 
   const portfolioTickers = useMemo(() => {
     const tickers = new Set<string>();
-    const recentCutoff = addDaysIso(todaySaoPauloISO(), -180);
-    const recentAssetIds = new Set<string>();
+    const assetsWithLedger = new Set<string>();
     for (const tx of transactionsQuery.data ?? []) {
-      const txDate = (tx.date ?? "").slice(0, 10);
-      if (tx.asset_id && txDate >= recentCutoff) {
-        recentAssetIds.add(tx.asset_id);
+      if (tx.asset_id) {
+        assetsWithLedger.add(tx.asset_id);
       }
     }
 
     for (const a of assetsQuery.data ?? []) {
       const hasQty = Number(a.quantity) > 0;
-      const hadRecentActivity = recentAssetIds.has(a.id);
-      if (!hasQty && !hadRecentActivity) continue;
+      const hadLedgerActivity = assetsWithLedger.has(a.id);
+      if (!hasQty && !hadLedgerActivity) continue;
       if (isCashAssetClass(a.asset_class)) continue;
       if (isFixedIncomeClass(a.asset_class) && !isTesouroAsset(a.ticker, a.asset_class)) continue;
       if (isPrivateFixedIncomeTicker(a.ticker) || isCustomValuationAsset(a)) continue;
@@ -175,7 +224,10 @@ export function useCorporateDividends(
       transactionsQuery.isLoading ||
       manualDividendsQuery.isLoading ||
       (!assetsQuery.isLoading && !transactionsQuery.isLoading && portfolioTickers.length > 0 && corporateQuery.isLoading) ||
-      (!isDemoActive && (dismissalsQuery.isLoading || userEventsQuery.isLoading)));
+      (!isDemoActive &&
+        (dismissalsQuery.isLoading ||
+          userEventsQuery.isLoading ||
+          Boolean(userPrefsQuery.isLoading))));
 
   const isError =
     enabled &&
@@ -206,6 +258,8 @@ export function useCorporateDividends(
         projected: [] as SuggestedDividendItem[],
         recentlySettled: [] as UserDividendEvent[],
         userEvents: [] as UserDividendEvent[],
+        assetsNeedingCalibration,
+        trackingStartDate,
         totalAvailableAmount: 0,
         totalProjectedAmount: 0,
         totalAvailableBRL: 0,
@@ -227,8 +281,9 @@ export function useCorporateDividends(
     const userEvents = isDemoActive ? [] : (userEventsQuery.data ?? []);
 
     const tickerByAssetId = new Map(
-      assets.map((a) => [a.id, normalizeDividendTickerKey(a.ticker)]),
+      assets.map((a) => [a.id, normalizeDividendTickerKey(a.ticker, a.currency)]),
     );
+    const corpById = new Map((corporateQuery.data ?? []).map((c) => [c.id, c]));
     const dismissedCorpIds = new Set(
       dismissals.map((d) => d.corporate_dividend_id).filter(Boolean),
     );
@@ -243,7 +298,7 @@ export function useCorporateDividends(
       amount: Number(m.amount),
     }));
 
-    // Corporativos já materializados em `user_dividend_events` não duplicam na fallback client-side
+    // Corporativos já materializados em `user_dividend_events` (inclusive zerados) ficam reservados para nunca voltarem via fallback
     const handledCorpIds = new Set<string>();
     const persistedAvailable: SuggestedDividendItem[] = [];
     const persistedProjected: SuggestedDividendItem[] = [];
@@ -269,7 +324,30 @@ export function useCorporateDividends(
         continue;
       }
 
-      const mapped = mapUserEventToSuggestedItem(ev, referenceDate);
+      if (!ev.is_manual && !ev.manual_review_required) {
+        if (Number(ev.quantity_on_com_date) <= 0 || Number(ev.net_amount) <= 0) {
+          continue;
+        }
+        const groupEval = evaluateGroupCutoffEligibility({
+          canonicalTicker: normalizeCanonicalDividendTicker(ev.ticker, ev.currency),
+          currency: ev.currency,
+          comDate: ev.com_date,
+          trackingStartDate,
+          lots: assets,
+          transactions,
+        });
+        if (!groupEval.eligible) {
+          continue;
+        }
+        if (
+          groupEval.hasMixedEligibility &&
+          Math.abs(Number(ev.quantity_on_com_date) - groupEval.totalEligibleQty) > 1e-6
+        ) {
+          continue;
+        }
+      }
+
+      const mapped = mapUserEventToSuggestedItem(ev, referenceDate, corpById);
       if (mapped.totalAmount <= 0) continue;
 
       const isAlreadyManualSettled = isCorporateDividendDeduplicated(
@@ -290,19 +368,23 @@ export function useCorporateDividends(
       }
     }
 
-    const unmaterializedCorp = (corporateQuery.data ?? []).filter(
-      (c) => !handledCorpIds.has(c.id),
-    );
+    const shouldRunClientFallback = isDemoActive || userEvents.length === 0;
+    const unmaterializedCorp = shouldRunClientFallback
+      ? (corporateQuery.data ?? []).filter((c) => !handledCorpIds.has(c.id))
+      : [];
 
-    const clientFallback = calculateSuggestedDividends({
-      corporateEvents: unmaterializedCorp,
-      dismissals,
-      assets,
-      transactions,
-      manualDividends,
-      referenceDate,
-      usdRate: fxRate,
-    });
+    const clientFallback = shouldRunClientFallback
+      ? calculateSuggestedDividends({
+          corporateEvents: unmaterializedCorp,
+          dismissals,
+          assets,
+          transactions,
+          manualDividends,
+          referenceDate,
+          usdRate: fxRate,
+          trackingStartDate,
+        })
+      : { available: [], projected: [] };
 
     const available = [...persistedAvailable, ...clientFallback.available].sort((a, b) =>
       (b.paymentDate ?? b.comDate).localeCompare(a.paymentDate ?? a.comDate),
@@ -316,33 +398,58 @@ export function useCorporateDividends(
 
     let availBRLCents = 0;
     let availUSDCents = 0;
+    let availConvertedBRLCents = 0;
     for (const item of available) {
+      if (item.isOver120DaysWithoutPayment && !item.paymentDate) continue;
       const cents = Math.round(item.totalAmount * 100);
-      if (item.currency === "USD") availUSDCents += cents;
-      else availBRLCents += cents;
+      if (item.currency === "USD") {
+        availUSDCents += cents;
+        availConvertedBRLCents += Math.round(cents * fxRate);
+      } else {
+        availBRLCents += cents;
+      }
     }
 
     let projBRLCents = 0;
     let projUSDCents = 0;
+    let projConvertedBRLCents = 0;
     for (const item of projected) {
+      if (item.isOver120DaysWithoutPayment && !item.paymentDate) continue;
       const cents = Math.round(item.totalAmount * 100);
-      if (item.currency === "USD") projUSDCents += cents;
-      else projBRLCents += cents;
+      if (item.currency === "USD") {
+        projUSDCents += cents;
+        projConvertedBRLCents += Math.round(cents * fxRate);
+      } else {
+        projBRLCents += cents;
+      }
     }
 
-    const totalAvailableBRLCents = availBRLCents + Math.round(availUSDCents * fxRate);
-    const totalProjectedBRLCents = projBRLCents + Math.round(projUSDCents * fxRate);
+    const totalAvailableBRLCents = availBRLCents + availConvertedBRLCents;
+    const totalProjectedBRLCents = projBRLCents + projConvertedBRLCents;
 
     const provisionedSummary = summarizeProvisionedDividends(
       [...available, ...projected].map(suggestedDividendToSummaryItem),
       fxRate,
+      { referenceDate, forecastMonth: referenceDate.slice(0, 7) },
     );
+
+    const monthlyForecastTotalBRLCents = provisionedSummary.monthlyForecastBRLCents ?? 0;
+    const monthlyForecast = {
+      month: referenceDate.slice(0, 7),
+      count: provisionedSummary.monthlyForecastCount ?? 0,
+      totalBRLCents: monthlyForecastTotalBRLCents,
+      totalBRL: monthlyForecastTotalBRLCents / 100,
+      nativeBRLCents: provisionedSummary.monthlyForecastNativeBRLCents ?? 0,
+      usdCents: provisionedSummary.monthlyForecastUSDCents ?? 0,
+    };
 
     return {
       available,
       projected,
       recentlySettled,
       userEvents,
+      assetsNeedingCalibration,
+      trackingStartDate,
       totalAvailableAmount: totalAvailableBRLCents / 100,
       totalProjectedAmount: totalProjectedBRLCents / 100,
       totalAvailableBRL: availBRLCents / 100,
@@ -351,6 +458,7 @@ export function useCorporateDividends(
       totalProjectedUSD: projUSDCents / 100,
       usdRateUsed: fxRate,
       provisionedSummary,
+      monthlyForecast,
     };
   }, [
     enabled,
@@ -358,6 +466,8 @@ export function useCorporateDividends(
     isError,
     isDemoActive,
     fxRate,
+    assetsNeedingCalibration,
+    trackingStartDate,
     assetsQuery.data,
     transactionsQuery.data,
     manualDividendsQuery.data,

@@ -49,9 +49,9 @@ export function CorporateDividendsBanner({
           <div className="flex items-center gap-2 min-w-0">
             <h2
               className="text-sm font-semibold text-foreground truncate"
-              title={hasAvailable ? "Proventos Creditados na Corretora" : "Proventos Provisionados"}
+              title={hasAvailable ? "Proventos a Conferir" : "Proventos Provisionados"}
             >
-              {hasAvailable ? "Proventos Creditados na Corretora" : "Proventos Provisionados"}
+              {hasAvailable ? "Proventos a Conferir" : "Proventos Provisionados"}
             </h2>
             <Badge
               variant={hasAvailable && hasUncertainTax ? "warning" : "portfolio"}

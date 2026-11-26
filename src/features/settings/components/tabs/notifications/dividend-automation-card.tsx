@@ -1,33 +1,92 @@
-import { HandCoins, ShieldAlert } from "lucide-react";
+import { useState } from "react";
+import { CalendarClock, HandCoins, ShieldAlert } from "lucide-react";
 import {
+  Alert,
   Badge,
+  Button,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
+  DatePicker,
   ErrorState,
+  FormField,
   RadioGroup,
   Skeleton,
   Switch,
 } from "@/components/ui";
-import { todaySaoPauloISO } from "@/domain/portfolio";
+import {
+  isAssetPendingDividendCalibration,
+  isValidDividendTrackingDate,
+  todaySaoPauloISO,
+} from "@/domain/portfolio";
+import { formatDateBR } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import {
   useUpdateCustomSettings,
   useUserAccess,
   useUserPreferences,
 } from "@/state";
-import type { DividendAutomationPreferences } from "@/types";
+import * as stateHooks from "@/state";
+import type {
+  DividendAutomationPreferences,
+  PortfolioAsset,
+  SetDividendTrackingAtomicResult,
+} from "@/types";
+
+function getOptionalStateHook<T>(key: string, fallback: T): T {
+  if (Reflect.ownKeys(stateHooks).includes(key)) {
+    const candidate = (stateHooks as Record<string, unknown>)[key];
+    if (typeof candidate === "function") return candidate as T;
+  }
+  return fallback;
+}
+
+const useOptionalSetDividendTracking = getOptionalStateHook<
+  () => {
+    mutateAsync: (input: {
+      trackingStartDate?: string | null;
+      assets?: Array<{
+        asset_id: string;
+        expected_start: string | null;
+        start_date: string | null;
+      }>;
+      expectedTrackingStartDate?: string | null;
+      silent?: boolean;
+    }) => Promise<SetDividendTrackingAtomicResult>;
+    isPending: boolean;
+  }
+>("useSetDividendTracking", () => ({
+  mutateAsync: async () => ({
+    success: true,
+    tracking_start_date: null,
+    updated_assets: [],
+    updated_assets_count: 0,
+    affected_events_count: 0,
+    protected_events_count: 0,
+    invalidated_event_ids: [],
+  }),
+  isPending: false,
+}));
+
+const useOptionalPortfolioAssets = getOptionalStateHook<
+  (opts?: { enabled?: boolean }) => { data?: PortfolioAsset[] }
+>("usePortfolioAssets", () => ({ data: [] }));
 
 /**
  * Configurações da Automação de Proventos da Carteira (§3.10 / Motor Bloco C).
  */
 export function DividendAutomationCard() {
   const { hasFeature } = useUserAccess();
+  const hasInvestmentsAccess = hasFeature("investments");
   const preferencesQuery = useUserPreferences();
   const updateCustomSettings = useUpdateCustomSettings();
+  const setDividendTracking = useOptionalSetDividendTracking();
+  const assetsQuery = useOptionalPortfolioAssets({ enabled: hasInvestmentsAccess });
+  const [trackingDraftOverride, setTrackingDraftOverride] = useState<string | null>(null);
+  const [trackingError, setTrackingError] = useState<string | null>(null);
 
-  if (!hasFeature("investments")) {
+  if (!hasInvestmentsAccess) {
     return null;
   }
 
@@ -68,6 +127,13 @@ export function DividendAutomationCard() {
   const autoCreditCash = current.autoCreditCash !== false;
   const notifyOnProvisioned = current.notifyOnProvisioned !== false;
   const notifyOnPayment = current.notifyOnPayment !== false;
+  const savedTrackingStart =
+    typeof current.trackingStartDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(current.trackingStartDate.trim())
+      ? current.trackingStartDate.trim()
+      : null;
+  const trackingDraft = trackingDraftOverride ?? savedTrackingStart ?? "";
+  const uncalibratedCount = (assetsQuery.data ?? []).filter(isAssetPendingDividendCalibration).length;
+  const todayBr = todaySaoPauloISO();
 
   const updateField = (patch: Partial<DividendAutomationPreferences>) => {
     const today = todaySaoPauloISO();
@@ -83,9 +149,29 @@ export function DividendAutomationCard() {
         notifyOnProvisioned,
         notifyOnPayment,
         activatedAt: shouldStampActivation ? today : current.activatedAt,
+        trackingStartDate: savedTrackingStart,
         ...patch,
       },
     });
+  };
+
+  const handleSaveTrackingStart = async () => {
+    setTrackingError(null);
+    if (!trackingDraft || !isValidDividendTrackingDate(trackingDraft, todayBr)) {
+      setTrackingError("Informe uma data válida entre 01/01/2000 e amanhã.");
+      return;
+    }
+    try {
+      await setDividendTracking.mutateAsync({
+        trackingStartDate: trackingDraft,
+        assets: [],
+        expectedTrackingStartDate: savedTrackingStart,
+        silent: false,
+      });
+      setTrackingDraftOverride(null);
+    } catch {
+      // O hook já dispara toast de erro; preserva o rascunho para nova tentativa
+    }
   };
 
   return (
@@ -137,6 +223,68 @@ export function DividendAutomationCard() {
               },
             ]}
           />
+        </div>
+
+        <div className="rounded-xl border border-border/80 bg-surface p-3.5 space-y-3">
+          <div className="flex items-start gap-2.5">
+            <CalendarClock className="size-4 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
+            <div className="flex flex-col gap-0.5 min-w-0">
+              <span className="text-xs sm:text-sm font-semibold text-foreground">
+                Início do acompanhamento (Marco Zero)
+              </span>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Define o primeiro dia (Data COM inclusiva) coberto pela automação de proventos. Independe da data de ativação da liquidação automática.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-end gap-2.5">
+            <div className="flex-1 min-w-0">
+              <FormField
+                label="Início do acompanhamento (Data COM)"
+                htmlFor="dividend-tracking-start-date"
+                error={trackingError ?? undefined}
+              >
+                <DatePicker
+                  id="dividend-tracking-start-date"
+                  value={trackingDraft}
+                  onValueChange={(next) => {
+                    setTrackingDraftOverride(next);
+                    if (trackingError) setTrackingError(null);
+                  }}
+                  placeholder="Selecionar Marco Zero"
+                  ariaLabel="Início do acompanhamento (Marco Zero)"
+                />
+              </FormField>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              loading={setDividendTracking.isPending}
+              disabled={
+                setDividendTracking.isPending ||
+                !trackingDraft ||
+                trackingDraft === (savedTrackingStart ?? "")
+              }
+              onClick={() => void handleSaveTrackingStart()}
+            >
+              Aplicar data de corte
+            </Button>
+          </div>
+
+          {uncalibratedCount > 0 ? (
+            <Alert variant="warning">
+              {uncalibratedCount}{" "}
+              {uncalibratedCount === 1
+                ? "ativo com provento acumulado ainda precisa de data individual na Conferência de Proventos."
+                : "ativos com proventos acumulados ainda precisam de data individual na Conferência de Proventos."}
+            </Alert>
+          ) : savedTrackingStart ? (
+            <p className="text-[11px] text-muted-foreground">
+              Piso global vigente: {formatDateBR(savedTrackingStart)}. Eventos automáticos abertos com Data COM anterior são zerados ao salvar.
+            </p>
+          ) : null}
         </div>
 
         <div className="flex items-start gap-2.5 rounded-xl border border-border/80 bg-surface-raised/50 p-3 text-xs text-muted-foreground">

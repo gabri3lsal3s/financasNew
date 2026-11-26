@@ -1,13 +1,13 @@
 {
-  "version": "3.30.1",
-  "versionCode": 119,
-  "releaseDate": "2026-11-26T01:00:04Z",
-  "minSupportedVersion": "3.30.1",
+  "version": "3.31.0",
+  "versionCode": 120,
+  "releaseDate": "2026-11-26T16:24:54Z",
+  "minSupportedVersion": "3.31.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "113600e8db7b08010269a06833c15857ba5b14d2efee2c50f6a15f1f54e6dc49",
-  "fileSizeBytes": 13540074,
+  "sha256": "d931d10d985abea42a8f3487b7c2cceebd045953202012c9f36d26be5f95a9f6",
+  "fileSizeBytes": 13717446,
   "changelog": [
-    "Axir v3.30.1 (Build 119): Hardening Integral de Seguranca (F-01 a F-11) & Otimizacao de Queries",
+    "Axir v3.31.0 (Build 120): Hardening Integral de Seguranca (F-01 a F-11) & Otimizacao de Queries",
     "Blindagem de banco (migracao 0158): RLS administrativo ativo, FORCE RLS, protecao AAL2 em RPCs de superadmin e rate limit em viagens publicas",
     "Edge Functions e crons endurecidos com isolamento por user_id em quotes e autenticacao dedicada via CRON_SECRET",
     "Validacao estrita de URLs de atualizacao APK, guarda RequireSuperAdmin, exportacao CSV segura e otimizacao de queries da Home e relatorios"
