@@ -83,7 +83,7 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
   const tripsQuery = useUserTrips();
 
   const { isFamilyModeEnabled } = useFamilyMode();
-  const myFamilyQuery = useMyFamily();
+  const myFamilyQuery = useMyFamily({ enabled: isFamilyModeEnabled });
   const hasFamily = Boolean(isFamilyModeEnabled && myFamilyQuery.data?.family);
   const familyConsolidationQuery = useFamilyConsolidation(month, { enabled: hasFamily });
   const householdData = hasFamily ? familyConsolidationQuery.data : null;
@@ -115,15 +115,16 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
     () => (debtsQuery.data ? filterDebtsByViewScope(debtsQuery.data, effectiveViewScope) : undefined),
     [debtsQuery.data, effectiveViewScope],
   );
-  const portfolioPositionQuery = usePortfolioPosition();
+  const { hasFeature, profile, isLoading: accessLoading } = useUserAccess();
+  const canUseInvestments = !accessLoading && hasFeature("investments");
+  const portfolioPositionQuery = usePortfolioPosition({ enabled: canUseInvestments });
   const rawPositionRows = portfolioPositionQuery?.rows;
   const positionRows = useMemo(() => rawPositionRows ?? [], [rawPositionRows]);
-  const { hasFeature, profile, isLoading: accessLoading } = useUserAccess();
   const userPreferencesQuery = useUserPreferences();
   const updateCustomSettingsMutation = useUpdateCustomSettings();
   const onboardingQuery = useOnboardingCounts();
   const corporateDividends = useCorporateDividends({
-    enabled: !accessLoading && hasFeature("investments"),
+    enabled: canUseInvestments,
   });
   const subscription = useUserSubscription();
   const { isDismissed: isOnboardingDismissed, dismiss: rawDismissOnboarding } = useOnboardingDismissed();

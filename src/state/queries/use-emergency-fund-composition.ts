@@ -14,6 +14,7 @@ import { useUpdateCustomSettings } from "@/state/mutations/use-preference-mutati
 export interface UseEmergencyFundCompositionOptions {
   realCashCents?: number;
   monthlyExpensesCents?: number;
+  enabled?: boolean;
 }
 
 export interface UseEmergencyFundCompositionResult {
@@ -33,9 +34,12 @@ export interface UseEmergencyFundCompositionResult {
 export function useEmergencyFundComposition(
   options: UseEmergencyFundCompositionOptions = {},
 ): UseEmergencyFundCompositionResult {
-  const preferencesQuery = useUserPreferences();
-  const position = usePortfolioPosition();
-  const realCashQuery = useRealCashBalance();
+  const enabled = options.enabled ?? true;
+  const preferencesQuery = useUserPreferences({ enabled });
+  const position = usePortfolioPosition({ enabled });
+  const realCashQuery = useRealCashBalance(undefined, {
+    enabled: enabled && options.realCashCents === undefined,
+  });
   const updateSettingsMutation = useUpdateCustomSettings();
 
   const config: EmergencyFundConfig = useMemo(() => {

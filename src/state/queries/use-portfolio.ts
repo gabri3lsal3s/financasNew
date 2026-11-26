@@ -27,13 +27,13 @@ export const portfolioContributionsKey = PORTFOLIO_QUERY_KEYS.contributions;
 export const portfolioDividendsKey = PORTFOLIO_QUERY_KEYS.dividends;
 
 /** Ativos da carteira. */
-export function usePortfolioAssets() {
+export function usePortfolioAssets(options?: { enabled?: boolean }) {
   const { isDemoActive } = useDemoSession();
   const simulated = useSimulatedPortfolioAssets();
   const real = useQuery({
     queryKey: portfolioAssetsKey,
     queryFn: () => listPortfolioAssets(),
-    enabled: !isDemoActive,
+    enabled: (options?.enabled ?? true) && !isDemoActive,
     staleTime: STALE_TIMES.analytical,
   });
 
@@ -41,13 +41,13 @@ export function usePortfolioAssets() {
 }
 
 /** Todas as transações da carteira (posição consolidada + calculadora). */
-export function useAllPortfolioTransactions() {
+export function useAllPortfolioTransactions(options?: { enabled?: boolean }) {
   const { isDemoActive } = useDemoSession();
   const simulated = useSimulatedAllPortfolioTransactions();
   const real = useQuery({
     queryKey: allPortfolioTransactionsKey,
     queryFn: () => listAllPortfolioTransactions(),
-    enabled: !isDemoActive,
+    enabled: (options?.enabled ?? true) && !isDemoActive,
     staleTime: STALE_TIMES.analytical,
   });
 
@@ -78,13 +78,13 @@ export function useAssetPosition(assetId: string | null) {
 }
 
 /** Snapshots Mensais. */
-export function usePortfolioSnapshots() {
+export function usePortfolioSnapshots(options?: { enabled?: boolean }) {
   const { isDemoActive } = useDemoSession();
   const simulated = useSimulatedPortfolioSnapshots();
   const real = useQuery({
     queryKey: portfolioSnapshotsKey,
     queryFn: () => listPortfolioSnapshots(),
-    enabled: !isDemoActive,
+    enabled: (options?.enabled ?? true) && !isDemoActive,
     staleTime: STALE_TIMES.analytical,
   });
 
@@ -92,13 +92,13 @@ export function usePortfolioSnapshots() {
 }
 
 /** Contribuições / Aportes Mensais. */
-export function usePortfolioContributions() {
+export function usePortfolioContributions(options?: { enabled?: boolean }) {
   const { isDemoActive } = useDemoSession();
   const simulated = useSimulatedPortfolioContributions();
   const real = useQuery({
     queryKey: portfolioContributionsKey,
     queryFn: () => listPortfolioContributions(),
-    enabled: !isDemoActive,
+    enabled: (options?.enabled ?? true) && !isDemoActive,
     staleTime: STALE_TIMES.analytical,
   });
 
@@ -106,13 +106,13 @@ export function usePortfolioContributions() {
 }
 
 /** Proventos Recebidos. */
-export function usePortfolioDividends() {
+export function usePortfolioDividends(options?: { enabled?: boolean }) {
   const { isDemoActive } = useDemoSession();
   const simulated = useSimulatedPortfolioDividends();
   const real = useQuery({
     queryKey: portfolioDividendsKey,
     queryFn: () => listPortfolioDividends(),
-    enabled: !isDemoActive,
+    enabled: (options?.enabled ?? true) && !isDemoActive,
     staleTime: STALE_TIMES.analytical,
   });
 

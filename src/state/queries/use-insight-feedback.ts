@@ -10,9 +10,10 @@ export const feedbackKey = ["insight-feedback"] as const;
 export const feedbackEntriesKey = ["insight-feedback-entries"] as const;
 
 /** Lista completa de decisões persistidas com timestamp (`created_at`) para escopo temporal (ex.: `one_off`). */
-export function useFeedbackEntries() {
+export function useFeedbackEntries(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: feedbackEntriesKey,
+    enabled: options?.enabled ?? true,
     queryFn: async (): Promise<FeedbackEntry[]> => {
       const rows = await listFeedback();
       return rows.map((row) => ({
@@ -27,9 +28,10 @@ export function useFeedbackEntries() {
 }
 
 /** Mapa occurrence_key → decisão persistida (aprendizado do usuário). */
-export function useFeedback() {
+export function useFeedback(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: feedbackKey,
+    enabled: options?.enabled ?? true,
     queryFn: async () => {
       const rows = await listFeedback();
       return Object.fromEntries(rows.map((row) => [row.occurrence_key, row.decision])) as Record<

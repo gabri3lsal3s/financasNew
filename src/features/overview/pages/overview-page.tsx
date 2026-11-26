@@ -43,7 +43,7 @@ export function OverviewPage() {
   const permissions = useOverviewPermissionsBanner(navigate);
   useMarketQuotesSwr({ enabled: !accessLoading && hasFeature("investments"), enableInterval: false });
   const data = useOverviewData({ month, alertDismissals });
-  const govInsights = useAssetGovernanceInsights();
+  const govInsights = useAssetGovernanceInsights({ enabled: !accessLoading && hasFeature("investments") });
 
   const suppressedAdvisorThemeKeys = useMemo(() => {
     const keys: string[] = [];

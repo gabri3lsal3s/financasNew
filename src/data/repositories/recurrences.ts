@@ -84,38 +84,71 @@ function competenceFor(row: Recurrence, date: string, closingDays: Map<string, n
   return resolveBillCompetence(new Date(`${date}T12:00:00`), closingDay);
 }
 
+const MATERIALIZATION_CACHE_TTL_MS = 30_000;
+const inFlightMaterializations = new Map<string, Promise<void>>();
+const completedMaterializations = new Map<string, number>();
+
+export function invalidateRecurrenceMaterializationCache(): void {
+  inFlightMaterializations.clear();
+  completedMaterializations.clear();
+}
+
+async function runDeduplicatedMaterialization(key: string, task: () => Promise<void>): Promise<void> {
+  const completedAt = completedMaterializations.get(key);
+  if (completedAt !== undefined && Date.now() - completedAt < MATERIALIZATION_CACHE_TTL_MS) {
+    return;
+  }
+  const existing = inFlightMaterializations.get(key);
+  if (existing) {
+    return existing;
+  }
+  const promise = task()
+    .then(() => {
+      completedMaterializations.set(key, Date.now());
+    })
+    .finally(() => {
+      inFlightMaterializations.delete(key);
+    });
+  inFlightMaterializations.set(key, promise);
+  return promise;
+}
+
 /** Materializa as ocorrências de um mês (YYYY-MM) de um tipo (idempotente). */
 export async function materializeRecurrencesForMonth(month: string, kind: RecurrenceKind): Promise<void> {
-  const rules = await fetchRecurrences(kind, true);
-  if (rules.length === 0) return;
-  const closingDays = await closingDaysByCard(rules);
-  const items = rules.flatMap((rule) =>
-    occurrencesForMonth(toRule(rule), month).map((occurrence) => ({
-      recurrenceId: occurrence.recurrenceId,
-      date: occurrence.date,
-      occurrenceNumber: occurrence.occurrenceNumber,
-      value: occurrence.valueCents / 100,
-      billCompetence: competenceFor(rule, occurrence.date, closingDays),
-    })),
-  );
-  if (items.length === 0) return;
-  await materializeRecurrences(items);
+  return runDeduplicatedMaterialization(`month:${month}:${kind}`, async () => {
+    const rules = await fetchRecurrences(kind, true);
+    if (rules.length === 0) return;
+    const closingDays = await closingDaysByCard(rules);
+    const items = rules.flatMap((rule) =>
+      occurrencesForMonth(toRule(rule), month).map((occurrence) => ({
+        recurrenceId: occurrence.recurrenceId,
+        date: occurrence.date,
+        occurrenceNumber: occurrence.occurrenceNumber,
+        value: occurrence.valueCents / 100,
+        billCompetence: competenceFor(rule, occurrence.date, closingDays),
+      })),
+    );
+    if (items.length === 0) return;
+    await materializeRecurrences(items);
+  });
 }
 
 /** Materializa as ocorrências de um período [start, end) — relatórios custom. */
 export async function materializeRecurrencesForRange(start: string, end: string, kind: RecurrenceKind): Promise<void> {
-  const rules = await fetchRecurrences(kind, true);
-  if (rules.length === 0) return;
-  const closingDays = await closingDaysByCard(rules);
-  const items = rules.flatMap((rule) =>
-    occurrencesForRange(toRule(rule), start, end).map((occurrence) => ({
-      recurrenceId: occurrence.recurrenceId,
-      date: occurrence.date,
-      occurrenceNumber: occurrence.occurrenceNumber,
-      value: occurrence.valueCents / 100,
-      billCompetence: competenceFor(rule, occurrence.date, closingDays),
-    })),
-  );
-  if (items.length === 0) return;
-  await materializeRecurrences(items);
+  return runDeduplicatedMaterialization(`range:${start}:${end}:${kind}`, async () => {
+    const rules = await fetchRecurrences(kind, true);
+    if (rules.length === 0) return;
+    const closingDays = await closingDaysByCard(rules);
+    const items = rules.flatMap((rule) =>
+      occurrencesForRange(toRule(rule), start, end).map((occurrence) => ({
+        recurrenceId: occurrence.recurrenceId,
+        date: occurrence.date,
+        occurrenceNumber: occurrence.occurrenceNumber,
+        value: occurrence.valueCents / 100,
+        billCompetence: competenceFor(rule, occurrence.date, closingDays),
+      })),
+    );
+    if (items.length === 0) return;
+    await materializeRecurrences(items);
+  });
 }

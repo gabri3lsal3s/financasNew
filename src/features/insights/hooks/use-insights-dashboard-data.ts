@@ -81,8 +81,14 @@ export function useInsightsDashboardData() {
   const preferencesQuery = useUserPreferencesSafe();
   const updateCustomSettings = useUpdateCustomSettingsSafe();
   const setBudgetLimit = useSetBudgetLimitSafe();
+  const useUserAccessSafe = getOptionalStateHook("useUserAccess", () => ({
+    hasFeature: (() => true) as (feature?: string) => boolean,
+    isLoading: false,
+  }));
+  const access = useUserAccessSafe();
+  const canUseInvestments = !access.isLoading && (typeof access.hasFeature === "function" ? access.hasFeature("investments") : true);
   const setFeedback = useSetFeedback();
-  const position = usePortfolioPosition();
+  const position = usePortfolioPosition({ enabled: canUseInvestments });
   const realCashQuery = useRealCashBalance();
 
   const { effectiveViewScope } = useSafeViewScope();
@@ -131,10 +137,11 @@ export function useInsightsDashboardData() {
 
   const emergencyFund = useEmergencyFundComposition({
     monthlyExpensesCents: estimatedMonthlyExpensesCents,
+    enabled: canUseInvestments,
   });
 
   const { isFamilyModeEnabled } = useFamilyMode();
-  const myFamilyQuery = useMyFamily();
+  const myFamilyQuery = useMyFamily({ enabled: isFamilyModeEnabled });
   const hasFamily = Boolean(isFamilyModeEnabled && myFamilyQuery.data?.family);
   const familyConsolidationQuery = useFamilyConsolidation(month, { enabled: hasFamily });
   const householdData = hasFamily ? familyConsolidationQuery.data : null;

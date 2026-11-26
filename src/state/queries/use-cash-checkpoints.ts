@@ -8,13 +8,13 @@ import type { CashCheckpoint, TransactionScope } from "@/types";
 export const cashCheckpointsKey = ["cash_checkpoints"] as const;
 
 /** Lista os checkpoints de saldo em caixa do usuário (opcionalmente por escopo). */
-export function useCashCheckpoints(scope?: TransactionScope) {
+export function useCashCheckpoints(scope?: TransactionScope, options?: { enabled?: boolean }) {
   const { isDemoActive } = useDemoSession();
   const simulated = makeSimulatedQueryResult<CashCheckpoint[]>([]);
   const real = useQuery({
     queryKey: scope ? [...cashCheckpointsKey, scope] : cashCheckpointsKey,
     queryFn: () => listCashCheckpoints(scope),
-    enabled: !isDemoActive,
+    enabled: (options?.enabled ?? true) && !isDemoActive,
     staleTime: STALE_TIMES.transactional,
     gcTime: STATIC_GC_TIME,
   });
@@ -23,13 +23,13 @@ export function useCashCheckpoints(scope?: TransactionScope) {
 }
 
 /** Obtém o último checkpoint de saldo cadastrado no escopo informado (default: 'personal'). */
-export function useLatestCashCheckpoint(scope: TransactionScope = "personal") {
+export function useLatestCashCheckpoint(scope: TransactionScope = "personal", options?: { enabled?: boolean }) {
   const { isDemoActive } = useDemoSession();
   const simulated = makeSimulatedQueryResult<CashCheckpoint | null>(null);
   const real = useQuery({
     queryKey: [...cashCheckpointsKey, "latest", scope],
     queryFn: () => getLatestCashCheckpoint(scope),
-    enabled: !isDemoActive,
+    enabled: (options?.enabled ?? true) && !isDemoActive,
     staleTime: STALE_TIMES.transactional,
     gcTime: STATIC_GC_TIME,
   });

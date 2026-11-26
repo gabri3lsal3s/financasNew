@@ -57,10 +57,11 @@ export function useFinanceReportData({
   isCustom,
   customValid,
 }: UseFinanceReportDataParams) {
+  const isMonth = mode === "month";
   const monthlyExpenses = useExpenses(month, { enabled });
-  const monthlyIncomes = useIncomes(month, { enabled });
-  const prevExpenses = useExpenses(shiftMonth(month, -1), { enabled });
-  const prevIncomes = useIncomes(shiftMonth(month, -1), { enabled });
+  const monthlyIncomes = useIncomes(month, { enabled: enabled && isMonth });
+  const prevExpenses = useExpenses(shiftMonth(month, -1), { enabled: enabled && isMonth });
+  const prevIncomes = useIncomes(shiftMonth(month, -1), { enabled: enabled && isMonth });
 
   const yearExpenses = useExpensesByRange(range.start, range.end, { enabled: isYear && enabled });
   const yearIncomes = useIncomesByRange(range.start, range.end, { enabled: isYear && enabled });
@@ -71,11 +72,11 @@ export function useFinanceReportData({
   const rangeExpenses = useExpensesByRange(range.start, range.end, { enabled: isCustom && customValid && enabled });
   const rangeIncomes = useIncomesByRange(range.start, range.end, { enabled: isCustom && customValid && enabled });
   const debtsQuery = useDebts({ enabled });
-  const realCashQuery = useRealCashBalance();
+  const realCashQuery = useRealCashBalance(undefined, { enabled });
   const categoriesQuery = useCategories(undefined, { enabled });
-  const budgetsQuery = useBudgets();
+  const budgetsQuery = useBudgets({ enabled });
   const { isFamilyModeEnabled } = useFamilyMode();
-  const myFamilyQuery = useMyFamily({ enabled });
+  const myFamilyQuery = useMyFamily({ enabled: enabled && isFamilyModeEnabled });
   const hasFamily = Boolean(myFamilyQuery.data?.family?.id);
   const familyConsolidationQuery = useFamilyConsolidation(mode === "month" ? month : currentMonth(), {
     enabled: enabled && hasFamily && isFamilyModeEnabled && mode === "month",

@@ -163,6 +163,10 @@ vi.mock("@/state/queries/use-public-shares", () => ({
   }),
 }));
 
+vi.mock("@/hooks/use-device-session-sync", () => ({
+  useDeviceSessionSync: () => {},
+}));
+
 vi.mock("@/state/queries/use-family", () => ({
   useFamilyInvite: () => ({
     data: null,

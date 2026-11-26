@@ -29,9 +29,10 @@ export interface UseAssetGovernanceInsightsResult {
   refetch: () => void;
 }
 
-export function useAssetGovernanceInsights(): UseAssetGovernanceInsightsResult {
-  const assetsQuery = usePortfolioAssets();
-  const { rows: positionRows, totalBRL: totalPortfolioBRL, isLoading: isPositionLoading, refetch: refetchPosition } = usePortfolioPosition();
+export function useAssetGovernanceInsights(options?: { enabled?: boolean }): UseAssetGovernanceInsightsResult {
+  const enabled = options?.enabled ?? true;
+  const assetsQuery = usePortfolioAssets({ enabled });
+  const { rows: positionRows, totalBRL: totalPortfolioBRL, isLoading: isPositionLoading, refetch: refetchPosition } = usePortfolioPosition({ enabled });
 
   const { result, overdueAssets, upcomingReviewAssets, unscoredAssets } = useMemo(() => {
     const allAssets = assetsQuery.data ?? [];

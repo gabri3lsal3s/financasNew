@@ -90,8 +90,9 @@ export function useBudgetsPage() {
   const expensesQuery = useExpenses(month);
   const incomesQuery = useIncomes(month);
   const usageQuery = useCategoryUsage(dialogs.editingCategory ? dialogs.editingCategory.id : null);
-  const realCashQuery = useRealCashBalance();
-  const portfolioPositionQuery = usePortfolioPosition();
+  const isGoalsTab = tab === "goals";
+  const realCashQuery = useRealCashBalance(undefined, { enabled: isGoalsTab });
+  const portfolioPositionQuery = usePortfolioPosition({ enabled: isGoalsTab });
 
   const error =
     budgetsQuery.error ??

@@ -6,10 +6,11 @@ import type { RecurrenceKind } from "@/types";
 export const recurrencesKey = ["recurrences"] as const;
 
 /** Templates de recorrência do usuário (fonte da verdade — Fase 32). */
-export function useRecurrences(kind?: RecurrenceKind) {
+export function useRecurrences(kind?: RecurrenceKind, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: [...recurrencesKey, kind ?? "all"],
     queryFn: () => listRecurrences(kind),
+    enabled: options?.enabled ?? true,
     staleTime: STALE_TIMES.transactional,
   });
 }

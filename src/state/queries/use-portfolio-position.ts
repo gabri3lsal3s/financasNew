@@ -198,14 +198,15 @@ function mapCanonicalHoldingToRow(
   };
 }
 
-export function usePortfolioPosition(): PortfolioPosition {
-  const assetsQuery = usePortfolioAssets();
-  const pricesQuery = useAssetPrices();
-  const macroQuery = useMacroIndicators();
-  const contributionsQuery = usePortfolioContributions();
-  const dividendsQuery = usePortfolioDividends();
-  const snapshotsQuery = usePortfolioSnapshots();
-  const transactionsQuery = useAllPortfolioTransactions();
+export function usePortfolioPosition(options?: { enabled?: boolean }): PortfolioPosition {
+  const enabled = options?.enabled ?? true;
+  const assetsQuery = usePortfolioAssets({ enabled });
+  const pricesQuery = useAssetPrices({ enabled });
+  const macroQuery = useMacroIndicators({ enabled });
+  const contributionsQuery = usePortfolioContributions({ enabled });
+  const dividendsQuery = usePortfolioDividends({ enabled });
+  const snapshotsQuery = usePortfolioSnapshots({ enabled });
+  const transactionsQuery = useAllPortfolioTransactions({ enabled });
 
   const canonicalState = useMemo(() => {
     return evaluatePortfolioCanonicalState({

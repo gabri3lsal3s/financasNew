@@ -14,13 +14,13 @@ import { useSimulatedGroupTargets } from "./use-simulated-queries";
 export const groupTargetsKey = (groupType: "class" | "sector") => ["group_targets", groupType] as const;
 
 /** Metas de grupo (classe ou setor escopado por classe). */
-export function useGroupTargets(groupType: "class" | "sector") {
+export function useGroupTargets(groupType: "class" | "sector", options?: { enabled?: boolean }) {
   const { isDemoActive } = useDemoSession();
   const simulated = useSimulatedGroupTargets(groupType);
   const real = useQuery({
     queryKey: groupTargetsKey(groupType),
     queryFn: () => listGroupTargets(groupType),
-    enabled: !isDemoActive,
+    enabled: (options?.enabled ?? true) && !isDemoActive,
     staleTime: STALE_TIMES.static,
     gcTime: STATIC_GC_TIME,
   });

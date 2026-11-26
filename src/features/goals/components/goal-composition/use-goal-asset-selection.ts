@@ -22,15 +22,16 @@ export function useGoalAssetSelection({
   targetCents,
   isCompleted,
 }: UseGoalAssetSelectionParams) {
-  const { cashBalance } = useRealCashBalance();
-  const { rows: positionRows, isLoading: isPositionLoading } = usePortfolioPosition();
-
   const [includeCheckingAccounts, setIncludeCheckingAccounts] = useState(
     config?.includeCheckingAccounts ?? true,
   );
   const [includeInvestments, setIncludeInvestments] = useState(
     config?.includeInvestments ?? false,
   );
+  const { cashBalance } = useRealCashBalance(undefined, { enabled: includeCheckingAccounts });
+  const { rows: positionRows, isLoading: isPositionLoading } = usePortfolioPosition({
+    enabled: includeInvestments,
+  });
   const [investmentMode, setInvestmentMode] = useState<GoalInvestmentSelectionMode>(
     config?.investmentMode ?? "selected_assets",
   );

@@ -12,10 +12,11 @@ import { STALE_TIMES } from "@/state/cache-policy";
 const assetPricesKey = ["asset_prices"] as const;
 
 /** Preços de mercado (cache global + overrides manuais) — §1.6. */
-export function useAssetPrices() {
+export function useAssetPrices(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: assetPricesKey,
     queryFn: () => listAssetPrices(),
+    enabled: options?.enabled ?? true,
     staleTime: STALE_TIMES.quotes,
   });
 }

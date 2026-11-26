@@ -54,40 +54,44 @@ export interface UseRealCashBalanceResult {
  */
 export function useRealCashBalance(
   referenceDate: string = todayISO(),
-  options?: { scopeOverride?: ViewScope },
+  options?: { scopeOverride?: ViewScope; enabled?: boolean },
 ): UseRealCashBalanceResult {
+  const enabled = options?.enabled ?? true;
   const { effectiveViewScope } = useViewScope();
   const activeScope: ViewScope = options?.scopeOverride ?? effectiveViewScope;
   const checkpointScope: TransactionScope = activeScope === "business" ? "business" : "personal";
-  const checkpointQuery = useLatestCashCheckpoint(checkpointScope);
+  const checkpointQuery = useLatestCashCheckpoint(checkpointScope, { enabled });
 
   const checkpoint = checkpointQuery.data;
+  const isCheckpointReady = enabled && !checkpointQuery.isLoading;
   const startDate = checkpoint?.date ?? "1970-01-01";
   const currentMonthStr = referenceDate.slice(0, 7);
   const currentYear = referenceDate.slice(0, 4);
   const yearStartDate = `${currentYear}-01-01`;
   const endDate = `${shiftMonth(currentMonthStr, 1)}-01`;
+  const needsSeparateYearIncomes = isCheckpointReady && startDate > yearStartDate;
 
-  const incomesQuery = useIncomesByRange(startDate, endDate);
-  const yearIncomesQuery = useIncomesByRange(yearStartDate, endDate);
-  const expensesQuery = useExpensesByRange(startDate, endDate);
-  const cardsQuery = useCreditCards();
-  const cardPaymentsQuery = useAllCardPayments();
-  const cardExpensesQuery = useAllCardExpenses();
-  const cardRolloversQuery = useAllCardBillRollovers();
-  const debtsQuery = useDebts();
-  const contributionsQuery = usePortfolioContributions();
+  const incomesQuery = useIncomesByRange(startDate, endDate, { enabled: isCheckpointReady });
+  const yearIncomesQuery = useIncomesByRange(yearStartDate, endDate, { enabled: needsSeparateYearIncomes });
+  const expensesQuery = useExpensesByRange(startDate, endDate, { enabled: isCheckpointReady });
+  const cardsQuery = useCreditCards({ enabled });
+  const cardPaymentsQuery = useAllCardPayments({ enabled });
+  const cardExpensesQuery = useAllCardExpenses({ enabled });
+  const cardRolloversQuery = useAllCardBillRollovers({ enabled });
+  const debtsQuery = useDebts({ enabled });
+  const contributionsQuery = usePortfolioContributions({ enabled });
 
-  const isLoading =
-    checkpointQuery.isLoading ||
-    incomesQuery.isLoading ||
-    expensesQuery.isLoading ||
-    cardsQuery.isLoading ||
-    cardPaymentsQuery.isLoading ||
-    cardExpensesQuery.isLoading ||
-    cardRolloversQuery.isLoading ||
-    debtsQuery.isLoading ||
-    contributionsQuery.isLoading;
+  const isLoading = enabled
+    ? checkpointQuery.isLoading ||
+      incomesQuery.isLoading ||
+      expensesQuery.isLoading ||
+      cardsQuery.isLoading ||
+      cardPaymentsQuery.isLoading ||
+      cardExpensesQuery.isLoading ||
+      cardRolloversQuery.isLoading ||
+      debtsQuery.isLoading ||
+      contributionsQuery.isLoading
+    : false;
 
   const error =
     checkpointQuery.error ??
@@ -241,8 +245,11 @@ export function useRealCashBalance(
   ]);
 
   const safeDailySpending = useMemo(() => {
+    const rawYearIncomes = needsSeparateYearIncomes
+      ? (yearIncomesQuery.data ?? incomesQuery.data ?? [])
+      : (incomesQuery.data ?? []).filter((inc) => inc.date >= yearStartDate && inc.date < endDate);
     const scopedYearIncomes = filterIncomesByViewScope(
-      yearIncomesQuery.data ?? incomesQuery.data ?? [],
+      rawYearIncomes,
       activeScope,
       { mode: "cashflow" },
     );
@@ -258,8 +265,11 @@ export function useRealCashBalance(
       nextMonthPayableDebtsCents: cycleBreakdown.nextMonthPayableDebtsCents ?? 0,
     });
   }, [
+    needsSeparateYearIncomes,
     yearIncomesQuery.data,
     incomesQuery.data,
+    yearStartDate,
+    endDate,
     activeScope,
     referenceDate,
     safeToSpend.safeToSpendCents,

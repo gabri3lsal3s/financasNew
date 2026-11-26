@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { invalidateRecurrenceMaterializationCache } from "@/data/repositories/recurrences";
 import { createRecurrence, deleteRecurrenceOccurrences, updateRecurrenceOccurrences } from "@/data/rpc";
 import type { CreateRecurrenceParams, RecurrenceGroupFields } from "@/data/rpc";
 import { recurrencesKey } from "@/state/queries/use-recurrences";
@@ -41,6 +42,7 @@ const FINANCE_KEYS = [
 ] as const satisfies readonly (readonly string[])[];
 
 function invalidateFinanceAggregates(queryClient: QueryClient) {
+  invalidateRecurrenceMaterializationCache();
   for (const key of FINANCE_KEYS) void queryClient.invalidateQueries({ queryKey: key });
 }
 

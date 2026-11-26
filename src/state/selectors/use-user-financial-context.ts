@@ -194,25 +194,29 @@ export function useUserFinancialContext(
   const m2ExpensesQ = useExpensesSafe(m2, { enabled: queryEnabled });
   const m3ExpensesQ = useExpensesSafe(m3, { enabled: queryEnabled });
 
-  const budgetsQ = useBudgetsSafe();
-  const categoriesQ = useCategoriesSafe(undefined, { enabled: queryEnabled });
-  const expenseCategoriesQ = useCategoriesSafe("expense", { enabled: queryEnabled });
-  const incomeCategoriesQ = useCategoriesSafe("income", { enabled: queryEnabled });
-  const feedbackEntriesQ = useFeedbackEntriesSafe();
-  const feedbackMapQ = useFeedbackSafe();
-  const recurrencesQ = useRecurrencesSafe();
-  const incomeGoalsQ = useIncomeGoalsSafe();
-  const contributionsQ = usePortfolioContributionsSafe();
-  const userPrefsQ = useUserPreferencesSafe();
   const access = useUserAccessSafe();
   const hasInvestmentsAccess =
     typeof access?.hasFeature === "function" ? access.hasFeature("investments") : true;
+  const budgetsQ = useBudgetsSafe({ enabled: queryEnabled });
+  const categoriesQ = useCategoriesSafe(undefined, { enabled: queryEnabled });
+  const expenseCategoriesQ = useCategoriesSafe("expense", { enabled: queryEnabled });
+  const incomeCategoriesQ = useCategoriesSafe("income", { enabled: queryEnabled });
+  const feedbackEntriesQ = useFeedbackEntriesSafe({ enabled: queryEnabled });
+  const feedbackMapQ = useFeedbackSafe({ enabled: queryEnabled });
+  const recurrencesQ = useRecurrencesSafe(undefined, { enabled: queryEnabled });
+  const incomeGoalsQ = useIncomeGoalsSafe({ enabled: queryEnabled });
+  const contributionsQ = usePortfolioContributionsSafe({ enabled: queryEnabled && hasInvestmentsAccess });
+  const userPrefsQ = useUserPreferencesSafe({ enabled: queryEnabled });
   const corporateDividendsQ = useCorporateDividendsSafe({
     enabled: queryEnabled && hasInvestmentsAccess,
   });
 
-  const realCashFallbackQ = useRealCashBalanceSafe(isCurrentMonth ? today : `${month}-01`);
-  const portfolioPositionFallbackQ = usePortfolioPositionSafe();
+  const realCashFallbackQ = useRealCashBalanceSafe(isCurrentMonth ? today : `${month}-01`, {
+    enabled: queryEnabled && optionRealCashBalanceCents === undefined,
+  });
+  const portfolioPositionFallbackQ = usePortfolioPositionSafe({
+    enabled: queryEnabled && optionPositionRows === undefined && hasInvestmentsAccess,
+  });
 
   const isLoading = Boolean(
     queryEnabled &&

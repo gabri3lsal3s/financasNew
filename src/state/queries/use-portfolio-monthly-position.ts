@@ -55,27 +55,32 @@ export interface PortfolioMonthlyPositionState {
   refetch: () => void;
 }
 
-export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPositionState {
+export function usePortfolioMonthlyPosition(
+  month: string,
+  options?: { enabled?: boolean },
+): PortfolioMonthlyPositionState {
+  const enabled = options?.enabled ?? true;
   const isCurrent = month >= todaySaoPauloISO().slice(0, 7);
   const queryClient = useContext(QueryClientContext);
 
   // Se for o mês corrente, delega para usePortfolioPosition
-  const currentPos = usePortfolioPosition();
+  const currentPos = usePortfolioPosition({ enabled: enabled && isCurrent });
 
   // Queries para reconstrução retroativa
-  const assetsQuery = usePortfolioAssets();
-  const transactionsQuery = useAllPortfolioTransactions();
-  const dividendsQuery = usePortfolioDividends();
-  const contributionsQuery = usePortfolioContributions();
-  const monthlyPricesQuery = usePortfolioMonthlyPrices(month);
+  const retroactiveEnabled = enabled && !isCurrent;
+  const assetsQuery = usePortfolioAssets({ enabled: retroactiveEnabled });
+  const transactionsQuery = useAllPortfolioTransactions({ enabled: retroactiveEnabled });
+  const dividendsQuery = usePortfolioDividends({ enabled: retroactiveEnabled });
+  const contributionsQuery = usePortfolioContributions({ enabled: retroactiveEnabled });
+  const monthlyPricesQuery = usePortfolioMonthlyPrices(month, { enabled: retroactiveEnabled });
   const marketHistoryQuery = useQuery({
     queryKey: ["market_price_history", month],
     queryFn: () => listMarketPriceHistoryByMonth(month, { onlyMonthEnd: true }),
     staleTime: STALE_TIMES.static,
-    enabled: !isCurrent && Boolean(month),
+    enabled: retroactiveEnabled && Boolean(month),
   });
-  const snapshotsQuery = usePortfolioSnapshots();
-  const macroQuery = useMacroIndicators();
+  const snapshotsQuery = usePortfolioSnapshots({ enabled });
+  const macroQuery = useMacroIndicators({ enabled: retroactiveEnabled });
 
   // Cotações buscadas via API sob demanda isoladas estritamente por competência (sem vazamento entre meses)
   const [apiQuotesByMonth, setApiQuotesByMonth] = useState<

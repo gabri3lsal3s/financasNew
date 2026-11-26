@@ -28,9 +28,10 @@ export interface MacroIndicatorsData {
  *   • Série 433: IPCA Inflação
  *   • IBOVESPA, IFIX e S&P 500
  */
-export function useMacroIndicators() {
+export function useMacroIndicators(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: MACRO_INDICATORS_QUERY_KEY,
+    enabled: options?.enabled ?? true,
     queryFn: async (): Promise<MacroIndicatorsData> => {
       const [cdi, selic, ipca] = await Promise.all([
         fetchBcbIndicator("CDI"),

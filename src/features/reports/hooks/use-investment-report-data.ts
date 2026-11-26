@@ -57,17 +57,20 @@ export function useInvestmentReportData({
   periodLabel,
   isDateInPeriod,
 }: UseInvestmentReportDataParams) {
-  const positionQuery = usePortfolioPosition();
-  const monthlyPositionQuery = usePortfolioMonthlyPosition(mode === "month" ? month : currentMonth());
-  const emergencyFund = useEmergencyFundComposition();
-  const snapshotsQuery = usePortfolioSnapshots();
-  const macroIndicatorsQuery = useMacroIndicators();
-  const assetsQuery = usePortfolioAssets();
-  const dividendsQuery = usePortfolioDividends();
-  const transactionsQuery = useAllPortfolioTransactions();
-  const contributionsQuery = usePortfolioContributions();
-  const classTargetsQuery = useGroupTargets("class");
-  const sectorTargetsQuery = useGroupTargets("sector");
+  const positionQuery = usePortfolioPosition({ enabled });
+  const monthlyPositionQuery = usePortfolioMonthlyPosition(
+    mode === "month" ? month : currentMonth(),
+    { enabled: enabled && !isCurrentPeriod && mode === "month" },
+  );
+  const emergencyFund = useEmergencyFundComposition({ enabled });
+  const snapshotsQuery = usePortfolioSnapshots({ enabled });
+  const macroIndicatorsQuery = useMacroIndicators({ enabled });
+  const assetsQuery = usePortfolioAssets({ enabled });
+  const dividendsQuery = usePortfolioDividends({ enabled });
+  const transactionsQuery = useAllPortfolioTransactions({ enabled });
+  const contributionsQuery = usePortfolioContributions({ enabled });
+  const classTargetsQuery = useGroupTargets("class", { enabled });
+  const sectorTargetsQuery = useGroupTargets("sector", { enabled });
 
   const assets = useMemo(() => (enabled ? assetsQuery.data ?? [] : []), [enabled, assetsQuery.data]);
   const dividends = useMemo(() => (enabled ? dividendsQuery.data ?? [] : []), [enabled, dividendsQuery.data]);

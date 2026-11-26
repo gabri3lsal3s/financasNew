@@ -4,11 +4,11 @@ import type { MonthlyPriceRow } from "@/types";
 
 export const PORTFOLIO_MONTHLY_PRICES_QUERY_KEY = "portfolio_monthly_prices" as const;
 
-export function usePortfolioMonthlyPrices(month: string) {
+export function usePortfolioMonthlyPrices(month: string, options?: { enabled?: boolean }) {
   return useQuery<MonthlyPriceRow[]>({
     queryKey: [PORTFOLIO_MONTHLY_PRICES_QUERY_KEY, month],
     queryFn: () => listPortfolioMonthlyPrices(month),
     staleTime: 5 * 60 * 1000,
-    enabled: Boolean(month),
+    enabled: (options?.enabled ?? true) && Boolean(month),
   });
 }

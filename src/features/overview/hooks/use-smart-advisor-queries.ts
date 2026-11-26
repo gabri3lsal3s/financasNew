@@ -76,19 +76,21 @@ export function useSmartAdvisorQueries({
   const month2Incomes = useIncomes(shiftMonth(refMonth, -2), { enabled: queryEnabled });
   const month3Incomes = useIncomes(shiftMonth(refMonth, -3), { enabled: queryEnabled });
 
-  const budgetsQuery = useBudgets();
-  const categoriesQuery = useCategories();
-  const feedbackQuery = useFeedback();
-  const creditCardsQuery = useCreditCards({ enabled: queryEnabled });
+  const budgetsQuery = useBudgets({ enabled: queryEnabled && !preloadedBudgets });
+  const categoriesQuery = useCategories(undefined, { enabled: queryEnabled && !preloadedCategories });
+  const feedbackQuery = useFeedback({ enabled: queryEnabled && !preloadedFeedbackMap });
+  const creditCardsQuery = useCreditCards({ enabled: queryEnabled && !preloadedCards });
   const isCurrentMonth = refMonth === currentMonth();
-  const realCashData = useRealCashBalance(isCurrentMonth ? todayISOStr : `${refMonth}-01`);
+  const realCashData = useRealCashBalance(isCurrentMonth ? todayISOStr : `${refMonth}-01`, {
+    enabled: queryEnabled && safeToSpendCents === undefined,
+  });
 
   const { isFamilyModeEnabled } = useFamilyMode();
-  const myFamilyQuery = useMyFamily();
+  const myFamilyQuery = useMyFamily({ enabled: queryEnabled && isFamilyModeEnabled });
   const hasFamily = Boolean(isFamilyModeEnabled && myFamilyQuery.data?.family);
-  const familyConsolidationQuery = useFamilyConsolidation(refMonth, { enabled: hasFamily });
-  const incomeGoalsQuery = useIncomeGoals();
-  const userPreferencesQuery = useUserPreferences();
+  const familyConsolidationQuery = useFamilyConsolidation(refMonth, { enabled: queryEnabled && hasFamily });
+  const incomeGoalsQuery = useIncomeGoals({ enabled: queryEnabled });
+  const userPreferencesQuery = useUserPreferences({ enabled: queryEnabled });
   const updateCustomSettingsMutation = useUpdateCustomSettings();
 
   const { effectiveViewScope } = useSafeViewScope();
