@@ -29,6 +29,7 @@ import {
   normalizeTickerForApi,
   normalizeTickerForBrapi,
   parseAwesomeApiDetailed,
+  parseB3OfficialDividends,
   parseBcbPtaxResponse,
   parseBrapiDetailed,
   parseBrapiDividends,
@@ -494,6 +495,27 @@ async function fetchBrapiDividendsForTickers(
   }
 
   return { dividends: [], coveredTickers, circuitOpened: false };
+}
+
+/** Busca proventos oficiais gratuitos na B3 (`GetListedSupplementCompany`) antes do Yahoo. */
+async function fetchB3OfficialDividendsForTicker(
+  ticker: string,
+): Promise<ParsedCorporateDividend[]> {
+  const cleanTicker = normalizeTickerForBrapi(ticker);
+  const issuingCompany = cleanTicker.replace(/\.SA$/, "").replace(/\d{1,2}F?$/, "");
+  if (!issuingCompany || issuingCompany.length < 3) return [];
+
+  try {
+    const rawJson = JSON.stringify({ issuingCompany, language: "pt-br" });
+    const b64 = btoa(rawJson);
+    const url = `https://sistemaswebb3-listados.b3.com.br/listedCompaniesProxy/CompanyCall/GetListedSupplementCompany/${b64}`;
+    const response = await fetchWithRetry(url, { headers: { "User-Agent": USER_AGENT } }, FETCH_TIMEOUT_MS, 1);
+    if (!response?.ok) return [];
+    const payload: unknown = await response.json();
+    return parseB3OfficialDividends(cleanTicker, payload);
+  } catch {
+    return [];
+  }
 }
 
 /** Busca proventos via Yahoo Finance (`events=div`) para EUA ou fallback B3 incerto. */
@@ -1437,13 +1459,31 @@ Deno.serve(async (req) => {
 
       const uncoveredBrTickers = brTickers.filter((t) => !coveredBrTickers.has(t));
       if (uncoveredBrTickers.length > 0) {
-        const brFallbackBatches = await runWithConcurrencyPool(
+        const b3Batches = await runWithConcurrencyPool(
           uncoveredBrTickers,
           POOL_CONCURRENCY,
-          async (ticker) => await fetchYahooDividendsForTicker(ticker, "BR"),
+          async (ticker) => ({
+            ticker,
+            dividends: await fetchB3OfficialDividendsForTicker(ticker),
+          }),
         );
-        for (const batch of brFallbackBatches) {
-          allCorporateDividends.push(...batch);
+        const stillUncoveredBr: string[] = [];
+        for (const item of b3Batches) {
+          if (item.dividends.length > 0) {
+            allCorporateDividends.push(...item.dividends);
+          } else {
+            stillUncoveredBr.push(item.ticker);
+          }
+        }
+        if (stillUncoveredBr.length > 0) {
+          const brFallbackBatches = await runWithConcurrencyPool(
+            stillUncoveredBr,
+            POOL_CONCURRENCY,
+            async (ticker) => await fetchYahooDividendsForTicker(ticker, "BR"),
+          );
+          for (const batch of brFallbackBatches) {
+            allCorporateDividends.push(...batch);
+          }
         }
       }
 
@@ -1599,7 +1639,7 @@ Deno.serve(async (req) => {
           });
           const { data: canWrite, error: writeErr } = await userClient.rpc(
             "can_current_user_write_module",
-            { p_module: "investments" },
+            { p_module_key: "investments" },
           );
           if (writeErr || canWrite !== true) {
             return jsonResponse(req, { error: "forbidden_readonly_or_module" }, 403);
@@ -2285,11 +2325,35 @@ Deno.serve(async (req) => {
             }
 
             const availableManuals = tickerManualDivs.filter((m) => !consumedManualIds.has(m.id));
-            const fuzzyDup = isFuzzyDuplicateManualDividend(
-              corp.payment_date,
-              netAmount,
-              availableManuals,
+            const edgeMatchList = reconcilePartition1to1Edge(
+              [
+                {
+                  id: corp.id,
+                  ticker: corp.ticker,
+                  currency: corp.currency,
+                  com_date: corp.com_date,
+                  payment_date: corp.payment_date,
+                  gross_amount: grossAmount,
+                  net_amount: netAmount,
+                  type: corp.type,
+                  is_type_uncertain: corp.is_type_uncertain,
+                  manual_review_required: false,
+                  status: "PENDING_CONFIRMATION",
+                },
+              ],
+              availableManuals.map((m) => ({
+                id: m.id,
+                ticker: corp.ticker,
+                currency: corp.currency,
+                date: m.date,
+                amount: Number(m.amount),
+              })),
             );
+            const matchedManualId = edgeMatchList[0]?.manual_id ?? null;
+            const fuzzyDup =
+              matchedManualId !== null
+                ? { matched: true, matchedDividendId: matchedManualId }
+                : isFuzzyDuplicateManualDividend(corp.payment_date, netAmount, availableManuals);
             if (fuzzyDup.matched) {
               if (fuzzyDup.matchedDividendId) consumedManualIds.add(fuzzyDup.matchedDividendId);
               if (existing) {
@@ -2603,7 +2667,7 @@ Deno.serve(async (req) => {
         });
         const { data: canWrite, error: writeErr } = await userClient.rpc(
           "can_current_user_write_module",
-          { p_module: "investments" },
+          { p_module_key: "investments" },
         );
         if (writeErr || canWrite !== true) {
           return jsonResponse(req, { error: "forbidden_readonly_or_module" }, 403);

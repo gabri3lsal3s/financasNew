@@ -900,7 +900,7 @@ export interface ParsedCorporateDividend {
   net_rate: number;
   tax_rate_pct: number;
   currency: "BRL" | "USD";
-  provider: "brapi" | "yahoo";
+  provider: "b3" | "brapi" | "yahoo";
   is_type_uncertain: boolean;
   trust_tier: EdgeDividendTrustTier;
   external_terms: Record<string, unknown>;
@@ -998,9 +998,115 @@ function parseExplicitDividendTypeEdge(
 
 function normalizeIsoDateOrNull(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
-  const clean = raw.trim().slice(0, 10);
+  const trimmed = raw.trim();
+  const clean = trimmed.slice(0, 10);
   if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) return clean;
+  const brMatch = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (brMatch) {
+    return `${brMatch[3]}-${brMatch[2]}-${brMatch[1]}`;
+  }
   return null;
+}
+
+function parsePtBrDecimalOrNumber(raw: unknown): number {
+  if (typeof raw === "number") return raw;
+  if (typeof raw !== "string") return Number.NaN;
+  const trimmed = raw.trim();
+  if (!trimmed) return Number.NaN;
+  if (trimmed.includes(",")) {
+    return Number(trimmed.replace(/\./g, "").replace(",", "."));
+  }
+  return Number(trimmed);
+}
+
+function matchesB3IsinShareClass(ticker: string, isinCode: string): boolean {
+  const isin = isinCode.trim().toUpperCase();
+  if (!isin) return true;
+  const suffixMatch = ticker.trim().toUpperCase().replace(/\.SA$/, "").match(/(\d{1,2})F?$/);
+  const suffix = suffixMatch?.[1] ?? "";
+  if (suffix === "3") return isin.includes("ACNOR");
+  if (suffix === "4" || suffix === "5" || suffix === "6" || suffix === "7" || suffix === "8") {
+    return isin.includes("ACNPR");
+  }
+  if (suffix === "11") return isin.includes("CDAM") || isin.includes("UNT") || isin.includes("CTF");
+  return true;
+}
+
+/**
+ * Extrai proventos corporativos oficiais do endpoint público da B3 (`GetListedSupplementCompany`).
+ * Entrega `lastDatePrior` (Data COM), `paymentDate`, taxa por ação e tipo (`DIVIDENDO`/`JCP`),
+ * filtrando pela classe da ação no `isinCode` (ON `3`, PN `4/5/6`, Unit `11`).
+ */
+export function parseB3OfficialDividends(
+  ticker: string,
+  payload: unknown,
+): ParsedCorporateDividend[] {
+  if (!Array.isArray(payload) || payload.length === 0) return [];
+  const company = payload[0];
+  if (!company || typeof company !== "object") return [];
+  const cashDividends = (company as Record<string, unknown>).cashDividends;
+  if (!Array.isArray(cashDividends)) return [];
+
+  const cleanTicker = normalizeTickerForBrapi(ticker);
+  if (!cleanTicker) return [];
+
+  const hasExactClassMatch = cashDividends.some((row) => {
+    if (!row || typeof row !== "object") return false;
+    const rec = row as Record<string, unknown>;
+    const isin = typeof rec.isinCode === "string" ? rec.isinCode : (typeof rec.assetIssued === "string" ? rec.assetIssued : "");
+    return Boolean(isin) && matchesB3IsinShareClass(cleanTicker, isin);
+  });
+
+  const list: ParsedCorporateDividend[] = [];
+  for (const row of cashDividends) {
+    if (!row || typeof row !== "object") continue;
+    const rec = row as Record<string, unknown>;
+    const isin = typeof rec.isinCode === "string" ? rec.isinCode : (typeof rec.assetIssued === "string" ? rec.assetIssued : "");
+    if (hasExactClassMatch && isin && !matchesB3IsinShareClass(cleanTicker, isin)) {
+      continue;
+    }
+
+    const rate = parsePtBrDecimalOrNumber(rec.rate);
+    if (!Number.isFinite(rate) || rate <= 0) continue;
+
+    const comDate = normalizeIsoDateOrNull(rec.lastDatePrior);
+    if (!comDate) continue;
+
+    const rawLabel = typeof rec.label === "string" ? rec.label : undefined;
+    const type = parseExplicitDividendTypeEdge(rawLabel);
+    if (!type) continue;
+
+    const rawPayDate = normalizeIsoDateOrNull(rec.paymentDate);
+    if (rawPayDate && rawPayDate < comDate) continue;
+
+    const taxRatePct = type === "JCP" ? 15 : 0;
+    const netRate = Math.round(rate * (1 - taxRatePct / 100) * 100000000) / 100000000;
+
+    list.push({
+      ticker: cleanTicker,
+      type,
+      com_date: comDate,
+      payment_date: rawPayDate,
+      rate,
+      net_rate: netRate,
+      tax_rate_pct: taxRatePct,
+      currency: "BRL",
+      provider: "b3",
+      is_type_uncertain: false,
+      trust_tier: "official",
+      external_terms: {
+        provider: "b3",
+        com_date: comDate,
+        payment_date: rawPayDate,
+        type,
+        rate,
+        net_rate: netRate,
+        tax_rate_pct: taxRatePct,
+        isin_code: isin || null,
+      },
+    });
+  }
+  return list;
 }
 
 function parseTimestampOrIsoDate(raw: unknown, tz: string): string | null {

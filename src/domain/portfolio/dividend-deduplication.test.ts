@@ -285,4 +285,37 @@ describe("reconcileCorporateWithManualDividends (S3 — Conciliação 1:1 e N:1)
     expect(resCap.sugerir.every((l) => l.reason !== "n_to_1")).toBe(true);
     expect(resCap.overSearchCapPartitions).toContain("BRL:TAEE11");
   });
+
+  it("reconcilia HGRU11 sem paymentDate entre meses distintos (30/09 -> 15/10 e 30/10 -> 16/11)", () => {
+    const res = reconcileCorporateWithManualDividends(
+      [
+        mkEv({
+          id: "hgru-set",
+          ticker: "HGRU11",
+          instrumentKind: "fii_fiagro",
+          comDate: "2026-09-30",
+          paymentDate: null,
+          netCents: 12000,
+          type: "RENDIMENTO",
+        }),
+        mkEv({
+          id: "hgru-out",
+          ticker: "HGRU11",
+          instrumentKind: "fii_fiagro",
+          comDate: "2026-10-30",
+          paymentDate: null,
+          netCents: 12000,
+          type: "RENDIMENTO",
+        }),
+      ],
+      [
+        mkMan({ id: "m-out", ticker: "HGRU11", date: "2026-10-15", cents: 12000 }),
+        mkMan({ id: "m-nov", ticker: "HGRU11", date: "2026-11-16", cents: 12000 }),
+      ],
+    );
+
+    expect(res.aplicar).toHaveLength(2);
+    expect(res.aplicar.find((l) => l.eventos.includes("hgru-set"))?.manual).toBe("m-out");
+    expect(res.aplicar.find((l) => l.eventos.includes("hgru-out"))?.manual).toBe("m-nov");
+  });
 });

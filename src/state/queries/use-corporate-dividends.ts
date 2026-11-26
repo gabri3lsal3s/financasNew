@@ -22,13 +22,13 @@ import {
   getCuratedDividendInstrument,
   isAssetPendingDividendCalibration,
   isCashAssetClass,
-  isCorporateDividendDeduplicated,
   isCustomValuationAsset,
   isFixedIncomeClass,
   isPrivateFixedIncomeTicker,
   isTesouroAsset,
   normalizeCanonicalDividendTicker,
   normalizeDividendTickerKey,
+  reconcileCorporateWithManualDividends,
   resolveOpenDividendEventStatus,
   suggestedDividendToSummaryItem,
   summarizeProvisionedDividends,
@@ -280,6 +280,7 @@ export function useCorporateDividends(
     const dismissals = isDemoActive ? [] : (dismissalsQuery.data ?? []);
     const userEvents = isDemoActive ? [] : (userEventsQuery.data ?? []);
 
+    const assetById = new Map(assets.map((a) => [a.id, a]));
     const tickerByAssetId = new Map(
       assets.map((a) => [a.id, normalizeDividendTickerKey(a.ticker, a.currency)]),
     );
@@ -287,16 +288,6 @@ export function useCorporateDividends(
     const dismissedCorpIds = new Set(
       dismissals.map((d) => d.corporate_dividend_id).filter(Boolean),
     );
-    const normalizedManualDivs = manualDividends.map((m) => ({
-      asset_id: m.asset_id,
-      ticker: m.ticker
-        ? normalizeDividendTickerKey(m.ticker)
-        : m.asset_id
-          ? (tickerByAssetId.get(m.asset_id) ?? "")
-          : "",
-      date: m.date,
-      amount: Number(m.amount),
-    }));
 
     // Corporativos já materializados em `user_dividend_events` (inclusive zerados) ficam reservados para nunca voltarem via fallback
     const handledCorpIds = new Set<string>();
@@ -350,23 +341,78 @@ export function useCorporateDividends(
       const mapped = mapUserEventToSuggestedItem(ev, referenceDate, corpById);
       if (mapped.totalAmount <= 0) continue;
 
-      const isAlreadyManualSettled = isCorporateDividendDeduplicated(
-        {
-          ticker: normalizeDividendTickerKey(mapped.ticker),
-          payment_date: mapped.paymentDate ?? mapped.comDate,
-        },
-        mapped.totalAmount,
-        normalizedManualDivs,
-        tickerByAssetId,
-      );
-      if (isAlreadyManualSettled) continue;
-
       if (mapped.status === "available") {
         persistedAvailable.push(mapped);
       } else {
         persistedProjected.push(mapped);
       }
     }
+
+    const rawOpenPersisted = [...persistedAvailable, ...persistedProjected];
+    const openReconciled = reconcileCorporateWithManualDividends(
+      rawOpenPersisted.map((item) => ({
+        id: item.eventId ?? item.corporateDividendId ?? `${item.assetId}:${item.comDate}`,
+        ticker: item.ticker,
+        currency: item.currency,
+        instrumentKind: getCuratedDividendInstrument(item.ticker, item.currency).kind,
+        comDate: item.comDate,
+        paymentDate: item.paymentDate,
+        grossCents: Math.round(item.grossAmount * 100),
+        netCents: Math.round(item.totalAmount * 100),
+        type: item.type,
+        isTypeUncertain: Boolean(item.isTypeUncertain),
+        manualReviewRequired: false,
+        status: item.status === "available" ? "PENDING_CONFIRMATION" : "PROVISIONED",
+      })),
+      manualDividends
+        .filter((d) => !d.source_event_id)
+        .map((d) => ({
+          id: d.id,
+          ticker: d.ticker ?? (d.asset_id ? (tickerByAssetId.get(d.asset_id) ?? "") : ""),
+          currency: (d.asset_id ? assetById.get(d.asset_id)?.currency : null) === "USD" ? ("USD" as const) : ("BRL" as const),
+          date: d.date,
+          monthly: typeof d.notes === "string" && /\[MENSAL\]/i.test(d.notes),
+          cents: Math.round(Number(d.amount) * 100),
+          sourceEventId: d.source_event_id ?? null,
+          alreadyLinked: false,
+        })),
+    );
+
+    const autoMatchedEventIds = new Set(openReconciled.aplicar.flatMap((l) => l.eventos));
+    const manualById = new Map(manualDividends.map((m) => [m.id, m]));
+    const suggestedMatchByEventId = new Map<
+      string,
+      NonNullable<SuggestedDividendItem["suggestedManualMatch"]>
+    >();
+    for (const link of openReconciled.sugerir) {
+      const m = manualById.get(link.manual);
+      if (!m) continue;
+      for (const evId of link.eventos) {
+        if (!suggestedMatchByEventId.has(evId)) {
+          suggestedMatchByEventId.set(evId, {
+            manualId: m.id,
+            manualDate: m.date.slice(0, 10),
+            manualAmount: Number(m.amount),
+            reason: link.reason,
+          });
+        }
+      }
+    }
+
+    const filterAndEnrichPersisted = (list: SuggestedDividendItem[]) =>
+      list
+        .filter((item) => {
+          const id = item.eventId ?? item.corporateDividendId ?? `${item.assetId}:${item.comDate}`;
+          return !autoMatchedEventIds.has(id);
+        })
+        .map((item) => {
+          const id = item.eventId ?? item.corporateDividendId ?? `${item.assetId}:${item.comDate}`;
+          const match = suggestedMatchByEventId.get(id);
+          return match ? { ...item, suggestedManualMatch: match } : item;
+        });
+
+    const reconciledAvailable = filterAndEnrichPersisted(persistedAvailable);
+    const reconciledProjected = filterAndEnrichPersisted(persistedProjected);
 
     const shouldRunClientFallback = isDemoActive || userEvents.length === 0;
     const unmaterializedCorp = shouldRunClientFallback
@@ -386,10 +432,10 @@ export function useCorporateDividends(
         })
       : { available: [], projected: [] };
 
-    const available = [...persistedAvailable, ...clientFallback.available].sort((a, b) =>
+    const available = [...reconciledAvailable, ...clientFallback.available].sort((a, b) =>
       (b.paymentDate ?? b.comDate).localeCompare(a.paymentDate ?? a.comDate),
     );
-    const projected = [...persistedProjected, ...clientFallback.projected].sort((a, b) => {
+    const projected = [...reconciledProjected, ...clientFallback.projected].sort((a, b) => {
       if (!a.paymentDate && !b.paymentDate) return a.comDate.localeCompare(b.comDate);
       if (!a.paymentDate) return 1;
       if (!b.paymentDate) return -1;

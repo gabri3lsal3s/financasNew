@@ -981,6 +981,7 @@ export async function updateUserDividendEvent(
       | "notes"
       | "dismiss_reason"
       | "settled_dividend_id"
+      | "settlement_origin"
       | "fx_rate_applied"
     >
   >,

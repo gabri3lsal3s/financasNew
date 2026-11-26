@@ -22,6 +22,7 @@ import {
   normalizeTickerForApi,
   normalizeTickerForBrapi,
   parseAwesomeApiResponse,
+  parseB3OfficialDividends,
   parseBcbPtaxResponse,
   parseBrapiDetailed,
   parseBrapiResponse,
@@ -1024,6 +1025,137 @@ describe("scoreConsensusSignalsEdge (S5 Edge Mirror)", () => {
         true,
       ),
     ).toEqual({ decimos: -7, positivosDistintos: 1, elegivel: false });
+  });
+});
+
+describe("parseB3OfficialDividends (Provedor oficial gratuito B3)", () => {
+  it("converte datas DD/MM/YYYY, taxa PT-BR com vírgula, JCP 15% e filtra classe por ISIN", () => {
+    const payload = [
+      {
+        cashDividends: [
+          {
+            assetIssued: "BRPETRACNPR6",
+            isinCode: "BRPETRACNPR6",
+            label: "JCP",
+            lastDatePrior: "10/10/2026",
+            paymentDate: "20/11/2026",
+            rate: "1,15000000",
+          },
+          {
+            assetIssued: "BRPETRACNOR9",
+            isinCode: "BRPETRACNOR9",
+            label: "DIVIDENDO",
+            lastDatePrior: "10/10/2026",
+            paymentDate: "20/11/2026",
+            rate: "0,95000000",
+          },
+          {
+            assetIssued: "BRPETRACNPR6",
+            isinCode: "BRPETRACNPR6",
+            label: "DIVIDENDO",
+            lastDatePrior: "05/09/2026",
+            paymentDate: null,
+            rate: "0,50",
+          },
+        ],
+      },
+    ];
+
+    const petr4 = parseB3OfficialDividends("PETR4", payload);
+    expect(petr4).toHaveLength(2);
+    expect(petr4[0]).toMatchObject({
+      ticker: "PETR4",
+      com_date: "2026-10-10",
+      payment_date: "2026-11-20",
+      type: "JCP",
+      rate: 1.15,
+      tax_rate_pct: 15,
+      provider: "b3",
+      trust_tier: "official",
+      is_type_uncertain: false,
+    });
+    expect(petr4[0]?.net_rate).toBeCloseTo(1.15 * 0.85, 6);
+    expect(petr4[1]).toMatchObject({
+      ticker: "PETR4",
+      com_date: "2026-09-05",
+      payment_date: null,
+      type: "DIVIDENDO",
+      rate: 0.5,
+      net_rate: 0.5,
+      tax_rate_pct: 0,
+    });
+
+    const unitPayload = [
+      {
+        cashDividends: [
+          {
+            isinCode: "BRTAEECDAM10",
+            label: "RENDIMENTO",
+            lastDatePrior: "02/10/2026",
+            paymentDate: "15/10/2026",
+            rate: "0,42",
+          },
+          {
+            isinCode: "BRTAEEACNOR9",
+            label: "DIVIDENDO",
+            lastDatePrior: "02/10/2026",
+            paymentDate: "15/10/2026",
+            rate: "0,14",
+          },
+        ],
+      },
+    ];
+    const taee11 = parseB3OfficialDividends("TAEE11", unitPayload);
+    expect(taee11).toHaveLength(1);
+    expect(taee11[0]).toMatchObject({
+      ticker: "TAEE11",
+      type: "RENDIMENTO",
+      payment_date: "2026-10-15",
+      rate: 0.42,
+    });
+  });
+});
+
+describe("reconcilePartition1to1Edge — cenário HGRU11 sem payment_date", () => {
+  it("reconcilia HGRU11 COM 30/09 -> manual 15/10 e COM 30/10 -> manual 16/11 sem colisão", () => {
+    const links = reconcilePartition1to1Edge(
+      [
+        {
+          id: "ev-set",
+          ticker: "HGRU11",
+          currency: "BRL",
+          com_date: "2026-09-30",
+          payment_date: null,
+          gross_amount: 120.0,
+          net_amount: 120.0,
+          type: "RENDIMENTO",
+          is_type_uncertain: true,
+          manual_review_required: false,
+          status: "PENDING_CONFIRMATION",
+        },
+        {
+          id: "ev-out",
+          ticker: "HGRU11",
+          currency: "BRL",
+          com_date: "2026-10-30",
+          payment_date: null,
+          gross_amount: 120.0,
+          net_amount: 120.0,
+          type: "RENDIMENTO",
+          is_type_uncertain: true,
+          manual_review_required: false,
+          status: "PENDING_CONFIRMATION",
+        },
+      ],
+      [
+        { id: "man-out", ticker: "HGRU11", currency: "BRL", date: "2026-10-15", amount: 120.0 },
+        { id: "man-nov", ticker: "HGRU11", currency: "BRL", date: "2026-11-16", amount: 120.0 },
+      ],
+    );
+
+    expect(links).toHaveLength(2);
+    expect(links.find((l) => l.event_ids.includes("ev-set"))?.manual_id).toBe("man-out");
+    expect(links.find((l) => l.event_ids.includes("ev-out"))?.manual_id).toBe("man-nov");
   });
 });
 

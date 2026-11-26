@@ -95,6 +95,23 @@ const useOptionalDismissUserDividendEventsBatch = getOptionalStateHook<
   isPending: false,
 }));
 
+const useOptionalUpdateUserDividendEvent = getOptionalStateHook<
+  () => {
+    mutateAsync: (params: {
+      id: string;
+      patch: {
+        status?: "PROVISIONED" | "PENDING_CONFIRMATION" | "SETTLED" | "DISMISSED";
+        settlement_origin?: "auto" | "manual" | "dedup" | null;
+        settled_dividend_id?: string | null;
+      };
+    }) => Promise<unknown>;
+    isPending: boolean;
+  }
+>("useUpdateUserDividendEvent", () => ({
+  mutateAsync: async () => undefined,
+  isPending: false,
+}));
+
 type OriginFilterValue = "all" | "official" | "community_verified" | "estimated" | "manual";
 
 function resolveItemOriginKey(item: SuggestedDividendItem): Exclude<OriginFilterValue, "all"> {
@@ -239,6 +256,7 @@ export function PendingDividendsDialog({
   const dismissBatchMutation = useOptionalDismissUserDividendEventsBatch();
   const createManualMutation = useCreateManualUserDividendEvent();
   const deleteManualMutation = useDeleteUserDividendEvent();
+  const updateDividendEventMutation = useOptionalUpdateUserDividendEvent();
   const setDividendTracking = useOptionalSetDividendTracking();
 
   const [searchTicker, setSearchTicker] = useState("");
@@ -808,6 +826,33 @@ export function PendingDividendsDialog({
     });
   };
 
+  const handleLinkToExistingManual = (item: SuggestedDividendItem) => {
+    if (
+      !item.eventId ||
+      !item.suggestedManualMatch ||
+      updateDividendEventMutation.isPending
+    ) {
+      return;
+    }
+    const manualId = item.suggestedManualMatch.manualId;
+    const eventId = item.eventId;
+    guardAction(() => {
+      void updateDividendEventMutation
+        .mutateAsync({
+          id: eventId,
+          patch: {
+            status: "SETTLED",
+            settlement_origin: "dedup",
+            settled_dividend_id: manualId,
+          },
+        })
+        .then(() => {
+          onRetry?.();
+        })
+        .catch(() => undefined);
+    });
+  };
+
   const handleDeleteManualEvent = (eventId: string) => {
     if (deleteManualMutation.isPending) return;
     guardAction(() => {
@@ -1311,7 +1356,7 @@ export function PendingDividendsDialog({
                           {formatDateBR(div.comDate)} ·{" "}
                           {eff.paymentDate
                             ? `Pagamento ${formatDateBR(eff.paymentDate)}`
-                            : "Data a definir"}
+                            : "Pagamento a confirmar"}
                         </span>
                       </div>
                     </div>
@@ -1348,6 +1393,30 @@ export function PendingDividendsDialog({
                       </Button>
                     </div>
                   </div>
+
+                  {div.suggestedManualMatch && div.eventId ? (
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 py-2 bg-muted/40 border-t border-border/60 text-[11px]">
+                      <span className="text-muted-foreground">
+                        Possível correspondência no extrato em{" "}
+                        <strong className="text-foreground">
+                          {formatDateBR(div.suggestedManualMatch.manualDate)}
+                        </strong>
+                        {div.suggestedManualMatch.reason
+                          ? ` (${div.suggestedManualMatch.reason})`
+                          : ""}
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={isReadOnlyMode || updateDividendEventMutation.isPending}
+                        onClick={() => handleLinkToExistingManual(div)}
+                        className="self-start sm:self-center shrink-0"
+                      >
+                        Vincular (sem novo crédito)
+                      </Button>
+                    </div>
+                  ) : null}
 
                   {isEditing ? renderInlineRowEditor(div, eff) : null}
                 </div>
@@ -1489,7 +1558,7 @@ export function PendingDividendsDialog({
                         Data COM {formatDateBR(div.comDate)} ·{" "}
                         {eff.paymentDate
                           ? `Previsto para ${formatDateBR(eff.paymentDate)}`
-                          : "Data de pagamento a definir"}
+                          : "Pagamento a confirmar"}
                       </span>
                     </div>
 

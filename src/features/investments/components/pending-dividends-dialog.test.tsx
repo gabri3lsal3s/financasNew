@@ -10,6 +10,7 @@ const mockSetTrackingMutateAsync = vi.fn();
 const mockDismissMutateAsync = vi.fn();
 const mockCreateManualMutateAsync = vi.fn();
 const mockDeleteManualMutateAsync = vi.fn();
+const mockUpdateEventMutateAsync = vi.fn();
 
 let mockAssets: PortfolioAsset[] = [];
 
@@ -40,6 +41,10 @@ vi.mock("@/state", () => ({
   }),
   useDeleteUserDividendEvent: () => ({
     mutateAsync: mockDeleteManualMutateAsync,
+    isPending: false,
+  }),
+  useUpdateUserDividendEvent: () => ({
+    mutateAsync: mockUpdateEventMutateAsync,
     isPending: false,
   }),
   useSetDividendTracking: () => ({
@@ -359,5 +364,68 @@ describe("PendingDividendsDialog (S1 — Calibração coletiva e confirmação s
     await user.click(screen.getByRole("button", { name: /Confirmar agora/i }));
     const confirmBtn = await screen.findByRole("button", { name: /Confirmar recebimento/i });
     expect(confirmBtn).toBeDisabled();
+  });
+
+  it("exibe sugestão de correspondência manual e permite vincular em 1 clique sem novo crédito", async () => {
+    const user = userEvent.setup();
+    mockUpdateEventMutateAsync.mockResolvedValueOnce({ id: "ev-hgru", status: "SETTLED" });
+    const onRetry = vi.fn();
+
+    render(
+      <PendingDividendsDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        onRetry={onRetry}
+        availableDividends={[
+          {
+            corporateDividendId: "c-hgru",
+            eventId: "ev-hgru",
+            assetId: "a-hgru",
+            ticker: "HGRU11",
+            type: "RENDIMENTO",
+            comDate: "2026-09-30",
+            paymentDate: null,
+            quantityOnComDate: 100,
+            rate: 1.2,
+            netRate: 1.2,
+            taxRatePct: 0,
+            grossAmount: 120,
+            totalAmount: 120,
+            currency: "BRL",
+            status: "available",
+            provider: "yahoo",
+            trustTier: "raw_fallback",
+            isManual: false,
+            revision: 1,
+            suggestedManualMatch: {
+              manualId: "man-hgru",
+              manualDate: "2026-10-15",
+              manualAmount: 120,
+              reason: "ambiguous_1to1",
+            },
+          },
+        ]}
+        projectedDividends={[]}
+        assetsNeedingCalibration={[]}
+      />,
+    );
+
+    expect(screen.getByText(/Possível correspondência no extrato em/i)).toBeInTheDocument();
+    expect(screen.getByText(/15\/10\/2026/)).toBeInTheDocument();
+    expect(screen.getByText(/Pagamento a confirmar/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Vincular \(sem novo crédito\)/i }));
+
+    await waitFor(() => {
+      expect(mockUpdateEventMutateAsync).toHaveBeenCalledWith({
+        id: "ev-hgru",
+        patch: {
+          status: "SETTLED",
+          settlement_origin: "dedup",
+          settled_dividend_id: "man-hgru",
+        },
+      });
+      expect(onRetry).toHaveBeenCalled();
+    });
   });
 });

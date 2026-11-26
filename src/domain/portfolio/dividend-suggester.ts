@@ -55,6 +55,12 @@ export interface SuggestedDividendItem {
   isManual?: boolean;
   notes?: string | null;
   revision?: number;
+  suggestedManualMatch?: {
+    manualId: string;
+    manualDate: string;
+    manualAmount: number;
+    reason?: string;
+  } | null;
 }
 
 export interface SuggestedDividendsResult {
