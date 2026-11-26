@@ -55,7 +55,7 @@ describe("F6.2 — RLS: cobertura total (D4 — multiusuário isolado)", () => {
       .map((m) => m[1]?.toLowerCase())
       .filter((name): name is string => Boolean(name));
     const created = Array.from(new Set(createdMatches));
-    expect(created.length).toBe(74);
+    expect(created.length).toBe(75);
     for (const table of created) {
       expect(ALL_SQL).toMatch(
         new RegExp(`alter\\s+table\\s+(?:only\\s+)?public\\.${table}\\s+enable\\s+row\\s+level\\s+security`, "i"),
@@ -873,7 +873,7 @@ describe("Tarefa 3.4 — Expansão da Suíte de Auditoria Integral de Banco & Go
       .map((m) => m[1]?.toLowerCase())
       .filter((name): name is string => Boolean(name));
     const created = Array.from(new Set(createdMatches));
-    expect(created.length).toBe(74);
+    expect(created.length).toBe(75);
     for (const table of created) {
       expect(ALL_SQL).toMatch(
         new RegExp(`alter\\s+table\\s+(?:only\\s+)?public\\.${table}\\s+enable\\s+row\\s+level\\s+security`, "i"),
@@ -1796,3 +1796,87 @@ describe("Fase P1 — Hardening Billing RLS, PII e Ciclo de Vida (Migration 0153
 
 
 
+
+describe("Auditoria v3.30.0 — Regressões F-01 a F-11", () => {
+  it("F-01: nenhuma policy ativa verifica role IN ('admin', 'superadmin') diretamente sem is_admin() ativo", () => {
+    const files = readdirSync(resolve(root, "supabase/migrations")).filter((f) => f.endsWith(".sql")).sort();
+    const activePolicies: Map<string, string> = new Map();
+
+    for (const file of files) {
+      const content = readFileSync(resolve(root, "supabase/migrations", file), "utf8");
+      const stmts = content.split(";").map((s) => s.trim()).filter(Boolean);
+      for (const s of stmts) {
+        const dropMatches = [...s.matchAll(/drop\s+policy\s+(?:if\s+exists\s+)?"?([^"\s;]+)"?\s+on\s+public\.([a-zA-Z0-9_]+)/gi)];
+        for (const dm of dropMatches) {
+          const pName = dm[1]?.replace(/"/g, "");
+          const tbl = dm[2]?.toLowerCase();
+          if (pName && tbl) activePolicies.delete(`${tbl}.${pName}`);
+        }
+        const createMatches = [...s.matchAll(/create\s+policy\s+"([^"]+)"\s+on\s+public\.([a-zA-Z0-9_]+)\s+([^;]+)/gi)];
+        for (const cm of createMatches) {
+          const pName = cm[1];
+          const tbl = cm[2]?.toLowerCase();
+          const rest = cm[3] ?? "";
+          if (pName && tbl) activePolicies.set(`${tbl}.${pName}`, rest);
+        }
+      }
+    }
+
+    const legacyAdminRoleChecks: string[] = [];
+    for (const [key, body] of activePolicies.entries()) {
+      if (/profiles\.role\s+in\s*\([^)]*superadmin/i.test(body) || /role\s+in\s*\(\s*'admin'\s*,\s*'superadmin'\s*\)/i.test(body)) {
+        legacyAdminRoleChecks.push(key);
+      }
+    }
+    expect(legacyAdminRoleChecks).toEqual([]);
+
+    for (const forcedTable of ["admin_telegram_settings", "billing_webhook_logs", "billing_intents", "trip_passcode_rate_limits"]) {
+      expect(ALL_SQL).toMatch(
+        new RegExp(`alter\\s+table\\s+public\\.${forcedTable}\\s+force\\s+row\\s+level\\s+security`, "i"),
+      );
+    }
+  });
+
+  it("F-02, F-03, F-05, F-11: migração 0158 blinda superadmin AAL2, blueprints, rate limit e URL https de viagem", () => {
+    const mig158 = readFileSync(
+      resolve(root, "supabase/migrations/20260101000158_security_audit_remediation_v2.sql"),
+      "utf8",
+    );
+    expect(mig158).toMatch(/create\s+or\s+replace\s+function\s+public\.assert_active_superadmin_aal2/i);
+    expect(mig158).toMatch(/public\.assert_active_superadmin_aal2\('excluir contas de outros usuários'\)/i);
+    expect(mig158).toMatch(/public\.assert_active_superadmin_aal2\('desativar autenticadores 2FA'\)/i);
+    expect(mig158).toMatch(/can_current_user_write_module\('cards'\)/i);
+    expect(mig158).toMatch(/verify_trip_passcode_guarded/i);
+    expect(mig158).toMatch(/trip_passcode_rate_limits/i);
+    expect(mig158).toMatch(/https:\/\//i);
+
+    const adminSuperFn = readFileSync(
+      resolve(root, "supabase/functions/admin-super-action/index.ts"),
+      "utf8",
+    );
+    expect(adminSuperFn).toContain('userClient.rpc("admin_reset_user_mfa"');
+    expect(adminSuperFn).not.toContain('adminClient.rpc("admin_reset_user_mfa"');
+  });
+
+  it("F-04, F-06, F-08, F-10: isolamento em quotes, guarda superadmin, cron dedicado e exportação CSV segura", () => {
+    const routerCode = readFileSync(resolve(root, "src/app/router.tsx"), "utf8");
+    expect(routerCode).toMatch(/<Route\s+element=\{<RequireSuperAdmin\s*\/>\}>[\s\S]*admin\/laboratorio-forense/);
+
+    const quotesFn = readFileSync(resolve(root, "supabase/functions/quotes/index.ts"), "utf8");
+    const eqUserMatches = quotesFn.match(/\.eq\("user_id",\s*callerUserId\)/g) ?? [];
+    expect(eqUserMatches.length).toBeGreaterThanOrEqual(2);
+
+    const deployQuotes = readFileSync(resolve(root, "scripts/deploy-quotes.mjs"), "utf8");
+    expect(deployQuotes).toContain("env.CRON_SECRET");
+    expect(deployQuotes).toContain("Bearer ${cronToken}");
+
+    const adminSecPage = readFileSync(
+      resolve(root, "src/features/admin/pages/admin-security-page.tsx"),
+      "utf8",
+    );
+    expect(adminSecPage).toContain("toCsv(");
+    expect(adminSecPage).toContain("downloadCsv(");
+    expect(adminSecPage).toContain("downloadJson(");
+    expect(adminSecPage).not.toContain("function toCsvRow");
+  });
+});

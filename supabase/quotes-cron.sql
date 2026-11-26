@@ -19,7 +19,7 @@
 --
 -- Substitua os placeholders antes de executar manualmente (ou gere via `npm run quotes:cron`):
 --   <FUNCTION_URL>      https://<SEU_REF>.supabase.co/functions/v1/quotes
---   <SERVICE_ROLE_KEY>  Supabase Dashboard > Settings > API > service_role (secret)
+--   <CRON_SECRET>       Segredo dedicado do cron (configure via `supabase secrets set CRON_SECRET=...`)
 -- ============================================================================
 
 -- 1) Hardening de permissões: revoga acesso ao schema cron para roles públicas/não-admin
@@ -47,7 +47,7 @@ select cron.schedule(
       url := '<FUNCTION_URL>',
       headers := jsonb_build_object(
         'Content-Type', 'application/json',
-        'Authorization', 'Bearer <SERVICE_ROLE_KEY>'
+        'Authorization', 'Bearer <CRON_SECRET>'
       ),
       body := jsonb_build_object('action', 'eod_close'),
       timeout_milliseconds := 60000
@@ -64,7 +64,7 @@ select cron.schedule(
       url := '<FUNCTION_URL>',
       headers := jsonb_build_object(
         'Content-Type', 'application/json',
-        'Authorization', 'Bearer <SERVICE_ROLE_KEY>'
+        'Authorization', 'Bearer <CRON_SECRET>'
       ),
       body := jsonb_build_object('action', 'close_month_global'),
       timeout_milliseconds := 60000
@@ -81,7 +81,7 @@ select cron.schedule(
       url := '<FUNCTION_URL>',
       headers := jsonb_build_object(
         'Content-Type', 'application/json',
-        'Authorization', 'Bearer <SERVICE_ROLE_KEY>'
+        'Authorization', 'Bearer <CRON_SECRET>'
       ),
       body := jsonb_build_object('action', 'sync_corporate_dividends'),
       timeout_milliseconds := 60000
@@ -98,7 +98,7 @@ select cron.schedule(
       url := '<FUNCTION_URL>',
       headers := jsonb_build_object(
         'Content-Type', 'application/json',
-        'Authorization', 'Bearer <SERVICE_ROLE_KEY>'
+        'Authorization', 'Bearer <CRON_SECRET>'
       ),
       body := jsonb_build_object('action', 'process_user_dividends'),
       timeout_milliseconds := 60000

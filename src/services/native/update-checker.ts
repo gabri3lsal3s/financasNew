@@ -1,7 +1,7 @@
 import { App } from "@capacitor/app";
 import { CapacitorHttp, registerPlugin } from "@capacitor/core";
 import { isNativePlatform } from "./platform";
-import { AppVersionManifestSchema } from "./update-schema";
+import { AppVersionManifestSchema, isSafeApkDownloadUrl } from "./update-schema";
 import { AXIR_APP_VERSION } from "./app-links";
 import { isNewerVersion } from "@/domain/version/semver";
 import { getPWAUpdateAvailable } from "@/app/pwa";
@@ -26,8 +26,12 @@ export const AppUpdatePlugin = registerPlugin<AppUpdatePluginInterface>("AppUpda
       throw new Error("Instalação nativa de APK suportada apenas no ambiente Android.");
     },
     async downloadAndInstall(options: { url: string }) {
+      const cleanUrl = options.url.trim();
+      if (!isSafeApkDownloadUrl(cleanUrl)) {
+        throw new Error("URL de download do APK inválida ou insegura.");
+      }
       if (typeof window !== "undefined") {
-        window.open(options.url, "_blank", "noopener,noreferrer");
+        window.open(cleanUrl, "_blank", "noopener,noreferrer");
       }
       return { downloadId: 0, status: "web_opened" };
     },
@@ -198,6 +202,11 @@ export async function openInstallPermissionSettings(): Promise<void> {
  * Dispara o download e instalação da atualização.
  */
 export async function triggerAppUpdate(manifest: AppVersionManifest): Promise<void> {
+  const cleanApkUrl = manifest.apkUrl.trim();
+  if (!isSafeApkDownloadUrl(cleanApkUrl)) {
+    throw new Error("URL de download do APK inválida ou insegura.");
+  }
+
   if (isNativePlatform()) {
     const canInstall = await canInstallPackages();
     if (!canInstall) {
@@ -208,7 +217,7 @@ export async function triggerAppUpdate(manifest: AppVersionManifest): Promise<vo
     }
 
     // Normaliza URL se for relativa
-    let fullUrl = manifest.apkUrl;
+    let fullUrl = cleanApkUrl;
     if (fullUrl.startsWith("/")) {
       fullUrl = window.location.origin + fullUrl;
     }
@@ -220,7 +229,7 @@ export async function triggerAppUpdate(manifest: AppVersionManifest): Promise<vo
   } else {
     // Na web, abre o link direto para download
     const link = document.createElement("a");
-    link.href = manifest.apkUrl;
+    link.href = cleanApkUrl;
     link.download = "axir-pro.apk";
     link.target = "_blank";
     link.rel = "noopener noreferrer";

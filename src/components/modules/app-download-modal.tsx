@@ -9,6 +9,7 @@ import {
   shouldOfferAndroidApk,
 } from "@/services/native/app-links";
 import { isIOSDevice, isStandaloneDisplay } from "@/services/native/platform";
+import { isSafeApkDownloadUrl } from "@/services/native/update-schema";
 import { cn } from "@/lib/utils";
 import { ApkInstallGuideDialog } from "./apk-install-guide-dialog";
 import { IosPwaInstallDialog } from "./ios-pwa-install-dialog";
@@ -63,9 +64,7 @@ export function AppDownloadModal({
 
   const handleDownloadApk = () => {
     const cleanUrl = apkUrl.trim();
-    const isSafeUrl =
-      /^https:\/\//i.test(cleanUrl) || (cleanUrl.startsWith("/") && !cleanUrl.startsWith("//"));
-    if (!isSafeUrl) {
+    if (!isSafeApkDownloadUrl(cleanUrl)) {
       return;
     }
     const link = document.createElement("a");

@@ -228,4 +228,44 @@ describe("update-checker service", () => {
     expect(result.hasUpdate).toBe(true);
     expect(global.fetch).toHaveBeenCalled();
   });
+
+  it("rejeita apkUrl com esquema javascript:, data:, http externo ou protocol-relative (//)", async () => {
+    const unsafeUrls = [
+      "javascript:alert(1)",
+      "data:text/html,<script>alert(1)</script>",
+      "http://evil.example/axir.apk",
+      "//evil.example/axir.apk",
+    ];
+
+    for (const apkUrl of unsafeUrls) {
+      await expect(
+        triggerAppUpdate({
+          version: "9.9.9",
+          versionCode: 99,
+          releaseDate: "2026-10-21T00:00:00Z",
+          apkUrl,
+          changelog: [],
+        }),
+      ).rejects.toThrow(/URL de download do APK/i);
+    }
+  });
+
+  it("rejeita manifesto remoto no checkAppUpdate quando apkUrl não é HTTPS ou relativo seguro", async () => {
+    vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(false);
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        version: "9.9.9",
+        versionCode: 99,
+        releaseDate: "2026-10-21T00:00:00Z",
+        apkUrl: "javascript:alert(document.cookie)",
+        changelog: [],
+      }),
+    });
+
+    const result = await checkAppUpdate();
+    expect(result.hasUpdate).toBe(false);
+    expect(result.error).toBeTruthy();
+  });
 });

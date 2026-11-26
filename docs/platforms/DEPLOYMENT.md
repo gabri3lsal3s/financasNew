@@ -46,7 +46,7 @@
 ### 3.1 Supabase: criar o projeto e aplicar o schema
 
 1. Crie o projeto em [supabase.com/dashboard](https://supabase.com/dashboard) (anote `Project URL` e `anon key` em **Settings → API**).
-2. Aplique as migrations **na ordem** (0001 → 0145) via `supabase db push` ou console SQL.
+2. Aplique as migrations **na ordem** (0001 → 0158) via `supabase db push` ou console SQL.
 3. **Auth — configurar URLs de redirect** (Settings → Auth → URL Configuration):
    - `Site URL`: `https://axir.com.br`
    - `Redirect URLs`: adicionar `https://axir.com.br/**`, `https://www.axir.com.br/**` e `http://localhost:5173/**` (nunca use wildcards amplos como `*.pages.dev` ou `*.workers.dev` em produção)
@@ -207,7 +207,7 @@ Antes de ativar o agendamento, certifique-se de que as extensões `pg_cron` e `p
 O script operacional [`supabase/quotes-cron.sql`](../supabase/quotes-cron.sql) efetua o agendamento idempotente e o hardening de segurança das tabelas do schema `cron`.
 
 #### Opção A — Automatizada via CLI (Recomendada):
-Gera o SQL com as credenciais reais do seu arquivo `.env`:
+Gera o SQL com as credenciais reais do seu arquivo `.env` (prioriza `CRON_SECRET` dedicado; use `SUPABASE_SERVICE_ROLE_KEY` apenas como fallback legado):
 ```bash
 npm run quotes:cron
 ```
@@ -217,7 +217,7 @@ Copie a saída gerada no terminal, cole no **SQL Editor** do Supabase Dashboard 
 Abra o arquivo [`supabase/quotes-cron.sql`](../supabase/quotes-cron.sql), substitua os parâmetros:
 - `<CRON_SCHEDULE>`: Expressão cron de frequência (ver opções recomendadas abaixo).
 - `<FUNCTION_URL>`: URL da sua Edge Function (ex.: `https://<PROJECT_REF>.supabase.co/functions/v1/quotes`).
-- `<SERVICE_ROLE_KEY>`: Chave secreta de serviço do Supabase (**Settings → API → service_role**; *nunca use a anon key*).
+- `<CRON_SECRET>` *(recomendado; aceita fallback legado `<SERVICE_ROLE_KEY>`)*: Segredo dedicado do cron (`supabase secrets set CRON_SECRET=...`; *nunca use a anon key*).
 
 #### Expressões Cron Recomendadas:
 - **`0 11,14,17,20 * * 1-5` (Pregão B3 em Dias Úteis — Recomendada):**

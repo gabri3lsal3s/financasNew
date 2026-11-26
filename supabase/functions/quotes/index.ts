@@ -2039,13 +2039,19 @@ Deno.serve(async (req) => {
 
         const nonFxMissing = missing.filter((t) => !isFxUsdBrlTicker(t));
         const persistableSet = new Set<string>(["USDBRL=X"]);
-        for (const tickerChunk of chunkArray(nonFxMissing, 150)) {
-          const { data: validAssets } = await supabase
-            .from("portfolio_assets")
-            .select("ticker")
-            .in("ticker", tickerChunk);
-          for (const a of validAssets ?? []) {
-            persistableSet.add(a.ticker.trim().toUpperCase());
+        if (isServiceRole || callerUserId) {
+          for (const tickerChunk of chunkArray(nonFxMissing, 150)) {
+            let assetQuery = supabase
+              .from("portfolio_assets")
+              .select("ticker")
+              .in("ticker", tickerChunk);
+            if (!isServiceRole && callerUserId) {
+              assetQuery = assetQuery.eq("user_id", callerUserId);
+            }
+            const { data: validAssets } = await assetQuery;
+            for (const a of validAssets ?? []) {
+              persistableSet.add(a.ticker.trim().toUpperCase());
+            }
           }
         }
 
@@ -2166,13 +2172,16 @@ Deno.serve(async (req) => {
     if (!isServiceRole) {
       const nonFxTickers = tickers.filter((t) => !isFxUsdBrlTicker(t));
       const knownSet = new Set<string>(["USDBRL=X"]);
-      for (const tickerChunk of chunkArray(nonFxTickers, 150)) {
-        const { data: validAssets } = await supabase
-          .from("portfolio_assets")
-          .select("ticker")
-          .in("ticker", tickerChunk);
-        for (const a of validAssets ?? []) {
-          knownSet.add(a.ticker.trim().toUpperCase());
+      if (callerUserId) {
+        for (const tickerChunk of chunkArray(nonFxTickers, 150)) {
+          const { data: validAssets } = await supabase
+            .from("portfolio_assets")
+            .select("ticker")
+            .eq("user_id", callerUserId)
+            .in("ticker", tickerChunk);
+          for (const a of validAssets ?? []) {
+            knownSet.add(a.ticker.trim().toUpperCase());
+          }
         }
       }
       persistableSet = knownSet;

@@ -35,6 +35,11 @@ const RequireAdminSession = lazy(() =>
     default: m.RequireAdminSession,
   })),
 );
+const RequireSuperAdmin = lazy(() =>
+  import("@/components/routing/require-super-admin").then((m) => ({
+    default: m.RequireSuperAdmin,
+  })),
+);
 const RequireFeature = lazy(() =>
   import("@/components/routing/require-feature").then((m) => ({ default: m.RequireFeature })),
 );
@@ -373,7 +378,9 @@ export function AppRouter() {
               <Route path="/admin/convites" element={<AdminInvitesPage />} />
               <Route path="/admin/backups" element={<Navigate to="/admin/seguranca" replace />} />
               <Route path="/admin/seguranca" element={<AdminSecurityPage />} />
-              <Route path="/admin/laboratorio-forense" element={<AdminForensicsPage />} />
+              <Route element={<RequireSuperAdmin />}>
+                <Route path="/admin/laboratorio-forense" element={<AdminForensicsPage />} />
+              </Route>
               <Route path="/admin/configuracoes" element={<AdminSettingsPage />} />
             </Route>
           </Route>

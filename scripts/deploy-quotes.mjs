@@ -61,17 +61,23 @@ function deploy() {
   });
   console.log(`[deploy] pronto. Teste manual:`);
   console.log(`  curl -X POST '${functionBaseUrl()}/quotes' \\`);
-  console.log(`    -H "Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>"`);
+  console.log(`    -H "Authorization: Bearer <CRON_SECRET>"`);
   console.log(`[deploy] proximo passo: npm run quotes:cron`);
 }
 
 function cron() {
   const functionUrl = `${functionBaseUrl()}/quotes`;
-  const serviceRole = env.SUPABASE_SERVICE_ROLE_KEY || "";
+  const cronSecret = env.CRON_SECRET || "";
+  const cronToken = cronSecret || env.SUPABASE_SERVICE_ROLE_KEY || "";
 
-  if (!serviceRole) {
-    console.error("[ERRO] SUPABASE_SERVICE_ROLE_KEY ausente no .env (necessario para o cron).");
+  if (!cronToken) {
+    console.error("[ERRO] CRON_SECRET (ou SUPABASE_SERVICE_ROLE_KEY como fallback legado) ausente no .env.");
     process.exit(1);
+  }
+  if (!cronSecret && env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.error(
+      "[AVISO] Usando SUPABASE_SERVICE_ROLE_KEY como fallback legado. Configure CRON_SECRET no .env e nos Secrets do Supabase para menor privilégio.",
+    );
   }
 
   const sql = `-- ============================================================================
@@ -105,7 +111,7 @@ select cron.schedule(
       url := '${functionUrl}',
       headers := jsonb_build_object(
         'Content-Type', 'application/json',
-        'Authorization', 'Bearer ${serviceRole}'
+        'Authorization', 'Bearer ${cronToken}'
       ),
       body := jsonb_build_object('action', 'eod_close'),
       timeout_milliseconds := 60000
@@ -122,7 +128,7 @@ select cron.schedule(
       url := '${functionUrl}',
       headers := jsonb_build_object(
         'Content-Type', 'application/json',
-        'Authorization', 'Bearer ${serviceRole}'
+        'Authorization', 'Bearer ${cronToken}'
       ),
       body := jsonb_build_object('action', 'close_month_global'),
       timeout_milliseconds := 60000
@@ -139,7 +145,7 @@ select cron.schedule(
       url := '${functionUrl}',
       headers := jsonb_build_object(
         'Content-Type', 'application/json',
-        'Authorization', 'Bearer ${serviceRole}'
+        'Authorization', 'Bearer ${cronToken}'
       ),
       body := jsonb_build_object('action', 'sync_corporate_dividends'),
       timeout_milliseconds := 60000
@@ -156,7 +162,7 @@ select cron.schedule(
       url := '${functionUrl}',
       headers := jsonb_build_object(
         'Content-Type', 'application/json',
-        'Authorization', 'Bearer ${serviceRole}'
+        'Authorization', 'Bearer ${cronToken}'
       ),
       body := jsonb_build_object('action', 'process_user_dividends'),
       timeout_milliseconds := 60000

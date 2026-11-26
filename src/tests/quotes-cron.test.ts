@@ -46,11 +46,12 @@ describe("Tarefa 2.4 — Auditoria de Quotas e Estrutura do Cron de Cotações",
     expect(content).toMatch(/cron\.schedule/i);
   });
 
-  it("efetua chamada HTTP segura via pg_net com service role e json", () => {
+  it("efetua chamada HTTP segura via pg_net com segredo dedicado de cron e json", () => {
     const content = readFileSync(cronSqlPath, "utf8");
     expect(content).toMatch(/net\.http_post/);
     expect(content).toMatch(/Authorization/i);
-    expect(content).toMatch(/Bearer\s+<SERVICE_ROLE_KEY>/i);
+    expect(content).toMatch(/Bearer\s+<CRON_SECRET>/i);
+    expect(content).not.toMatch(/Bearer\s+<SERVICE_ROLE_KEY>/i);
     expect(content).toMatch(/Content-Type/i);
     expect(content).toMatch(/application\/json/i);
   });

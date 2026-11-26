@@ -320,7 +320,7 @@ Deno.serve(async (req: Request) => {
         return jsonResponse(req, { error: "ID de usuário é obrigatório." }, 400);
       }
 
-      const { error: rpcError } = await adminClient.rpc("admin_reset_user_mfa", {
+      const { error: rpcError } = await userClient.rpc("admin_reset_user_mfa", {
         target_user_id: targetUserId,
       });
 

@@ -2,28 +2,14 @@ import { useState } from "react";
 import { AlertCircle, ChevronLeft, ChevronRight, Download, History } from "lucide-react";
 import { Badge, Button, DatePicker, EmptyState, SearchInput, Select, SkeletonList } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
+import { toCsv } from "@/domain/export/csv";
 import { formatDateTimeBR } from "@/lib/date";
+import { downloadCsv, downloadJson } from "@/services/export-actions";
 import { pushToast } from "@/services/toast";
 import { useAdminAuditLogs } from "@/state";
 import type { AuditEvent } from "@/types";
 
 const PAGE_SIZE = 50;
-
-function downloadTextFile(filename: string, content: string, mimeType: string) {
-  const blob = new Blob([content], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  URL.revokeObjectURL(url);
-}
-
-function toCsvRow(values: string[]): string {
-  return values.map((v) => `"${v.replace(/"/g, '""')}"`).join(",");
-}
 
 export function AdminSecurityPage() {
   const [actionFilter, setActionFilter] = useState("");
@@ -46,9 +32,9 @@ export function AdminSecurityPage() {
 
   const handleExportCsv = () => {
     if (logs.length === 0) return;
-    const header = toCsvRow(["id", "created_at", "action", "entity_type", "entity_id", "user_id", "payload"]);
-    const rows = logs.map((log) =>
-      toCsvRow([
+    const csvContent = toCsv(
+      ["id", "created_at", "action", "entity_type", "entity_id", "user_id", "payload"],
+      logs.map((log) => [
         log.id,
         log.created_at,
         log.action,
@@ -58,18 +44,20 @@ export function AdminSecurityPage() {
         JSON.stringify(log.payload ?? {}),
       ]),
     );
-    downloadTextFile(`auditoria-${new Date().toISOString().slice(0, 10)}.csv`, [header, ...rows].join("\n"), "text/csv;charset=utf-8");
-    pushToast({ title: "CSV exportado", description: `${logs.length} registros exportados.`, variant: "success" });
+    void downloadCsv(`auditoria-${new Date().toISOString().slice(0, 10)}.csv`, csvContent, {
+      silentToast: true,
+    }).then(() => {
+      pushToast({ title: "CSV exportado", description: `${logs.length} registros exportados.`, variant: "success" });
+    });
   };
 
   const handleExportJson = () => {
     if (logs.length === 0) return;
-    downloadTextFile(
-      `auditoria-${new Date().toISOString().slice(0, 10)}.json`,
-      JSON.stringify(logs, null, 2),
-      "application/json;charset=utf-8",
-    );
-    pushToast({ title: "JSON exportado", description: `${logs.length} registros exportados.`, variant: "success" });
+    void downloadJson(`auditoria-${new Date().toISOString().slice(0, 10)}.json`, logs, {
+      silentToast: true,
+    }).then(() => {
+      pushToast({ title: "JSON exportado", description: `${logs.length} registros exportados.`, variant: "success" });
+    });
   };
 
   return (

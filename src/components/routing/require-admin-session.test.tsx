@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { RequireAdminSession } from "./require-admin-session";
+import { RequireSuperAdmin } from "./require-super-admin";
 
 const mockUseAuth = vi.fn();
 const mockUseUserAccess = vi.fn();
@@ -207,5 +208,115 @@ describe("RequireAdminSession Guard", () => {
 
     expect(screen.queryByText("Dashboard Admin Protegido")).not.toBeInTheDocument();
     expect(screen.getByText("Tela de Desafio TOTP")).toBeInTheDocument();
+  });
+});
+
+describe("RequireSuperAdmin Guard", () => {
+  it("exibe LoadingScreen enquanto valida credenciais de superadministrador", () => {
+    mockUseAuth.mockReturnValue({
+      session: { user: { id: "u-1" } },
+      loading: true,
+    });
+    mockUseUserAccess.mockReturnValue({
+      isLoading: true,
+      isAdmin: false,
+      isSuperAdmin: false,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/admin/laboratorio-forense"]}>
+        <Routes>
+          <Route element={<RequireSuperAdmin />}>
+            <Route path="/admin/laboratorio-forense" element={<div>Laboratório Forense</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText(/Verificando nível de acesso de superadmin/i)).toBeInTheDocument();
+    expect(screen.queryByText("Laboratório Forense")).not.toBeInTheDocument();
+  });
+
+  it("redireciona administrador comum (não superadmin) para /admin/dashboard", () => {
+    mockUseAuth.mockReturnValue({
+      session: { user: { id: "u-admin" } },
+      loading: false,
+      mfaRequired: true,
+      mfaVerified: true,
+    });
+    mockUseUserAccess.mockReturnValue({
+      isLoading: false,
+      isAdmin: true,
+      isSuperAdmin: false,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/admin/laboratorio-forense"]}>
+        <Routes>
+          <Route element={<RequireSuperAdmin />}>
+            <Route path="/admin/laboratorio-forense" element={<div>Laboratório Forense</div>} />
+          </Route>
+          <Route path="/admin/dashboard" element={<div>Dashboard Admin</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByText("Laboratório Forense")).not.toBeInTheDocument();
+    expect(screen.getByText("Dashboard Admin")).toBeInTheDocument();
+  });
+
+  it("redireciona para /entrar?desafio=totp quando superadmin ainda não concluiu AAL2", () => {
+    mockUseAuth.mockReturnValue({
+      session: { user: { id: "u-super" } },
+      loading: false,
+      mfaRequired: true,
+      mfaVerified: false,
+    });
+    mockUseUserAccess.mockReturnValue({
+      isLoading: false,
+      isAdmin: true,
+      isSuperAdmin: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/admin/laboratorio-forense"]}>
+        <Routes>
+          <Route element={<RequireSuperAdmin />}>
+            <Route path="/admin/laboratorio-forense" element={<div>Laboratório Forense</div>} />
+          </Route>
+          <Route path="/entrar" element={<div>Tela de Desafio TOTP</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByText("Laboratório Forense")).not.toBeInTheDocument();
+    expect(screen.getByText("Tela de Desafio TOTP")).toBeInTheDocument();
+  });
+
+  it("libera acesso para superadministrador autenticado com MFA verificado", () => {
+    mockUseAuth.mockReturnValue({
+      session: { user: { id: "u-super" } },
+      loading: false,
+      mfaRequired: true,
+      mfaVerified: true,
+    });
+    mockUseUserAccess.mockReturnValue({
+      isLoading: false,
+      isAdmin: true,
+      isSuperAdmin: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/admin/laboratorio-forense"]}>
+        <Routes>
+          <Route element={<RequireSuperAdmin />}>
+            <Route path="/admin/laboratorio-forense" element={<div>Laboratório Forense</div>} />
+          </Route>
+          <Route path="/admin/dashboard" element={<div>Dashboard Admin</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("Laboratório Forense")).toBeInTheDocument();
   });
 });
