@@ -83,13 +83,18 @@ export async function decryptTokenPayload(
     throw new Error("Envelope criptográfico inválido.");
   }
 
-  const [, , ivB64, cipherB64] = parts;
+  const [, keyVersion, ivB64, cipherB64] = parts;
   const iv = fromBase64(ivB64);
   const cipherBytes = fromBase64(cipherB64);
 
-  const candidates = [currentKeyBase64];
-  if (previousKeyBase64 && previousKeyBase64.trim().length > 0) {
-    candidates.push(previousKeyBase64);
+  const candidates: string[] = [];
+  if (keyVersion === "previous" && previousKeyBase64?.trim()) {
+    candidates.push(previousKeyBase64, currentKeyBase64);
+  } else {
+    candidates.push(currentKeyBase64);
+    if (previousKeyBase64?.trim()) {
+      candidates.push(previousKeyBase64);
+    }
   }
 
   for (const candidate of candidates) {

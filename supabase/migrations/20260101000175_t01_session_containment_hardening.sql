@@ -561,3 +561,12 @@ $$;
 
 revoke all on function public.admin_revoke_user_sessions(uuid) from public, anon;
 grant execute on function public.admin_revoke_user_sessions(uuid) to authenticated, service_role;
+
+revoke all on function public.register_device_session(text, text, text, text, text) from public, anon;
+grant execute on function public.register_device_session(text, text, text, text, text) to authenticated;
+
+revoke all on function public.revoke_device_session(uuid) from public, anon;
+grant execute on function public.revoke_device_session(uuid) to authenticated;
+
+revoke all on function public.revoke_other_device_sessions(text) from public, anon;
+grant execute on function public.revoke_other_device_sessions(text) to authenticated;

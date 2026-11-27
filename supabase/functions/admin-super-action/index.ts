@@ -99,23 +99,12 @@ Deno.serve(async (req: Request) => {
         403,
       );
     }
-    try {
-      const token = authHeader.replace(/^Bearer\s+/i, "").trim();
-      const payloadBase64 = token.split(".")[1] ?? "";
-      const normalized = payloadBase64.replace(/-/g, "+").replace(/_/g, "/");
-      const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
-      const jwtPayload = JSON.parse(atob(padded));
-      if (jwtPayload?.aal !== "aal2") {
-        return jsonResponse(
-          req,
-          { error: "Verificação de segundo fator (MFA/2FA AAL2) obrigatória para ações de Superadmin." },
-          403,
-        );
-      }
-    } catch {
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+    const { data: aalData, error: aalError } = await userClient.auth.mfa.getAuthenticatorAssuranceLevel(token);
+    if (aalError || aalData?.currentLevel !== "aal2") {
       return jsonResponse(
         req,
-        { error: "Não foi possível validar o nível de segurança MFA (AAL2) do token." },
+        { error: "Verificação de segundo fator (MFA/2FA AAL2) obrigatória para ações de Superadmin." },
         403,
       );
     }

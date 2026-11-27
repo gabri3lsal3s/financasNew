@@ -1111,6 +1111,17 @@ export class SessionCoordinatorDO extends DurableObject<CoordinatorEnv> {
     if (!validated.ok) return false;
 
     const targetRef = input.targetAccountRef ?? validated.acct.account_ref;
+    const targetRows = this.ctx.storage.sql
+      .exec<AccountRow>("SELECT * FROM installation_accounts WHERE account_ref = ?", targetRef)
+      .toArray();
+    const target = targetRows[0];
+    if (!target) return false;
+
+    const canForget =
+      target.user_id === validated.acct.user_id ||
+      (validated.acct.mode === "personal" && target.mode === "personal");
+    if (!canForget) return false;
+
     this.ctx.storage.sql.exec("DELETE FROM tab_contexts WHERE account_ref = ?", targetRef);
     this.ctx.storage.sql.exec("DELETE FROM open_tab_intents WHERE account_ref = ?", targetRef);
     this.ctx.storage.sql.exec("DELETE FROM installation_accounts WHERE account_ref = ?", targetRef);
