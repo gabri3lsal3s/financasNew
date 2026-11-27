@@ -48,6 +48,21 @@ vi.mock("@/data/session-transport", async () => {
   };
 });
 
+vi.mock("@/data/client", () => ({
+  getSupabase: () => ({
+    auth: {
+      getSession: vi.fn().mockResolvedValue({
+        data: {
+          session: {
+            access_token: "tok-1234567890",
+            refresh_token: "ref-1234567890",
+          },
+        },
+      }),
+    },
+  }),
+}));
+
 vi.mock("@/services/native/device-info", () => ({
   markPendingExplicitDeviceRegistration: vi.fn(),
 }));
@@ -224,10 +239,10 @@ describe("useLoginForm", () => {
 
       expect(mockSignInWithEmail).toHaveBeenCalledWith("usuario@exemplo.com", "SenhaSegura123!", undefined);
       expect(mockedPostSessionOperation).toHaveBeenCalledWith("login", {
-        grant: "password",
+        grant: "session-sync",
         mode: "personal",
-        email: "usuario@exemplo.com",
-        password: "SenhaSegura123!",
+        accessToken: "tok-1234567890",
+        refreshToken: "ref-1234567890",
       });
       expect(getSessionContext().contextId).toBe("ctx-password");
       expect(result.current.error).toBeNull();
@@ -254,10 +269,10 @@ describe("useLoginForm", () => {
 
       expect(mockSignInWithEmail).toHaveBeenCalledWith("shared@exemplo.com", "SenhaShared123!", undefined);
       expect(mockedPostSessionOperation).toHaveBeenCalledWith("login", {
-        grant: "password",
+        grant: "session-sync",
         mode: "shared",
-        email: "shared@exemplo.com",
-        password: "SenhaShared123!",
+        accessToken: "tok-1234567890",
+        refreshToken: "ref-1234567890",
       });
       expect(result.current.error).toBeNull();
       expect(mockNavigate).toHaveBeenCalledWith("/transacoes", { replace: true });

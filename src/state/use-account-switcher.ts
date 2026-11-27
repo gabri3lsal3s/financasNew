@@ -203,7 +203,7 @@ export function useAccountSwitcher(): UseAccountSwitcherReturn {
     async (options?: { signal?: AbortSignal }): Promise<AccountSwitcherResult<{ accounts: AccountSummary[] }>> => {
       const captured = captureContext();
       let activeContextId = captured.contextId;
-      if (!activeContextId) {
+      if (!activeContextId || getSessionContext().status === "mfa_required") {
         const synced = await syncCurrentSupabaseSessionToBff();
         if (!synced?.contextId) {
           setAccounts([]);
@@ -218,11 +218,35 @@ export function useAccountSwitcher(): UseAccountSwitcherReturn {
       setError(null);
       setErrorCode(null);
       try {
-        const response = await postSessionOperation<{ accounts: AccountSummary[] } | AccountSummary[]>(
-          "accounts",
-          {},
-          { signal: options?.signal },
-        );
+        let response: { accounts: AccountSummary[] } | AccountSummary[];
+        try {
+          response = await postSessionOperation<{ accounts: AccountSummary[] } | AccountSummary[]>(
+            "accounts",
+            {},
+            { signal: options?.signal },
+          );
+        } catch (firstErr) {
+          const mappedFirst = mapSessionError(firstErr);
+          if (
+            mappedFirst.code === "unauthorized" ||
+            mappedFirst.code === "step_up_required" ||
+            mappedFirst.code === "context_stale"
+          ) {
+            const resynced = await syncCurrentSupabaseSessionToBff();
+            if (resynced?.contextId) {
+              activeContextId = resynced.contextId;
+              response = await postSessionOperation<{ accounts: AccountSummary[] } | AccountSummary[]>(
+                "accounts",
+                {},
+                { signal: options?.signal },
+              );
+            } else {
+              throw firstErr;
+            }
+          } else {
+            throw firstErr;
+          }
+        }
         const visible = filterVisibleAccounts(response);
         if (!isContextCurrent(captured) && getSessionContext().contextId !== activeContextId) {
           return {
@@ -255,12 +279,10 @@ export function useAccountSwitcher(): UseAccountSwitcherReturn {
       setErrorCode(null);
       try {
         const payload: Record<string, unknown> = {
-          accountRef: params.accountRef,
+          targetAccountRef: params.accountRef,
           expectedGeneration: params.expectedGeneration,
+          localLockSatisfied: Boolean(params.localLockProof),
         };
-        if (params.localLockProof) {
-          payload.localLockProof = params.localLockProof;
-        }
         const response = await postSessionOperation<PublicSessionContext | { context: PublicSessionContext }>(
           "switch",
           payload,
@@ -306,14 +328,8 @@ export function useAccountSwitcher(): UseAccountSwitcherReturn {
       setErrorCode(null);
       try {
         const payload: Record<string, unknown> = {
-          accountRef: params.accountRef,
+          targetAccountRef: params.accountRef,
         };
-        if (params.expectedGeneration !== undefined) {
-          payload.expectedGeneration = params.expectedGeneration;
-        }
-        if (params.targetPath) {
-          payload.targetPath = params.targetPath;
-        }
         const intent = await postSessionOperation<OpenTabIntentResult>("open-tab", payload, {
           signal: params.signal,
         });
@@ -406,7 +422,7 @@ export function useAccountSwitcher(): UseAccountSwitcherReturn {
       try {
         await postSessionOperation<Record<string, unknown>>(
           "forget",
-          { accountRef: params.accountRef },
+          { targetAccountRef: params.accountRef },
           { signal: params.signal },
         );
         const activeRef = getSessionContext().accountRef;

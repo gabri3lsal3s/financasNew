@@ -160,7 +160,7 @@ describe("useAccountSwitcher", () => {
 
     expect(mockedPostSessionOperation).toHaveBeenCalledWith(
       "switch",
-      { accountRef: "acc-b", expectedGeneration: 3 },
+      { targetAccountRef: "acc-b", expectedGeneration: 3, localLockSatisfied: false },
       { signal: undefined },
     );
     expect(getSessionContext().accountRef).toBe("acc-b");
@@ -215,7 +215,7 @@ describe("useAccountSwitcher", () => {
 
     expect(mockedPostSessionOperation).toHaveBeenCalledWith(
       "open-tab",
-      { accountRef: "acc-b", expectedGeneration: 3 },
+      { targetAccountRef: "acc-b" },
       { signal: undefined },
     );
     expect(getSessionContext().accountRef).toBe("acc-a");

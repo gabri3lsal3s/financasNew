@@ -242,25 +242,7 @@ export function useLoginForm() {
       } catch {
         // Segue login se MFA não configurado
       }
-      const syncedCtx = await syncCurrentSupabaseSessionToBff(isSharedDevice ? "shared" : "personal");
-      if (!syncedCtx) {
-        try {
-          const bffResponse = await postSessionOperation<
-            PublicSessionContext | { context: PublicSessionContext }
-          >("login", {
-            grant: "password",
-            mode: isSharedDevice ? "shared" : "personal",
-            email: email.trim(),
-            password,
-          });
-          const bffContext = extractSessionContext(bffResponse);
-          if (bffContext) {
-            setSessionContext(bffContext);
-          }
-        } catch {
-          // Best-effort: mantém o login Supabase caso o BFF ainda não esteja habilitado no host local
-        }
-      }
+      await syncCurrentSupabaseSessionToBff(isSharedDevice ? "shared" : "personal");
       markPendingExplicitDeviceRegistration();
       triggerSensory("success");
       setConsecutiveFailures(0);
