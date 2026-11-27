@@ -211,8 +211,8 @@ export function LandingHeader({ onScrollStateChange }: { onScrollStateChange?: (
       </div>
 
       <div
-        className="absolute bottom-0 left-0 h-[2px] bg-primary/80 transition-all duration-75 ease-out pointer-events-none"
-        style={{ width: `${scrollProgress}%` }}
+        className="absolute bottom-0 left-0 h-[2px] w-full origin-left bg-primary/80 transition-transform duration-75 ease-out pointer-events-none"
+        style={{ transform: `scaleX(${scrollProgress / 100})` }}
         role="progressbar"
         aria-label="Progresso de leitura da página"
         aria-valuenow={Math.round(scrollProgress)}

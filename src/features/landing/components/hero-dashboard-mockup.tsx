@@ -208,9 +208,9 @@ export function HeroDashboardMockup() {
               </span>
             </div>
             <div className="w-full h-3 sm:h-4 rounded-full overflow-hidden bg-muted p-0.5 flex gap-1 border border-border/60">
-              <div className="h-full rounded-full bg-cat-2 transition-all" style={{ width: "35%" }} />
-              <div className="h-full rounded-full bg-cat-1 transition-all" style={{ width: "20%" }} />
-              <div className="h-full rounded-full bg-cat-3 transition-all" style={{ width: "14%" }} />
+              <div className="h-full rounded-full bg-cat-2" style={{ width: "35%" }} />
+              <div className="h-full rounded-full bg-cat-1" style={{ width: "20%" }} />
+              <div className="h-full rounded-full bg-cat-3" style={{ width: "14%" }} />
             </div>
             <div className={cn("mt-3 sm:mt-4 flex flex-wrap gap-3 sm:gap-5 text-xs sm:text-sm text-muted-foreground", maskClass)}>
               <span className="inline-flex items-center gap-1.5 sm:gap-2">
