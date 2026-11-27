@@ -57,6 +57,23 @@ export function SubscriptionTab() {
   const hasActiveRecurringCard = Boolean(
     (subscription.hasCardRegistered || subscription.hasAutoRenew) && !subscription.cancelAtPeriodEnd,
   );
+  const isTrialScheduled =
+    subscription.billingPhase === "trial_scheduled" ||
+    (Boolean(subscription.isTrial) && Boolean(subscription.hasCardRegistered) && !subscription.billingStartAt);
+  const canSwitchTrialToAnnual =
+    isTrialScheduled &&
+    hasActiveRecurringCard &&
+    subscription.scheduledPlanId !== "pro_annual" &&
+    subscription.plan !== "annual";
+  const trialFirstChargeSource = subscription.scheduledFirstChargeAt || subscription.trialEndsAt;
+  const trialFirstChargeFormatted = trialFirstChargeSource
+    ? new Date(trialFirstChargeSource).toLocaleDateString("pt-BR", {
+        timeZone: "America/Sao_Paulo",
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      })
+    : null;
 
   const handleConfirmScheduleAnnual = async () => {
     try {
@@ -104,10 +121,12 @@ export function SubscriptionTab() {
       <PaymentMethodCard
         subscription={subscription}
         isCancelingPlanChange={cancelScheduledPlanMutation.isPending}
+        canSwitchTrialToAnnual={canSwitchTrialToAnnual}
         onOpenUpdateCard={() => setUpdateCardOpen(true)}
         onCancelScheduledPlanChange={() => {
           void cancelScheduledPlanMutation.mutateAsync();
         }}
+        onSwitchTrialToAnnual={() => setSwitchToAnnualOpen(true)}
       />
 
       {subscription.isPro &&
@@ -151,7 +170,7 @@ export function SubscriptionTab() {
         step={cancelStep}
         reason={cancelReason}
         isWithinGuarantee={isWithinGuarantee}
-        isTrialScheduled={subscription.billingPhase === "trial_scheduled" || (Boolean(subscription.isTrial) && Boolean(subscription.hasCardRegistered) && !subscription.billingStartAt)}
+        isTrialScheduled={isTrialScheduled}
         trialEndsFormatted={
           subscription.trialEndsAt
             ? new Date(subscription.trialEndsAt).toLocaleDateString("pt-BR", {
@@ -177,8 +196,9 @@ export function SubscriptionTab() {
       <SwitchToAnnualModal
         open={switchToAnnualOpen}
         hasActiveRecurringCard={hasActiveRecurringCard}
+        isTrialScheduled={isTrialScheduled}
         cardLast4={subscription.cardLast4 ?? null}
-        effectiveDateFormatted={currentPeriodFormatted}
+        effectiveDateFormatted={isTrialScheduled ? trialFirstChargeFormatted : currentPeriodFormatted}
         isPending={schedulePlanChangeMutation.isPending}
         onClose={() => setSwitchToAnnualOpen(false)}
         onConfirmScheduleCard={() => {

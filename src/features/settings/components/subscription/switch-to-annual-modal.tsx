@@ -4,6 +4,7 @@ import { Badge, Button, Modal, ModalFooter, MoneyText } from "@/components/ui";
 export interface SwitchToAnnualModalProps {
   open: boolean;
   hasActiveRecurringCard: boolean;
+  isTrialScheduled?: boolean;
   cardLast4: string | null;
   effectiveDateFormatted: string | null;
   isPending: boolean;
@@ -16,6 +17,7 @@ export interface SwitchToAnnualModalProps {
 export function SwitchToAnnualModal({
   open,
   hasActiveRecurringCard,
+  isTrialScheduled = false,
   cardLast4,
   effectiveDateFormatted,
   isPending,
@@ -32,7 +34,11 @@ export function SwitchToAnnualModal({
       }}
       size="md"
       title="Mudar para o Plano Pro Anual"
-      description="Economize 40% sem perder nenhum dia do período que você já pagou."
+      description={
+        isTrialScheduled
+          ? "Economize 40% mantendo seus 30 dias de teste gratuitos intactos."
+          : "Economize 40% sem perder nenhum dia do período que você já pagou."
+      }
       footer={
         <ModalFooter borderless>
           <Button
@@ -59,7 +65,9 @@ export function SwitchToAnnualModal({
               ) : (
                 <>
                   <CalendarClock className="size-4" aria-hidden="true" />
-                  <span>Agendar no Cartão</span>
+                  <span>
+                    {isTrialScheduled ? "Mudar Agendamento para Anual" : "Agendar no Cartão"}
+                  </span>
                 </>
               )}
             </Button>
@@ -104,10 +112,21 @@ export function SwitchToAnnualModal({
                 </span>
               </div>
               <p>
-                <strong className="text-foreground">Cobrança hoje: R$ 0,00.</strong> Seu plano atual continua normalmente até{" "}
-                <strong className="text-foreground">{effectiveDateFormatted || "o fim do período vigente"}</strong>.
-                Somente nessa data será cobrado o valor anual de{" "}
-                <strong className="text-foreground">R$ 143,88</strong> no cartão cadastrado, sem precisar digitar seus dados novamente.
+                {isTrialScheduled ? (
+                  <>
+                    <strong className="text-foreground">Cobrança hoje: R$ 0,00.</strong> Seu período de teste continua normalmente até{" "}
+                    <strong className="text-foreground">{effectiveDateFormatted || "o fim do período de teste"}</strong>.
+                    Somente nessa data será cobrado o valor anual de{" "}
+                    <strong className="text-foreground">R$ 143,88</strong> no cartão cadastrado, sem precisar digitar seus dados novamente.
+                  </>
+                ) : (
+                  <>
+                    <strong className="text-foreground">Cobrança hoje: R$ 0,00.</strong> Seu plano atual continua normalmente até{" "}
+                    <strong className="text-foreground">{effectiveDateFormatted || "o fim do período vigente"}</strong>.
+                    Somente nessa data será cobrado o valor anual de{" "}
+                    <strong className="text-foreground">R$ 143,88</strong> no cartão cadastrado, sem precisar digitar seus dados novamente.
+                  </>
+                )}
               </p>
             </div>
 
@@ -117,7 +136,9 @@ export function SwitchToAnnualModal({
                   Prefere pagar à vista via Pix?
                 </span>
                 <span className="text-[11px] text-muted-foreground block">
-                  Soma +12 meses ao seu saldo atual e cancela automaticamente a cobrança mensal no cartão.
+                  {isTrialScheduled
+                    ? "Ativa 12 meses via Pix e cancela automaticamente a cobrança mensal agendada no cartão."
+                    : "Soma +12 meses ao seu saldo atual e cancela automaticamente a cobrança mensal no cartão."}
                 </span>
               </div>
               <Button
@@ -170,7 +191,9 @@ export function SwitchToAnnualModal({
         <div className="p-3 rounded-xl bg-surface-raised/60 flex items-center gap-2 text-xs text-muted-foreground">
           <ShieldCheck className="size-4 text-positive-strong shrink-0" aria-hidden="true" />
           <span>
-            Você pode cancelar a mudança agendada em 1 clique antes da data de renovação.
+            {isTrialScheduled
+              ? "Você pode cancelar o agendamento em 1 clique antes da data da primeira cobrança."
+              : "Você pode cancelar a mudança agendada em 1 clique antes da data de renovação."}
           </span>
         </div>
       </div>

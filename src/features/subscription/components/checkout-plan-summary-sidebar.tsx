@@ -18,6 +18,10 @@ export function CheckoutPlanSummarySidebar({
   onSelectPlan,
 }: CheckoutPlanSummarySidebarProps) {
   const planConfig = PLAN_CONFIGS[plan];
+  const isDeferred = billingSchedule.isDelayedByTrial || Boolean(billingSchedule.isDelayedByActivePeriod);
+  const firstBillingFormatted = billingSchedule.firstBillingDate.toLocaleDateString("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+  });
 
   return (
     <aside className="lg:col-span-5 space-y-6 lg:sticky lg:top-24">
@@ -88,17 +92,21 @@ export function CheckoutPlanSummarySidebar({
         <div className="mt-3 flex items-end gap-2 flex-wrap">
           <span className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground whitespace-nowrap">
             <MoneyText
-              cents={billingSchedule.isDelayedByTrial ? 0 : planConfig.monthlyEquivalentCents}
+              cents={isDeferred ? 0 : planConfig.monthlyEquivalentCents}
               variant="hero"
               tone="default"
               deemphasizeCents={false}
               className="text-3xl sm:text-4xl font-extrabold"
             />
-            {!billingSchedule.isDelayedByTrial ? <span>/mês</span> : null}
+            {!isDeferred ? <span>/mês</span> : null}
           </span>
           {billingSchedule.isDelayedByTrial ? (
             <span className="text-sm font-semibold text-positive-strong mb-1">
               hoje ({billingSchedule.daysUntilFirstCharge} dias de teste)
+            </span>
+          ) : billingSchedule.isDelayedByActivePeriod ? (
+            <span className="text-sm font-semibold text-positive-strong mb-1">
+              hoje (vigência atual até {firstBillingFormatted})
             </span>
           ) : null}
         </div>
@@ -111,10 +119,18 @@ export function CheckoutPlanSummarySidebar({
             </strong>{" "}
             em{" "}
             <strong className="text-foreground">
-              {billingSchedule.firstBillingDate.toLocaleDateString("pt-BR", {
-                timeZone: "America/Sao_Paulo",
-              })}
+              {firstBillingFormatted}
             </strong>
+            . Cancele antes dessa data com 1 clique para não ser cobrado.
+          </p>
+        ) : billingSchedule.isDelayedByActivePeriod ? (
+          <p className="mt-2 text-xs sm:text-sm text-muted-foreground leading-relaxed">
+            Seu período atual continua ativo normalmente. Nenhuma cobrança será feita hoje — a cobrança de{" "}
+            <strong className="text-foreground">
+              <MoneyText cents={planConfig.priceCents} variant="caption" tone="default" className="font-bold" />
+            </strong>{" "}
+            ocorrerá apenas em{" "}
+            <strong className="text-foreground">{firstBillingFormatted}</strong>
             . Cancele antes dessa data com 1 clique para não ser cobrado.
           </p>
         ) : (

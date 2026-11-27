@@ -11,14 +11,25 @@ export interface TrialResidualResult {
 }
 
 export interface BillingScheduleResult {
-  /** Valor monetário a ser cobrado HOJE em centavos (0 se estiver em trial ativo). */
+  /** Valor monetário a ser cobrado HOJE em centavos (0 se estiver em trial ativo ou vigência paga ativa). */
   chargeTodayCents: number;
   /** Data prevista para a primeira cobrança efetiva no cartão. */
   firstBillingDate: Date;
   /** Se a primeira cobrança foi diferida para o término do trial. */
   isDelayedByTrial: boolean;
+  /** Se a primeira cobrança foi diferida para o término de um período pago ativo. */
+  isDelayedByActivePeriod?: boolean;
   /** Quantidade de dias até o primeiro débito. */
   daysUntilFirstCharge: number;
+}
+
+function formatBrtIsoDate(date: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
 }
 
 /**
@@ -86,6 +97,8 @@ export function resolveCheckoutBillingSchedule(params: {
   status?: string | null;
   hasConsumedTrial?: boolean;
   isNewRegistration?: boolean;
+  currentPeriodEnd?: string | Date | null;
+  paymentMethod?: "credit_card" | "pix";
   now?: Date;
 }): BillingScheduleResult {
   const now = params.now ?? new Date();
@@ -109,10 +122,34 @@ export function resolveCheckoutBillingSchedule(params: {
     params.status === "past_due";
 
   if (isExcludedFromTrial) {
+    if (
+      params.paymentMethod === "credit_card" &&
+      params.status === "active" &&
+      params.currentPeriodEnd
+    ) {
+      const periodEndDate = new Date(params.currentPeriodEnd);
+      if (
+        !Number.isNaN(periodEndDate.getTime()) &&
+        formatBrtIsoDate(periodEndDate) > formatBrtIsoDate(now)
+      ) {
+        return {
+          chargeTodayCents: 0,
+          firstBillingDate: periodEndDate,
+          isDelayedByTrial: false,
+          isDelayedByActivePeriod: true,
+          daysUntilFirstCharge: Math.max(
+            1,
+            Math.ceil((periodEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+          ),
+        };
+      }
+    }
+
     return {
       chargeTodayCents: fullPriceCents,
       firstBillingDate: now,
       isDelayedByTrial: false,
+      isDelayedByActivePeriod: false,
       daysUntilFirstCharge: 0,
     };
   }
@@ -128,6 +165,7 @@ export function resolveCheckoutBillingSchedule(params: {
         chargeTodayCents: 0,
         firstBillingDate,
         isDelayedByTrial: true,
+        isDelayedByActivePeriod: false,
         daysUntilFirstCharge: days,
       };
     }
@@ -136,6 +174,7 @@ export function resolveCheckoutBillingSchedule(params: {
       chargeTodayCents: fullPriceCents,
       firstBillingDate: now,
       isDelayedByTrial: false,
+      isDelayedByActivePeriod: false,
       daysUntilFirstCharge: 0,
     };
   }
@@ -151,6 +190,7 @@ export function resolveCheckoutBillingSchedule(params: {
       chargeTodayCents: 0,
       firstBillingDate,
       isDelayedByTrial: true,
+      isDelayedByActivePeriod: false,
       daysUntilFirstCharge: initialTrialDays,
     };
   }
@@ -160,6 +200,7 @@ export function resolveCheckoutBillingSchedule(params: {
     chargeTodayCents: fullPriceCents,
     firstBillingDate: now,
     isDelayedByTrial: false,
+    isDelayedByActivePeriod: false,
     daysUntilFirstCharge: 0,
   };
 }

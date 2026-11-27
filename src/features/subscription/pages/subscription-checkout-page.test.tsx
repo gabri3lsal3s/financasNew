@@ -393,5 +393,24 @@ describe("SubscriptionCheckoutPage Component", () => {
     expect(screen.queryByText(/dias de teste/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Primeira fatura de .* agendada para/i)).not.toBeInTheDocument();
   });
+
+  it("exibe aviso de cobrança diferida (R$ 0,00 hoje) quando assinante ativo cadastra cartão para migrar ao anual", () => {
+    const futureEnd = new Date(Date.now() + 20 * 24 * 60 * 60 * 1000).toISOString();
+    userSubscriptionMock.mockReturnValue({
+      tier: "pro_monthly",
+      isPro: true,
+      isReadOnly: false,
+      isTrial: false,
+      trialDaysRemaining: null,
+      plan: "monthly",
+      status: "active",
+      currentPeriodEnd: futureEnd,
+    });
+
+    renderCheckout("/assinatura?plano=pro-anual&metodo=cartao");
+
+    expect(screen.getByText("Total cobrado hoje")).toBeInTheDocument();
+    expect(screen.getByText(/Nenhuma cobrança será feita hoje/i)).toBeInTheDocument();
+  });
 });
 

@@ -167,6 +167,38 @@ describe("Domain: resolveCheckoutBillingSchedule", () => {
     expect(schedule.isDelayedByTrial).toBe(false);
     expect(schedule.daysUntilFirstCharge).toBe(0);
   });
+
+  it("difere cobrança no cartão para currentPeriodEnd quando assinante ativo migra de plano", () => {
+    const futureEnd = new Date("2026-06-15T12:00:00Z");
+    const scheduleCard = resolveCheckoutBillingSchedule({
+      plan: "annual",
+      currentTier: "pro_monthly",
+      status: "active",
+      hasAlreadyPaid: true,
+      currentPeriodEnd: futureEnd,
+      paymentMethod: "credit_card",
+      now: baseTime,
+    });
+
+    expect(scheduleCard.chargeTodayCents).toBe(0);
+    expect(scheduleCard.isDelayedByTrial).toBe(false);
+    expect(scheduleCard.isDelayedByActivePeriod).toBe(true);
+    expect(scheduleCard.firstBillingDate.toISOString()).toBe(futureEnd.toISOString());
+    expect(scheduleCard.daysUntilFirstCharge).toBeGreaterThanOrEqual(1);
+
+    const schedulePix = resolveCheckoutBillingSchedule({
+      plan: "annual",
+      currentTier: "pro_monthly",
+      status: "active",
+      hasAlreadyPaid: true,
+      currentPeriodEnd: futureEnd,
+      paymentMethod: "pix",
+      now: baseTime,
+    });
+
+    expect(schedulePix.chargeTodayCents).toBe(PLAN_PRICES_CENTS.annual);
+    expect(schedulePix.isDelayedByActivePeriod).toBe(false);
+  });
 });
 
 describe("Domain: calculateGuaranteeResidual", () => {

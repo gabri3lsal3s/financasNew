@@ -40,6 +40,11 @@ export function useSubscriptionCheckout() {
   const planConfig = PLAN_CONFIGS[plan];
   const metodoParam = searchParams.get("metodo");
 
+  const [method, setMethod] = useState<CheckoutPaymentMethod>(
+    metodoParam === "pix" && plan === "annual" ? "pix" : "credit_card",
+  );
+  const activeMethod: CheckoutPaymentMethod = plan === "monthly" ? "credit_card" : method;
+
   const billingSchedule = useMemo(
     () =>
       resolveCheckoutBillingSchedule({
@@ -54,12 +59,10 @@ export function useSubscriptionCheckout() {
           subscription?.isReadOnly ||
           subscription?.billingPhase === "trial_expired",
         isNewRegistration: !session,
+        currentPeriodEnd: subscription?.currentPeriodEnd,
+        paymentMethod: activeMethod,
       }),
-    [plan, subscription, session],
-  );
-
-  const [method, setMethod] = useState<CheckoutPaymentMethod>(
-    metodoParam === "pix" && plan === "annual" ? "pix" : "credit_card",
+    [plan, subscription, session, activeMethod],
   );
   const [isPending, setIsPending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(() =>
@@ -117,7 +120,6 @@ export function useSubscriptionCheckout() {
     }
   }, [searchParams]);
 
-  const activeMethod: CheckoutPaymentMethod = plan === "monthly" ? "credit_card" : method;
   const checkoutReturnPath = buildCheckoutReturnPath(plan, activeMethod);
 
   const handleBack = () => {

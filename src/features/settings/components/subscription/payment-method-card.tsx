@@ -1,4 +1,4 @@
-import { CreditCard, QrCode } from "lucide-react";
+import { ArrowUpRight, CreditCard, QrCode } from "lucide-react";
 import {
   Badge,
   Button,
@@ -12,15 +12,19 @@ import type { SubscriptionStatus } from "@/types";
 export interface PaymentMethodCardProps {
   subscription: SubscriptionStatus;
   isCancelingPlanChange: boolean;
+  canSwitchTrialToAnnual?: boolean;
   onOpenUpdateCard: () => void;
   onCancelScheduledPlanChange: () => void;
+  onSwitchTrialToAnnual?: () => void;
 }
 
 export function PaymentMethodCard({
   subscription,
   isCancelingPlanChange,
+  canSwitchTrialToAnnual = false,
   onOpenUpdateCard,
   onCancelScheduledPlanChange,
+  onSwitchTrialToAnnual,
 }: PaymentMethodCardProps) {
   const usesCreditCard = Boolean(subscription.hasCardRegistered || subscription.hasAutoRenew);
 
@@ -71,6 +75,36 @@ export function PaymentMethodCard({
                 </p>
               </div>
             )}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {canSwitchTrialToAnnual && onSwitchTrialToAnnual && !subscription.pendingPlanId ? (
+        <Card className="border-border/80 bg-surface shadow-xs">
+          <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="space-y-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge variant="positive" size="xs">
+                  40% OFF
+                </Badge>
+                <span className="text-xs font-semibold text-foreground">
+                  Economize no Plano Pro Anual
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Mude seu agendamento do mensal para o anual (R$ 143,88/ano) mantendo todos os seus dias de teste gratuitos intactos.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onSwitchTrialToAnnual}
+              className="gap-1.5 shrink-0 self-start sm:self-auto"
+            >
+              <span>Mudar para o Anual</span>
+              <ArrowUpRight className="size-3.5" aria-hidden="true" />
+            </Button>
           </CardContent>
         </Card>
       ) : null}

@@ -13,6 +13,11 @@ export function CheckoutOrderSummary({
   priceCents,
   billingSchedule,
 }: CheckoutOrderSummaryProps) {
+  const isDeferred = billingSchedule.isDelayedByTrial || Boolean(billingSchedule.isDelayedByActivePeriod);
+  const firstBillingFormatted = billingSchedule.firstBillingDate.toLocaleDateString("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+  });
+
   return (
     <>
       <div className="rounded-xl border border-border/80 bg-surface-raised/60 p-4 space-y-2">
@@ -28,17 +33,28 @@ export function CheckoutOrderSummary({
         </div>
         <div className="border-t border-border/80 pt-2 flex justify-between text-sm font-bold">
           <span>
-            {billingSchedule.isDelayedByTrial ? "Total cobrado hoje" : "Total a pagar"}
+            {isDeferred ? "Total cobrado hoje" : "Total a pagar"}
           </span>
           <MoneyText
-            cents={billingSchedule.isDelayedByTrial ? 0 : priceCents}
+            cents={isDeferred ? 0 : priceCents}
             variant="value"
             tone="default"
             deemphasizeCents={false}
             className="text-sm font-bold"
           />
         </div>
-        {billingSchedule.isDelayedByTrial ? (
+        {billingSchedule.isDelayedByActivePeriod ? (
+          <p className="text-[11px] text-muted-foreground pt-1">
+            Cobrança de{" "}
+            <MoneyText
+              cents={priceCents}
+              variant="caption"
+              tone="default"
+              deemphasizeCents={false}
+            />{" "}
+            agendada para {firstBillingFormatted} (após o término do seu período atual).
+          </p>
+        ) : billingSchedule.isDelayedByTrial ? (
           <p className="text-[11px] text-muted-foreground pt-1">
             Primeira fatura de{" "}
             <MoneyText
@@ -48,9 +64,7 @@ export function CheckoutOrderSummary({
               deemphasizeCents={false}
             />{" "}
             agendada para{" "}
-            {billingSchedule.firstBillingDate.toLocaleDateString("pt-BR", {
-              timeZone: "America/Sao_Paulo",
-            })}
+            {firstBillingFormatted}
             .
           </p>
         ) : null}
