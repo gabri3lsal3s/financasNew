@@ -157,4 +157,21 @@ describe("useNotificationCenter (Fase 3 — Gate do SmartAdvisor)", () => {
     expect(result.current.investmentsCarouselNotifications).toEqual([]);
     expect(result.current.totalBellCount).toBe(0);
   });
+
+  it("expõe deferredCarouselAlerts e mantém contadores de canais independentes do limite de slides", () => {
+    const now = Date.now();
+    dismissalsMapMock = {
+      "cashflow.pace": {
+        preset: "7d",
+        dismissedAt: now - 1000,
+        dismissedUntil: now + 7 * 86_400_000,
+      },
+    };
+
+    const { result } = renderHook(() => useNotificationCenter({ today: "2026-08-15" }));
+
+    expect(result.current.deferredCarouselAlerts.map((d) => d.canonicalId)).toContain("cashflow.pace");
+    expect(typeof result.current.revokeCarouselAlert).toBe("function");
+    expect(result.current.totalBellCount).toBe(result.current.notifications.filter((n) => n.channels.includes("bell")).length);
+  });
 });

@@ -1546,3 +1546,10 @@ A Central de Configurações unifica as preferências e gestão da conta do usu�
 - **Componente único & acessibilidade (`AlertCarouselCard` + `CarouselPauseContext`):** um nó por slide (sem clones no DOM), seleção por ID estável, `inert` nos slides inativos, retorno de foco ao remover slide ativo, pausa por locks sobrepostos (hover, foco, toque, popover, modal) e `prefers-reduced-motion`.
 - **Destinos e filtros sincronizados:** Família (`/familia?mes=YYYY-MM`) e Transações (`/transacoes?mes=YYYY-MM`) leem a competência da URL; `PendingDividendsDialog` aceita `competence` e `initialFilter`.
 
+
+
+## CONTRATOS DA ONDA 2 — PONTES, SELEÇÃO NO HUB E CENTRAL (/lembretes) (`v3.36.0`)
+
+- **Avaliadores bidirecionais passivos (`bridge-evaluators.ts` + `carousel-evidence.ts`):** 7 pontes cross-módulo (`bridge.combined_contribution`, `bridge.debt_vs_invest`, `cashflow.bill_impact`, `budget.category_pace`, `bridge.monthly_contribution_consistency`, `trip.settlement_pending`, `data.hygiene_review`) alimentadas exclusivamente por leitura passiva de cache quente, sem disparar novas queries na montagem fria.
+- **Seleção única no Hub (`slot-selector.ts` + `attention-budget.ts`):** ranking por severidade, relevância do ciclo e ID determinístico com deduplicação por `entityRefs` e capacidade efetiva na Home ampliada para `maxItems={3}` (`1` em modo focado com P0) e Investimentos em `maxItems={5}`.
+- **Central de avisos adiados (`/lembretes` · `DeferredAlertsSection`):** listagem de dispensas ativas (canônicas e aliases legados alinhados a `resolveLegacyAliasesForCanonicalId`) com rótulos genéricos de catálogo e reativação via tombstone canônico revogado (`revokeCarouselDismissalRecord`), preservando estados de leitura e opt-in.

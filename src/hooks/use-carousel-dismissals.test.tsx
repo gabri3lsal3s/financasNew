@@ -184,4 +184,74 @@ describe("useCarouselDismissals", () => {
       }),
     ).toBe(false);
   });
+
+  it("reativar dispensa apenas legada grava tombstone canônico revogado e torna o card visível", () => {
+    const future = Date.now() + 86_400_000;
+    const legacySources = {
+      portfolioAlertDismissals: {
+        "available-dividends-alert": { dismissedUntil: future },
+      },
+    };
+    mockPreferencesData = {
+      custom_settings: legacySources,
+    };
+    const { result } = renderHook(() => useCarouselDismissals());
+
+    expect(result.current.isCardVisible("portfolio.dividends_available", { legacySources })).toBe(false);
+
+    act(() => {
+      result.current.revokeCard("portfolio.dividends_available");
+    });
+
+    expect(result.current.isCardVisible("portfolio.dividends_available", { legacySources })).toBe(true);
+    expect(mockMutate).toHaveBeenCalledTimes(1);
+  });
+
+  it("faz rollback ao falhar reativação sem rede", () => {
+    const future = Date.now() + 86_400_000;
+    mockPreferencesData = {
+      custom_settings: {
+        carouselDismissals: {
+          "cashflow.pace": {
+            preset: "7d",
+            dismissedAt: Date.now() - 1000,
+            dismissedUntil: future,
+          },
+        },
+      },
+    };
+    mockMutate.mockImplementationOnce((_payload, opts) => {
+      opts?.onError?.(new Error("Network error"));
+    });
+
+    const { result } = renderHook(() => useCarouselDismissals());
+    expect(result.current.isCardVisible("cashflow.pace")).toBe(false);
+
+    act(() => {
+      result.current.revokeCard("cashflow.pace");
+    });
+
+    expect(result.current.isCardVisible("cashflow.pace")).toBe(false);
+  });
+
+  it("atualiza nowMs ao voltar do background (visibilitychange) e libera card expirado", () => {
+    vi.useFakeTimers();
+    const t0 = new Date(2026, 10, 27, 10, 0).getTime();
+    vi.setSystemTime(t0);
+    const { result } = renderHook(() => useCarouselDismissals());
+
+    act(() => {
+      result.current.dismissCard("cashflow.pace", "7d");
+    });
+    expect(result.current.isCardVisible("cashflow.pace")).toBe(false);
+
+    vi.setSystemTime(t0 + 8 * 86_400_000);
+    Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true });
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+
+    expect(result.current.isCardVisible("cashflow.pace")).toBe(true);
+    vi.useRealTimers();
+  });
 });

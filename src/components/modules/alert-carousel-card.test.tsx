@@ -135,4 +135,26 @@ describe("AlertCarouselCard", () => {
     fireEvent.click(triggerBtn);
     expect(screen.getByTestId("pause-state")).toHaveTextContent("paused");
   });
+
+  it("renderiza ação secundária e primária em grid-cols-2 no mobile (<400px) com aria-label", () => {
+    const onPrimary = vi.fn();
+    const onSecondary = vi.fn();
+    const { container } = render(
+      <AlertCarouselCard
+        id="bridge.combined_contribution"
+        tone="portfolio"
+        icon={<AlertTriangle className="size-4.5" />}
+        title="Aporte combinado disponível"
+        description="Sobra + caixa em corretora."
+        primaryAction={{ label: "Simular", onClick: onPrimary, ariaLabel: "Simular aporte combinado" }}
+        secondaryAction={{ label: "Detalhes", onClick: onSecondary, ariaLabel: "Ver detalhes do aporte" }}
+      />,
+    );
+
+    expect(container.querySelector(".grid-cols-2")).not.toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Simular aporte combinado" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ver detalhes do aporte" }));
+    expect(onPrimary).toHaveBeenCalledTimes(1);
+    expect(onSecondary).toHaveBeenCalledTimes(1);
+  });
 });

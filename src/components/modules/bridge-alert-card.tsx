@@ -20,12 +20,14 @@ import {
 } from "@/domain/notifications/hub";
 import {
   AlertCarouselCard,
+  type AlertCarouselCardAction,
   type AlertCarouselCardTone,
 } from "./alert-carousel-card";
 
 export interface BridgeAlertCardProps {
   evaluation: BridgeAlertEvaluation;
   onNavigate: (to: string) => void;
+  secondaryAction?: AlertCarouselCardAction;
   onSelectPreset?: (cardKey: string, preset: CarouselDismissPreset) => void;
   className?: string;
 }
@@ -69,6 +71,7 @@ function resolveCardTone(tone: BridgeAlertEvaluation["tone"]): AlertCarouselCard
 export function BridgeAlertCard({
   evaluation,
   onNavigate,
+  secondaryAction,
   onSelectPreset,
   className,
 }: BridgeAlertCardProps) {
@@ -90,6 +93,7 @@ export function BridgeAlertCard({
         label: evaluation.ctaLabel,
         onClick: () => onNavigate(evaluation.targetRoute),
       }}
+      secondaryAction={secondaryAction}
       calculationBreakdown={evaluation.breakdown}
       dismissPolicy={
         onSelectPreset && policy.allowedPresets.length > 0

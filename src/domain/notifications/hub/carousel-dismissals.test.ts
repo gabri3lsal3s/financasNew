@@ -3,6 +3,7 @@ import {
   computeCarouselDismissalUntil,
   createCarouselDismissalRecord,
   evaluateCarouselCardVisibility,
+  listActiveCarouselDismissals,
   formatCarouselReturnDate,
   mergeCarouselDismissals,
   parseCarouselDismissalsMap,
@@ -279,6 +280,83 @@ describe("carousel-dismissals (domain)", () => {
         "6m",
       ]);
       expect(resolveCarouselCardPolicy("billing.past_due").allowedPresets).toEqual([]);
+    });
+  });
+
+  describe("listActiveCarouselDismissals", () => {
+    it("alinha chaves legadas de dashboard, carteira e permissões e deduplica aliases irmãos", () => {
+      const t0 = new Date(2026, 10, 27, 10, 0).getTime();
+      const future = t0 + 7 * 86_400_000;
+
+      const entries = listActiveCarouselDismissals({
+        nowMs: t0,
+        carouselDismissals: {
+          "portfolio.governance_review": createCarouselDismissalRecord("7d", t0),
+          "portfolio.reviews_overdue": createCarouselDismissalRecord("1m", t0),
+          "portfolio.allocation_drift": createCarouselDismissalRecord("7d", t0),
+          "cashflow.surplus": createCarouselDismissalRecord("7d", t0),
+          "goal.progress.g1": createCarouselDismissalRecord("7d", t0),
+          "goals.progress.g1": createCarouselDismissalRecord("1m", t0),
+          "billing.past_due": createCarouselDismissalRecord("7d", t0),
+        },
+        legacySources: {
+          dashboardAlertDismissals: {
+            cards: {
+              "trial-ending": { dismissedAt: new Date(t0).toISOString(), dismissedUntil: future },
+              "split-pending-banner": { dismissedAt: new Date(t0).toISOString(), dismissedUntil: future },
+              "jit-device-alerts-invite": { dismissedAt: new Date(t0).toISOString(), dismissedUntil: future },
+              "active-trip-trp-1": { dismissedAt: new Date(t0).toISOString(), dismissedUntil: future },
+              "corporate-dividends-alert": { dismissedAt: new Date(t0).toISOString(), dismissedUntil: future },
+            },
+            governance: { dismissedAt: new Date(t0).toISOString(), dismissedUntil: future },
+            surplus: { dismissedAt: new Date(t0).toISOString(), dismissedUntil: future, month: "2026-11", surplusCents: 150000 },
+          },
+          portfolioAlertDismissals: {
+            "single-asset-PETR4": { dismissedAt: new Date(t0).toISOString(), dismissedUntil: future },
+            "private-issuer-banco-x": { dismissedAt: new Date(t0).toISOString(), dismissedUntil: future },
+            "macro-sector-energia": { dismissedAt: new Date(t0).toISOString(), dismissedUntil: future },
+            "benchmark-overlap-ibov": { dismissedAt: new Date(t0).toISOString(), dismissedUntil: future },
+            "low-diversification-nef-stocks": { dismissedAt: new Date(t0).toISOString(), dismissedUntil: future },
+            "quarantine-governance-alert": { dismissedAt: new Date(t0).toISOString(), dismissedUntil: future },
+          },
+          deviceNotifications: {
+            dismissedPermissionAlerts: { pushDue: true },
+          },
+        },
+      });
+
+      const ids = entries.map((e) => e.canonicalId);
+      expect(ids).not.toContain("billing.past_due");
+      expect(ids).not.toContain("portfolio.governance_review");
+      expect(ids).not.toContain("portfolio.allocation_drift");
+      expect(ids).not.toContain("cashflow.surplus");
+      expect(ids).not.toContain("goal.progress.g1");
+      expect(ids).not.toContain("portfolio.governance_summary");
+
+      expect(ids).toEqual(
+        expect.arrayContaining([
+          "portfolio.reviews_overdue",
+          "portfolio.drift",
+          "cashflow.surplus_aporte",
+          "goals.progress.g1",
+          "billing.trial_ending",
+          "split.pending",
+          "device.alerts_invite",
+          "trip.active.trp-1",
+          "portfolio.dividends_available",
+          "portfolio.dividends_projected",
+          "portfolio.risk.single_asset.PETR4",
+          "portfolio.risk.private_issuer.banco-x",
+          "portfolio.risk.macro_sector.energia",
+          "portfolio.risk.benchmark_overlap.ibov",
+          "portfolio.risk.low_diversification",
+          "portfolio.quarantine",
+          "device.permissions.push_due",
+        ]),
+      );
+
+      const permEntry = entries.find((e) => e.canonicalId === "device.permissions.push_due");
+      expect(permEntry?.returnDateLabel).toBe("Até reativar");
     });
   });
 });

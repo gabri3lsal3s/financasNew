@@ -413,3 +413,195 @@ function computeLegacy30dFallback(dismissedAtIso: string): number | undefined {
   if (!Number.isFinite(parsed)) return undefined;
   return parsed + 30 * 24 * 60 * 60 * 1000;
 }
+
+export interface ActiveCarouselDismissalEntry {
+  canonicalId: string;
+  displayName: string;
+  module: string;
+  dismissedUntil: number;
+  returnDateLabel: string;
+  source: "canonical" | "legacy";
+}
+
+export interface ListActiveCarouselDismissalsInput {
+  carouselDismissals?: CarouselDismissalsMap;
+  legacySources?: LegacyDismissalSources;
+  invalidIds?: ReadonlySet<string>;
+  nowMs?: number;
+}
+
+const LEGACY_DASHBOARD_CARD_TO_CANONICAL: Record<string, readonly string[]> = {
+  "trial-ending": ["billing.trial_ending"],
+  "cash-gap-alert": ["cashflow.cash_gap"],
+  "onboarding-progress-banner": ["onboarding.progress"],
+  "household-ceiling-exceeded": ["household.ceiling_exceeded"],
+  "household-settlement-pending": ["household.settlement_pending"],
+  "corporate-dividends-alert": [
+    "portfolio.dividends_available",
+    "portfolio.dividends_projected",
+  ],
+  "split-pending-banner": ["split.pending"],
+  "jit-device-alerts-invite": ["device.alerts_invite"],
+};
+
+const LEGACY_PORTFOLIO_KEY_TO_CANONICAL: Record<string, string> = {
+  "allocation-drift-alert": "portfolio.drift",
+  "idle-cash-alert": "portfolio.idle_cash",
+  "available-dividends-alert": "portfolio.dividends_available",
+  "projected-dividends-alert": "portfolio.dividends_projected",
+  "overdue-reviews-alert": "portfolio.reviews_overdue",
+  "upcoming-reviews-alert": "portfolio.reviews_upcoming",
+  "unscored-assets-alert": "portfolio.unscored",
+  "low-score-risk-alert": "portfolio.low_conviction",
+  "quarantine-governance-alert": "portfolio.quarantine",
+  "discount-opportunity-alert": "portfolio.discount",
+  "low-diversification-nef-stocks": "portfolio.risk.low_diversification",
+};
+
+function normalizeCanonicalCandidateId(id: string): string {
+  if (id === "portfolio.governance_review") return "portfolio.reviews_overdue";
+  if (id === "portfolio.allocation_drift") return "portfolio.drift";
+  if (id === "cashflow.surplus") return "cashflow.surplus_aporte";
+  if (id.startsWith("goal.progress.")) {
+    return id.replace(/^goal\.progress\./, "goals.progress.");
+  }
+  if (id === "device.permissions.pushDue") return "device.permissions.push_due";
+  if (id === "device.permissions.passiveBankListener") {
+    return "device.permissions.bank_listener";
+  }
+  return id;
+}
+
+/**
+ * Lista os avisos de carrossel atualmente adiados/ocultos (canônicos e aliases legados
+ * com expiração recuperável), usando apenas rótulos genéricos de catálogo (sem expor
+ * nomes/valores financeiros de terceiros ou carregar dados extras).
+ */
+export function listActiveCarouselDismissals(
+  input: ListActiveCarouselDismissalsInput,
+): ActiveCarouselDismissalEntry[] {
+  const nowMs = input.nowMs ?? Date.now();
+  const candidates = new Set<string>();
+  const addCandidate = (id: string) => {
+    if (!id) return;
+    candidates.add(normalizeCanonicalCandidateId(id));
+  };
+
+  if (input.carouselDismissals) {
+    for (const key of Object.keys(input.carouselDismissals)) {
+      addCandidate(key);
+    }
+  }
+
+  const dash = input.legacySources?.dashboardAlertDismissals;
+  if (dash) {
+    for (const cardKey of Object.keys(dash.cards ?? {})) {
+      const mapped = LEGACY_DASHBOARD_CARD_TO_CANONICAL[cardKey];
+      if (mapped) {
+        for (const id of mapped) addCandidate(id);
+      } else if (cardKey.startsWith("active-trip-")) {
+        const tripId = cardKey.slice("active-trip-".length);
+        if (tripId) addCandidate(`trip.active.${tripId}`);
+      }
+    }
+    if (dash.pace) addCandidate("cashflow.pace");
+    if (dash.surplus) addCandidate("cashflow.surplus_aporte");
+    if (dash.governance) addCandidate("portfolio.reviews_overdue");
+    for (const goalId of Object.keys(dash.goals ?? {})) {
+      if (goalId) addCandidate(`goals.progress.${goalId}`);
+    }
+  }
+
+  const port = input.legacySources?.portfolioAlertDismissals;
+  if (port) {
+    for (const pKey of Object.keys(port)) {
+      const mapped = LEGACY_PORTFOLIO_KEY_TO_CANONICAL[pKey];
+      if (mapped) {
+        addCandidate(mapped);
+      } else if (pKey.startsWith("single-asset-")) {
+        const entity = pKey.slice("single-asset-".length);
+        if (entity) addCandidate(`portfolio.risk.single_asset.${entity}`);
+      } else if (pKey.startsWith("private-issuer-")) {
+        const entity = pKey.slice("private-issuer-".length);
+        if (entity) addCandidate(`portfolio.risk.private_issuer.${entity}`);
+      } else if (pKey.startsWith("macro-sector-")) {
+        const entity = pKey.slice("macro-sector-".length);
+        if (entity) addCandidate(`portfolio.risk.macro_sector.${entity}`);
+      } else if (pKey.startsWith("benchmark-overlap-")) {
+        const entity = pKey.slice("benchmark-overlap-".length);
+        if (entity) addCandidate(`portfolio.risk.benchmark_overlap.${entity}`);
+      } else if (pKey.startsWith("portfolio.")) {
+        addCandidate(pKey);
+      }
+    }
+  }
+
+  const adv = input.legacySources?.advisorDismissals;
+  if (adv) {
+    for (const themeKey of Object.keys(adv)) {
+      if (themeKey) addCandidate(`advisor.${themeKey}`);
+    }
+  }
+
+  const cloudPerm = input.legacySources?.deviceNotifications?.dismissedPermissionAlerts;
+  const localPerm = input.legacySources?.localPermissionDismissals;
+  if (cloudPerm?.pushDue === true || localPerm?.pushDue === true) {
+    addCandidate("device.permissions.push_due");
+  }
+  if (cloudPerm?.passiveBankListener === true || localPerm?.passiveBankListener === true) {
+    addCandidate("device.permissions.bank_listener");
+  }
+
+  const orderedCandidates = [...candidates].sort((a, b) => a.localeCompare(b));
+  const emittedOrAliased = new Set<string>();
+  const result: ActiveCarouselDismissalEntry[] = [];
+
+  for (const canonicalId of orderedCandidates) {
+    if (emittedOrAliased.has(canonicalId)) continue;
+    const policy = resolveCarouselCardPolicy(canonicalId);
+    if (policy.category === "p0_mandatory") continue;
+
+    const evaluation = evaluateCarouselCardVisibility({
+      canonicalId,
+      carouselDismissals: input.carouselDismissals,
+      legacySources: input.legacySources,
+      invalidIds: input.invalidIds,
+      nowMs,
+    });
+
+    if (evaluation.visible) continue;
+
+    const isLegacyPermanent = evaluation.reason === "active_legacy" && evaluation.dismissedUntil == null;
+    const dismissedUntil =
+      evaluation.dismissedUntil != null && Number.isFinite(evaluation.dismissedUntil)
+        ? evaluation.dismissedUntil
+        : isLegacyPermanent
+          ? Number.POSITIVE_INFINITY
+          : null;
+    if (dismissedUntil === null) continue;
+
+    emittedOrAliased.add(canonicalId);
+    for (const alias of resolveCanonicalDismissalAliases(canonicalId)) {
+      emittedOrAliased.add(alias);
+    }
+
+    result.push({
+      canonicalId,
+      displayName: policy.displayName,
+      module: policy.module,
+      dismissedUntil,
+      returnDateLabel: Number.isFinite(dismissedUntil)
+        ? formatCarouselReturnDate(dismissedUntil, nowMs)
+        : "Até reativar",
+      source: evaluation.source ?? "canonical",
+    });
+  }
+
+  result.sort(
+    (a, b) =>
+      a.dismissedUntil - b.dismissedUntil ||
+      a.displayName.localeCompare(b.displayName, "pt-BR") ||
+      a.canonicalId.localeCompare(b.canonicalId),
+  );
+  return result;
+}

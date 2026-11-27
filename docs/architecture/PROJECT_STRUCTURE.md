@@ -263,7 +263,7 @@
     │   │                          #     hooks/ (use-reports-data.ts — agregações, DRE, carteira, indicadores e exportação)
     │   ├── insights/              #   Insights, radar de vencimentos RF (F72), projeção e corte
     │   │                          #     components/ (diagnostic-card, diagnostics-tab, recurrences-tab, projection-tab F61)
-    │   ├── reminders/             #   Central unificada de notificações & preferências (hooks/use-notification-preferences-form, prefs/{InAppRemindersPrefsCard,DueNotificationsPrefsCard,DailyClosingReminderCard,RemotePushPrefsCard,QuietHoursPrefsCard})
+    │   ├── reminders/             #   Central unificada de notificações & preferências (components/deferred-alerts-section, hooks/use-notification-preferences-form, prefs/{InAppRemindersPrefsCard,DueNotificationsPrefsCard,DailyClosingReminderCard,RemotePushPrefsCard,QuietHoursPrefsCard})
     │   ├── settings/              #   Configurações consolidadas em 6 abas especializadas (incluindo notifications-tab em 5 blocos: reminders-card, device-push-card, dividend-automation-card, banking-assistant-card, email-digest-prefs-card; e security-tab: app-lock-card, session-inactivity-card, two-factor-card, active-devices-card)
     │   ├── admin/                 #   Módulo Administrativo SaaS Isolado (/admin/login, /admin/*)
     │   │                          #     layouts/ (admin-shell, admin-nav-config, admin-mobile-drawer), components/ (user-edit-dialog em abas, feature-toggle-card, telegram-settings-card, ticket-manage-dialog, statement-blueprints-card)

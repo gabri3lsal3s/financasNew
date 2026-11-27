@@ -18,7 +18,7 @@ import {
 } from "@/state";
 import type { Debt, UserBroadcastNotification } from "@/types";
 
-export type RemindersMainTab = "pending" | "read";
+export type RemindersMainTab = "pending" | "read" | "deferred";
 export type RemindersSubFilter =
   | "all"
   | "overdue"
@@ -71,6 +71,8 @@ export function useRemindersPageState() {
     unreadSupportTickets,
     pendingSplitSignals,
     hasPastDueSubscription,
+    deferredCarouselAlerts,
+    revokeCarouselAlert,
   } = center;
 
   const statesQuery = useReminderStates();
@@ -131,6 +133,19 @@ export function useRemindersPageState() {
       }, "Gerenciar Lembretes");
     },
     [guardAction, setState],
+  );
+
+  const handleReactivateCarouselAlert = useCallback(
+    (canonicalId: string) => {
+      guardAction(() => {
+        revokeCarouselAlert(canonicalId);
+        pushToast({
+          title: "Aviso reativado nos carrosséis",
+          variant: "default",
+        });
+      }, "Gerenciar Lembretes");
+    },
+    [guardAction, revokeCarouselAlert],
   );
 
   const snooze = useCallback(
@@ -375,6 +390,8 @@ export function useRemindersPageState() {
     unreadSupportTickets,
     pendingSplitSignals,
     hasPastDueSubscription,
+    deferredCarouselAlerts,
+    handleReactivateCarouselAlert,
     totalPendingEffective,
     hasUrgentPending,
     hasActionNeededPending,

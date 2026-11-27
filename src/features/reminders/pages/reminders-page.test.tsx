@@ -38,6 +38,23 @@ vi.mock("@/features/cards/components/payment-dialog", () => ({
 vi.mock("@/state/queries/use-user-subscription", () => ({
   useUserSubscription: () => ({ isPro: true, isTrial: false, plan: "pro", isReadOnly: false, canWrite: true }),
 }));
+vi.mock("@/state/queries/use-user-preferences", () => ({
+  useUserPreferences: () => ({
+    data: {
+      reminders_enabled: true,
+      reminder_days_before_debt: 3,
+      reminder_days_before_bill: 3,
+      custom_settings: {
+        notificationCategories: { advisorInsights: true },
+      },
+    },
+    isLoading: false,
+    error: null,
+  }),
+}));
+vi.mock("@/state/mutations/use-preference-mutations", () => ({
+  useUpdateCustomSettings: () => ({ mutate: vi.fn(), isPending: false }),
+}));
 vi.mock("@/state/queries/use-permission", () => ({
   usePermission: () => ({ isHidden: false, canRead: true, canWrite: true, isReadOnlyMode: false, accessLevel: "admin" }),
 }));
@@ -426,5 +443,15 @@ describe("RemindersPage (central de lembretes §3.10)", () => {
     } finally {
       stateMocks.debts = stateMocks.debts.filter((d) => d.id !== "r50");
     }
+  });
+
+  it("exibe aba Adiados com avisos ocultos nos carrosséis e permite reativar", async () => {
+    const user = userEvent.setup();
+    render(<RemindersPage />);
+
+    const deferredTab = screen.getByRole("tab", { name: /Adiados/i });
+    await user.click(deferredTab);
+
+    expect(screen.getByText("Nenhum aviso adiado")).toBeInTheDocument();
   });
 });

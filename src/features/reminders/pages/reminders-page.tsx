@@ -1,4 +1,4 @@
-import { Bell, CheckCheck, SlidersHorizontal } from "lucide-react";
+import { Bell, CheckCheck, EyeOff, SlidersHorizontal } from "lucide-react";
 import { PageHeader } from "@/components/layout";
 import { ReadOnlyBanner } from "@/components/modules";
 import {
@@ -12,6 +12,7 @@ import {
 import { PaymentDialog } from "@/features/cards/components/payment-dialog";
 import { SettleDialog } from "@/features/debts/components/settle-dialog";
 import { getErrorMessage } from "@/services/errors";
+import { DeferredAlertsSection } from "../components/deferred-alerts-section";
 import { RemindersPendingTab } from "../components/RemindersPendingTab";
 import { RemindersReadTab } from "../components/RemindersReadTab";
 import { RemindersSettingsModal } from "../components/reminders-settings-modal";
@@ -215,6 +216,20 @@ export function RemindersPage() {
                   onSnooze={s.snooze}
                   onRestore={(key) => s.handleStateUpdate(key, null)}
                   onOpenReminder={s.openReminder}
+                />
+              ),
+            },
+            {
+              value: "deferred",
+              label:
+                s.deferredCarouselAlerts.length > 0
+                  ? `Adiados (${s.deferredCarouselAlerts.length})`
+                  : "Adiados",
+              icon: <EyeOff className="size-4" aria-hidden="true" />,
+              content: (
+                <DeferredAlertsSection
+                  entries={s.deferredCarouselAlerts}
+                  onReactivate={s.handleReactivateCarouselAlert}
                 />
               ),
             },

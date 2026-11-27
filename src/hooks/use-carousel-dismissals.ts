@@ -6,6 +6,7 @@ import {
   formatCarouselReturnDate,
   mergeCarouselDismissals,
   parseCarouselDismissalsMap,
+  resolveCanonicalDismissalAliases,
   resolveCarouselCardPolicy,
   revokeCarouselDismissalRecord,
   type CarouselDismissalRecord,
@@ -244,52 +245,81 @@ export function useCarouselDismissals(): UseCarouselDismissalsResult {
         return;
       }
 
-      const prevRecord =
-        mergeCarouselDismissals(parsedCloud.records, state.snapshot)[canonicalId] ??
-        state.localRecords[canonicalId];
-      if (!prevRecord) return;
+      const mergedRecords = mergeCarouselDismissals(parsedCloud.records, state.snapshot);
+      const actionNowMs = Date.now();
+      const aliasKeys = resolveCanonicalDismissalAliases(canonicalId);
+      const targetKeys = [canonicalId, ...aliasKeys.filter((alias) => Boolean(mergedRecords[alias] ?? state.localRecords[alias]))];
+
+      const existingPrimary = mergedRecords[canonicalId] ?? state.localRecords[canonicalId];
+      if (!existingPrimary && expectedVersion !== undefined) {
+        return;
+      }
 
       opCounter += 1;
       const opVersion = opCounter;
-      const revoked = revokeCarouselDismissalRecord(prevRecord, Date.now());
-      const prevLocalRecord = state.localRecords[canonicalId];
-      const prevOverlayRecord = state.overlayRecords[canonicalId];
+      const patch: CarouselDismissalsMap = {};
+      const prevLocalByKey: Record<string, CarouselDismissalRecord | undefined> = {};
+      const prevOverlayByKey: Record<string, CarouselDismissalRecord | undefined> = {};
 
-      state.opVersionById[canonicalId] = opVersion;
-      state.overlayRecords = { ...state.overlayRecords, [canonicalId]: revoked };
-      state.localRecords = { ...state.localRecords, [canonicalId]: revoked };
+      for (const key of targetKeys) {
+        const prevRecord =
+          mergedRecords[key] ??
+          state.localRecords[key] ??
+          createCarouselDismissalRecord("7d", actionNowMs);
+        patch[key] = revokeCarouselDismissalRecord(prevRecord, actionNowMs);
+        prevLocalByKey[key] = state.localRecords[key];
+        prevOverlayByKey[key] = state.overlayRecords[key];
+        state.opVersionById[key] = opVersion;
+      }
+
+      state.overlayRecords = { ...state.overlayRecords, ...patch };
+      state.localRecords = { ...state.localRecords, ...patch };
       updateSnapshot(state);
       writeLocalRecords(targetScope, state.localRecords);
       notifyAll();
 
       updateCustomSettingsMutation.mutate(
-        { carouselDismissals: { [canonicalId]: revoked } },
+        { carouselDismissals: patch },
         {
           onError: () => {
             if (getActiveUserId() !== uid) return;
             const curState = getOrCreateScopeState(targetScope);
-            if (curState.opVersionById[canonicalId] !== opVersion) return;
-
             const nextOverlay = { ...curState.overlayRecords };
-            if (prevOverlayRecord) nextOverlay[canonicalId] = prevOverlayRecord;
-            else delete nextOverlay[canonicalId];
-            curState.overlayRecords = nextOverlay;
-
             const nextLocal = { ...curState.localRecords };
-            if (prevLocalRecord) nextLocal[canonicalId] = prevLocalRecord;
-            else delete nextLocal[canonicalId];
+            let changed = false;
+            for (const key of targetKeys) {
+              if (curState.opVersionById[key] !== opVersion) continue;
+              changed = true;
+              if (prevOverlayByKey[key]) nextOverlay[key] = prevOverlayByKey[key]!;
+              else delete nextOverlay[key];
+              if (prevLocalByKey[key]) nextLocal[key] = prevLocalByKey[key]!;
+              else delete nextLocal[key];
+            }
+            if (!changed) return;
+            curState.overlayRecords = nextOverlay;
             curState.localRecords = nextLocal;
-
             updateSnapshot(curState);
             writeLocalRecords(targetScope, curState.localRecords);
             notifyAll();
+            if (expectedVersion === undefined) {
+              pushToast({
+                title: "Não foi possível reativar o aviso",
+                description: "Verifique sua conexão e tente novamente.",
+                variant: "destructive",
+              });
+            }
           },
           onSuccess: () => {
             if (getActiveUserId() !== uid) return;
             const curState = getOrCreateScopeState(targetScope);
-            if (curState.opVersionById[canonicalId] !== opVersion) return;
             const nextOverlay = { ...curState.overlayRecords };
-            delete nextOverlay[canonicalId];
+            let changed = false;
+            for (const key of targetKeys) {
+              if (curState.opVersionById[key] !== opVersion) continue;
+              changed = true;
+              delete nextOverlay[key];
+            }
+            if (!changed) return;
             curState.overlayRecords = nextOverlay;
             updateSnapshot(curState);
             notifyAll();

@@ -29,6 +29,8 @@ export interface AlertCarouselCardAction {
   disabled?: boolean;
   loading?: boolean;
   icon?: ReactNode;
+  ariaLabel?: string;
+  title?: string;
 }
 
 export interface AlertCarouselCardProps {
@@ -187,6 +189,8 @@ export function AlertCarouselCard({
                 size="sm"
                 disabled={secondaryAction.disabled || secondaryAction.loading}
                 onClick={secondaryAction.onClick}
+                aria-label={secondaryAction.ariaLabel ?? secondaryAction.label}
+                title={secondaryAction.title}
                 className={cn(
                   "h-8 text-xs font-medium justify-center",
                   !hasTwoActions && "w-full sm:w-auto",
@@ -206,6 +210,8 @@ export function AlertCarouselCard({
                 size="sm"
                 disabled={primaryAction.disabled || primaryAction.loading}
                 onClick={primaryAction.onClick}
+                aria-label={primaryAction.ariaLabel ?? primaryAction.label}
+                title={primaryAction.title}
                 className={cn(
                   "h-8 text-xs font-medium justify-center",
                   !hasTwoActions && "w-full sm:w-auto",

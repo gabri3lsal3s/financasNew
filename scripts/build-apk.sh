@@ -169,10 +169,10 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Hardening Integral de Seguranca (F-01 a F-11) & Otimizacao de Queries",
-    "Blindagem de banco (migracao 0158): RLS administrativo ativo, FORCE RLS, protecao AAL2 em RPCs de superadmin e rate limit em viagens publicas",
-    "Edge Functions e crons endurecidos com isolamento por user_id em quotes e autenticacao dedicada via CRON_SECRET",
-    "Validacao estrita de URLs de atualizacao APK, guarda RequireSuperAdmin, exportacao CSV segura e otimizacao de queries da Home e relatorios"
+    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Carrosseis Holisticos, Pontes Bidirecionais & Central de Lembretes",
+    "Persistencia compativel de dispensas (7d/1m/6m) em calendario local com Undo de 5s e controle otimista (_settingsRev)",
+    "Card unico AlertCarouselCard sem clones no DOM, memoria de calculo integrada e acessibilidade reforcada",
+    "7 avaliadores passivos entre Visao Geral e Investimentos (maxItems=3 na Home, maxItems=5 na Carteira) e aba Adiados em /lembretes"
   ]
 }
 EOF
