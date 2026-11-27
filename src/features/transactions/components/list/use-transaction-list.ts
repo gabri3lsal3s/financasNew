@@ -37,7 +37,7 @@ export function useTransactionList() {
   const [selectedIncome, setSelectedIncome] = useState<Income | null>(null);
   const { highlightId } = useHighlightTarget("q");
 
-  const paramMonth = searchParams.get("month");
+  const paramMonth = searchParams.get("mes") ?? searchParams.get("month");
   const validParamMonth = paramMonth && isValidMonth(paramMonth) ? paramMonth : null;
   const [pickedMonth, setPickedMonth] = useState<string | null>(null);
   const month = validParamMonth ?? pickedMonth ?? currentMonth();
@@ -47,6 +47,7 @@ export function useTransactionList() {
     setSearchParams(
       (prev) => {
         const updated = new URLSearchParams(prev);
+        updated.delete("mes");
         updated.delete("month");
         return updated;
       },

@@ -127,6 +127,8 @@ export interface PendingDividendsDialogProps {
   trackingStartDate?: string | null;
   fxRate?: number;
   initialTab?: DividendReviewModalTab;
+  initialFilter?: DividendReviewModalFilter;
+  competence?: string | null;
   requestSeq?: number;
   isLoading?: boolean;
   isError?: boolean;
@@ -183,6 +185,8 @@ export function PendingDividendsDialog({
   trackingStartDate: trackingStartDateProp,
   fxRate: fxRateProp,
   initialTab = "review",
+  initialFilter = "all",
+  competence = null,
   requestSeq = 0,
   isLoading = false,
   isError = false,
@@ -208,8 +212,15 @@ export function PendingDividendsDialog({
   const [searchTicker, setSearchTicker] = useState("");
   const [currencyFilter, setCurrencyFilter] = useState<"all" | "BRL" | "USD">("all");
   const [originFilter, setOriginFilter] = useState<OriginFilterValue>("all");
-  const [missingDateOnly, setMissingDateOnly] = useState(false);
-  const [includeOldOver120, setIncludeOldOver120] = useState(true);
+  const [missingDateOnly, setMissingDateOnly] = useState(
+    initialFilter === "missing_date",
+  );
+  const [includeOldOver120, setIncludeOldOver120] = useState(
+    initialFilter !== "over_120_days",
+  );
+  const [competenceFilter, setCompetenceFilter] = useState<string | null>(
+    competence ?? null,
+  );
 
   const effectiveFx = fxRateProp && fxRateProp > 0 ? fxRateProp : FALLBACK_USD_RATE;
   const defaultAutoCreditCash =
@@ -239,11 +250,16 @@ export function PendingDividendsDialog({
   }, [assetsNeedingCalibrationProp, assetsQuery.data]);
 
   const [activeTabOverride, setActiveTabOverride] = useState<DividendReviewModalTab | null>(null);
-  const [prevRequestKey, setPrevRequestKey] = useState<string>(`${initialTab}:${requestSeq}`);
-  const currentRequestKey = `${initialTab}:${requestSeq}`;
+  const [prevRequestKey, setPrevRequestKey] = useState<string>(
+    `${initialTab}:${initialFilter}:${competence ?? ""}:${requestSeq}`,
+  );
+  const currentRequestKey = `${initialTab}:${initialFilter}:${competence ?? ""}:${requestSeq}`;
   if (currentRequestKey !== prevRequestKey) {
     setPrevRequestKey(currentRequestKey);
     setActiveTabOverride(null);
+    setMissingDateOnly(initialFilter === "missing_date");
+    setIncludeOldOver120(initialFilter !== "over_120_days");
+    setCompetenceFilter(competence ?? null);
   }
 
   const [syncCashOverride, setSyncCashOverride] = useState<boolean | null>(null);
@@ -385,9 +401,13 @@ export function PendingDividendsDialog({
       if (currencyFilter !== "all" && item.currency !== currencyFilter) return false;
       if (originFilter !== "all" && resolveItemOriginKey(item) !== originFilter) return false;
       if (missingDateOnly && Boolean(item.paymentDate)) return false;
+      if (competenceFilter) {
+        const refDate = item.paymentDate ?? item.comDate ?? "";
+        if (!refDate.startsWith(competenceFilter)) return false;
+      }
       return true;
     },
-    [searchTicker, currencyFilter, originFilter, missingDateOnly],
+    [searchTicker, currencyFilter, originFilter, missingDateOnly, competenceFilter],
   );
 
   const filteredAvailableDividends = useMemo(
@@ -2211,11 +2231,15 @@ export function PendingDividendsDialogHostContent({
   open,
   onOpenChange,
   initialTab,
+  initialFilter = "all",
+  competence = null,
   requestSeq,
 }: {
   open: boolean;
   onOpenChange: (next: boolean) => void;
   initialTab: DividendReviewModalTab;
+  initialFilter?: DividendReviewModalFilter;
+  competence?: string | null;
   requestSeq: number;
 }) {
   const {
@@ -2238,6 +2262,8 @@ export function PendingDividendsDialogHostContent({
       trackingStartDate={trackingStartDate}
       fxRate={fxRate}
       initialTab={initialTab}
+      initialFilter={initialFilter}
+      competence={competence}
       requestSeq={requestSeq}
       isLoading={isLoading}
       isError={isError}
@@ -2253,13 +2279,15 @@ export function PendingDividendsDialogHostContent({
 export function PendingDividendsDialogHost() {
   const [open, setOpen] = useState(false);
   const [initialTab, setInitialTab] = useState<DividendReviewModalTab>("review");
-  const [, setInitialFilter] = useState<DividendReviewModalFilter>("all");
+  const [initialFilter, setInitialFilter] = useState<DividendReviewModalFilter>("all");
+  const [competence, setCompetence] = useState<string | null>(null);
   const [requestSeq, setRequestSeq] = useState(0);
 
   useEffect(() => {
     return subscribeDividendReviewModal((opts) => {
       setInitialTab(opts.initialTab ?? "review");
       setInitialFilter(opts.initialFilter ?? "all");
+      setCompetence(opts.competence ?? null);
       setRequestSeq((prev) => prev + 1);
       setOpen(true);
     });
@@ -2272,6 +2300,8 @@ export function PendingDividendsDialogHost() {
       open={open}
       onOpenChange={setOpen}
       initialTab={initialTab}
+      initialFilter={initialFilter}
+      competence={competence}
       requestSeq={requestSeq}
     />
   );

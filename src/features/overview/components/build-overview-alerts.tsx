@@ -11,7 +11,9 @@ import {
 import type { PermissionAlertBannerType } from "@/components/modules/permissions-alert-banner";
 import {
   buildCashGapBreakdown,
+  buildGoalProgressBreakdown,
   buildPaceProjectionBreakdown,
+  buildSplitPendingBreakdown,
   buildSurplusCapacityBreakdown,
 } from "@/domain/calculation-memory";
 import {
@@ -22,6 +24,7 @@ import {
 import { resolveInsightThemeFamily } from "@/domain/insights/attention-budget";
 import type { SmartAdvisorInsight } from "@/domain/insights/advisor";
 import type { CalibrationDecision } from "@/domain/insights/feedback";
+import type { CarouselDismissPreset } from "@/domain/notifications/hub";
 import { ActiveTripBanner } from "@/features/trips/components";
 import type { OnboardingGoalId, PublicShare } from "@/types";
 import type { useOverviewData } from "../hooks/use-overview-data";
@@ -39,7 +42,8 @@ export interface BuildOverviewAlertItemsParams {
   shouldShowPermissionsBanner: boolean;
   permissionBannerType: PermissionAlertBannerType | null;
   onPermissionsAction: () => void;
-  onPermissionsDismiss: () => void;
+  onPermissionsDismiss: (preset?: CarouselDismissPreset) => void;
+  onSelectPreset?: (cardKey: string, preset: CarouselDismissPreset) => void;
   onNavigateInsights: () => void;
   onDismissPace: (days: 7 | 30) => void;
   onOpenGoalDeposit: (share: PublicShare) => void;
@@ -190,47 +194,62 @@ export function buildOverviewAlertItems(
     },
     params.shouldShowPermissionsBanner &&
       params.permissionBannerType && {
-        id: "permissions-alert",
+        id:
+          params.permissionBannerType === "bank_listener"
+            ? "device.permissions.bank_listener"
+            : "device.permissions.push_due",
         priority: 1,
         content: (
           <PermissionsAlertBanner
             type={params.permissionBannerType}
             onAction={params.onPermissionsAction}
-            onDismiss={params.onPermissionsDismiss}
+            onDismiss={() => params.onPermissionsDismiss("7d")}
+            onSelectPreset={(preset) => params.onPermissionsDismiss(preset)}
           />
         ),
       },
     hasHouseholdExceeded &&
-      !data.isCardDismissed("household-ceiling-exceeded") && {
-        id: "household-ceiling-exceeded",
+      !data.isCardDismissed("household.ceiling_exceeded") && {
+        id: "household.ceiling_exceeded",
         priority: 1,
         content: (
           <HouseholdAlertBanner
             variant="ceiling_exceeded"
+            month={params.month ?? data.month}
             totalSpentCents={householdData!.total_spent_cents}
             ceilingCents={householdData!.monthly_ceiling_cents}
             spentPercentage={householdData!.spent_percentage}
             daysRemaining={daily.daysRemaining ?? undefined}
             onDismiss={(days) => params.onDismissCard?.("household-ceiling-exceeded", days)}
+            onSelectPreset={
+              params.onSelectPreset
+                ? (preset) => params.onSelectPreset?.("household.ceiling_exceeded", preset)
+                : undefined
+            }
           />
         ),
       },
     isCurrentMonth &&
       cashGapResult.isCashGapDetected &&
       data.isCashGapEligible && {
-        id: "cash-gap-alert",
+        id: "cashflow.cash_gap",
         priority: cashGapResult.severity === "critical" ? 1 : 2,
         content: (
           <CashGapAlert
             result={cashGapResult}
             calculationBreakdown={cashGapBreakdown}
             onDismiss={(days) => params.onDismissCard?.("cash-gap-alert", days)}
+            onSelectPreset={
+              params.onSelectPreset
+                ? (preset) => params.onSelectPreset?.("cashflow.cash_gap", preset)
+                : undefined
+            }
           />
         ),
       },
     params.showOnboardingCarousel &&
       data.onboardingQuery?.data && {
-        id: "onboarding-progress-banner",
+        id: "onboarding.checklist",
         priority: 2,
         content: (
           <OnboardingCarouselBanner
@@ -239,42 +258,57 @@ export function buildOverviewAlertItems(
             initialGoal={params.initialGoal}
             onContinue={() => params.onOpenOnboardingChecklist?.()}
             onDismiss={() => params.onDismissOnboarding?.()}
+            onSelectPreset={(preset) => {
+              params.onSelectPreset?.("onboarding.checklist", preset);
+              params.onDismissOnboarding?.();
+            }}
           />
         ),
       },
-    trip && !data.isCardDismissed(`active-trip-${trip.id}`)
+    trip && !data.isCardDismissed(`trip.active.${trip.id}`)
       ? {
-          id: `active-trip-${trip.id}`,
+          id: `trip.active.${trip.id}`,
           priority: 2,
           content: (
             <ActiveTripBanner
               trip={trip}
               totalExpensesCents={data.activeTripExpensesTotalCents}
               onDismiss={(days) => params.onDismissCard?.(`active-trip-${trip.id}`, days)}
+              onSelectPreset={
+                params.onSelectPreset
+                  ? (preset) => params.onSelectPreset?.(`trip.active.${trip.id}`, preset)
+                  : undefined
+              }
             />
           ),
         }
       : false,
     hasHouseholdSettlement &&
-      !data.isCardDismissed("household-settlement-pending") && {
-        id: "household-settlement-pending",
+      !data.isCardDismissed("household.settlement_pending") && {
+        id: "household.settlement_pending",
         priority: 2,
         content: (
           <HouseholdAlertBanner
             variant="settlement_pending"
+            month={params.month ?? data.month}
             settlementAmountCents={householdData!.settlement!.amount_cents}
             settlementPayerName={householdData!.settlement!.payer_name}
             settlementReceiverName={householdData!.settlement!.receiver_name}
             isCurrentUserPayer={currentUserId ? householdData!.settlement!.payer_id === currentUserId : false}
             isCurrentUserReceiver={currentUserId ? householdData!.settlement!.receiver_id === currentUserId : false}
             onDismiss={(days) => params.onDismissCard?.("household-settlement-pending", days)}
+            onSelectPreset={
+              params.onSelectPreset
+                ? (preset) => params.onSelectPreset?.("household.settlement_pending", preset)
+                : undefined
+            }
           />
         ),
       },
     splitPendingData.count > 0 &&
       !data.hasPendingSplitSignals &&
-      !data.isCardDismissed("split-pending-banner") && {
-        id: "split-pending-banner",
+      !data.isCardDismissed("split.pending") && {
+        id: "split.pending",
         priority: 2,
         content: (
           <SplitPendingBanner
@@ -282,12 +316,29 @@ export function buildOverviewAlertItems(
             activeCount={splitPendingData.count}
             totalExpensesCents={splitPendingData.totalExpensesCents}
             items={splitPendingData.items}
+            calculationBreakdown={buildSplitPendingBreakdown({
+              items: splitPendingData.items.map((item) => ({
+                id: item.id,
+                title: item.title,
+                source: "share",
+                expenseCents: item.pendingCents,
+                pendingCents: item.pendingCents,
+                parts: [],
+              })),
+              pendingCents: splitPendingData.pendingCents,
+              count: splitPendingData.count,
+            })}
             onDismiss={(days) => params.onDismissCard?.("split-pending-banner", days)}
+            onSelectPreset={
+              params.onSelectPreset
+                ? (preset) => params.onSelectPreset?.("split.pending", preset)
+                : undefined
+            }
           />
         ),
       },
     showPaceAlert && isPaceEligible && {
-      id: "pace-alert-banner",
+      id: "cashflow.pace",
       priority: projection.surplusCents !== null && projection.surplusCents < 0 ? 2 : 3,
       content: (
         <PaceAlertBanner
@@ -301,26 +352,71 @@ export function buildOverviewAlertItems(
           calculationBreakdown={paceBreakdown}
           onNavigateInsights={params.onNavigateInsights}
           onDismiss={params.onDismissPace}
+          onSelectPreset={
+            params.onSelectPreset
+              ? (preset) => params.onSelectPreset?.("cashflow.pace", preset)
+              : undefined
+          }
         />
       ),
     },
-    ...eligibleGoalShares.map((share) => ({
-      id: `goal-progress-${share.id}`,
-      priority: 3,
-      content: (
-        <GoalProgressAlertBanner
-          key={share.id}
-          goalShare={share}
-          liveCurrentCents={liveGoalProgress.get(share.id)?.currentCents}
-          surplusCents={surplusCapacity.hasSurplus ? surplusCapacity.suggestedAporteCents : null}
-          onOpenDeposit={params.onOpenGoalDeposit}
-          onNavigateGoals={() => params.onNavigateGoal(share.id)}
-          onDismiss={(days) => params.onDismissGoal(share, days)}
-        />
-      ),
-    })),
+    ...eligibleGoalShares
+      .filter((share) => !data.isCardDismissed(`goal.progress.${share.id}`))
+      .map((share) => {
+        const pld = (share.payload as Record<string, unknown> | null) ?? {};
+        const targetCents = Number(pld.target_cents ?? 0);
+        const live = liveGoalProgress.get(share.id)?.currentCents;
+        const currentCents = live !== undefined ? live : Number(pld.current_cents ?? 0);
+        const remainingCents = Math.max(0, targetCents - currentCents);
+        const percentage = targetCents > 0 ? Math.round((currentCents / targetCents) * 100) : 0;
+        const isCompleted = targetCents > 0 ? currentCents >= targetCents : pld.status === "completed";
+        const isFinalStretch = percentage >= 80 && !isCompleted;
+        const stage: "completed" | "final_stretch" | "has_surplus" | "regular" = isCompleted
+          ? "completed"
+          : isFinalStretch
+            ? "final_stretch"
+            : surplusCapacity.hasSurplus
+              ? "has_surplus"
+              : "regular";
+        return {
+          id: `goal.progress.${share.id}`,
+          priority: 3,
+          content: (
+            <GoalProgressAlertBanner
+              key={share.id}
+              goalShare={share}
+              liveCurrentCents={live}
+              surplusCents={surplusCapacity.hasSurplus ? surplusCapacity.suggestedAporteCents : null}
+              calculationBreakdown={buildGoalProgressBreakdown({
+                shareId: share.id,
+                goalTitle: typeof pld.title === "string" ? pld.title : undefined,
+                asOf: data.month,
+                deadline: typeof pld.deadline === "string" ? pld.deadline : null,
+                targetCents,
+                currentCents,
+                source: live !== undefined ? "Saldo apurado" : "Meta compartilhada",
+                remainingCents,
+                remainingDays: daily.daysRemaining,
+                requiredDailyCents:
+                  daily.daysRemaining && daily.daysRemaining > 0
+                    ? Math.ceil(remainingCents / daily.daysRemaining)
+                    : null,
+                stage,
+              })}
+              onOpenDeposit={params.onOpenGoalDeposit}
+              onNavigateGoals={() => params.onNavigateGoal(share.id)}
+              onDismiss={(days) => params.onDismissGoal(share, days)}
+              onSelectPreset={
+                params.onSelectPreset
+                  ? (preset) => params.onSelectPreset?.(`goal.progress.${share.id}`, preset)
+                  : undefined
+              }
+            />
+          ),
+        };
+      }),
     surplusCapacity.hasSurplus && isCurrentMonth && isSurplusEligible && {
-      id: "surplus-aporte-banner",
+      id: "cashflow.surplus",
       priority: 4,
       content: (
         <SurplusAporteBanner
@@ -332,14 +428,26 @@ export function buildOverviewAlertItems(
           nextCycleInvoicesCents={nextCycleInvoicesCents}
           futureInvoicesCents={futureInvoicesCents}
           onDismiss={params.onDismissSurplus}
+          onSelectPreset={
+            params.onSelectPreset
+              ? (preset) => params.onSelectPreset?.("cashflow.surplus", preset)
+              : undefined
+          }
         />
       ),
     },
     params.canViewInvestments &&
       isCurrentMonth &&
       (effectiveAvailableDividends.length > 0 || effectiveProjectedDividends.length > 0) &&
-      !data.isCardDismissed("corporate-dividends-alert") && {
-        id: "corporate-dividends-alert",
+      !data.isCardDismissed(
+        effectiveAvailableDividends.length > 0
+          ? "portfolio.dividends_available"
+          : "portfolio.dividends_projected",
+      ) && {
+        id:
+          effectiveAvailableDividends.length > 0
+            ? "portfolio.dividends_available"
+            : "portfolio.dividends_projected",
         priority: effectiveAvailableDividends.length > 0 ? 2 : 3,
         content: (
           <CorporateDividendsBanner
@@ -350,37 +458,58 @@ export function buildOverviewAlertItems(
             hasUncertainTax={effectiveAvailableDividends.some((d) => Boolean(d.isTypeUncertain))}
             onInspect={params.onInspectDividends}
             onDismiss={(days) => params.onDismissCard?.("corporate-dividends-alert", days)}
+            onSelectPreset={
+              params.onSelectPreset
+                ? (preset) =>
+                    params.onSelectPreset?.(
+                      effectiveAvailableDividends.length > 0
+                        ? "portfolio.dividends_available"
+                        : "portfolio.dividends_projected",
+                      preset,
+                    )
+                : undefined
+            }
           />
         ),
       },
     params.canViewInvestments &&
       params.overdueReviewsCount > 0 &&
       !params.isGovernanceDismissed && {
-        id: "portfolio-governance-review-alert",
+        id: "portfolio.governance_review",
         priority: 3,
         content: (
           <PortfolioGovernanceBanner
             overdueReviewsCount={params.overdueReviewsCount}
             onReview={params.onReviewGovernance}
             onDismiss={params.onDismissGovernance}
+            onSelectPreset={
+              params.onSelectPreset
+                ? (preset) => params.onSelectPreset?.("portfolio.governance_review", preset)
+                : undefined
+            }
           />
         ),
       },
     params.showJitDeviceAlertsInvite &&
-      !data.isCardDismissed("jit-device-alerts-invite") && {
-        id: "jit-device-alerts-invite",
+      !data.isCardDismissed("device.alerts_invite") && {
+        id: "device.alerts_invite",
         priority: 5,
         content: (
           <DeviceAlertsInviteBanner
             onConfigure={() => params.onOpenInitialPreferences?.()}
             onDismiss={() => params.onDismissCard?.("jit-device-alerts-invite", 30)}
+            onSelectPreset={
+              params.onSelectPreset
+                ? (preset) => params.onSelectPreset?.("device.alerts_invite", preset)
+                : undefined
+            }
           />
         ),
       },
     subscription.isTrial &&
       data.isTrialBannerEligible &&
       subscription.trialDaysRemaining !== null && {
-        id: "trial-ending-banner",
+        id: "billing.trial_ending",
         priority: subscription.trialDaysRemaining <= 7 ? 2 : 4,
         content: (
           <TrialEndingBanner
@@ -389,6 +518,11 @@ export function buildOverviewAlertItems(
             onDismiss={
               subscription.trialDaysRemaining > 3
                 ? (days) => params.onDismissCard?.("trial-ending", days)
+                : undefined
+            }
+            onSelectPreset={
+              params.onSelectPreset && subscription.trialDaysRemaining > 3
+                ? (preset) => params.onSelectPreset?.("billing.trial_ending", preset)
                 : undefined
             }
           />

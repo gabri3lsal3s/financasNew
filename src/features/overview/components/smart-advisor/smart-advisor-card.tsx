@@ -3,6 +3,7 @@ import { ShieldCheck } from "lucide-react";
 import { useNavigate } from "react-router";
 import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
 import { CarouselDismissPopover } from "@/components/modules/carousel-dismiss-popover";
+import { useCarouselPauseLock } from "@/components/modules/carousel-pause-context";
 import { SmartAdvisorCardSkeleton } from "@/components/modules/smart-advisor-card-skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -124,6 +125,8 @@ function SmartAdvisorCardView({
   const cardContext =
     controlledCardContext ?? activeInsight.cardContext ?? activeInsight.metadata?.cardContext;
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [memoryOpen, setMemoryOpen] = useState(false);
+  useCarouselPauseLock(Boolean(embeddedInCarousel && memoryOpen), "smart-advisor-memory");
 
   const breakdown = useMemo(() => {
     const now = new Date();
@@ -258,7 +261,7 @@ function SmartAdvisorCardView({
         <div
           key={activeInsight.id}
           data-testid="smart-advisor-content-body"
-          className="flex items-start sm:items-center gap-3 min-w-0 pr-8 sm:pr-0 flex-1 motion-safe:animate-in motion-safe:fade-in-50 motion-safe:duration-150 motion-reduce:animate-none motion-reduce:transition-none"
+          className="flex items-start sm:items-center gap-3 min-w-0 pr-9 sm:pr-0 flex-1 motion-safe:animate-in motion-safe:fade-in-50 motion-safe:duration-150 motion-reduce:animate-none motion-reduce:transition-none"
         >
           <span
             className={cn(
@@ -272,7 +275,7 @@ function SmartAdvisorCardView({
           <div className="flex flex-col gap-0.5 min-w-0 flex-1">
             <div className="flex items-center gap-2 min-w-0 flex-wrap">
               <h3
-                className="text-sm font-semibold text-foreground tracking-tight truncate"
+                className="text-sm font-semibold text-foreground tracking-tight line-clamp-2 break-words"
                 title={activeInsight.title}
               >
                 {activeInsight.title}
@@ -284,6 +287,9 @@ function SmartAdvisorCardView({
                 <CalculationMemoryModal
                   breakdown={breakdown}
                   label={`Memória de cálculo de ${presentation.badgeLabel}`}
+                  priority="p0"
+                  open={memoryOpen}
+                  onOpenChange={setMemoryOpen}
                 />
               ) : null}
             </div>

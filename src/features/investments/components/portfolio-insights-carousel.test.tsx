@@ -1,5 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { resetCarouselDismissalsStore } from "@/hooks/use-carousel-dismissals";
+import { setActiveUserId } from "@/services/user-storage";
 import { PortfolioInsightsCarousel } from "./portfolio-insights-carousel";
 
 const mockUseCorporateDividends = vi.fn();
@@ -66,6 +68,8 @@ describe("PortfolioInsightsCarousel (Regra 19)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
+    setActiveUserId("user-1");
+    resetCarouselDismissalsStore();
     mockUseAssetGovernanceInsights.mockReturnValue({
       overdueReviewsCount: 0,
       upcomingReviewsCount: 0,
@@ -216,7 +220,7 @@ describe("PortfolioInsightsCarousel (Regra 19)", () => {
     expect(screen.getByText("Revisar Metas")).toBeInTheDocument();
 
     fireEvent.click(screen.getByText("Revisar Metas"));
-    expect(mockNavigate).toHaveBeenCalledWith("/investments?tab=rebalancear&view=metas&subtab=assets");
+    expect(mockNavigate).toHaveBeenCalledWith("/investments?tab=metas");
   });
 
   it("renderiza o slide de ativos em quarentena com navegação para carteira", () => {
@@ -241,7 +245,7 @@ describe("PortfolioInsightsCarousel (Regra 19)", () => {
     expect(screen.getByText("Auditar Carteira")).toBeInTheDocument();
 
     fireEvent.click(screen.getByText("Auditar Carteira"));
-    expect(mockNavigate).toHaveBeenCalledWith("/investments?tab=rebalancear&view=metas&subtab=assets");
+    expect(mockNavigate).toHaveBeenCalledWith("/investments?tab=metas");
   });
 
   it("renderiza o slide de oportunidade em desconto com navegação para aporte", () => {
@@ -266,7 +270,7 @@ describe("PortfolioInsightsCarousel (Regra 19)", () => {
     expect(screen.getByText("Simular Aporte")).toBeInTheDocument();
 
     fireEvent.click(screen.getByText("Simular Aporte"));
-    expect(mockNavigate).toHaveBeenCalledWith("/investments?tab=rebalancear&view=simulador");
+    expect(mockNavigate).toHaveBeenCalledWith("/investments?tab=aporte");
   });
 
   it("renderiza o slide de desvio de alocação normalizando 'Ações de Dividendos' sem valores de Gap em R$", () => {
@@ -301,7 +305,7 @@ describe("PortfolioInsightsCarousel (Regra 19)", () => {
     expect(screen.queryByText(/Gap:/)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByText("Simular Rebalanceamento"));
-    expect(mockNavigate).toHaveBeenCalledWith("/investments?tab=rebalancear&view=simulador");
+    expect(mockNavigate).toHaveBeenCalledWith("/investments?tab=aporte");
   });
 
   it("exibe tickers em revisão próxima do prazo e permite dispensar por 7 dias", () => {
@@ -335,8 +339,8 @@ describe("PortfolioInsightsCarousel (Regra 19)", () => {
     expect(screen.getByText("Reavaliação Próxima do Prazo")).toBeInTheDocument();
     expect(screen.getByText(/WEGE3 vence em até 10 dias/)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Dispensar alerta" }));
-    fireEvent.click(screen.getByText("Dispensar por 7 dias"));
+    fireEvent.click(screen.getByRole("button", { name: /Dispensar Reavaliação Próxima do Prazo/i }));
+    fireEvent.click(screen.getByRole("button", { name: /7 dias/i }));
 
     expect(screen.queryByText("Reavaliação Próxima do Prazo")).not.toBeInTheDocument();
   });
@@ -423,7 +427,7 @@ describe("PortfolioInsightsCarousel (Regra 19)", () => {
     expect(screen.getByText("Simular Rebalanceamento")).toBeInTheDocument();
 
     fireEvent.click(screen.getByText("Simular Rebalanceamento"));
-    expect(mockNavigate).toHaveBeenCalledWith("/investments?tab=rebalancear&view=simulador");
+    expect(mockNavigate).toHaveBeenCalledWith("/investments?tab=aporte");
   });
 
   it("renderiza o slide de teto de emissor FGC na Renda Fixa", () => {
@@ -476,8 +480,15 @@ describe("PortfolioInsightsCarousel (Regra 19)", () => {
           id: "cdb-itau",
           ticker: "CDB-ITAU-2029",
           asset_class: "Renda Fixa",
-          quantity: 300,
-          average_price: 1000, // 300.000 BRL (20%)
+          quantity: 150,
+          average_price: 1000, // 150.000 BRL (10%)
+        },
+        {
+          id: "cdb-bradesco",
+          ticker: "CDB-BRADESCO-2029",
+          asset_class: "Renda Fixa",
+          quantity: 150,
+          average_price: 1000, // 150.000 BRL (10%)
         },
       ],
       isLoading: false,

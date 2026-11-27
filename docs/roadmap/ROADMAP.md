@@ -8274,3 +8274,12 @@ flowchart TD
 >   - Edge Functions, Crons & Frontend: isolamento por `.eq("user_id", callerUserId)` em `quotes` (`v221`), invocação via `userClient` em `admin-super-action` (`v53`), migração dos 6 jobs ativos de `pg_cron` para `CRON_SECRET`, guarda `<RequireSuperAdmin />` em `/admin/laboratorio-forense`, função compartilhada `isSafeApkDownloadUrl()` e exportação segura anti-DDE em `AdminSecurityPage` via `toCsv()`.
 > - **Otimização de Queries (`9eebb2a7`):** gating explícito de queries dependentes ou desabilitadas por feature flags nos hooks da Home, Orçamentos, Metas, Insights, Relatórios, Recorrências e Carteira.
 > - **Distribuição Android Pro (`v3.30.1` — `versionCode: 119`):** APK compilado, assinado, versionado (`sha256: 113600e8db7b08010269a06833c15857ba5b14d2efee2c50f6a15f1f54e6dc49`, `13.540.074` bytes) e publicado no Cloudflare R2 (`public/releases/version.json`).
+
+---
+
+### Fase 134 — Carrosséis Holísticos (Onda 1: Persistência, Precisão Matemática, Memória de Cálculo & Acessibilidade) (`v3.35.0`)
+
+> **Status:** Concluída em Código e Testes (`v3.35.0` — branch `bot/carrosseis-onda-1`, aguardando Preview Deployment antes de merge em `main`):
+> - **Persistência compatível (`carouselDismissals` + CAS `_settingsRev`):** presets `7d / 1m / 6m` em calendário civil local com data de retorno, Undo de 5s, leitura de chaves legadas e permissões Android granulares (`device.permissions.bank_listener` / `device.permissions.push_due`).
+> - **Precisão matemática & Memória de Cálculo:** valoração a mercado com fallback documentado, política de risco estrutural sem `break`, `cashUsedBRL` em dinheiro novo vs caixa da corretora e builders de breakdown para risco, carteira, proventos, metas e rachas.
+> - **Componentes únicos & Acessibilidade (`AlertCarouselCard`, `CarouselPauseContext`, `DashboardAlertsCarousel`):** eliminação de clones, seleção por ID estável, `inert` nos slides inativos, retorno de foco, `prefers-reduced-motion`, pausa por locks sobrepostos e migração integral da Home e Carteira (com descontinuação de `insight-slide.tsx` e `use-portfolio-alert-dismissals.ts`).

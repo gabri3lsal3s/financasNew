@@ -25,6 +25,7 @@ import {
   type DividendNotificationAlert,
   type TripFamilyAlert,
 } from "./event-detectors";
+import { evaluateCarouselCardVisibility } from "./carousel-dismissals";
 
 export const SEVERITY_RANK: Record<NotificationSeverity, number> = {
   P0_CRITICAL: 0,
@@ -660,6 +661,7 @@ export function buildNotificationCenter(
       channels: ["bell", "reminders_page", "home_carousel", "os_push"],
       entityRefs: ["subscription:past_due"],
       state: "unread",
+      carouselCardKey: "billing.past_due",
     });
   }
 
@@ -718,8 +720,27 @@ export function buildNotificationCenter(
     rawNotifications.push(mapAdvisorToNotification(insight));
   }
 
-  const notifications = deduplicateNotifications(rawNotifications);
+  const deduped = deduplicateNotifications(rawNotifications);
+  const carouselDismissals = input.carouselDismissals;
+  const notifications = carouselDismissals
+    ? deduped.map((n) => {
+        if (
+          n.carouselCardKey &&
+          !evaluateCarouselCardVisibility({
+            canonicalId: n.carouselCardKey,
+            carouselDismissals,
+            nowMs,
+          }).visible
+        ) {
+          return { ...n, state: "dismissed" as const };
+        }
+        return n;
+      })
+    : deduped;
   const bellNotifications = notifications.filter((n) => n.channels.includes("bell"));
+  const carouselNotifications = notifications.filter(
+    (n) => n.channels.includes("home_carousel") && n.state !== "dismissed",
+  );
   const remindersPageNotifications = notifications.filter((n) =>
     n.channels.includes("reminders_page"),
   );
@@ -738,6 +759,7 @@ export function buildNotificationCenter(
   return {
     notifications,
     bellNotifications,
+    carouselNotifications,
     payableItems,
     receivableItems,
     closedBillAlerts,

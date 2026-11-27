@@ -1,6 +1,7 @@
 import type { SmartAdvisorInsight } from "@/domain/insights/advisor";
 import type { ReminderItem } from "@/domain/reminders";
 import type {
+  CarouselDismissalsMap,
   NotificationCategoryPreferences,
   PublicShare,
   SplitPaymentSignal,
@@ -100,6 +101,8 @@ export interface AppNotification {
   entityRefs: string[];
   state: "unread" | "read" | "snoozed" | "dismissed";
   snoozeUntil?: string | null;
+  /** Chave canônica no catálogo de carrosséis (ex: `billing.past_due`, `cashflow.pace`). */
+  carouselCardKey?: string;
 }
 
 export interface BuildNotificationCenterInput {
@@ -118,11 +121,14 @@ export interface BuildNotificationCenterInput {
   onboardingCompletedCount?: number;
   onboardingTotalSteps?: number;
   isOnboardingDismissed?: boolean;
+  carouselDismissals?: CarouselDismissalsMap;
+  nowMs?: number;
 }
 
 export interface NotificationCenterSummary {
   notifications: AppNotification[];
   bellNotifications: AppNotification[];
+  carouselNotifications: AppNotification[];
   payableItems: ReminderItem[];
   receivableItems: ReminderItem[];
   closedBillAlerts: ClosedCardBillAlert[];

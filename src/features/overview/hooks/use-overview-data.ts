@@ -17,6 +17,7 @@ import {
   shouldShowTrialBanner,
 } from "@/domain/overview";
 import { useOnboardingDismissed } from "@/hooks";
+import { useCarouselDismissals } from "@/hooks/use-carousel-dismissals";
 import { useSafeViewScope } from "@/hooks/use-safe-business-scope";
 import { currentMonth, shiftMonth } from "@/lib/date";
 import {
@@ -265,33 +266,54 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
     () => userPreferencesQuery.data?.custom_settings?.advisorDecayMeta ?? {},
     [userPreferencesQuery.data?.custom_settings?.advisorDecayMeta],
   );
+  const { isCardVisible } = useCarouselDismissals();
+  const legacyDismissalSources = useMemo(
+    () => ({ dashboardAlertDismissals: alertDismissals }),
+    [alertDismissals],
+  );
 
   const isPaceEligible =
+    isCardVisible("cashflow.pace") &&
     shouldShowPaceAlert(alertDismissals.pace, {
       month,
       spentPercent: cashflow.pace.spentPercent,
       surplusCents: cashflow.projection.surplusCents,
-    }) && advisorDecayMeta.pace?.muted !== true;
+    }) &&
+    advisorDecayMeta.pace?.muted !== true;
 
   const isSurplusEligible =
+    isCardVisible("cashflow.surplus") &&
     shouldShowSurplusAlert(alertDismissals.surplus, {
       month,
       surplusCents: cashflow.surplusCapacity.suggestedAporteCents,
-    }) && advisorDecayMeta.surplus?.muted !== true;
+    }) &&
+    advisorDecayMeta.surplus?.muted !== true;
 
-  const isGovernanceDismissed = isGovernanceAlertDismissed(alertDismissals.governance);
+  const isGovernanceDismissed =
+    !isCardVisible("portfolio.governance_review", {
+      legacySources: legacyDismissalSources,
+    }) || isGovernanceAlertDismissed(alertDismissals.governance);
   const hasPendingSplitSignals = useMemo(
     () => extractPendingSplitSignals(splitSharesQuery.data ?? []).length > 0,
     [splitSharesQuery.data],
   );
   const isCardDismissed = useCallback(
-    (cardKey: string) => isTimedAlertDismissed(alertDismissals.cards?.[cardKey]),
-    [alertDismissals.cards],
+    (cardKey: string) =>
+      !isCardVisible(cardKey, { legacySources: legacyDismissalSources }) ||
+      isTimedAlertDismissed(alertDismissals.cards?.[cardKey]),
+    [isCardVisible, legacyDismissalSources, alertDismissals.cards],
   );
   const isCashGapEligible =
-    !isCardDismissed("cash-gap-alert") && advisorDecayMeta.cash_gap?.muted !== true;
+    !isCardDismissed("cashflow.cash_gap") &&
+    advisorDecayMeta.cash_gap?.muted !== true;
   const isTrialBannerEligible =
     !subscription.isLoading &&
+    isCardVisible("billing.trial_ending", {
+      legacySources: legacyDismissalSources,
+      policyContext: {
+        trialDaysRemaining: subscription.trialDaysRemaining ?? undefined,
+      },
+    }) &&
     shouldShowTrialBanner(
       subscription.trialDaysRemaining,
       Boolean(subscription.hasAutoRenew),

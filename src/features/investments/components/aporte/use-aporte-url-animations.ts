@@ -104,7 +104,9 @@ export function useAporteUrlAnimations({
       );
     }
 
-    if (raw && raw !== lastParamValorRef.current) {
+    if (!raw) {
+      lastParamValorRef.current = null;
+    } else if (raw !== lastParamValorRef.current) {
       lastParamValorRef.current = raw;
       const parsed = Number(raw);
       if (Number.isFinite(parsed) && parsed > 0) {

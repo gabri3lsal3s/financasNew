@@ -1,13 +1,13 @@
 import { useNavigate } from "react-router";
 import { ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/ui/money-text";
 import type { CalculationBreakdown } from "@/domain/calculation-memory";
+import {
+  resolveCarouselCardPolicy,
+  type CarouselDismissPreset,
+} from "@/domain/notifications/hub";
 import type { SurplusAllocationIntent } from "@/domain/overview";
-import { cn } from "@/lib/utils";
-import { CalculationMemoryModal } from "./calculation-memory";
-import { CarouselDismissPopover } from "./carousel-dismiss-popover";
+import { AlertCarouselCard } from "./alert-carousel-card";
 
 export interface SurplusAporteBannerProps {
   surplusCents: number;
@@ -21,6 +21,7 @@ export interface SurplusAporteBannerProps {
   onSimulate?: () => void;
   onReinforceReserve?: () => void;
   onDismiss?: (days: 7 | 30) => void;
+  onSelectPreset?: (preset: CarouselDismissPreset) => void;
 }
 
 /**
@@ -40,12 +41,14 @@ export function SurplusAporteBanner({
   onSimulate,
   onReinforceReserve,
   onDismiss,
+  onSelectPreset,
 }: SurplusAporteBannerProps) {
   const navigate = useNavigate();
 
   if (surplusCents <= 0) return null;
 
   const isEmergencyPriority = allocationIntent === "emergency_fund";
+  const policy = resolveCarouselCardPolicy("cashflow.surplus");
 
   const handleAction = () => {
     if (isEmergencyPriority) {
@@ -63,116 +66,136 @@ export function SurplusAporteBanner({
       : "Prioridade";
 
   return (
-    <div
-      className={cn(
-        "relative w-full h-full min-h-[104px] sm:min-h-[84px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs transition-all",
-        className,
-      )}
-    >
-      <div className="flex items-start sm:items-center gap-3 min-w-0 pr-6 sm:pr-0 flex-1">
-        <span
-          className={cn(
-            "flex size-9 shrink-0 items-center justify-center rounded-xl border",
-            isEmergencyPriority
-              ? "bg-positive/10 border-positive/20 text-positive-strong"
-              : "bg-portfolio/10 border-portfolio/20 text-portfolio",
-          )}
-          aria-hidden="true"
-        >
-          {isEmergencyPriority ? <ShieldCheck className="size-4.5" /> : <Sparkles className="size-4.5" />}
-        </span>
-        <div className="flex flex-col gap-0.5 min-w-0">
-          <div className="flex items-center gap-2 min-w-0 flex-wrap">
-            <h2
-              className="text-sm font-semibold tracking-tight text-foreground truncate"
-              title={isEmergencyPriority ? "Reforçar Reserva de Emergência" : "Capacidade de Aporte Estimada"}
-            >
-              {isEmergencyPriority ? "Reforçar Reserva de Emergência" : "Capacidade de Aporte Estimada"}
-            </h2>
-            <Badge variant={isEmergencyPriority ? "positive" : "portfolio"} size="xs">
-              {isEmergencyPriority ? reserveBadgeLabel : "Disponível"}
-            </Badge>
-            {calculationBreakdown ? (
-              <CalculationMemoryModal breakdown={calculationBreakdown} priority="p1" />
-            ) : null}
-          </div>
-          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 break-words">
-            {isEmergencyPriority ? (
-              nextCycleInvoicesCents > 0 ? (
-                <>
-                  Você tem{" "}
-                  <MoneyText cents={surplusCents} tone="positive" className="font-semibold text-foreground" />{" "}
-                  livres no ciclo para reserva (com{" "}
-                  <MoneyText cents={nextCycleInvoicesCents} tone="default" className="font-medium text-foreground" />{" "}
-                  na próxima fatura de cartão).
-                </>
-              ) : futureInvoicesCents > 0 ? (
-                <>
-                  Você tem{" "}
-                  <MoneyText cents={surplusCents} tone="positive" className="font-semibold text-foreground" />{" "}
-                  livres no ciclo para reserva (com{" "}
-                  <MoneyText cents={futureInvoicesCents} tone="default" className="font-medium text-foreground" />{" "}
-                  em faturas futuras).
-                </>
-              ) : (
-                <>
-                  Você tem{" "}
-                  <MoneyText cents={surplusCents} tone="positive" className="font-semibold text-foreground" />{" "}
-                  livres no ciclo para fortalecer sua liquidez de segurança.
-                </>
-              )
-            ) : nextCycleInvoicesCents > 0 ? (
-              <>
-                Sobra de{" "}
-                <MoneyText cents={surplusCents} tone="portfolio" className="font-semibold text-foreground" />{" "}
-                no ciclo para aporte (considere{" "}
-                <MoneyText cents={nextCycleInvoicesCents} tone="default" className="font-medium text-foreground" />{" "}
-                na próxima fatura de cartão).
-              </>
-            ) : futureInvoicesCents > 0 ? (
-              <>
-                Sobra de{" "}
-                <MoneyText cents={surplusCents} tone="portfolio" className="font-semibold text-foreground" />{" "}
-                no ciclo para aporte (considere{" "}
-                <MoneyText cents={futureInvoicesCents} tone="default" className="font-medium text-foreground" />{" "}
-                em faturas futuras).
-              </>
-            ) : (
-              <>
-                Sobra calculada de{" "}
-                <MoneyText cents={surplusCents} tone="portfolio" className="font-semibold text-foreground" />{" "}
-                disponível para aporte na carteira.
-              </>
-            )}
-          </p>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto self-stretch sm:self-center mt-auto sm:mt-0">
-        <Button
-          type="button"
-          variant={isEmergencyPriority ? "positive" : "portfolio"}
-          size="sm"
-          onClick={handleAction}
-          className="gap-1.5 text-xs h-8 shrink-0 font-medium cursor-pointer flex-1 sm:flex-initial justify-center"
-        >
-          <span>{isEmergencyPriority ? "Ver Reserva" : "Simular Aporte"}</span>
-          <ArrowRight className="size-3.5" aria-hidden="true" />
-        </Button>
-
-        {onDismiss ? (
-          <div className="absolute top-3 right-3 sm:static">
-            <CarouselDismissPopover
-              onDismiss={onDismiss}
-              label={
-                isEmergencyPriority
-                  ? "Dispensar aviso de reforço da reserva"
-                  : "Dispensar aviso de capacidade de aporte"
-              }
-            />
-          </div>
-        ) : null}
-      </div>
-    </div>
+    <AlertCarouselCard
+      id="cashflow.surplus"
+      tone={isEmergencyPriority ? "positive" : "portfolio"}
+      className={className}
+      icon={
+        isEmergencyPriority ? (
+          <ShieldCheck className="size-4.5" />
+        ) : (
+          <Sparkles className="size-4.5" />
+        )
+      }
+      title={
+        isEmergencyPriority
+          ? "Reforçar Reserva de Emergência"
+          : "Capacidade de Aporte Estimada"
+      }
+      badge={{
+        label: isEmergencyPriority ? reserveBadgeLabel : "Disponível",
+        variant: isEmergencyPriority ? "positive" : "portfolio",
+      }}
+      description={
+        isEmergencyPriority ? (
+          nextCycleInvoicesCents > 0 ? (
+            <>
+              Você tem{" "}
+              <MoneyText
+                cents={surplusCents}
+                tone="positive"
+                className="font-semibold text-foreground"
+              />{" "}
+              livres no ciclo para reserva (com{" "}
+              <MoneyText
+                cents={nextCycleInvoicesCents}
+                tone="default"
+                className="font-medium text-foreground"
+              />{" "}
+              na próxima fatura de cartão).
+            </>
+          ) : futureInvoicesCents > 0 ? (
+            <>
+              Você tem{" "}
+              <MoneyText
+                cents={surplusCents}
+                tone="positive"
+                className="font-semibold text-foreground"
+              />{" "}
+              livres no ciclo para reserva (com{" "}
+              <MoneyText
+                cents={futureInvoicesCents}
+                tone="default"
+                className="font-medium text-foreground"
+              />{" "}
+              em faturas futuras).
+            </>
+          ) : (
+            <>
+              Você tem{" "}
+              <MoneyText
+                cents={surplusCents}
+                tone="positive"
+                className="font-semibold text-foreground"
+              />{" "}
+              livres no ciclo para fortalecer sua liquidez de segurança.
+            </>
+          )
+        ) : nextCycleInvoicesCents > 0 ? (
+          <>
+            Sobra de{" "}
+            <MoneyText
+              cents={surplusCents}
+              tone="portfolio"
+              className="font-semibold text-foreground"
+            />{" "}
+            no ciclo para aporte (considere{" "}
+            <MoneyText
+              cents={nextCycleInvoicesCents}
+              tone="default"
+              className="font-medium text-foreground"
+            />{" "}
+            na próxima fatura de cartão).
+          </>
+        ) : futureInvoicesCents > 0 ? (
+          <>
+            Sobra de{" "}
+            <MoneyText
+              cents={surplusCents}
+              tone="portfolio"
+              className="font-semibold text-foreground"
+            />{" "}
+            no ciclo para aporte (considere{" "}
+            <MoneyText
+              cents={futureInvoicesCents}
+              tone="default"
+              className="font-medium text-foreground"
+            />{" "}
+            em faturas futuras).
+          </>
+        ) : (
+          <>
+            Sobra calculada de{" "}
+            <MoneyText
+              cents={surplusCents}
+              tone="portfolio"
+              className="font-semibold text-foreground"
+            />{" "}
+            disponível para aporte na carteira.
+          </>
+        )
+      }
+      calculationBreakdown={calculationBreakdown}
+      primaryAction={{
+        label: isEmergencyPriority ? "Ver Reserva" : "Simular Aporte",
+        onClick: handleAction,
+        variant: isEmergencyPriority ? "positive" : "portfolio",
+        icon: <ArrowRight className="size-3.5" aria-hidden="true" />,
+      }}
+      dismissPolicy={
+        onSelectPreset || onDismiss
+          ? {
+              allowedPresets: policy.allowedPresets,
+              onSelectPreset: (preset) => {
+                if (onSelectPreset) onSelectPreset(preset);
+                else onDismiss?.(preset === "7d" ? 7 : 30);
+              },
+              label: isEmergencyPriority
+                ? "Dispensar aviso de reforço da reserva"
+                : "Dispensar aviso de capacidade de aporte",
+            }
+          : undefined
+      }
+    />
   );
 }

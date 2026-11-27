@@ -381,6 +381,7 @@ function useNotificationCenterCompute(
         onboardingCompletedCount: onboardingProg.done,
         onboardingTotalSteps: onboardingProg.total,
         isOnboardingDismissed: !showOnboarding,
+        carouselDismissals: userPrefsQuery?.data?.custom_settings?.carouselDismissals,
       }),
     [
       items,
@@ -397,6 +398,7 @@ function useNotificationCenterCompute(
       showOnboarding,
       onboardingProg.done,
       onboardingProg.total,
+      userPrefsQuery?.data?.custom_settings?.carouselDismissals,
     ],
   );
 

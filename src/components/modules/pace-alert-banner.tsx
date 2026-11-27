@@ -1,12 +1,12 @@
 import { ArrowRight, TrendingDown } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/ui/money-text";
 import type { CalculationBreakdown } from "@/domain/calculation-memory";
 import type { ReferenceBudgetSource } from "@/domain/insights";
-import { cn } from "@/lib/utils";
-import { CalculationMemoryModal } from "./calculation-memory";
-import { CarouselDismissPopover } from "./carousel-dismiss-popover";
+import {
+  resolveCarouselCardPolicy,
+  type CarouselDismissPreset,
+} from "@/domain/notifications/hub";
+import { AlertCarouselCard } from "./alert-carousel-card";
 
 export interface PaceAlertBannerProps {
   /** % do orçamento já gasto (0–100+). */
@@ -28,6 +28,7 @@ export interface PaceAlertBannerProps {
   /** Callback para navegar à tela de Insights/Projeção. */
   onNavigateInsights: () => void;
   onDismiss?: (days: 7 | 30) => void;
+  onSelectPreset?: (preset: CarouselDismissPreset) => void;
   className?: string;
 }
 
@@ -63,6 +64,7 @@ export function PaceAlertBanner({
   calculationBreakdown,
   onNavigateInsights,
   onDismiss,
+  onSelectPreset,
   className,
 }: PaceAlertBannerProps) {
   if (
@@ -74,86 +76,65 @@ export function PaceAlertBanner({
   }
 
   const isDeficit = surplusCents !== null && surplusCents < 0;
-  const baseLabel = resolveBaseDescriptionLabel(referenceBudgetSource, isProvisionalReference);
+  const baseLabel = resolveBaseDescriptionLabel(
+    referenceBudgetSource,
+    isProvisionalReference,
+  );
+  const policy = resolveCarouselCardPolicy("cashflow.pace");
 
   return (
-    <section
-      aria-label="Atenção ao ritmo de gastos"
-      className={cn(
-        "relative group w-full h-full min-h-[104px] sm:min-h-[84px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border p-3.5 sm:p-4 transition-all shadow-xs",
-        isDeficit
-          ? "border-critical/40 bg-critical/5 text-foreground"
-          : "border-warning/40 bg-warning/5 text-foreground",
-        className,
-      )}
-    >
-      <div className="flex items-start sm:items-center gap-3 min-w-0 pr-6 sm:pr-0 flex-1">
-        <span
-          className={cn(
-            "flex size-9 shrink-0 items-center justify-center rounded-xl border",
-            isDeficit
-              ? "bg-critical/10 border-critical/20 text-critical-strong"
-              : "bg-warning/15 border-warning/20 text-warning-strong",
-          )}
-          aria-hidden="true"
-        >
-          <TrendingDown className="size-4.5" />
-        </span>
-        <div className="flex flex-col gap-0.5 min-w-0">
-          <div className="flex items-center gap-2 min-w-0 flex-wrap">
-            <h2
-              className="text-sm font-semibold text-foreground truncate"
-              title={isDeficit ? "Projeção pede ajuste no mês" : "Ritmo acima do planejado"}
-            >
-              {isDeficit ? "Projeção pede ajuste no mês" : "Ritmo acima do planejado"}
-            </h2>
-            <Badge
-              variant={isDeficit ? "critical" : "warning"}
-              size="xs"
-              className="uppercase tracking-wider font-semibold"
-            >
-              {isDeficit ? "Atenção ao ritmo" : "Ritmo acelerado"}
-            </Badge>
-            {calculationBreakdown ? (
-              <CalculationMemoryModal
-                breakdown={calculationBreakdown}
-                priority="p0"
-                label="Memória de cálculo do ritmo de gastos"
+    <AlertCarouselCard
+      id="cashflow.pace"
+      tone={isDeficit ? "critical" : "warning"}
+      role="region"
+      ariaLabel="Atenção ao ritmo de gastos"
+      className={className}
+      icon={<TrendingDown className="size-4.5" />}
+      title={isDeficit ? "Projeção pede ajuste no mês" : "Ritmo acima do planejado"}
+      badge={{
+        label: isDeficit ? "Atenção ao ritmo" : "Ritmo acelerado",
+        variant: isDeficit ? "critical" : "warning",
+      }}
+      description={
+        <>
+          Você utilizou {Math.round(spentPercent)}% da {baseLabel} (
+          {Math.round(elapsedPercent)}% do mês).
+          {dailyCents !== null && dailyCents > 0 ? (
+            <>
+              {" "}
+              Para fechar no azul, mire em até{" "}
+              <MoneyText
+                cents={dailyCents}
+                tone="default"
+                className="font-semibold text-foreground"
               />
-            ) : null}
-          </div>
-          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 break-words">
-            Você utilizou {Math.round(spentPercent)}% da {baseLabel} ({Math.round(elapsedPercent)}% do mês).
-            {dailyCents !== null && dailyCents > 0 ? (
-              <>
-                {" "}Para fechar no azul, mire em até{" "}
-                <MoneyText cents={dailyCents} tone="default" className="font-semibold text-foreground" />/dia.
-              </>
-            ) : dailyCents === 0 ? (
-              <> Orçamento mensal atingido.</>
-            ) : null}
-          </p>
-        </div>
-      </div>
-
-      <div className="flex shrink-0 items-center gap-2 w-full sm:w-auto self-stretch sm:self-center mt-auto sm:mt-0">
-        <Button
-          type="button"
-          size="sm"
-          variant={isDeficit ? "destructive" : "warning"}
-          onClick={onNavigateInsights}
-          className="gap-1.5 text-xs h-8 shrink-0 font-medium cursor-pointer flex-1 sm:flex-initial justify-center"
-        >
-          <span>Simular cortes e projeção</span>
-          <ArrowRight className="size-3.5" aria-hidden="true" />
-        </Button>
-
-        {onDismiss && (
-          <div className="absolute top-3 right-3 sm:static">
-            <CarouselDismissPopover onDismiss={onDismiss} label="Dispensar aviso de ritmo de gastos" />
-          </div>
-        )}
-      </div>
-    </section>
+              /dia.
+            </>
+          ) : dailyCents === 0 ? (
+            <> Orçamento mensal atingido.</>
+          ) : null}
+        </>
+      }
+      calculationBreakdown={calculationBreakdown}
+      calculationMemoryLabel="Memória de cálculo do ritmo de gastos"
+      primaryAction={{
+        label: "Simular cortes e projeção",
+        onClick: onNavigateInsights,
+        variant: isDeficit ? "destructive" : "warning",
+        icon: <ArrowRight className="size-3.5" aria-hidden="true" />,
+      }}
+      dismissPolicy={
+        onSelectPreset || onDismiss
+          ? {
+              allowedPresets: policy.allowedPresets,
+              onSelectPreset: (preset) => {
+                if (onSelectPreset) onSelectPreset(preset);
+                else onDismiss?.(preset === "7d" ? 7 : 30);
+              },
+              label: "Dispensar aviso de ritmo de gastos",
+            }
+          : undefined
+      }
+    />
   );
 }

@@ -1,20 +1,30 @@
 import { AlertTriangle, Copy, Layers, PieChart, ShieldAlert } from "lucide-react";
+import {
+  AlertCarouselCard,
+  type AlertCarouselCardTone,
+} from "@/components/modules/alert-carousel-card";
 import type { DashboardAlertItem } from "@/components/modules/dashboard-alerts-carousel";
-import { Button } from "@/components/ui/button";
+import {
+  resolveCarouselCardPolicy,
+  type CarouselDismissPreset,
+} from "@/domain/notifications/hub";
 import type { StructuralRiskAlert } from "@/domain/portfolio/portfolio-risk-policy";
 import { formatPercent } from "@/services/masks";
-import { InsightSlide, type InsightTone } from "./insight-slide";
 
 export interface BuildStructuralRiskItemsParams {
   alerts: readonly StructuralRiskAlert[];
-  isAlertDismissed: (alertId: string, fingerprint: string) => boolean;
-  dismissAlert: (alertId: string, days: 7 | 30, fingerprint: string) => void;
+  isCardVisible?: (cardKey: string) => boolean;
+  onSelectPreset?: (cardKey: string, preset: CarouselDismissPreset) => void;
+  isAlertDismissed?: (alertId: string, fingerprint: string) => boolean;
+  dismissAlert?: (alertId: string, days: 7 | 30, fingerprint: string) => void;
   onNavigate: (to: string) => void;
   className?: string;
 }
 
 export function buildStructuralRiskItems({
   alerts,
+  isCardVisible,
+  onSelectPreset,
   isAlertDismissed,
   dismissAlert,
   onNavigate,
@@ -22,9 +32,18 @@ export function buildStructuralRiskItems({
 }: BuildStructuralRiskItemsParams): (DashboardAlertItem | false)[] {
   return alerts.map((alert) => {
     const fingerprint = `${alert.type}:${alert.id}`;
-    if (isAlertDismissed(alert.id, fingerprint)) {
+    const cardKey = alert.id.startsWith("portfolio.risk.")
+      ? alert.id
+      : `portfolio.risk.${alert.id}`;
+
+    if (
+      (isCardVisible && !isCardVisible(cardKey)) ||
+      isAlertDismissed?.(alert.id, fingerprint)
+    ) {
       return false;
     }
+
+    const policy = resolveCarouselCardPolicy(cardKey);
 
     let icon = <AlertTriangle className="size-4.5" />;
     let badgeText = "Risco Estrutural";
@@ -70,38 +89,48 @@ export function buildStructuralRiskItems({
     const handleAction = () => {
       switch (alert.ctaAction) {
         case "navigate_aporte":
-          onNavigate("/investments?tab=rebalancear&view=simulador");
+          onNavigate("/investments?tab=aporte");
           break;
         case "navigate_fixed_income":
         case "navigate_portfolio":
           onNavigate("/investments?tab=posicao");
           break;
         default:
-          onNavigate("/investments?tab=rebalancear&view=simulador");
+          onNavigate("/investments?tab=aporte");
           break;
       }
     };
 
-    const slideTone: InsightTone = alert.tone === "info" ? "primary" : alert.tone;
+    const slideTone: AlertCarouselCardTone =
+      alert.tone === "info" || alert.tone === "primary" ? "info" : alert.tone;
 
     return {
-      id: alert.id,
+      id: cardKey,
       priority: alert.priority,
       content: (
-        <InsightSlide
+        <AlertCarouselCard
+          id={cardKey}
           tone={slideTone}
           icon={icon}
           title={alert.title}
-          badgeText={badgeText}
-          badgeVariant={badgeVariant}
+          badge={{ label: badgeText, variant: badgeVariant }}
           description={alert.description}
-          onDismiss={(days) => dismissAlert(alert.id, days, fingerprint)}
           className={className}
-          actions={
-            <Button type="button" variant="outline" size="sm" onClick={handleAction}>
-              {alert.ctaText ?? "Ver Detalhes"}
-            </Button>
-          }
+          primaryAction={{
+            label: alert.ctaText ?? "Ver Detalhes",
+            onClick: handleAction,
+            variant: "outline",
+          }}
+          dismissPolicy={{
+            allowedPresets: policy.allowedPresets,
+            onSelectPreset: (preset) => {
+              if (onSelectPreset) {
+                onSelectPreset(cardKey, preset);
+              } else {
+                dismissAlert?.(alert.id, preset === "7d" ? 7 : 30, fingerprint);
+              }
+            },
+          }}
         />
       ),
     };

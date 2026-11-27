@@ -5,8 +5,8 @@ import { todaySaoPauloISO } from "@/domain/portfolio";
 import { computePortfolioCarouselDrift } from "@/domain/portfolio/insights-carousel-drift";
 import { evaluatePortfolioStructuralRisk } from "@/domain/portfolio/portfolio-risk-policy";
 import { FALLBACK_USD_RATE } from "@/domain/portfolio/valuation";
-import { useCarouselPresenceHint } from "@/hooks/use-carousel-presence-hint";
-import { usePortfolioAlertDismissals } from "@/hooks/use-portfolio-alert-dismissals";
+import { useCarouselDismissals } from "@/hooks/use-carousel-dismissals";
+import { currentMonth } from "@/lib/date";
 import { openDividendReviewModal } from "@/services/dividend-review-modal";
 import { formatPercent } from "@/services/masks/percent";
 import { pushToast } from "@/services/toast";
@@ -55,8 +55,17 @@ export function PortfolioInsightsCarousel({ className }: PortfolioInsightsCarous
   const confirmMutation = useConfirmUserDividendEvents();
   const userPreferencesQuery = useUserPreferences();
   const updateAssetMutation = useUpdatePortfolioAsset();
-  const { dismissAlert, isAlertDismissed, isLoading: isDismissalsLoading } =
-    usePortfolioAlertDismissals();
+  const { isCardVisible, dismissCard, isLoading: isDismissalsLoading } =
+    useCarouselDismissals();
+  const legacyPortfolioDismissals = useMemo(
+    () => ({
+      portfolioAlertDismissals:
+        userPreferencesQuery?.data?.custom_settings?.portfolioAlertDismissals,
+    }),
+    [userPreferencesQuery?.data?.custom_settings?.portfolioAlertDismissals],
+  );
+  const checkCardVisible = (cardKey: string) =>
+    isCardVisible(cardKey, { legacySources: legacyPortfolioDismissals });
 
   const autoCreditCash =
     userPreferencesQuery?.data?.custom_settings?.dividendAutomation?.autoCreditCash !== false;
@@ -66,7 +75,7 @@ export function PortfolioInsightsCarousel({ className }: PortfolioInsightsCarous
 
   const openEvaluationQueue = (assetsQueue: PortfolioAsset[]) => {
     if (assetsQueue.length === 0) {
-      navigate("/investments?tab=rebalancear&view=metas&subtab=assets");
+      navigate("/investments?tab=metas");
       return;
     }
     setEvaluationQueue(assetsQueue);
@@ -184,11 +193,12 @@ export function PortfolioInsightsCarousel({ className }: PortfolioInsightsCarous
     [assetsQuery?.data, usdRate, position?.rows, position?.cashBRL],
   );
 
+  const competence = currentMonth();
   const items: (DashboardAlertItem | false)[] = [
     ...buildStructuralRiskItems({
       alerts: structuralAlerts,
-      isAlertDismissed,
-      dismissAlert,
+      isCardVisible: checkCardVisible,
+      onSelectPreset: dismissCard,
       onNavigate: (to) => navigate(to),
       className,
     }),
@@ -197,15 +207,49 @@ export function PortfolioInsightsCarousel({ className }: PortfolioInsightsCarous
       projectedCount: monthlyForecast ? monthlyForecast.count : projected.length,
       totalAvailableAmount,
       totalProjectedAmount: monthlyForecast ? monthlyForecast.totalBRL : totalProjectedAmount,
+      availableItems: available.map((d, idx) => ({
+        key: d.eventId ?? `${d.ticker}:${idx}`,
+        ticker: d.ticker,
+        currency: d.currency,
+        quantityOnComDate: d.quantityOnComDate,
+        grossRate: d.rate,
+        netRate: d.netRate,
+        taxPct: d.taxRatePct ?? (d.currency === "USD" ? 30 : d.type === "JCP" ? 15 : 0),
+        taxSource: d.isTypeUncertain ? "Estimado" : "Oficial",
+        paymentDate: d.paymentDate,
+        nativeNetCents: Math.round(d.totalAmount * 100),
+        netBRLCents: Math.round(
+          d.totalAmount * (d.currency === "USD" ? usdRate : 1) * 100,
+        ),
+        included: d.totalAmount > 0,
+      })),
+      projectedItems: projected.map((d, idx) => ({
+        key: d.eventId ?? `${d.ticker}:proj:${idx}`,
+        ticker: d.ticker,
+        currency: d.currency,
+        quantityOnComDate: d.quantityOnComDate,
+        grossRate: d.rate,
+        netRate: d.netRate,
+        taxPct: d.taxRatePct ?? (d.currency === "USD" ? 30 : d.type === "JCP" ? 15 : 0),
+        taxSource: d.isTypeUncertain ? "Estimado" : "Oficial",
+        paymentDate: d.paymentDate,
+        nativeNetCents: Math.round(d.totalAmount * 100),
+        netBRLCents: Math.round(
+          d.totalAmount * (d.currency === "USD" ? usdRate : 1) * 100,
+        ),
+        included: d.totalAmount > 0,
+      })),
+      usdRate,
+      competence,
       hasUncertainTax,
       autoCreditCash,
       isApproving: confirmMutation.isPending,
-      isAvailableDismissed: isAlertDismissed("available-dividends-alert"),
-      isProjectedDismissed: isAlertDismissed("projected-dividends-alert"),
+      isAvailableDismissed: !checkCardVisible("portfolio.dividends_available"),
+      isProjectedDismissed: !checkCardVisible("portfolio.dividends_projected"),
       onApproveAll: () => void handleApproveAll(),
-      onOpenDetails: () => openDividendReviewModal({ initialTab: "review" }),
-      onDismissAvailable: (days) => dismissAlert("available-dividends-alert", days),
-      onDismissProjected: (days) => dismissAlert("projected-dividends-alert", days),
+      onOpenDetails: () =>
+        openDividendReviewModal({ initialTab: "review", competence }),
+      onSelectPreset: dismissCard,
       className,
     }),
     ...buildGovernanceInsightItems({
@@ -222,8 +266,8 @@ export function PortfolioInsightsCarousel({ className }: PortfolioInsightsCarous
       consolidatedUpcomingAlert: gov.consolidatedUpcomingAlert,
       consolidatedUnscoredAlert: gov.consolidatedUnscoredAlert,
       isUpdatingAsset: updateAssetMutation.isPending,
-      isAlertDismissed,
-      dismissAlert,
+      isCardVisible: checkCardVisible,
+      onSelectPreset: dismissCard,
       onQuickConfirmScore: (asset) => void handleQuickConfirmScore(asset),
       onOpenEvaluationQueue: openEvaluationQueue,
       onNavigate: (to) => navigate(to),
@@ -232,8 +276,8 @@ export function PortfolioInsightsCarousel({ className }: PortfolioInsightsCarous
     ...buildAllocationInsightItems({
       driftModel,
       cashBRL: position?.cashBRL ?? 0,
-      isAlertDismissed,
-      dismissAlert,
+      isCardVisible: checkCardVisible,
+      onSelectPreset: dismissCard,
       onNavigate: (to) => navigate(to),
       className,
     }),
@@ -252,40 +296,14 @@ export function PortfolioInsightsCarousel({ className }: PortfolioInsightsCarous
   const isCarouselLoading =
     !isPortfolioEmpty && (isCoreLoading || (isDividendsLoading && activeItems.length === 0));
   const [wasReadyOnMount] = useState(() => !isCarouselLoading);
-  const { shouldShowSkeleton } = useCarouselPresenceHint("portfolio_insights", {
-    isLoading: isCarouselLoading,
-    hasItems: activeItems.length > 0,
-  });
-
-  if (isCarouselLoading) {
-    if (!shouldShowSkeleton) {
-      return null;
-    }
-    return (
-      <div
-        role="status"
-        aria-busy="true"
-        aria-label="Carregando insights da carteira"
-        className="w-full min-h-[104px] sm:min-h-[84px] rounded-2xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs animate-pulse flex items-center gap-3.5"
-      >
-        <div className="size-9 shrink-0 rounded-xl bg-muted" />
-        <div className="flex-1 space-y-2 min-w-0">
-          <div className="h-3.5 w-40 max-w-full rounded bg-muted" />
-          <div className="h-3 w-72 max-w-full rounded bg-muted/70" />
-        </div>
-      </div>
-    );
-  }
-
-  if (activeItems.length === 0) {
-    return null;
-  }
 
   return (
     <>
       <DashboardAlertsCarousel
         items={items}
-        maxItems={5}
+        maxItems={3}
+        isLoading={isCarouselLoading}
+        presenceHintKey="portfolio_insights"
         className={className}
         animateOnMount={!wasReadyOnMount}
       />

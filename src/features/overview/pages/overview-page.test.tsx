@@ -1,11 +1,13 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render as rtlRender, screen, fireEvent } from "@testing-library/react";
+import { cleanup, render as rtlRender, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SubscriptionStatus } from "@/types";
 import * as nativeModule from "@/services/native";
 import { resetVisualCustomization } from "@/hooks/use-visual-customization";
 import { WELCOME_MODAL_STORAGE_KEY } from "@/components/modules";
+import { resetCarouselDismissalsStore } from "@/hooks/use-carousel-dismissals";
+import { setActiveUserId } from "@/services/user-storage";
 import { OverviewPage } from "./overview-page";
 
 const testQueryClient = new QueryClient({
@@ -374,6 +376,8 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(new Date("2026-08-15T12:00:00Z"));
     localStorage.clear();
+    setActiveUserId("user-1");
+    resetCarouselDismissalsStore();
     resetVisualCustomization(null);
     localStorage.setItem(WELCOME_MODAL_STORAGE_KEY, "true");
     localStorage.setItem("financas:welcome_modal_seen", "true");
@@ -899,6 +903,7 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
       })
     )[0]!;
     await user.click(dismissBtn);
+    await user.click(screen.getByRole("button", { name: /7 dias/i }));
     expect(screen.queryByText("Primeiros passos no Axir")).not.toBeInTheDocument();
   });
 
@@ -1027,6 +1032,7 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
           screen.getByText("Resumo semanal de domingo por e-mail"),
         ).toBeInTheDocument();
       } finally {
+        cleanup();
         bioSpy.mockRestore();
       }
     });
@@ -1063,6 +1069,7 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
           screen.getByRole("heading", { name: "Personalizar alertas e privacidade" }),
         ).toBeInTheDocument();
       } finally {
+        cleanup();
         permSpy.mockRestore();
       }
     });
@@ -1120,7 +1127,7 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
       })[0]!;
       fireEvent.click(dismissBtn);
 
-      const dismissOption = screen.getByRole("button", { name: "Dispensar por 7 dias" });
+      const dismissOption = screen.getByRole("button", { name: /7 dias/i });
       fireEvent.click(dismissOption);
 
       expect(screen.queryByText("Meta Conquistada: Reserva de Emergência")).not.toBeInTheDocument();
@@ -1183,7 +1190,7 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
       })[0]!;
       fireEvent.click(dismissBtn);
 
-      const dismissOption = screen.getByRole("button", { name: "Dispensar por 7 dias" });
+      const dismissOption = screen.getByRole("button", { name: /7 dias/i });
       fireEvent.click(dismissOption);
 
       // Viagem Europa é removida do carrossel, mantendo Carro Novo
@@ -1499,7 +1506,6 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
           dashboardAlertDismissals: {
             pace: {
               dismissedAt: "2026-08-14T12:00:00Z",
-              dismissedUntil: futureMs,
               month: "2026-08",
               spentPercent: 40,
               surplusCents: 100000,
@@ -1518,8 +1524,8 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
 
       const { rerender } = render(<OverviewPage />);
       expect(
-        screen.getAllByRole("button", { name: /Simular cortes e projeção/i }).length,
-      ).toBeGreaterThan(0);
+        screen.getByText(/Projeção pede ajuste no mês|Ritmo acima do planejado/i),
+      ).toBeInTheDocument();
 
       userPreferencesMock = {
         custom_settings: {
@@ -1585,6 +1591,7 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
         expect(screen.getAllByText("Reforçar Reserva de Emergência").length).toBeGreaterThan(0);
         expect(screen.queryByText("Receba alertas de vencimentos e Pix")).not.toBeInTheDocument();
       } finally {
+        cleanup();
         permSpy.mockRestore();
         onboardingCountsMock = { ...onboardingCountsMock, notificationsEnabled: true };
       }

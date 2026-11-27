@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { isValidElement, useState, type ReactNode } from "react";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { CalculationBreakdown } from "@/domain/calculation-memory";
@@ -18,7 +18,14 @@ export type AlertCarouselCardTone =
 export interface AlertCarouselCardAction {
   label: string;
   onClick: () => void;
-  variant?: "default" | "outline" | "destructive" | "warning" | "ghost";
+  variant?:
+    | "default"
+    | "outline"
+    | "destructive"
+    | "warning"
+    | "ghost"
+    | "positive"
+    | "portfolio";
   disabled?: boolean;
   loading?: boolean;
   icon?: ReactNode;
@@ -32,10 +39,12 @@ export interface AlertCarouselCardProps {
   description: ReactNode;
   /** Versão textual acessível da descrição (para `title`/leitores de tela quando `description` é JSX). */
   descriptionText?: string;
-  badge?: {
-    label: ReactNode;
-    variant?: BadgeProps["variant"];
-  };
+  badge?:
+    | {
+        label: ReactNode;
+        variant?: BadgeProps["variant"];
+      }
+    | ReactNode;
   primaryAction?: AlertCarouselCardAction;
   secondaryAction?: AlertCarouselCardAction;
   calculationBreakdown?: CalculationBreakdown;
@@ -47,6 +56,7 @@ export interface AlertCarouselCardProps {
     nowMs?: number;
   };
   role?: "alert" | "region";
+  ariaLabel?: string;
   className?: string;
 }
 
@@ -76,6 +86,7 @@ export function AlertCarouselCard({
   calculationMemoryLabel,
   dismissPolicy,
   role,
+  ariaLabel,
   className,
 }: AlertCarouselCardProps) {
   const [memoryOpen, setMemoryOpen] = useState(false);
@@ -91,7 +102,7 @@ export function AlertCarouselCard({
     <div
       data-card-id={id}
       role={role ?? (tone === "critical" ? "alert" : "region")}
-      aria-label={title}
+      aria-label={ariaLabel ?? title}
       className={cn(
         "relative w-full h-full min-h-[104px] sm:min-h-[84px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border p-3.5 sm:p-4 shadow-xs transition-colors",
         tone === "critical"
@@ -122,13 +133,19 @@ export function AlertCarouselCard({
               {title}
             </h3>
             {badge ? (
-              <Badge
-                variant={badge.variant ?? "default"}
-                size="xs"
-                className="max-w-full truncate shrink-0"
-              >
-                {badge.label}
-              </Badge>
+              isValidElement(badge) ? (
+                badge
+              ) : typeof badge === "object" && "label" in badge ? (
+                <Badge
+                  variant={badge.variant ?? "default"}
+                  size="xs"
+                  className="max-w-full truncate shrink-0"
+                >
+                  {badge.label}
+                </Badge>
+              ) : (
+                badge
+              )
             ) : null}
             {calculationBreakdown ? (
               <CalculationMemoryModal

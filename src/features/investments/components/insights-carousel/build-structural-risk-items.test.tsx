@@ -149,6 +149,6 @@ describe("buildStructuralRiskItems", () => {
 
     const button = screen.getByRole("button", { name: "Simular Rebalanceamento" });
     fireEvent.click(button);
-    expect(onNavigateMock).toHaveBeenCalledWith("/investments?tab=rebalancear&view=simulador");
+    expect(onNavigateMock).toHaveBeenCalledWith("/investments?tab=aporte");
   });
 });

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { Settings, UserPlus } from "lucide-react";
 import {
   Badge,
@@ -44,7 +44,27 @@ export function FamilyPage() {
     isPending: isTogglingMode,
   } = useFamilyMode();
 
-  const [month, setMonth] = useState<string>(() => currentMonth());
+  const [searchParams, setSearchParams] = useSearchParams();
+  const paramMonth = searchParams.get("mes") ?? searchParams.get("month");
+  const validParamMonth =
+    paramMonth && /^\d{4}-\d{2}$/.test(paramMonth) ? paramMonth : null;
+  const [pickedMonth, setPickedMonth] = useState<string | null>(null);
+  const month = validParamMonth ?? pickedMonth ?? currentMonth();
+
+  const setMonth = (next: string) => {
+    setPickedMonth(next);
+    if (searchParams.has("mes") || searchParams.has("month")) {
+      setSearchParams(
+        (prev) => {
+          const updated = new URLSearchParams(prev);
+          updated.delete("mes");
+          updated.delete("month");
+          return updated;
+        },
+        { replace: true },
+      );
+    }
+  };
   const [isSettlementOpen, setIsSettlementOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isShareAssetsOpen, setIsShareAssetsOpen] = useState(false);
