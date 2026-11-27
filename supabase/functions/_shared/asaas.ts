@@ -781,11 +781,23 @@ export function mapAsaasCardErrorMessage(errorMsg: string): string | null {
   if (lower.includes("expirado") || lower.includes("vencido") || lower.includes("validade") || lower.includes("expired")) {
     return "Data de validade do cartão incorreta ou cartão vencido.";
   }
-  if (lower.includes("bloqueado") || lower.includes("blocked") || lower.includes("cartão inválido") || lower.includes("cartao invalido")) {
-    return "Cartão de crédito bloqueado ou inválido. Utilize outro cartão.";
+  if (lower.includes("bloqueado") || lower.includes("blocked") || lower.includes("cartão inválido") || lower.includes("cartao invalido") || lower.includes("número do cartão") || lower.includes("numero do cartao")) {
+    return "Cartão de crédito bloqueado ou com número inválido. Verifique os dados ou utilize outro cartão.";
   }
   if (lower.includes("cpf") || lower.includes("cnpj")) {
     return "CPF/CNPJ do titular inválido ou inconsistente junto à Receita Federal.";
+  }
+  if (lower.includes("cep") || lower.includes("postalcode") || lower.includes("endereço") || lower.includes("endereco")) {
+    return "CEP ou número do endereço do titular inválido. Verifique os dados de cobrança.";
+  }
+  if (lower.includes("telefone") || lower.includes("celular") || lower.includes("phone")) {
+    return "Telefone do titular inválido. Informe um número com DDD válido.";
+  }
+  if (lower.includes("risco") || lower.includes("antifraude") || lower.includes("suspeita") || lower.includes("fraud")) {
+    return "Transação bloqueada pela análise de segurança do emissor. Tente outro cartão ou utilize PIX.";
+  }
+  if (lower.includes("muitas tentativas") || lower.includes("too many") || lower.includes("aguarde")) {
+    return "Muitas tentativas em sequência no gateway. Aguarde alguns minutos e tente novamente.";
   }
 
   return null;

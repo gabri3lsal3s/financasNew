@@ -212,5 +212,12 @@ describe("Validações Financeiras e Sanitização PCI — Asaas", () => {
       expect(sanitized.rawError).not.toContain("4111 2222 3333 4444");
       expect(sanitized.rawError).not.toContain("usuario@axir.com.br");
     });
+
+    it("mapeia mensagens de rejeição de cartão, endereço e antifraude do Asaas", async () => {
+      const { mapAsaasCardErrorMessage } = await import("../../supabase/functions/_shared/asaas.ts");
+      expect(mapAsaasCardErrorMessage("CEP informado é inválido.")).toContain("CEP ou número do endereço");
+      expect(mapAsaasCardErrorMessage("Transação bloqueada pelo antifraude.")).toContain("análise de segurança");
+      expect(mapAsaasCardErrorMessage("Número do cartão inválido.")).toContain("número inválido");
+    });
   });
 });

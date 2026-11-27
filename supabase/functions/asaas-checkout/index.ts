@@ -907,12 +907,17 @@ Deno?.serve?.(async (req: Request) => {
     });
   } catch (err: unknown) {
     const rawMsg = err instanceof Error ? err.message : String(err);
+    const errStatus = (err as { status?: number })?.status;
     const sanitizedMsg = sanitizePaymentLog(rawMsg);
     console.error("[asaas-checkout] Falha ao processar pagamento:", sanitizedMsg);
 
     const friendlyError = mapAsaasCardErrorMessage(rawMsg);
     if (friendlyError) {
       return jsonResponse(req, { error: friendlyError }, 400);
+    }
+
+    if ((errStatus === 400 || errStatus === 422) && sanitizedMsg.trim().length > 0) {
+      return jsonResponse(req, { error: sanitizedMsg }, 400);
     }
 
     return safeErrorResponse(req, 500, "Falha ao processar pagamento. Tente novamente.");
