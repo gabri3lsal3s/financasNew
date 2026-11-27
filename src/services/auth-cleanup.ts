@@ -1,6 +1,12 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { getSupabase } from "@/data/client";
-import { setActiveUserId, sanitizeLegacyStorage } from "@/services/user-storage";
+import {
+  getActiveUserId,
+  purgeAccountStorage,
+  sanitizeLegacyStorage,
+  setActiveUserId,
+} from "@/services/user-storage";
+import { clearSessionContext } from "@/services/session-context";
 import { resetVisualCustomization } from "@/hooks/use-visual-customization";
 import { resetPrivacyMask } from "@/hooks/use-privacy-mask";
 import { resetEnsuredProfiles, resetGlobalMfaState } from "@/hooks/use-auth";
@@ -10,12 +16,26 @@ import { setCachedIconTier } from "@/services/native/app-icon";
 import { clearRecentReceipts } from "@/services/native/suggestions-store";
 import { resetUpdateDismissedForSession } from "@/domain/native/update-toast-policy";
 
+export { purgeAccountStorage };
+
+export interface ResetAppStateOptions {
+  /** Conta específica cujo armazenamento local deve ser expurgado seletivamente. */
+  purgeAccountKey?: string | null;
+}
+
 /**
  * Rotina centralizada de limpeza e reset do estado da aplicação.
  * Executada ao deslogar (`signOut`) ou ao transicionar entre contas diferentes,
  * garantindo isolamento absoluto de cache, stores em memória e atributos DOM.
  */
-export function resetAppState(queryClient?: QueryClient, nextUserId: string | null = null): void {
+export function resetAppState(
+  queryClient?: QueryClient,
+  nextUserId: string | null = null,
+  options?: ResetAppStateOptions,
+): void {
+  // 0. Invalida o contexto de sessão da aba para descartar respostas tardias em voo
+  clearSessionContext("neutral");
+
   // 1. Cancela buscas e mutações em andamento
   if (queryClient) {
     void queryClient.cancelQueries();
@@ -59,8 +79,19 @@ export function resetAppState(queryClient?: QueryClient, nextUserId: string | nu
     }
   }
 
-  // 3. Atualiza o userId ativo para isolamento de storage
-  setActiveUserId(nextUserId);
+  // 3. Atualiza o userId ativo e executa expurgo seletivo da conta se solicitado
+  const accountToPurge = options?.purgeAccountKey?.trim() || null;
+  if (accountToPurge) {
+    if (nextUserId && nextUserId !== accountToPurge) {
+      setActiveUserId(nextUserId);
+      purgeAccountStorage(accountToPurge);
+    } else {
+      purgeAccountStorage(accountToPurge);
+      setActiveUserId(nextUserId);
+    }
+  } else {
+    setActiveUserId(nextUserId);
+  }
 
   // 4. Reseta as stores em memória e atributos DOM
   resetVisualCustomization(nextUserId);
@@ -74,4 +105,28 @@ export function resetAppState(queryClient?: QueryClient, nextUserId: string | nu
 
   // 6. Higieniza chaves legadas no localStorage
   sanitizeLegacyStorage();
+}
+
+/**
+ * Expurga seletivamente os dados locais de uma conta específica (`accountKey`),
+ * preservando integralmente preferências e estado de outras contas.
+ * Se a conta expurgada for a ativa no momento (ou se `nextUserId` for informado),
+ * executa também o reset completo da sessão ativa na aba.
+ */
+export function purgeAccountState(
+  accountKey: string,
+  queryClient?: QueryClient,
+  nextUserId?: string | null,
+): number {
+  const normalizedKey = accountKey.trim();
+  if (!normalizedKey) return 0;
+
+  const activeId = getActiveUserId();
+  if (activeId === normalizedKey || nextUserId !== undefined) {
+    const removedCount = purgeAccountStorage(normalizedKey);
+    resetAppState(queryClient, nextUserId ?? null);
+    return removedCount;
+  }
+
+  return purgeAccountStorage(normalizedKey);
 }

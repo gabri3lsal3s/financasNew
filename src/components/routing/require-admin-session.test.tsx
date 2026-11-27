@@ -1,11 +1,12 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { RequireAdminSession } from "./require-admin-session";
 import { RequireSuperAdmin } from "./require-super-admin";
 
 const mockUseAuth = vi.fn();
 const mockUseUserAccess = vi.fn();
+const mockCheckAdminPortalGrant = vi.fn();
 const mockUseIdleSessionTimeout = vi.fn((...args: unknown[]) => {
   void args;
   return {
@@ -17,6 +18,10 @@ const mockUseIdleSessionTimeout = vi.fn((...args: unknown[]) => {
     resetTimer: vi.fn(),
   };
 });
+
+vi.mock("@/state/queries/use-admin-portal-grant", () => ({
+  verifyAdminPortalGrant: () => mockCheckAdminPortalGrant(),
+}));
 
 vi.mock("@/hooks/use-auth", () => ({
   useAuth: () => mockUseAuth(),
@@ -51,6 +56,16 @@ vi.mock("@/state/queries/use-user-access", () => ({
 }));
 
 describe("RequireAdminSession Guard", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockCheckAdminPortalGrant.mockResolvedValue({
+      granted: true,
+      portalScope: "admin_portal",
+      expiresAt: null,
+      reason: null,
+    });
+  });
+
   it("exibe LoadingScreen enquanto estiver carregando a autenticação ou permissão", () => {
     mockUseAuth.mockReturnValue({
       session: { user: { id: "u-1" } },
@@ -76,7 +91,7 @@ describe("RequireAdminSession Guard", () => {
     expect(screen.queryByText("Dashboard Admin")).not.toBeInTheDocument();
   });
 
-  it("monta useIdleSessionTimeout com forcedPolicy '30m' e exibe aviso prévio de 60s para admin ativo", () => {
+  it("monta useIdleSessionTimeout com forcedPolicy '30m' e exibe aviso prévio de 60s para admin ativo", async () => {
     mockUseAuth.mockReturnValue({
       session: { user: { id: "u-admin" } },
       loading: false,
@@ -87,7 +102,7 @@ describe("RequireAdminSession Guard", () => {
       isLoading: false,
       isAdmin: true,
     });
-    mockUseIdleSessionTimeout.mockReturnValueOnce({
+    mockUseIdleSessionTimeout.mockReturnValue({
       isMonitoringActive: true,
       isWarningVisible: true,
       secondsRemaining: 42,
@@ -106,14 +121,16 @@ describe("RequireAdminSession Guard", () => {
       </MemoryRouter>,
     );
 
-    expect(mockUseIdleSessionTimeout).toHaveBeenCalledWith(
-      expect.objectContaining({
-        forcedPolicy: "30m",
-        warningSeconds: 60,
-        enabled: true,
-      }),
-    );
-    expect(screen.getByTestId("admin-idle-modal")).toHaveTextContent("Aviso Admin 42s");
+    await waitFor(() => {
+      expect(mockUseIdleSessionTimeout).toHaveBeenCalledWith(
+        expect.objectContaining({
+          forcedPolicy: "30m",
+          warningSeconds: 60,
+          enabled: true,
+        }),
+      );
+    });
+    expect(await screen.findByTestId("admin-idle-modal")).toHaveTextContent("Aviso Admin 42s");
   });
 
   it("redireciona para /admin/login se não houver usuário autenticado", () => {
@@ -166,7 +183,7 @@ describe("RequireAdminSession Guard", () => {
     expect(screen.getByText("Tela de Login Admin")).toBeInTheDocument();
   });
 
-  it("permite acesso ao Outlet se o usuário estiver autenticado e for admin", () => {
+  it("permite acesso ao Outlet se o usuário estiver autenticado, for admin e tiver concessão do portal", async () => {
     mockUseAuth.mockReturnValue({
       session: { user: { id: "u-admin" } },
       loading: false,
@@ -189,7 +206,40 @@ describe("RequireAdminSession Guard", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("Dashboard Admin Protegido")).toBeInTheDocument();
+    expect(await screen.findByText("Dashboard Admin Protegido")).toBeInTheDocument();
+  });
+
+  it("redireciona para /admin/login se a concessão do portal administrativo for negada ou ausente", async () => {
+    mockUseAuth.mockReturnValue({
+      session: { user: { id: "u-admin" } },
+      loading: false,
+      mfaRequired: false,
+      mfaVerified: true,
+    });
+    mockUseUserAccess.mockReturnValue({
+      isLoading: false,
+      isAdmin: true,
+    });
+    mockCheckAdminPortalGrant.mockResolvedValue({
+      granted: false,
+      portalScope: null,
+      expiresAt: null,
+      reason: "portal_grant_missing",
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/admin/dashboard"]}>
+        <Routes>
+          <Route element={<RequireAdminSession />}>
+            <Route path="/admin/dashboard" element={<div>Dashboard Admin Protegido</div>} />
+          </Route>
+          <Route path="/admin/login" element={<div>Tela de Login Admin</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Tela de Login Admin")).toBeInTheDocument();
+    expect(screen.queryByText("Dashboard Admin Protegido")).not.toBeInTheDocument();
   });
 
   it("redireciona para /entrar?desafio=totp se o admin possui MFA pendente de validação (AAL2)", () => {
