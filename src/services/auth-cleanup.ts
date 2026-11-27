@@ -93,6 +93,18 @@ export function resetAppState(
     setActiveUserId(nextUserId);
   }
 
+  // 3.1 Sincroniza contexto ativo com o Service Worker de Push (T07)
+  if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+    try {
+      navigator.serviceWorker.controller?.postMessage({
+        type: "AXIR_PUSH_CONTEXT",
+        activeUserId: nextUserId,
+      });
+    } catch {
+      // no-op em ambientes sem SW ativo
+    }
+  }
+
   // 4. Reseta as stores em memória e atributos DOM
   resetVisualCustomization(nextUserId);
   resetPrivacyMask();

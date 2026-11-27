@@ -48,6 +48,10 @@ begin
     raise exception 'session_id e user_id são obrigatórios.';
   end if;
 
+  if auth.role() <> 'service_role' and auth.uid() is distinct from p_user_id then
+    raise exception 'Acesso negado para registrar revogação de outro usuário.' using errcode = '42501';
+  end if;
+
   insert into private_auth.session_revocation_registry (
     session_id,
     user_id,

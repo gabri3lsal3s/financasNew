@@ -54,7 +54,7 @@ create or replace function public.bind_push_subscription_installation(
 returns public.user_push_subscriptions
 language plpgsql
 security definer
-set search_path = public, auth
+set search_path = public, pg_temp
 as $$
 declare
   v_user_id uuid := auth.uid();

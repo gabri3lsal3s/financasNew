@@ -109,6 +109,10 @@ begin
     raise exception 'user_id é obrigatório para conceder acesso ao portal administrativo.';
   end if;
 
+  if auth.role() <> 'service_role' and auth.uid() is null then
+    raise exception 'Acesso não autenticado.' using errcode = '28000';
+  end if;
+
   if v_scope not in ('admin_portal', 'superadmin_portal') then
     raise exception 'Escopo de portal administrativo inválido.';
   end if;
@@ -154,6 +158,10 @@ begin
     raise exception 'user_id é obrigatório para revogar concessões do portal.';
   end if;
 
+  if auth.role() <> 'service_role' and auth.uid() is null then
+    raise exception 'Acesso não autenticado.' using errcode = '28000';
+  end if;
+
   update private_auth.admin_portal_grants
   set revoked_at = now(),
       revoked_by = p_revoked_by,
@@ -179,7 +187,7 @@ create or replace function private_auth.consume_admin_step_up_challenge(
 returns boolean
 language plpgsql
 security definer
-set search_path = private_auth, public, extensions, pg_temp
+set search_path = private_auth, extensions, public, pg_temp
 as $$
 declare
   v_token text := trim(coalesce(p_step_up_token, ''));
@@ -189,6 +197,10 @@ declare
   v_updated integer := 0;
 begin
   if p_user_id is null or v_token = '' or v_op = '' or v_target = '' then
+    return false;
+  end if;
+
+  if auth.role() <> 'service_role' and auth.uid() is distinct from p_user_id then
     return false;
   end if;
 
@@ -276,7 +288,7 @@ create or replace function public.admin_issue_step_up_challenge(
 returns jsonb
 language plpgsql
 security definer
-set search_path = private_auth, public, extensions, pg_temp
+set search_path = private_auth, extensions, public, pg_temp
 as $$
 declare
   v_uid uuid;
@@ -371,7 +383,7 @@ create or replace function public.admin_consume_step_up_challenge_service(
 returns boolean
 language sql
 security definer
-set search_path = private_auth, public, extensions, pg_temp
+set search_path = private_auth, extensions, public, pg_temp
 as $$
   select private_auth.consume_admin_step_up_challenge(
     p_user_id,

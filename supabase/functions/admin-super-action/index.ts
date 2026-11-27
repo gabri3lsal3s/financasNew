@@ -322,7 +322,7 @@ Deno.serve(async (req: Request) => {
 
       let sentToVerifiedEmail = false;
       if (actionLink) {
-        const emailDispatch = await sendTransactionalEmail({
+        const emailDispatch = await sendTransactionalEmail(adminClient, {
           to: cleanEmail,
           subject: "Ative seu acesso ao Axir",
           template: "admin_provision_invite",
@@ -377,7 +377,7 @@ Deno.serve(async (req: Request) => {
         },
       });
 
-      const recoveryEmailRes = await sendTransactionalEmail({
+      const recoveryEmailRes = await sendTransactionalEmail(adminClient, {
         to: cleanEmail,
         subject: "Recuperação de acesso ao Axir",
         template: "admin_recovery_verified_email",

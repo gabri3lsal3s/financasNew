@@ -234,7 +234,12 @@ export function LogoProfileButton({
           onAddAccount={() => navigateFromSwitcher("/login?mode=add")}
           onReauthAccount={() => navigateFromSwitcher("/login?mode=reauth")}
           onUnlock={() => navigateFromSwitcher("/login?mode=unlock")}
-          onOpenAdminPortal={() => navigateFromSwitcher("/admin")}
+          onOpenAdminPortal={() => {
+            setSwitcherOpen(false);
+            if (typeof window !== "undefined") {
+              window.location.assign("/admin.html");
+            }
+          }}
           onLogout={async ({ remember }) => {
             const res = await accountSwitcher.logout({ remember });
             if (res.ok) {

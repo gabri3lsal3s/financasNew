@@ -10,7 +10,7 @@ import { DEFAULT_QUIET_HOURS, MAX_OVERDUE_DAYS_FOR_NOTIFICATION, adjustDateForQu
 import { inferCategoryKeyword } from "@/domain/notifications/category-inference";
 import { type ParsedBankTransaction } from "@/domain/notifications/bank-parser";
 import { getDemoSessionState } from "@/state/demo-mode/demo-session-store";
-import { getUserStorageItem, setUserStorageItem } from "@/services/user-storage";
+import { getActiveUserId, getUserStorageItem, setUserStorageItem } from "@/services/user-storage";
 import { isNativePlatform } from "./platform";
 import {
   ACTION_EDIT,
@@ -927,6 +927,7 @@ export async function syncDueReminderNotifications(
       channelId: DUE_REMINDER_CHANNEL_ID,
       actionTypeId: item.actionTypeId,
       scheduleAt: item.scheduleAt,
+      userId,
     });
     if (sent) {
       activeKeysSet.add(item.key);
@@ -1069,6 +1070,8 @@ export function initNotificationActionListener(
         rawSnoozeDate.setDate(rawSnoozeDate.getDate() + 3);
         rawSnoozeDate.setHours(9, 0, 0, 0);
         const snoozeDate = adjustDateForQuietHours(rawSnoozeDate, getQuietHoursConfig());
+        const snoozeUserId =
+          typeof extra?.recipientUserId === "string" ? extra.recipientUserId : getActiveUserId() ?? undefined;
         void dispatchLocalOrWebNotification({
           id: notifId,
           title: "Lembrete adiado — Confira sua pendência",
@@ -1078,6 +1081,7 @@ export function initNotificationActionListener(
           channelId: DUE_REMINDER_CHANNEL_ID,
           actionTypeId: DUE_REMINDER_ACTION_TYPE_ID,
           scheduleAt: snoozeDate,
+          userId: snoozeUserId,
         });
       } else {
         // Toque no corpo da notificação (tap padrão)

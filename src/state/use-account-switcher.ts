@@ -1,4 +1,6 @@
-import { useCallback, useState, useSyncExternalStore } from "react";
+import { useCallback, useContext, useState, useSyncExternalStore } from "react";
+import { QueryClientContext } from "@tanstack/react-query";
+import { purgeAccountState, resetAppState } from "@/services/auth-cleanup";
 import type {
   AccountSummary,
   LogoutResult,
@@ -178,6 +180,7 @@ function getCachedSessionContext(): TabSessionContext {
 }
 
 export function useAccountSwitcher(): UseAccountSwitcherReturn {
+  const queryClient = useContext(QueryClientContext);
   const context = useSyncExternalStore(
     subscribeSessionContext,
     getCachedSessionContext,
@@ -258,6 +261,7 @@ export function useAccountSwitcher(): UseAccountSwitcherReturn {
           setErrorCode("invalid_response");
           return { ok: false, code: "invalid_response", message };
         }
+        resetAppState(queryClient, nextContext.accountRef);
         setSessionContext(nextContext);
         setAccounts((prev) =>
           prev.map((item) => {
@@ -280,7 +284,7 @@ export function useAccountSwitcher(): UseAccountSwitcherReturn {
         setBusyAction((current) => (current === "switch" ? null : current));
       }
     },
-    [],
+    [queryClient],
   );
 
   const openTab = useCallback(
@@ -330,6 +334,7 @@ export function useAccountSwitcher(): UseAccountSwitcherReturn {
           signal: params?.signal,
         });
         const result = extractLogoutResult(raw);
+        resetAppState(queryClient, null);
         clearSessionContext("neutral");
         setLastLogoutResult(result);
         setAccounts((prev) => {
@@ -351,7 +356,7 @@ export function useAccountSwitcher(): UseAccountSwitcherReturn {
         setBusyAction((current) => (current === "logout" ? null : current));
       }
     },
-    [],
+    [queryClient],
   );
 
   const logoutDevice = useCallback(
@@ -364,6 +369,7 @@ export function useAccountSwitcher(): UseAccountSwitcherReturn {
           signal: options?.signal,
         });
         const result = extractLogoutResult(raw);
+        resetAppState(queryClient, null);
         clearSessionContext("neutral");
         setLastLogoutResult(result);
         setAccounts([]);
@@ -377,7 +383,7 @@ export function useAccountSwitcher(): UseAccountSwitcherReturn {
         setBusyAction((current) => (current === "logout-device" ? null : current));
       }
     },
-    [],
+    [queryClient],
   );
 
   const forgetAccount = useCallback(
@@ -393,7 +399,10 @@ export function useAccountSwitcher(): UseAccountSwitcherReturn {
         );
         const activeRef = getSessionContext().accountRef;
         if (activeRef && activeRef === params.accountRef) {
+          resetAppState(queryClient, null, { purgeAccountKey: params.accountRef });
           clearSessionContext("neutral");
+        } else {
+          purgeAccountState(params.accountRef);
         }
         setAccounts((prev) => prev.filter((item) => item.accountRef !== params.accountRef));
         return { ok: true, accountRef: params.accountRef };
@@ -406,7 +415,7 @@ export function useAccountSwitcher(): UseAccountSwitcherReturn {
         setBusyAction((current) => (current === "forget" ? null : current));
       }
     },
-    [],
+    [queryClient],
   );
 
   return {
