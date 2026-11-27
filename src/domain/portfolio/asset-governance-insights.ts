@@ -31,6 +31,10 @@ export interface GovernanceAssetInput {
   sector?: string | null;
   currentValueBRL: number;
   currentPrice: number;
+  /** Cotação na moeda nativa do ativo (para comparar com ceiling_price na mesma moeda). */
+  currentQuote?: number;
+  canonicalSource?: string;
+  isEstimate?: boolean;
   averageCost: number;
   ceilingPrice?: number | null;
   score?: number | null;
@@ -96,8 +100,9 @@ export function generateAssetGovernanceInsights(params: {
   assets: readonly GovernanceAssetInput[];
   totalPortfolioBRL?: number;
   referenceDate?: Date;
+  lowScoreThreshold?: number;
 }): GovernanceInsightsResult {
-  const { assets, referenceDate = new Date() } = params;
+  const { assets, referenceDate = new Date(), lowScoreThreshold = 5 } = params;
   const nowTime = referenceDate.getTime();
 
   const totalPortfolioBRL =
@@ -198,16 +203,32 @@ export function generateAssetGovernanceInsights(params: {
       }
     }
 
-    // GATILHO 2: Acompanhamento de Quarentena (> 90 dias)
+    // GATILHO 2: Acompanhamento de Quarentena (>= 90 dias ou sem data confirmada)
     if (status === "quarantine") {
-      let daysInQuarantine = 0;
+      let daysInQuarantine: number | undefined;
       if (asset.last_reviewed_at) {
         const reviewedTime = new Date(asset.last_reviewed_at).getTime();
         if (!Number.isNaN(reviewedTime)) {
-          daysInQuarantine = Math.max(0, Math.floor((nowTime - reviewedTime) / (1000 * 60 * 60 * 24)));
+          daysInQuarantine = Math.max(
+            0,
+            Math.floor((nowTime - reviewedTime) / (1000 * 60 * 60 * 24)),
+          );
         }
       }
-      if (daysInQuarantine >= 90) {
+      if (daysInQuarantine === undefined) {
+        insights.push({
+          id: `gov-quarantine-${asset.id}`,
+          kind: "quarantine_followup",
+          severity: "warning",
+          title: `Em quarentena: ${asset.ticker}`,
+          description: `${asset.ticker} está em quarentena sem data confirmada de entrada. Reavalie se os fundamentos melhoraram.`,
+          assetId: asset.id,
+          ticker: asset.ticker,
+          assetClass: asset.assetClass,
+          score,
+          actionLabel: "Avaliar quarentena",
+        });
+      } else if (daysInQuarantine >= 90) {
         insights.push({
           id: `gov-quarantine-${asset.id}`,
           kind: "quarantine_followup",
@@ -224,21 +245,33 @@ export function generateAssetGovernanceInsights(params: {
       }
     }
 
-    // GATILHO 3: Oportunidade com Margem de Segurança (Nota ≥ 8 e Preço ≤ Preço Teto - 15%)
-    if (status === "active" && (score ?? 5) >= 8) {
-      if (asset.ceilingPrice != null && asset.ceilingPrice > 0 && asset.currentPrice > 0 && asset.currentPrice < asset.ceilingPrice) {
-        const discountPct = Math.round(((asset.ceilingPrice - asset.currentPrice) / asset.ceilingPrice) * 100);
-        if (discountPct >= 15) {
+    // GATILHO 3: Oportunidade com Margem de Segurança (Nota ≥ 8, cotação observável na moeda nativa, margem bruta ≥ 15%)
+    const hasObservableQuote =
+      !asset.isEstimate && asset.canonicalSource !== "fallback";
+    const nativePrice =
+      asset.currentQuote != null && asset.currentQuote > 0
+        ? asset.currentQuote
+        : asset.currentPrice;
+    if (status === "active" && (score ?? 5) >= 8 && hasObservableQuote) {
+      if (
+        asset.ceilingPrice != null &&
+        asset.ceilingPrice > 0 &&
+        nativePrice > 0 &&
+        nativePrice < asset.ceilingPrice
+      ) {
+        const rawMarginPct = ((asset.ceilingPrice - nativePrice) / asset.ceilingPrice) * 100;
+        if (rawMarginPct >= 15) {
+          const discountPct = Math.round(rawMarginPct);
           insights.push({
             id: `gov-discount-${asset.id}`,
             kind: "discount_opportunity",
             severity: "positive",
             title: `Oportunidade em ${asset.ticker} (-${discountPct}%)`,
-            description: `Ativo com Nota ${score}/10 está cotado com ${discountPct}% de margem de segurança frente ao Preço Teto.`,
+            description: `Ativo com Nota ${score}/10 está cotado com ${rawMarginPct.toFixed(1).replace(".", ",")}% de margem frente ao Preço Teto.`,
             assetId: asset.id,
             ticker: asset.ticker,
             assetClass: asset.assetClass,
-            discountPct,
+            discountPct: rawMarginPct,
             score,
             actionLabel: "Ver no aporte",
           });
@@ -246,11 +279,16 @@ export function generateAssetGovernanceInsights(params: {
       }
     }
 
-    // GATILHO 4: Risco de Hiperconcentração em Ativo de Baixa Convicção (Nota ≤ 4 e Alocação > 5%)
-    if (totalPortfolioBRL > 0 && score != null && score <= 4 && status !== "exit") {
-      const allocationPct = Math.round(((asset.currentValueBRL / totalPortfolioBRL) * 100) * 10) / 10;
-      if (allocationPct > 5.0) {
-        const formattedPct = allocationPct.toFixed(1).replace(".", ",");
+    // GATILHO 4: Risco de Hiperconcentração em Ativo de Baixa Convicção (Nota ≤ threshold e Alocação bruta > 5%)
+    if (
+      totalPortfolioBRL > 0 &&
+      score != null &&
+      score <= lowScoreThreshold &&
+      status !== "exit"
+    ) {
+      const rawAllocationPct = (asset.currentValueBRL / totalPortfolioBRL) * 100;
+      if (rawAllocationPct > 5.0) {
+        const formattedPct = rawAllocationPct.toFixed(1).replace(".", ",");
         insights.push({
           id: `gov-lowscore-${asset.id}`,
           kind: "low_score_overweight",
@@ -260,7 +298,7 @@ export function generateAssetGovernanceInsights(params: {
           assetId: asset.id,
           ticker: asset.ticker,
           assetClass: asset.assetClass,
-          allocationPct,
+          allocationPct: rawAllocationPct,
           score,
           actionLabel: "Ver detalhes",
         });

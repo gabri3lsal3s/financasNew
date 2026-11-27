@@ -230,6 +230,10 @@ export interface CashGapAnalysisResult {
   gapDate: string | null;
   /** Dias restantes a partir de hoje até o início do déficit. */
   daysUntilGap: number | null;
+  /** Déficit acumulado na primeira data negativa (em centavos, valor positivo). */
+  firstGapDeficitCents?: number;
+  /** Data em que ocorre o pior saldo/déficit no horizonte (null se não houver déficit). */
+  worstDeficitDate?: string | null;
   /** Maior déficit acumulado (em centavos, valor positivo representando o valor faltante). */
   maxDeficitCents: number;
   /** Data prevista da próxima entrada financeira que pode cobrir o déficit (se houver). */
@@ -264,6 +268,8 @@ export function analyzeCashGap(params: CashGapParams): CashGapAnalysisResult {
 
   let firstGapDate: string | null = null;
   let firstGapDays: number | null = null;
+  let firstGapDeficitCents = 0;
+  let worstDeficitDate: string | null = null;
   let maxDeficit = 0;
   const causingObligationsMap = new Map<string, CashGapObligation>();
 
@@ -292,10 +298,12 @@ export function analyzeCashGap(params: CashGapParams): CashGapAnalysisResult {
       const deficit = Math.abs(runningBalance);
       if (deficit > maxDeficit) {
         maxDeficit = deficit;
+        worstDeficitDate = dateStr;
       }
       if (!firstGapDate) {
         firstGapDate = dateStr;
         firstGapDays = offset;
+        firstGapDeficitCents = deficit;
       }
       dayOutflows.forEach((ob) => causingObligationsMap.set(ob.id, ob));
     }
@@ -348,6 +356,8 @@ export function analyzeCashGap(params: CashGapParams): CashGapAnalysisResult {
     severity,
     gapDate: firstGapDate,
     daysUntilGap: firstGapDays,
+    firstGapDeficitCents,
+    worstDeficitDate,
     maxDeficitCents: maxDeficit,
     nextInflowDate,
     causingObligations: Array.from(causingObligationsMap.values()),

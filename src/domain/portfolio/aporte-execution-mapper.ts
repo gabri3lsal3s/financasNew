@@ -100,6 +100,8 @@ export interface DiversificationImpactSummary {
 
 export interface BuildAporteSimulationInput {
   totalPurchasingCents: number;
+  /** Parcela em BRL do caixa da corretora efetivamente selecionada para consumo no aporte (padrão 0 = dinheiro novo). */
+  cashUsedBRL?: number;
   positionRows: readonly AportePositionRowInput[];
   rawAssets: readonly PortfolioAsset[];
   rawClassTargets: readonly GroupTarget[];
@@ -126,6 +128,7 @@ export interface AporteSimulationViewModel {
  */
 export function buildAporteSimulationViewModel({
   totalPurchasingCents,
+  cashUsedBRL = 0,
   positionRows,
   rawAssets,
   rawClassTargets,
@@ -320,7 +323,14 @@ export function buildAporteSimulationViewModel({
   let diversificationImpact: DiversificationImpactSummary | null = null;
 
   if (rawAssets.length > 0) {
-    const currentDiv = calculatePortfolioDiversification(rawAssets, { fxRateUSD: rawUsdRate });
+    const currentCashBRL = positionRows
+      .filter((r) => r.isCash)
+      .reduce((acc, r) => acc + Math.max(0, r.valueBRL), 0);
+    const currentDiv = calculatePortfolioDiversification(rawAssets, {
+      fxRateUSD: rawUsdRate,
+      positionRows: nonCashRows,
+      cashBRL: currentCashBRL,
+    });
 
     const routeAllocMap = new Map((result?.routes ?? []).map((r) => [r.assetId, r]));
     const projectedAssets: PortfolioAsset[] = rawAssets.map((a) => {
@@ -332,7 +342,23 @@ export function buildAporteSimulationViewModel({
       };
     });
 
-    const projectedDiv = calculatePortfolioDiversification(projectedAssets, { fxRateUSD: rawUsdRate });
+    const projectedRows = nonCashRows.map((row) => {
+      const alloc = routeAllocMap.get(row.assetId);
+      if (!alloc || alloc.allocatedBRL <= 0) return row;
+      return {
+        ...row,
+        valueBRL: row.valueBRL + alloc.allocatedBRL,
+      };
+    });
+    const totalAllocatedBRL = (result?.routes ?? []).reduce((acc, r) => acc + Math.max(0, r.allocatedBRL), 0);
+    const effectiveUsedCashBRL = Math.min(currentCashBRL, Math.max(0, cashUsedBRL), totalAllocatedBRL);
+    const projectedCashBRL = Math.max(0, currentCashBRL - effectiveUsedCashBRL);
+
+    const projectedDiv = calculatePortfolioDiversification(projectedAssets, {
+      fxRateUSD: rawUsdRate,
+      positionRows: projectedRows,
+      cashBRL: projectedCashBRL,
+    });
 
     const currentNef = currentDiv.globalNef;
     const projectedNef = projectedDiv.globalNef;

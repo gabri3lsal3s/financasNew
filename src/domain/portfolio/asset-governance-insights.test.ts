@@ -123,6 +123,52 @@ describe("domain/portfolio/asset-governance-insights (§F41)", () => {
     expect(riskInsight?.severity).toBe("critical");
   });
 
+  it("testa bordas exatas de 5,01% (nota baixa), 14,99% (desconto) e quarentena sem data confirmada", () => {
+    const assets: GovernanceAssetInput[] = [
+      makeAsset({
+        id: "low-edge",
+        ticker: "LOW5",
+        score: 5,
+        currentValueBRL: 501,
+        last_reviewed_at: "2026-11-01T00:00:00Z",
+      }),
+      makeAsset({
+        id: "disc-edge",
+        ticker: "DISC14",
+        score: 9,
+        currentValueBRL: 5000,
+        currentPrice: 85.01,
+        currentQuote: 85.01,
+        ceilingPrice: 100, // 14,99% de margem (< 15%)
+        last_reviewed_at: "2026-11-01T00:00:00Z",
+      }),
+      makeAsset({
+        id: "quar-nodate",
+        ticker: "QUAR1",
+        score: 6,
+        allocation_status: "quarantine",
+        last_reviewed_at: null,
+        currentValueBRL: 4499,
+      }),
+    ];
+
+    const result = generateAssetGovernanceInsights({
+      assets,
+      totalPortfolioBRL: 10_000,
+      referenceDate: refDate,
+    });
+
+    expect(result.insights.some((i) => i.kind === "low_score_overweight" && i.ticker === "LOW5")).toBe(
+      true,
+    );
+    expect(
+      result.insights.some((i) => i.kind === "discount_opportunity" && i.ticker === "DISC14"),
+    ).toBe(false);
+    const quar = result.insights.find((i) => i.kind === "quarantine_followup");
+    expect(quar?.daysInQuarantine).toBeUndefined();
+    expect(quar?.description).toContain("sem data confirmada");
+  });
+
   it("Consolidação Anti-Fadiga: agrupa múltiplos alertas de revisão em 1 card consolidado (Salvaguarda S6)", () => {
     const assets: GovernanceAssetInput[] = [
       makeAsset({ id: "a1", ticker: "ITUB4", last_reviewed_at: "2026-01-01T00:00:00Z" }),

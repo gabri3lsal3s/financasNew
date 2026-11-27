@@ -175,9 +175,13 @@ export function PortfolioInsightsCarousel({ className }: PortfolioInsightsCarous
       evaluatePortfolioStructuralRisk(
         assetsQuery?.data ?? [],
         null,
-        { fxRateUSD: usdRate },
+        {
+          fxRateUSD: usdRate,
+          positionRows: position?.rows,
+          cashBRL: position?.cashBRL,
+        },
       ),
-    [assetsQuery?.data, usdRate],
+    [assetsQuery?.data, usdRate, position?.rows, position?.cashBRL],
   );
 
   const items: (DashboardAlertItem | false)[] = [

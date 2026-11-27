@@ -27,6 +27,22 @@ export type HouseholdSplitRule = "equal" | "proportional" | "combined";
 
 export type HouseholdHealthStatus = "comfort" | "warning" | "danger" | "exceeded";
 
+/**
+ * Avalia a faixa do teto familiar em centavos inteiros (sem arredondamento prematuro de %):
+ * - exceeded: spentCents >= ceilingCents (ex.: 99,6% NÃO é estouro)
+ * - warning: 100 * spentCents >= 85 * ceilingCents e spentCents < ceilingCents
+ * - ok: abaixo de 85% ou teto não positivo
+ */
+export function evaluateHouseholdCeilingBand(
+  spentCents: number,
+  ceilingCents: number,
+): "ok" | "warning" | "exceeded" {
+  if (ceilingCents <= 0 || spentCents <= 0) return "ok";
+  if (spentCents >= ceilingCents) return "exceeded";
+  if (100 * spentCents >= 85 * ceilingCents) return "warning";
+  return "ok";
+}
+
 export interface ReconciliationMemberInput {
   user_id: string;
   display_name?: string | null;

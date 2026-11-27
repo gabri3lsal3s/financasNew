@@ -1,4 +1,4 @@
-import { Compass, Scale, Wallet } from "lucide-react";
+import { Compass, Wallet } from "lucide-react";
 import type { DashboardAlertItem } from "@/components/modules/dashboard-alerts-carousel";
 import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/ui/money-text";
@@ -22,8 +22,7 @@ export function buildAllocationInsightItems({
   onNavigate: (to: string) => void;
   className?: string;
 }): (DashboardAlertItem | false)[] {
-  const { allocationDrift, targetsSumPct, hasInvalidTargetsSum, driftSummaryText, driftFingerprint, targetsSumFingerprint } =
-    driftModel;
+  const { allocationDrift, driftSummaryText, driftFingerprint } = driftModel;
   const hasIdleCash = cashBRL >= IDLE_CASH_THRESHOLD_BRL;
   const cashFp = String(Math.floor(cashBRL / 100));
 
@@ -51,36 +50,6 @@ export function buildAllocationInsightItems({
                 onClick={() => onNavigate("/investments?tab=rebalancear&view=simulador")}
               >
                 Simular Rebalanceamento
-              </Button>
-            }
-          />
-        ),
-      },
-
-    hasInvalidTargetsSum &&
-      !isAlertDismissed("invalid-targets-sum-alert", targetsSumFingerprint) && {
-        id: "invalid-targets-sum-alert",
-        priority: 7,
-        content: (
-          <InsightSlide
-            tone="warning"
-            icon={<Scale className="size-4.5" />}
-            title="Soma das Metas Diferente de 100%"
-            badgeText={`${targetsSumPct}%`}
-            badgeVariant="warning"
-            description="Ajuste os percentuais-alvo das classes para que o motor distribua seus aportes corretamente."
-            onDismiss={(days) =>
-              dismissAlert("invalid-targets-sum-alert", days, targetsSumFingerprint)
-            }
-            className={className}
-            actions={
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => onNavigate("/investments?tab=rebalancear&view=metas")}
-              >
-                Ajustar Metas
               </Button>
             }
           />

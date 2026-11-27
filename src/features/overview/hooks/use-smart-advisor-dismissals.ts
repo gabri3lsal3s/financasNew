@@ -327,7 +327,7 @@ export function useSmartAdvisorCooldownController(params: {
         });
       }
     },
-    [localDismissals, localLastDismissedDay, effectiveDecayMeta, params],
+    [localDismissals, localLastDismissedDay, params],
   );
 
   const muteFamily = useCallback(
