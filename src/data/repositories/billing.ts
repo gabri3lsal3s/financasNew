@@ -145,6 +145,50 @@ export type CheckoutResult = CheckoutSessionResult;
 // Adaptador Asaas (Brasil - PIX Dinâmico, Cartão Transparente e Acumulativo)
 // ============================================================================
 
+/**
+ * Extrai a mensagem de erro real retornada no corpo JSON de uma Edge Function
+ * quando o SDK do Supabase encapsula respostas não-2xx em `FunctionsHttpError`.
+ */
+async function extractEdgeFunctionError(
+  data: { error?: string } | null | undefined,
+  error: unknown,
+  fallback: string,
+): Promise<string> {
+  if (typeof data?.error === "string" && data.error.trim().length > 0) {
+    return data.error;
+  }
+
+  const errObj = error as { message?: string; context?: unknown } | null | undefined;
+  const ctx = errObj?.context;
+  if (ctx && typeof ctx === "object") {
+    try {
+      const responseLike = ctx as { clone?: () => { json?: () => Promise<unknown> }; json?: () => Promise<unknown> };
+      const target = typeof responseLike.clone === "function" ? responseLike.clone() : responseLike;
+      if (typeof target.json === "function") {
+        const body = (await target.json()) as { error?: unknown; message?: unknown } | null;
+        if (typeof body?.error === "string" && body.error.trim().length > 0) {
+          return body.error;
+        }
+        if (typeof body?.message === "string" && body.message.trim().length > 0) {
+          return body.message;
+        }
+      }
+    } catch {
+      // Ignora corpo não-JSON e segue para o fallback abaixo.
+    }
+  }
+
+  if (
+    typeof errObj?.message === "string" &&
+    errObj.message.trim().length > 0 &&
+    !/edge function returned a non-2xx status code/i.test(errObj.message)
+  ) {
+    return errObj.message;
+  }
+
+  return fallback;
+}
+
 export const asaasBillingAdapter: BillingProviderAdapter = {
   providerName: "asaas",
 
@@ -184,7 +228,11 @@ export const asaasBillingAdapter: BillingProviderAdapter = {
     });
 
     if (error || !data || data.error) {
-      const errorMsg = data?.error || error?.message || "Falha ao processar pagamento com o gateway.";
+      const errorMsg = await extractEdgeFunctionError(
+        data,
+        error,
+        "Falha ao processar pagamento com o gateway.",
+      );
       throw new AppError("network", errorMsg, error);
     }
 
@@ -205,7 +253,11 @@ export const asaasBillingAdapter: BillingProviderAdapter = {
     });
 
     if (error || !data || data.error) {
-      const errorMsg = data?.error || error?.message || "Falha ao gerar pagamento acumulativo com o gateway.";
+      const errorMsg = await extractEdgeFunctionError(
+        data,
+        error,
+        "Falha ao gerar pagamento acumulativo com o gateway.",
+      );
       throw new AppError("network", errorMsg, error);
     }
 
@@ -218,7 +270,11 @@ export const asaasBillingAdapter: BillingProviderAdapter = {
     });
 
     if (error || !data || data.error) {
-      const errorMsg = data?.error || error?.message || "Falha ao cancelar assinatura no gateway.";
+      const errorMsg = await extractEdgeFunctionError(
+        data,
+        error,
+        "Falha ao cancelar assinatura no gateway.",
+      );
       throw new AppError("network", errorMsg, error);
     }
   },
@@ -249,7 +305,11 @@ export const asaasBillingAdapter: BillingProviderAdapter = {
     });
 
     if (error || !data || data.error) {
-      const errorMsg = data?.error || error?.message || "Falha ao atualizar cartão de crédito.";
+      const errorMsg = await extractEdgeFunctionError(
+        data,
+        error,
+        "Falha ao atualizar cartão de crédito.",
+      );
       throw new AppError("network", errorMsg, error);
     }
   },
@@ -260,11 +320,12 @@ export const asaasBillingAdapter: BillingProviderAdapter = {
     });
 
     if (error || !data) {
-      throw new AppError(
-        "network",
-        error?.message || "Não foi possível carregar as faturas no momento.",
+      const errorMsg = await extractEdgeFunctionError(
+        data,
         error,
+        "Não foi possível carregar as faturas no momento.",
       );
+      throw new AppError("network", errorMsg, error);
     }
 
     const parsed = BillingInvoicesResponseSchema.safeParse(data);
@@ -286,7 +347,11 @@ export const asaasBillingAdapter: BillingProviderAdapter = {
     });
 
     if (error || !data || data.error) {
-      const errorMsg = data?.error || error?.message || "Falha ao agendar mudança de plano.";
+      const errorMsg = await extractEdgeFunctionError(
+        data,
+        error,
+        "Falha ao agendar mudança de plano.",
+      );
       throw new AppError("network", errorMsg, error);
     }
 
@@ -299,7 +364,11 @@ export const asaasBillingAdapter: BillingProviderAdapter = {
     });
 
     if (error || !data || data.error) {
-      const errorMsg = data?.error || error?.message || "Falha ao cancelar mudança de plano agendada.";
+      const errorMsg = await extractEdgeFunctionError(
+        data,
+        error,
+        "Falha ao cancelar mudança de plano agendada.",
+      );
       throw new AppError("network", errorMsg, error);
     }
 

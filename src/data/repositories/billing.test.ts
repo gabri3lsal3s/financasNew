@@ -142,6 +142,28 @@ describe("Billing Repository (Asaas Adapter)", () => {
     expect(res.ok).toBe(true);
   });
 
+  it("extrai mensagem real de erro do corpo JSON quando Edge Function retorna não-2xx", async () => {
+    mockInvoke.mockResolvedValueOnce({
+      data: null,
+      error: {
+        message: "Edge Function returned a non-2xx status code",
+        context: new Response(
+          JSON.stringify({
+            error: "Por favor, confirme seu endereço de e-mail antes de contratar uma assinatura.",
+          }),
+          { status: 403, headers: { "Content-Type": "application/json" } },
+        ),
+      },
+    });
+
+    await expect(
+      createCumulativeCheckoutSession({
+        months: 1,
+        method: "pix",
+      }),
+    ).rejects.toThrow("Por favor, confirme seu endereço de e-mail antes de contratar uma assinatura.");
+  });
+
   it("chama asaas-manage com action cancel-plan-change", async () => {
     mockInvoke.mockResolvedValueOnce({
       data: { ok: true, message: "Agendamento cancelado com sucesso." },
@@ -156,6 +178,28 @@ describe("Billing Repository (Asaas Adapter)", () => {
       },
     });
     expect(res.ok).toBe(true);
+  });
+
+  it("extrai mensagem real de erro do corpo JSON quando Edge Function retorna não-2xx", async () => {
+    mockInvoke.mockResolvedValueOnce({
+      data: null,
+      error: {
+        message: "Edge Function returned a non-2xx status code",
+        context: new Response(
+          JSON.stringify({
+            error: "Por favor, confirme seu endereço de e-mail antes de contratar uma assinatura.",
+          }),
+          { status: 403, headers: { "Content-Type": "application/json" } },
+        ),
+      },
+    });
+
+    await expect(
+      createCumulativeCheckoutSession({
+        months: 1,
+        method: "pix",
+      }),
+    ).rejects.toThrow("Por favor, confirme seu endereço de e-mail antes de contratar uma assinatura.");
   });
 
   it("chama asaas-manage com action cancel", async () => {
