@@ -1,8 +1,12 @@
-import { useEffect, useRef } from "react";
+import { useContext, useEffect, useRef, useSyncExternalStore } from "react";
+import { QueryClientContext, type QueryClient } from "@tanstack/react-query";
 import { getSupabase } from "@/data/client";
 import { checkDeviceRevoked, registerDevice } from "@/data/repositories/devices";
+import { isSessionTransportError, postSessionOperation } from "@/data/session-transport";
+import { SESSION_POLICY } from "@/domain/auth/session-policy";
 import { useAuth } from "@/hooks/use-auth";
 import { useSignOut } from "@/hooks/use-sign-out";
+import { resetAppState } from "@/services/auth-cleanup";
 import { reportError } from "@/services/observability";
 import {
   clearDeviceSessionSync,
@@ -13,7 +17,14 @@ import {
   rotateDeviceId,
   shouldSyncDeviceSession,
 } from "@/services/native/device-info";
+import {
+  clearSessionContext,
+  getSessionContext,
+  registerBfCacheRevalidation,
+  subscribeSessionContext,
+} from "@/services/session-context";
 import { pushToast } from "@/services/toast";
+import type { PublicSessionContext } from "@/types/session-custody";
 
 const REVALIDATE_THROTTLE_MS = 10_000;
 
@@ -32,9 +43,14 @@ let activeDeviceId: string | null = null;
 let activeChannel: RealtimeChannelLike | null = null;
 let activeListenersCleanup: (() => void) | null = null;
 let inFlightSyncPromise: Promise<void> | null = null;
+let inFlightBffRevalidatePromise: Promise<void> | null = null;
 let isHandlingRemoteRevocation = false;
 let lastRevalidateAt = 0;
 let hasInitialSubscribed = false;
+
+export interface UseDeviceSessionSyncOptions {
+  onRevoked?: () => void;
+}
 
 /**
  * Reseta o estado singleton em memória (exclusivo para isolamento de testes).
@@ -57,6 +73,7 @@ export function resetDeviceSessionSyncForTests(): void {
   activeChannel = null;
   activeListenersCleanup = null;
   inFlightSyncPromise = null;
+  inFlightBffRevalidatePromise = null;
   isHandlingRemoteRevocation = false;
   lastRevalidateAt = 0;
   hasInitialSubscribed = false;
@@ -158,19 +175,107 @@ function teardownSingleton(): void {
   isHandlingRemoteRevocation = false;
 }
 
+function isUnauthorizedError(error: unknown): boolean {
+  if (isSessionTransportError(error)) {
+    return error.status === 401;
+  }
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "status" in error &&
+    (error as { status?: unknown }).status === 401
+  );
+}
+
+function handleBffRevocation(
+  queryClient: QueryClient | undefined,
+  onRevoked?: () => void,
+): void {
+  clearDeviceSessionSync();
+  resetAppState(queryClient, null);
+  clearSessionContext("revoked");
+  onRevoked?.();
+}
+
+async function revalidateBffSession(
+  queryClient: QueryClient | undefined,
+  onRevoked?: () => void,
+): Promise<void> {
+  if (!getSessionContext().contextId) return;
+  if (inFlightBffRevalidatePromise) return inFlightBffRevalidatePromise;
+
+  const task = (async () => {
+    try {
+      const result = await postSessionOperation<PublicSessionContext>("revalidate", {});
+      if (result?.status === "revoked" || result?.status === "expired") {
+        handleBffRevocation(queryClient, onRevoked);
+      }
+    } catch (error) {
+      if (isUnauthorizedError(error)) {
+        handleBffRevocation(queryClient, onRevoked);
+        return;
+      }
+      void reportError(error, { source: "useDeviceSessionSync_bff_revalidate" });
+    }
+  })();
+
+  inFlightBffRevalidatePromise = task;
+  try {
+    await task;
+  } finally {
+    if (inFlightBffRevalidatePromise === task) {
+      inFlightBffRevalidatePromise = null;
+    }
+  }
+}
+
 /**
  * Orquestrador global (singleton ref-counted) de ciclo de vida de dispositivos e revogação em tempo real.
  * Deve ser montado uma única vez no shell autenticado (`RequireAuth`).
  */
-export function useDeviceSessionSync(): void {
+export function useDeviceSessionSync(options?: UseDeviceSessionSyncOptions): void {
+  const queryClient = useContext(QueryClientContext);
   const { user, loading: authLoading, mfaRequired, mfaVerified } = useAuth();
   const { signOut } = useSignOut();
   const signOutRef = useRef(signOut);
+  const onRevokedRef = useRef(options?.onRevoked);
   const deviceIdRef = useRef<string | null>(null);
+  const sessionContextId = useSyncExternalStore(
+    subscribeSessionContext,
+    () => getSessionContext().contextId,
+    () => null,
+  );
 
   useEffect(() => {
     signOutRef.current = signOut;
   }, [signOut]);
+
+  useEffect(() => {
+    onRevokedRef.current = options?.onRevoked;
+  }, [options?.onRevoked]);
+
+  useEffect(() => {
+    if (!sessionContextId) {
+      return;
+    }
+
+    const triggerRevalidate = () => {
+      void revalidateBffSession(queryClient ?? undefined, () => onRevokedRef.current?.());
+    };
+
+    const unregisterBfCache = registerBfCacheRevalidation(triggerRevalidate);
+    const intervalId = globalThis.setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+        return;
+      }
+      triggerRevalidate();
+    }, SESSION_POLICY.REVALIDATION_POLL_MS);
+
+    return () => {
+      unregisterBfCache();
+      globalThis.clearInterval(intervalId);
+    };
+  }, [sessionContextId, queryClient]);
 
   const userId = user?.id ?? null;
   const isMfaPending = Boolean(mfaRequired && !mfaVerified);

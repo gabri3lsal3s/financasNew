@@ -1,13 +1,13 @@
 {
   "version": "3.37.0",
-  "versionCode": 123,
-  "releaseDate": "2026-11-27T21:46:28Z",
+  "versionCode": 124,
+  "releaseDate": "2026-11-27T22:15:56Z",
   "minSupportedVersion": "3.37.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "9184e806c1e4f219358907cad639f6871852f89925db79e8452b527d2197e79d",
-  "fileSizeBytes": 11158765,
+  "sha256": "363962b21c7de8464f2621a37345f1e7e9745c1106b5fef55064af50ab442e90",
+  "fileSizeBytes": 11160257,
   "changelog": [
-    "Axir v3.37.0 (Build 123): Carrosseis Holisticos, Pontes Bidirecionais & Central de Lembretes",
+    "Axir v3.37.0 (Build 124): Carrosseis Holisticos, Pontes Bidirecionais & Central de Lembretes",
     "Persistencia compativel de dispensas (7d/1m/6m) em calendario local com Undo de 5s e controle otimista (_settingsRev)",
     "Card unico AlertCarouselCard sem clones no DOM, memoria de calculo integrada e acessibilidade reforcada",
     "7 avaliadores passivos entre Visao Geral e Investimentos (maxItems=3 na Home, maxItems=5 na Carteira) e aba Adiados em /lembretes"

@@ -24,6 +24,9 @@ export function LoginPage() {
   });
   const {
     from,
+    loginTitle,
+    loginSubtitle,
+    isRedeemingTabIntent,
     shouldRedirect,
     isMfaActive,
     configError,
@@ -74,8 +77,8 @@ export function LoginPage() {
 
   return (
     <AuthShell
-      title="Entrar"
-      subtitle="Acesse sua conta para gerenciar suas finanças."
+      title={loginTitle}
+      subtitle={loginSubtitle}
       sideHero={<LoginSideHero />}
     >
       <div className="flex flex-col gap-4">
@@ -153,7 +156,7 @@ export function LoginPage() {
               id="login-shared-device"
               checked={isSharedDevice}
               onCheckedChange={(checked) => setIsSharedDevice(Boolean(checked))}
-              disabled={pending}
+              disabled={pending || isRedeemingTabIntent}
             />
             <label
               htmlFor="login-shared-device"
@@ -173,9 +176,9 @@ export function LoginPage() {
             type="submit"
             variant="solid"
             sensoryIntent={false}
-            disabled={pending || Boolean(configError) || lockoutSeconds > 0}
+            disabled={pending || isRedeemingTabIntent || Boolean(configError) || lockoutSeconds > 0}
           >
-            {pending
+            {pending || isRedeemingTabIntent
               ? "Entrando…"
               : lockoutSeconds > 0
                 ? `Aguarde ${lockoutSeconds}s para tentar novamente`

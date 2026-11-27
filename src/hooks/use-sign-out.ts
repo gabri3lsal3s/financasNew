@@ -6,13 +6,15 @@ import {
   deactivatePushSubscriptionByEndpoint,
   deactivatePushSubscriptionByFcmToken,
 } from "@/data/repositories/push-subscriptions";
+import { postSessionOperation } from "@/data/session-transport";
 import { clearGlobalAuthSession } from "@/hooks/use-auth";
 import { resetAppState } from "@/services/auth-cleanup";
 import { clearNativeBankMonitoring } from "@/services/native/bank-listener";
 import { clearDeviceSessionSync, getOrCreateDeviceId } from "@/services/native/device-info";
 import { cancelDailyReminder, clearAllDueNotifications } from "@/services/native/local-notifications";
-import { unsubscribeBrowserWebPush } from "@/services/push/web-push";
 import { unregisterNativeFcmPush } from "@/services/push/fcm-push";
+import { unsubscribeBrowserWebPush } from "@/services/push/web-push";
+import { getSessionContext } from "@/services/session-context";
 import { getActiveUserId } from "@/services/user-storage";
 import { userDevicesKey } from "@/state/queries/use-devices";
 
@@ -100,6 +102,17 @@ export function useSignOut() {
         ]);
 
         await withTimeout(cleanupTasks, NATIVE_CLEANUP_TIMEOUT_MS);
+
+        if (getSessionContext().contextId) {
+          try {
+            await withTimeout(
+              postSessionOperation("logout", { scope: "device", remember: false }),
+              SUPABASE_SIGN_OUT_TIMEOUT_MS,
+            );
+          } catch {
+            // Best-effort: tolera falha de rede ou sessão já encerrada no BFF
+          }
+        }
 
         try {
           await withTimeout(supabase.auth.signOut({ scope }), SUPABASE_SIGN_OUT_TIMEOUT_MS);

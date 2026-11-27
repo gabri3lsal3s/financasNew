@@ -6,12 +6,14 @@ import {
   deactivatePushSubscriptionByFcmToken,
 } from "@/data/repositories/push-subscriptions";
 import { revokeOtherDevices } from "@/data/repositories/devices";
+import { postSessionOperation } from "@/data/session-transport";
 import { resetAppState } from "@/services/auth-cleanup";
 import { clearNativeBankMonitoring } from "@/services/native/bank-listener";
 import { clearDeviceSessionSync, getOrCreateDeviceId } from "@/services/native/device-info";
 import { cancelDailyReminder, clearAllDueNotifications } from "@/services/native/local-notifications";
 import { unregisterNativeFcmPush } from "@/services/push/fcm-push";
 import { unsubscribeBrowserWebPush } from "@/services/push/web-push";
+import { resetSessionContextForTests, setSessionContext } from "@/services/session-context";
 
 vi.mock("@/services/auth-cleanup", () => ({
   resetAppState: vi.fn(),
@@ -59,6 +61,14 @@ vi.mock("@/data/repositories/push-subscriptions", () => ({
   deactivatePushSubscriptionByFcmToken: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock("@/data/session-transport", () => ({
+  postSessionOperation: vi.fn().mockResolvedValue({
+    status: "neutral",
+    upstreamConfirmed: true,
+    pendingRevocations: 0,
+  }),
+}));
+
 vi.mock("@/services/user-storage", () => ({
   getActiveUserId: vi.fn(() => "user-123"),
 }));
@@ -76,6 +86,7 @@ vi.mock("@/data/client", () => ({
 describe("useSignOut", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetSessionContextForTests();
     mockSignOut.mockResolvedValue({ error: null });
   });
 
@@ -173,5 +184,73 @@ describe("useSignOut", () => {
         await result.current.signOut({ scope: "others" });
       }),
     ).rejects.toThrow("Falha server-side");
+  });
+
+  it("chama postSessionOperation('logout') antes de limpar o contexto local quando contextId está ativo", async () => {
+    setSessionContext({
+      status: "authenticated",
+      contextId: "ctx-logout-1",
+      csrfToken: "csrf-logout-1",
+      generation: 1,
+      revision: 1,
+      environment: "production",
+      mode: "personal",
+      accountRef: "acc-1",
+      displayName: "Gabriel",
+      expiresAt: Date.now() + 60_000,
+    });
+
+    const { result } = renderHook(() => useSignOut());
+
+    await act(async () => {
+      await result.current.signOut();
+    });
+
+    expect(postSessionOperation).toHaveBeenCalledWith("logout", {
+      scope: "device",
+      remember: false,
+    });
+    const logoutOrder = vi.mocked(postSessionOperation).mock.invocationCallOrder[0];
+    const resetOrder = vi.mocked(resetAppState).mock.invocationCallOrder[0];
+    expect(logoutOrder).toBeLessThan(resetOrder);
+  });
+
+  it("não chama postSessionOperation('logout') quando não há contextId ativo", async () => {
+    const { result } = renderHook(() => useSignOut());
+
+    await act(async () => {
+      await result.current.signOut();
+    });
+
+    expect(postSessionOperation).not.toHaveBeenCalled();
+    expect(resetAppState).toHaveBeenCalledTimes(1);
+  });
+
+  it("tolera falha best-effort em postSessionOperation('logout') e garante resetAppState", async () => {
+    setSessionContext({
+      status: "authenticated",
+      contextId: "ctx-logout-err",
+      csrfToken: "csrf-logout-err",
+      generation: 1,
+      revision: 1,
+      environment: "production",
+      mode: "personal",
+      accountRef: "acc-1",
+      displayName: "Gabriel",
+      expiresAt: Date.now() + 60_000,
+    });
+    vi.mocked(postSessionOperation).mockRejectedValueOnce(new Error("BFF offline"));
+
+    const { result } = renderHook(() => useSignOut());
+
+    await act(async () => {
+      await result.current.signOut();
+    });
+
+    expect(postSessionOperation).toHaveBeenCalledWith("logout", {
+      scope: "device",
+      remember: false,
+    });
+    expect(resetAppState).toHaveBeenCalledTimes(1);
   });
 });

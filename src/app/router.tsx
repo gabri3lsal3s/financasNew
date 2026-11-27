@@ -360,6 +360,7 @@ export function AppRouter() {
 
             {/* Telas de auth — fora do shell (sem sidebar/bottom nav) */}
             <Route path="/entrar" element={<LoginPage />} />
+            <Route path="/login" element={<LoginPage />} />
             <Route path="/cadastro" element={<RegisterPage />} />
             <Route path="/cadastrar" element={<RegisterPage />} />
             <Route path="/criar-conta" element={<RegisterPage />} />
@@ -369,6 +370,7 @@ export function AppRouter() {
 
             {/* Portal de Login Administrativo Exclusivo */}
             <Route path="/admin/login" element={<AdminLoginPage />} />
+            <Route path="/admin.html" element={<Navigate to="/admin" replace />} />
 
             {/* Checkout de assinatura Pro — layout próprio (sem shell do app) */}
             <Route path="/assinatura" element={<SubscriptionCheckoutPage />} />

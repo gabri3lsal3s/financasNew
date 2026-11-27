@@ -11,6 +11,9 @@ import { initObservability } from "@/services/observability";
 
 // Portal administrativo isolado: nunca registra service worker nem instala handlers PWA.
 if (typeof window !== "undefined") {
+  if (window.location.pathname === "/admin.html") {
+    window.history.replaceState(null, "", "/admin");
+  }
   window.addEventListener("vite:preloadError", () => {
     window.location.reload();
   });
