@@ -6,7 +6,7 @@ import { Toaster } from "@/components/ui/toast";
 import { ToastHost } from "@/components/ui/toast-host";
 import { AppUpdateToast } from "@/components/modules/app-update-toast";
 import { AppErrorBoundary } from "@/components/layout/app-error-boundary";
-import { AppRouter } from "@/app/router";
+import { AppRouter, warmAnonymousHome } from "@/app/router";
 import { registerPWA } from "@/app/pwa";
 import { initObservability } from "@/services/observability";
 import { initOrientationLock } from "@/services/orientation-lock";
@@ -36,6 +36,7 @@ void initObservability();
 const root = document.getElementById("root");
 if (!root) throw new Error("Elemento #root não encontrado");
 
+warmAnonymousHome();
 createRoot(root).render(
   <StrictMode>
     <ThemeProvider>

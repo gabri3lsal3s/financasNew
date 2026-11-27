@@ -51,9 +51,20 @@ const RequireFeature = lazy(() =>
  * Páginas públicas, autenticação e checkout carregadas sob demanda,
  * reduzindo expressivamente o bundle inicial do App Shell.
  */
-const LandingPage = lazy(() =>
-  import("@/features/landing/pages/landing-page").then((m) => ({ default: m.LandingPage })),
-);
+const importLandingPage = () =>
+  import("@/features/landing/pages/landing-page").then((m) => ({ default: m.LandingPage }));
+
+let landingPagePromise: ReturnType<typeof importLandingPage> | undefined;
+
+function loadLandingPage() {
+  landingPagePromise ??= importLandingPage().catch((error: unknown) => {
+    landingPagePromise = undefined;
+    throw error;
+  });
+  return landingPagePromise;
+}
+
+const LandingPage = lazy(loadLandingPage);
 const LoginPage = lazy(() =>
   import("@/features/auth/pages/login-page").then((m) => ({ default: m.LoginPage })),
 );
@@ -194,6 +205,13 @@ function hasStoredAuthSession(): boolean {
 
 function isAnonymousHome(pathname: string): boolean {
   return pathname === "/" && !isNativePlatform() && !hasStoredAuthSession();
+}
+
+export function warmAnonymousHome() {
+  if (isAnonymousHome(window.location.pathname)) {
+    // O carregamento por demanda pode tentar novamente se a antecipação falhar.
+    void loadLandingPage().catch(() => {});
+  }
 }
 
 const EDITORIAL_PATHS = ["/apresentacao", "/landing", "/precos", "/planos", "/vendas"];
