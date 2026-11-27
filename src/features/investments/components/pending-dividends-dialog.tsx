@@ -1229,7 +1229,7 @@ export function PendingDividendsDialog({
       {pendingCalibrationAssets.length > 0 ? (
         <section
           aria-label={`Calibrar ${pendingCalibrationAssets.length} ativos`}
-          className="flex flex-col gap-3 rounded-xl border border-warning/30 bg-warning/10 p-3.5"
+          className="flex flex-col gap-3 rounded-xl border border-border/80 bg-muted/20 p-3.5"
         >
           <div className="flex items-start gap-2.5">
             <CalendarClock

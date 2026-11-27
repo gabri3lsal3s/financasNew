@@ -29,7 +29,7 @@ const ACTIVITY_PAGE_SIZE = 50;
  */
 export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelProps) {
   const vm = useActivityFiltersExport(defaultMonth);
-  const filterKey = `${vm.month}|${vm.search}|${vm.filterType}|${vm.selectedClass}|${vm.selectedSector}`;
+  const filterKey = `${vm.month}|${vm.search}|${vm.filterType}`;
   const [pagination, setPagination] = useState({ key: filterKey, count: ACTIVITY_PAGE_SIZE });
   const visibleCount = pagination.key === filterKey ? pagination.count : ACTIVITY_PAGE_SIZE;
 
@@ -95,16 +95,6 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
           typeCounts={vm.typeCounts}
           filteredCount={vm.filteredActivities.length}
           onExportCsv={vm.handleExportCsv}
-          availableClasses={vm.availableClasses}
-          selectedClass={vm.selectedClass}
-          onSelectedClassChange={vm.setSelectedClass}
-          availableSectors={vm.availableSectors}
-          selectedSector={vm.selectedSector}
-          onSelectedSectorChange={vm.setSelectedSector}
-          onClearAuxFilters={() => {
-            vm.setSelectedClass("all");
-            vm.setSelectedSector("all");
-          }}
         />
 
         {vm.isLoading ? (
