@@ -78,7 +78,12 @@ function parseErrorPayload(body: unknown, status: number): { code: SessionErrorC
   const fallbackCode = resolveFallbackErrorCode(status);
   if (body !== null && typeof body === "object") {
     const record = body as Record<string, unknown>;
-    const rawCode = typeof record.code === "string" ? record.code : null;
+    const rawCode =
+      typeof record.code === "string"
+        ? record.code
+        : typeof record.error === "string"
+          ? record.error
+          : null;
     const code =
       rawCode && KNOWN_SESSION_ERROR_CODES.has(rawCode as SessionErrorCode)
         ? (rawCode as SessionErrorCode)

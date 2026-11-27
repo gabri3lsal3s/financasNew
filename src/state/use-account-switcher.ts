@@ -201,6 +201,12 @@ export function useAccountSwitcher(): UseAccountSwitcherReturn {
   const listAccounts = useCallback(
     async (options?: { signal?: AbortSignal }): Promise<AccountSwitcherResult<{ accounts: AccountSummary[] }>> => {
       const captured = captureContext();
+      if (!captured.contextId) {
+        setAccounts([]);
+        setLoading(false);
+        setBusyAction(null);
+        return { ok: true, accounts: [] };
+      }
       setLoading(true);
       setBusyAction("list");
       setError(null);

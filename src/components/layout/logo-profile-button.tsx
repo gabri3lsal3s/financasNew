@@ -237,7 +237,7 @@ export function LogoProfileButton({
           onOpenAdminPortal={() => {
             setSwitcherOpen(false);
             if (typeof window !== "undefined") {
-              window.location.assign("/admin.html");
+              window.location.assign("/admin");
             }
           }}
           onLogout={async ({ remember }) => {
