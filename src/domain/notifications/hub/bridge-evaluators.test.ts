@@ -179,6 +179,17 @@ describe("bridge-evaluators (Onda 2 · Fase 5)", () => {
     expect(card?.canonicalId).toBe("bridge.debt_vs_invest.loan-high");
     expect(card?.targetRoute).toBe("/dividas?type=loans&q=loan-high");
     expect(card?.breakdown?.result.formattedValue).toBe("2,10% a.m.");
+
+    // Saldo de caixa negativo na corretora é normalizado para zero (paridade availableCents vs liquidityPoolCents)
+    const negativeCashCard = evaluateDebtVsInvestBridge({
+      asOf: "2026-11-27",
+      debts,
+      loans,
+      allocationIntent: "portfolio_aporte",
+      suggestedAporteCents: 25_000,
+      brokerageCashCents: -10_000,
+    });
+    expect(negativeCashCard?.description).toContain("R$ 250,00 disponíveis");
   });
 
   it("3. cashflow.bill_impact recompõe parcela já deduzida da fatura e respeita opt-in", () => {
@@ -362,6 +373,20 @@ describe("bridge-evaluators (Onda 2 · Fase 5)", () => {
         allocationIntent: "portfolio_aporte",
         suggestedAporteCents: 25_000,
         contributions: realContrib,
+      }),
+    ).toBeNull();
+
+    // Com investimento registrado no fluxo de caixa do mês -> suprime
+    expect(
+      evaluateMonthlyContributionConsistencyBridge({
+        month: "2026-11",
+        isCurrentMonth: true,
+        dayOfMonth: 25,
+        daysInMonth: 30,
+        allocationIntent: "portfolio_aporte",
+        suggestedAporteCents: 25_000,
+        contributions: marcoZero,
+        cashflowInvestmentCents: 15_000,
       }),
     ).toBeNull();
   });

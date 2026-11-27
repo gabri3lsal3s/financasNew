@@ -350,7 +350,7 @@ export function usePassiveCarouselCache(
     if (!activeUserId && identity.mode === "auth") return null;
     return {
       ...identity,
-      userId: identity.userId ?? activeUserId,
+      userId: identity.mode === "auth" ? activeUserId : (identity.userId ?? activeUserId),
     };
   }, [identity, activeUserId]);
 

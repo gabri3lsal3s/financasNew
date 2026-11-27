@@ -785,6 +785,7 @@ interface HomeSlotCandidate extends CarouselSlotCandidate {
           allocationIntent: surplusCapacity.allocationIntent,
           suggestedAporteCents: surplusCapacity.suggestedAporteCents,
           contributions: data.contributionsQuery.data,
+          cashflowInvestmentCents: data.totals.investmentCents,
           hasCombinedContributionBridge: Boolean(combinedContributionEval),
         })
       : null;

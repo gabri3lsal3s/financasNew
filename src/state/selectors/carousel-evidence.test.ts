@@ -164,9 +164,24 @@ describe("carousel-evidence (cache passivo em memória · Onda 2)", () => {
     });
     expect(result.current.evidence).toBeNull();
 
-    // Troca de UID limpa manualmente também
-    setActiveUserId("user-2");
-    publishCarouselEvidence(queryClient, { ...baseIdentity, userId: "user-2" }, samplePayload);
+    // Troca de UID reativa passa a ler evidência da nova conta sem herdar a anterior
+    act(() => {
+      setActiveUserId("user-2");
+    });
+    expect(result.current.evidence).toBeNull();
+    act(() => {
+      publishCarouselEvidence(queryClient, { ...baseIdentity, userId: "user-2" }, {
+        ...samplePayload,
+        safeToSpendCents: 120_000,
+      });
+    });
+    expect(result.current.evidence?.safeToSpendCents).toBe(120_000);
+
+    // Mesmo se identity passado ao hook tiver userId antigo, mode=auth prioriza activeUserId
+    act(() => {
+      setActiveUserId("user-3");
+    });
+    expect(result.current.evidence).toBeNull();
     clearAllCarouselEvidence(queryClient);
     expect(queryClient.getQueryCache().findAll({ queryKey: CAROUSEL_EVIDENCE_PREFIX })).toHaveLength(0);
   });

@@ -26,7 +26,6 @@ import { currentMonth } from "@/lib/date";
 import { openDividendReviewModal } from "@/services/dividend-review-modal";
 import { formatPercent } from "@/services/masks/percent";
 import { pushToast } from "@/services/toast";
-import { getActiveUserId } from "@/services/user-storage";
 import {
   useAssetGovernanceInsights,
   useConfirmUserDividendEvents,
@@ -236,7 +235,7 @@ export function PortfolioInsightsCarousel({ className }: PortfolioInsightsCarous
   const todayStr = todaySaoPauloISO();
   const evidenceIdentity = useMemo(
     () => ({
-      userId: getActiveUserId(),
+      userId: null,
       mode: isDemoActive ? ("demo" as const) : ("auth" as const),
       scope: effectiveViewScope,
       month: competence,
@@ -374,6 +373,7 @@ export function PortfolioInsightsCarousel({ className }: PortfolioInsightsCarous
         allocationIntent: homeEvidence.surplusCapacity.allocationIntent,
         suggestedAporteCents: homeEvidence.surplusCapacity.suggestedAporteCents,
         contributions: warmContributions,
+        cashflowInvestmentCents: homeEvidence.investmentCents,
         hasCombinedContributionBridge: Boolean(combinedContributionBridge),
       })
     : null;

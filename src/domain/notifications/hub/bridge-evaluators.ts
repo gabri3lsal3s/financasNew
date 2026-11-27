@@ -252,7 +252,7 @@ export function evaluateDebtVsInvestBridge(
     suggestedAporteCents >= minSurplusCents;
   const safeCashCents =
     typeof brokerageCashCents === "number" && Number.isFinite(brokerageCashCents)
-      ? brokerageCashCents
+      ? Math.max(0, brokerageCashCents)
       : 0;
   const hasEligibleCash = safeCashCents >= minBrokerageCashCents;
 
@@ -588,6 +588,7 @@ export interface EvaluateMonthlyContributionConsistencyParams {
   allocationIntent: SurplusAllocationIntent;
   suggestedAporteCents: number;
   contributions?: readonly PortfolioContribution[];
+  cashflowInvestmentCents?: number;
   hasCombinedContributionBridge?: boolean;
   minDayThreshold?: number;
   minSurplusCents?: number;
@@ -604,6 +605,7 @@ export function evaluateMonthlyContributionConsistencyBridge(
     allocationIntent,
     suggestedAporteCents,
     contributions,
+    cashflowInvestmentCents = 0,
     hasCombinedContributionBridge = false,
     minDayThreshold = 22,
     minSurplusCents = 20_000,
@@ -616,6 +618,7 @@ export function evaluateMonthlyContributionConsistencyBridge(
   if (allocationIntent !== "portfolio_aporte" || suggestedAporteCents < minSurplusCents) {
     return null;
   }
+  if ((cashflowInvestmentCents ?? 0) > 0) return null;
 
   let realizedCents = 0;
   for (const contrib of contributions) {
