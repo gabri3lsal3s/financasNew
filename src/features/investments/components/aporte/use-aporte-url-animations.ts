@@ -92,35 +92,35 @@ export function useAporteUrlAnimations({
     const raw = searchParams.get("valor") || searchParams.get("surplusCents");
     const wantCash = searchParams.get("usarCaixa") === "1";
 
-    if (wantCash) {
-      pendingUseCashRef.current = true;
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          next.delete("usarCaixa");
-          return next;
-        },
-        { replace: true },
-      );
-    }
-
+    let hasInjectedValue = false;
     if (!raw) {
       lastParamValorRef.current = null;
     } else if (raw !== lastParamValorRef.current) {
       lastParamValorRef.current = raw;
       const parsed = Number(raw);
       if (Number.isFinite(parsed) && parsed > 0) {
-        setSearchParams(
-          (prev) => {
-            const next = new URLSearchParams(prev);
+        pendingInjectRef.current = Math.round(parsed);
+        hasInjectedValue = true;
+      }
+    }
+
+    if (wantCash) {
+      pendingUseCashRef.current = true;
+    }
+
+    if (wantCash || hasInjectedValue) {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (wantCash) next.delete("usarCaixa");
+          if (hasInjectedValue) {
             next.delete("valor");
             next.delete("surplusCents");
-            return next;
-          },
-          { replace: true },
-        );
-        pendingInjectRef.current = Math.round(parsed);
-      }
+          }
+          return next;
+        },
+        { replace: true },
+      );
     }
   }, [searchParams, setSearchParams]);
 

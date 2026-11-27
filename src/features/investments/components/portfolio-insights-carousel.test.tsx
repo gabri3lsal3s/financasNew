@@ -1,7 +1,13 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { todaySaoPauloISO } from "@/domain/portfolio";
 import { resetCarouselDismissalsStore } from "@/hooks/use-carousel-dismissals";
+import { currentMonth } from "@/lib/date";
 import { setActiveUserId } from "@/services/user-storage";
+import { debtsKey } from "@/state/queries/use-debts";
+import { LOANS_QUERY_KEY } from "@/state/queries/use-loans";
+import { publishCarouselEvidence, type CarouselEvidenceIdentity, type CarouselEvidencePayload } from "@/state/selectors";
 import { PortfolioInsightsCarousel } from "./portfolio-insights-carousel";
 
 const mockUseCorporateDividends = vi.fn();
@@ -62,6 +68,12 @@ vi.mock("@/state", async (importOriginal) => {
     }),
     useUserPreferences: () => mockUserPreferencesState(),
     useUpdateCustomSettings: () => mockUpdateCustomSettings,
+    useViewScope: () => ({
+      viewScope: "all" as const,
+      effectiveViewScope: "all" as const,
+      setViewScope: vi.fn(),
+      isBusinessModeEnabled: false,
+    }),
   };
 });
 
@@ -523,7 +535,7 @@ describe("PortfolioInsightsCarousel (Regra 19)", () => {
       isLoading: false,
     });
     // Carteira de 1.000.000 BRL com IVVB11 (175k = 17.5%) + VOO (175k = 17.5%) = 35% S&P 500 (> 30% teto)
-    // Nenhum ativo passa do teto individual de 25%
+    // Nenhum ativo ou classe viola outro teto estrutural (cada posição <= 14%)
     mockUsePortfolioAssets.mockReturnValue({
       data: [
         {
@@ -545,36 +557,43 @@ describe("PortfolioInsightsCarousel (Regra 19)", () => {
           id: "a1",
           ticker: "PETR4",
           asset_class: "Ações",
-          quantity: 4000,
-          average_price: 40, // 160.000 BRL (16%)
+          quantity: 3250,
+          average_price: 40, // 130.000 BRL (13%)
         },
         {
           id: "a2",
           ticker: "VALE3",
           asset_class: "Ações",
-          quantity: 2666,
-          average_price: 60, // ~160.000 BRL (16%)
+          quantity: 2166,
+          average_price: 60, // ~130.000 BRL (13%)
         },
         {
           id: "a3",
           ticker: "ITUB4",
           asset_class: "Ações",
-          quantity: 4571,
-          average_price: 35, // ~160.000 BRL (16%)
+          quantity: 3714,
+          average_price: 35, // ~130.000 BRL (13%)
         },
         {
-          id: "a4",
-          ticker: "WEGE3",
-          asset_class: "Ações",
-          quantity: 3404,
-          average_price: 47, // ~160.000 BRL (16%)
+          id: "f1",
+          ticker: "HGLG11",
+          asset_class: "FIIs",
+          quantity: 812,
+          average_price: 160, // ~130.000 BRL (13%)
+        },
+        {
+          id: "rf1",
+          ticker: "TESOURO SELIC",
+          asset_class: "Renda Fixa",
+          quantity: 1,
+          average_price: 130000, // 130.000 BRL (13%)
         },
       ],
       isLoading: false,
     });
     mockUsePortfolioPosition.mockReturnValue({
       rows: [],
-      totalBRL: 990000,
+      totalBRL: 1000000,
       cashBRL: 0,
       usdRate: 5.0,
       isLoading: false,
@@ -746,5 +765,306 @@ describe("PortfolioInsightsCarousel (Regra 19)", () => {
     fireEvent.click(discMemBtn);
     expect(screen.getAllByText(/Margem de Segurança: DISC3/i).length).toBeGreaterThan(0);
     expect(screen.queryByText(/OVER3/)).not.toBeInTheDocument();
+  });
+
+  describe("Onda 2 · Fase 5 — Projeção passiva Home -> Carteira", () => {
+    const createEvidenceIdentity = (): CarouselEvidenceIdentity => ({
+      userId: "user-1",
+      mode: "auth",
+      scope: "all",
+      month: currentMonth(),
+      asOf: todaySaoPauloISO(),
+    });
+
+    const createBaseEvidence = (
+      overrides?: Partial<CarouselEvidencePayload>,
+    ): CarouselEvidencePayload => ({
+      surplusCapacity: {
+        operatingBalanceCents: 200_000,
+        committedObligationsCents: 50_000,
+        pendingRecurringObligationsCents: 0,
+        surplusCents: 150_000,
+        suggestedAporteCents: 30_000,
+        suggestedEmergencyAllocationCents: 0,
+        hasSurplus: true,
+        allocationIntent: "portfolio_aporte",
+      },
+      cashGapResult: {
+        isCashGapDetected: false,
+        severity: "none",
+        gapDate: null,
+        daysUntilGap: null,
+        maxDeficitCents: 0,
+        nextInflowDate: null,
+        causingObligations: [],
+        recommendationMessage: null,
+        runway: [],
+      },
+      isCurrentMonth: true,
+      dayOfMonth: 15,
+      daysInMonth: 30,
+      safeToSpendCents: 120_000,
+      hasLiquidityContext: true,
+      investmentCents: 0,
+      debtsCount: 0,
+      ...overrides,
+    });
+
+    it("deep-link frio em /investments sem evidência prévia não exibe cards de fluxo da Home nem cria queries extras", () => {
+      const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      mockUseCorporateDividends.mockReturnValue({
+        available: [],
+        projected: [],
+        totalAvailableAmount: 0,
+        totalProjectedAmount: 0,
+        isLoading: false,
+      });
+
+      const { container } = render(
+        <QueryClientProvider client={qc}>
+          <PortfolioInsightsCarousel />
+        </QueryClientProvider>,
+      );
+
+      expect(container.firstChild).toBeNull();
+      expect(screen.queryByText(/Furo de caixa previsto/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Aporte combinado disponível/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/livres para investir/i)).not.toBeInTheDocument();
+      expect(qc.getQueryCache().getAll().some((q) => Boolean(q.options.queryFn))).toBe(false);
+    });
+
+    it("evidência quente com cash_gap crítico assume prioridade 1 e suprime sinais de estímulo ao aporte", () => {
+      const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      publishCarouselEvidence(
+        qc,
+        createEvidenceIdentity(),
+        createBaseEvidence({
+          cashGapResult: {
+            isCashGapDetected: true,
+            severity: "critical",
+            gapDate: todaySaoPauloISO(),
+            daysUntilGap: 2,
+            maxDeficitCents: 45_000,
+            nextInflowDate: null,
+            causingObligations: [],
+            recommendationMessage: "Furo crítico de R$ 450,00 nos próximos dias.",
+            runway: [],
+          },
+        }),
+      );
+
+      mockUseCorporateDividends.mockReturnValue({
+        available: [],
+        projected: [],
+        totalAvailableAmount: 0,
+        totalProjectedAmount: 0,
+        isLoading: false,
+      });
+      mockUseGroupTargets.mockReturnValue({
+        data: [
+          { id: "gt-1", user_id: "user-1", group_by: "class", name: "Renda Variável", target_percentage: 60 },
+          { id: "gt-2", user_id: "user-1", group_by: "class", name: "Renda Fixa", target_percentage: 40 },
+        ],
+        isLoading: false,
+      });
+      mockUsePortfolioPosition.mockReturnValue({
+        rows: [
+          { assetId: "a1", ticker: "ITUB4", assetClass: "Renda Variável", valueBRL: 200, isCash: false },
+          { assetId: "a2", ticker: "CDB", assetClass: "Renda Fixa", valueBRL: 800, isCash: false },
+        ],
+        totalBRL: 1200,
+        cashBRL: 200,
+        isLoading: false,
+      });
+
+      render(
+        <QueryClientProvider client={qc}>
+          <PortfolioInsightsCarousel />
+        </QueryClientProvider>,
+      );
+
+      const slides = Array.from(document.querySelectorAll("[data-carousel-slide-id]")).map((el) =>
+        el.getAttribute("data-carousel-slide-id"),
+      );
+      expect(slides[0]).toBe("cashflow.cash_gap");
+      expect(screen.getByText("Furo de caixa previsto antes do aporte")).toBeInTheDocument();
+      expect(screen.queryByText("Aporte combinado disponível")).not.toBeInTheDocument();
+      expect(screen.queryByText(/livres para investir/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/parados na corretora/i)).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "Ver projeção de caixa" }));
+      expect(mockNavigate).toHaveBeenCalledWith("/insights?aba=projection");
+    });
+
+    it("evidência quente com sobra + caixa na corretora exibe bridge.combined_contribution sem somar proventos pendentes e navega para simulador combinado", () => {
+      const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      publishCarouselEvidence(qc, createEvidenceIdentity(), createBaseEvidence());
+
+      mockUseCorporateDividends.mockReturnValue({
+        available: [
+          {
+            corporateDividendId: "cd-1",
+            assetId: "a1",
+            ticker: "PETR4",
+            type: "DIVIDENDO",
+            comDate: "2026-10-30",
+            paymentDate: "2026-11-10",
+            quantityOnComDate: 50,
+            rate: 1,
+            netRate: 1,
+            taxRatePct: 0,
+            totalAmount: 50,
+            currency: "BRL",
+            isManual: false,
+          },
+        ],
+        projected: [],
+        totalAvailableAmount: 50,
+        totalProjectedAmount: 0,
+        isLoading: false,
+      });
+      mockUseGroupTargets.mockReturnValue({
+        data: [
+          { id: "gt-1", user_id: "user-1", group_by: "class", name: "Renda Variável", target_percentage: 60 },
+          { id: "gt-2", user_id: "user-1", group_by: "class", name: "Renda Fixa", target_percentage: 40 },
+        ],
+        isLoading: false,
+      });
+      mockUsePortfolioPosition.mockReturnValue({
+        rows: [
+          { assetId: "a1", ticker: "PETR4", assetClass: "Renda Variável", valueBRL: 200, isCash: false },
+          { assetId: "a2", ticker: "CDB", assetClass: "Renda Fixa", valueBRL: 800, isCash: false },
+        ],
+        totalBRL: 1100,
+        cashBRL: 100,
+        isLoading: false,
+      });
+
+      render(
+        <QueryClientProvider client={qc}>
+          <PortfolioInsightsCarousel />
+        </QueryClientProvider>,
+      );
+
+      expect(screen.getAllByText("Aporte combinado disponível").length).toBeGreaterThan(0);
+      // 300 sobra + 100 caixa = R$ 400,00 (sem somar R$ 50 de dividendos pendentes)
+      expect(screen.getAllByText(/total de R\$\s*400,00/i).length).toBeGreaterThan(0);
+      expect(screen.queryByText(/450,00/)).not.toBeInTheDocument();
+      expect(screen.getAllByText(/1 provento\(s\) a conferir separadamente/i).length).toBeGreaterThan(0);
+      expect(screen.queryByText(/parados na corretora/i)).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getAllByRole("button", { name: "Simular aporte combinado", hidden: true })[0]!);
+      expect(mockNavigate).toHaveBeenCalledWith(
+        "/investments?tab=rebalancear&view=simulador&valor=30000&usarCaixa=1",
+      );
+    });
+
+    it("aplica teto de 5 slides com no máximo 2 riscos estruturais mesmo com pontes ativas", () => {
+      const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      publishCarouselEvidence(qc, createEvidenceIdentity(), createBaseEvidence());
+
+      qc.setQueryData(LOANS_QUERY_KEY, [
+        {
+          id: "loan-1",
+          user_id: "user-1",
+          name: "CDC Caro",
+          loan_type: "loan",
+          principal_amount: 10000,
+          interest_rate_monthly: 2.1,
+          amortization_system: "price",
+          total_installments: 12,
+          start_date: "2026-01-10",
+          installment_group_id: "ig-1",
+          created_at: "2026-01-01T00:00:00Z",
+        },
+      ]);
+      qc.setQueryData(debtsKey, [
+        {
+          id: "d-1",
+          name: "Parcela CDC 1/12",
+          type: "payable",
+          amount: 1000,
+          due_date: todaySaoPauloISO(),
+          paid_at: null,
+          installment_group_id: "ig-1",
+        },
+      ]);
+
+      mockUseCorporateDividends.mockReturnValue({
+        available: [
+          {
+            corporateDividendId: "cd-1",
+            assetId: "a1",
+            ticker: "CONC3",
+            type: "DIVIDENDO",
+            comDate: "2026-10-30",
+            paymentDate: "2026-11-10",
+            quantityOnComDate: 100,
+            rate: 1,
+            netRate: 1,
+            taxRatePct: 0,
+            totalAmount: 100,
+            currency: "BRL",
+            isManual: false,
+          },
+        ],
+        projected: [],
+        totalAvailableAmount: 100,
+        totalProjectedAmount: 0,
+        isLoading: false,
+      });
+      mockUseGroupTargets.mockReturnValue({
+        data: [
+          { id: "gt-1", user_id: "user-1", group_by: "class", name: "Ações", target_percentage: 60 },
+          { id: "gt-2", user_id: "user-1", group_by: "class", name: "Renda Fixa", target_percentage: 40 },
+        ],
+        isLoading: false,
+      });
+      // Gera múltiplos riscos estruturais (> 25% em 2 ativos + baixa diversificação + exposição emissor)
+      mockUsePortfolioAssets.mockReturnValue({
+        data: [
+          { id: "a1", ticker: "CONC3", asset_class: "Ações", sector: "Financeiro", quantity: 400, average_price: 100 },
+          { id: "a2", ticker: "BIGR3", asset_class: "Ações", sector: "Financeiro", quantity: 350, average_price: 100 },
+          { id: "a3", ticker: "CDB-BMG-28", asset_class: "Renda Fixa", issuer_institution: "Banco BMG", quantity: 300, average_price: 1000 },
+        ],
+        isLoading: false,
+      });
+      mockUsePortfolioPosition.mockReturnValue({
+        rows: [
+          { assetId: "a1", ticker: "CONC3", assetClass: "Ações", valueBRL: 40000, isCash: false },
+          { assetId: "a2", ticker: "BIGR3", assetClass: "Ações", valueBRL: 35000, isCash: false },
+          { assetId: "a3", ticker: "CDB-BMG-28", assetClass: "Renda Fixa", valueBRL: 300000, isCash: false },
+        ],
+        totalBRL: 375500,
+        cashBRL: 500,
+        isLoading: false,
+      });
+      mockUseAssetGovernanceInsights.mockReturnValue({
+        overdueReviewsCount: 1,
+        upcomingReviewsCount: 0,
+        unscoredAssetsCount: 0,
+        quarantinedCount: 0,
+        discountOpportunitiesCount: 0,
+        lowScoreRiskCount: 0,
+        overdueAssets: [{ id: "a1", ticker: "CONC3", score: 8 }],
+        upcomingReviewAssets: [],
+        unscoredAssets: [],
+        consolidatedReviewAlert: { overdueCount: 1, isOverdue: true },
+        isLoading: false,
+      });
+
+      render(
+        <QueryClientProvider client={qc}>
+          <PortfolioInsightsCarousel />
+        </QueryClientProvider>,
+      );
+
+      const slides = Array.from(document.querySelectorAll("[data-carousel-slide-id]")).map((el) =>
+        el.getAttribute("data-carousel-slide-id") ?? "",
+      );
+      expect(slides.length).toBeLessThanOrEqual(5);
+      const structuralSlides = slides.filter((id) => id.startsWith("portfolio.risk."));
+      expect(structuralSlides.length).toBeLessThanOrEqual(2);
+    });
   });
 });

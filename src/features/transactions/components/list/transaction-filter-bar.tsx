@@ -10,7 +10,7 @@ import {
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
-import { Badge, Chip, SearchInput, Tabs } from "@/components/ui";
+import { Badge, Button, Chip, SearchInput, Tabs } from "@/components/ui";
 import type { BusinessSubFilter, FeedFilter } from "@/domain/expenses";
 
 export interface TransactionFilterBarProps {
@@ -19,6 +19,8 @@ export interface TransactionFilterBarProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   structuredFilterBadges?: readonly string[];
+  activeIdsFilterCount?: number;
+  onClearIdsFilter?: () => void;
   isBusinessModeEnabled?: boolean;
   businessSubFilter?: BusinessSubFilter;
   onBusinessSubFilterChange?: (sub: BusinessSubFilter) => void;
@@ -50,6 +52,8 @@ export function TransactionFilterBar({
   searchQuery,
   onSearchChange,
   structuredFilterBadges = [],
+  activeIdsFilterCount = 0,
+  onClearIdsFilter,
   isBusinessModeEnabled = false,
   businessSubFilter = "all",
   onBusinessSubFilterChange,
@@ -108,7 +112,7 @@ export function TransactionFilterBar({
         className="bg-surface text-base sm:text-sm"
       />
 
-      {structuredFilterBadges.length > 0 ? (
+      {structuredFilterBadges.length > 0 || (activeIdsFilterCount > 0 && Boolean(onClearIdsFilter)) ? (
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-[11px] font-medium text-muted-foreground">Filtros ativos:</span>
           {structuredFilterBadges.map((label) => (
@@ -116,6 +120,11 @@ export function TransactionFilterBar({
               {label}
             </Badge>
           ))}
+          {activeIdsFilterCount > 0 && onClearIdsFilter ? (
+            <Button type="button" variant="ghost" size="xs" onClick={onClearIdsFilter}>
+              Limpar revisão
+            </Button>
+          ) : null}
         </div>
       ) : null}
     </div>

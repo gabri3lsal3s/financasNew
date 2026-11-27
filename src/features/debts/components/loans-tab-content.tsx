@@ -1,4 +1,5 @@
 import { Coins, Compass, Plus } from "lucide-react";
+import { HighlightRow } from "@/components/modules";
 import { Button, EmptyState, Skeleton } from "@/components/ui";
 import { startDemo } from "@/state/demo-mode";
 import type { Debt, Loan } from "@/types";
@@ -8,6 +9,7 @@ export interface LoansTabContentProps {
   loans: Loan[];
   debts: Debt[];
   isLoading: boolean;
+  highlightId?: string | null;
   onOpenNewLoan: () => void;
 }
 
@@ -16,6 +18,7 @@ export function LoansTabContent({
   loans,
   debts,
   isLoading,
+  highlightId = null,
   onOpenNewLoan,
 }: LoansTabContentProps) {
   return (
@@ -75,7 +78,9 @@ export function LoansTabContent({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           {loans.map((loan) => (
-            <LoanCard key={loan.id} loan={loan} debts={debts} />
+            <HighlightRow key={loan.id} highlightId={highlightId} id={loan.id}>
+              <LoanCard loan={loan} debts={debts} />
+            </HighlightRow>
           ))}
         </div>
       )}

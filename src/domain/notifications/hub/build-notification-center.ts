@@ -414,6 +414,7 @@ function mapAdvisorToNotification(insight: SmartAdvisorInsight): AppNotification
         : ["home_carousel"],
     entityRefs: extractAdvisorEntityRefs(insight),
     state: "unread",
+    carouselCardKey: `advisor.${insight.themeKey}`,
   };
 }
 
@@ -512,6 +513,10 @@ function mapTripFamilyToNotification(alert: TripFamilyAlert): AppNotification {
   const isPassiveAdvisory =
     alert.kind === "family_invite" ||
     (alert.kind === "trip_settlement" && alert.settlementPending === false);
+  const carouselCardKey =
+    alert.kind === "trip_settlement" && alert.id.startsWith("trip:settlement:")
+      ? `trip.settlement_pending.${alert.id.slice("trip:settlement:".length)}`
+      : undefined;
   return {
     id: alert.id,
     domain: "family",
@@ -526,12 +531,19 @@ function mapTripFamilyToNotification(alert: TripFamilyAlert): AppNotification {
     channels: ["bell", "reminders_page"],
     entityRefs: alert.entityRefs,
     state: "unread",
+    ...(carouselCardKey ? { carouselCardKey } : {}),
   };
 }
 
 function mapDividendAlertToNotification(alert: DividendNotificationAlert): AppNotification {
   const isPending = alert.kind === "pending_confirmation";
   const isSettled = alert.kind === "settled";
+  const carouselCardKey =
+    alert.kind === "pending_confirmation"
+      ? "portfolio.dividends_available"
+      : alert.kind === "provisioned"
+        ? "portfolio.dividends_projected"
+        : undefined;
   return {
     id: alert.id,
     domain: "portfolio",
@@ -547,6 +559,7 @@ function mapDividendAlertToNotification(alert: DividendNotificationAlert): AppNo
     channels: ["bell", "reminders_page"],
     entityRefs: alert.entityRefs,
     state: "unread",
+    ...(carouselCardKey ? { carouselCardKey } : {}),
   };
 }
 
@@ -564,7 +577,7 @@ export function buildNotificationCenter(
     : [];
   const reminderItems = [...payableItems, ...receivableItems];
 
-  const nowMs = Date.now();
+  const nowMs = input.nowMs ?? Date.now();
   const unreadBroadcasts = (input.broadcasts ?? []).filter((b) => {
     if (b.is_read) return false;
     if (b.expires_at && new Date(b.expires_at).getTime() <= nowMs) return false;
@@ -720,6 +733,10 @@ export function buildNotificationCenter(
     rawNotifications.push(mapAdvisorToNotification(insight));
   }
 
+  for (const bridgeNotification of input.bridgeNotifications ?? []) {
+    rawNotifications.push(bridgeNotification);
+  }
+
   const deduped = deduplicateNotifications(rawNotifications);
   const carouselDismissals = input.carouselDismissals;
   const notifications = carouselDismissals
@@ -737,12 +754,17 @@ export function buildNotificationCenter(
         return n;
       })
     : deduped;
-  const bellNotifications = notifications.filter((n) => n.channels.includes("bell"));
+  const bellNotifications = notifications.filter(
+    (n) => n.channels.includes("bell") && n.state !== "dismissed",
+  );
   const carouselNotifications = notifications.filter(
     (n) => n.channels.includes("home_carousel") && n.state !== "dismissed",
   );
-  const remindersPageNotifications = notifications.filter((n) =>
-    n.channels.includes("reminders_page"),
+  const investmentsCarouselNotifications = notifications.filter(
+    (n) => n.channels.includes("investments_carousel") && n.state !== "dismissed",
+  );
+  const remindersPageNotifications = notifications.filter(
+    (n) => n.channels.includes("reminders_page") && n.state !== "dismissed",
   );
 
   const criticalCount = bellNotifications.filter(
@@ -760,6 +782,7 @@ export function buildNotificationCenter(
     notifications,
     bellNotifications,
     carouselNotifications,
+    investmentsCarouselNotifications,
     payableItems,
     receivableItems,
     closedBillAlerts,

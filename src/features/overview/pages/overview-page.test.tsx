@@ -8,6 +8,10 @@ import { resetVisualCustomization } from "@/hooks/use-visual-customization";
 import { WELCOME_MODAL_STORAGE_KEY } from "@/components/modules";
 import { resetCarouselDismissalsStore } from "@/hooks/use-carousel-dismissals";
 import { setActiveUserId } from "@/services/user-storage";
+import { PORTFOLIO_QUERY_KEYS } from "@/state/mutations/portfolio/portfolio-keys";
+import { LOANS_QUERY_KEY } from "@/state/queries/use-loans";
+import { TRIP_QUERY_KEYS } from "@/state/queries/use-trips";
+import { CAROUSEL_EVIDENCE_PREFIX, readCarouselEvidence } from "@/state/selectors";
 import { OverviewPage } from "./overview-page";
 
 const testQueryClient = new QueryClient({
@@ -109,17 +113,49 @@ const defaultRealCashBalanceMock = {
 
 let realCashBalanceMock = { ...defaultRealCashBalanceMock };
 let cardExpensesMock = [{ id: "ce1", card_id: "card1", bill_competence: "2026-08", value: 100, report_weight: 1 }];
-let cardsMock = [{ id: "card1", name: "Nubank", is_active: true, due_day: 10 }];
-let debtsMock = [
+let cardsMock: Array<{
+  id: string;
+  name: string;
+  is_active: boolean;
+  due_day: number;
+  closing_day?: number;
+}> = [{ id: "card1", name: "Nubank", is_active: true, due_day: 10 }];
+let debtsMock: Array<{
+  id: string;
+  name: string;
+  type: string;
+  amount: number;
+  due_date: string;
+  paid_at: string | null;
+  installment_group_id?: string | null;
+}> = [
   { id: "d1", name: "A receber", type: "receivable", amount: 1000, due_date: "2026-08-20", paid_at: null },
   { id: "d2", name: "A pagar", type: "payable", amount: 500, due_date: "2026-08-15", paid_at: null },
 ];
 let debtsLoadingMock = false;
 let govInsightsLoadingMock = false;
 let corporateDividendsLoadingMock = false;
+let corporateDividendsAvailableMock: Array<Record<string, unknown>> = [];
+let corporateDividendsTotalAvailableMock = 0;
 let userPreferencesMock: Record<string, unknown> | null = null;
 let splitSharesMock: Array<Record<string, unknown>> = [];
 let recurrencesMock: unknown[] = [];
+let tripsMock: Array<Record<string, unknown>> = [];
+let portfolioPositionMock: {
+  rows: Array<Record<string, unknown>>;
+  totalBRL: number;
+  cashBRL: number;
+  isLoading: boolean;
+  summary: null;
+} = {
+  rows: [],
+  totalBRL: 0,
+  cashBRL: 0,
+  isLoading: false,
+  summary: null,
+};
+let isDemoActiveMock = false;
+let hasFeatureMock: (feature: string) => boolean = () => true;
 
 const defaultSubscriptionMock: SubscriptionStatus = {
   tier: "pro_annual",
@@ -196,9 +232,9 @@ vi.mock("@/state", () => ({
     refetch: vi.fn(),
   }),
   useCorporateDividends: () => ({
-    available: [],
+    available: corporateDividendsAvailableMock,
     projected: [],
-    totalAvailableAmount: 0,
+    totalAvailableAmount: corporateDividendsTotalAvailableMock,
     totalProjectedAmount: 0,
     isLoading: corporateDividendsLoadingMock,
     isError: false,
@@ -330,7 +366,7 @@ vi.mock("@/state", () => ({
   useFamilyMode: () => ({ isFamilyModeEnabled: false, isLoading: false }),
   useMyFamily: () => ({ data: null, isLoading: false }),
   useFamilyConsolidation: () => ({ data: null, isLoading: false, isError: false, error: null }),
-  useUserTrips: () => ({ data: [], isLoading: false, isError: false, error: null }),
+  useUserTrips: () => ({ data: tripsMock, isLoading: false, isError: false, error: null }),
   useIncomeGoals: () => ({ data: [], isLoading: false, isError: false, error: null }),
   useRecurrences: () => ({ data: recurrencesMock, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   hasSeenWelcomeModal: () => {
@@ -347,7 +383,7 @@ vi.mock("@/state", () => ({
       return;
     }
   },
-  useDemoSession: () => ({ isDemoActive: false, activeTrack: null, currentStepIndex: 0 }),
+  useDemoSession: () => ({ isDemoActive: isDemoActiveMock, activeTrack: null, currentStepIndex: 0 }),
   startDemo: (...args: unknown[]) => startDemoMock(...args),
   endDemo: vi.fn(),
   useMyPublicShares: (kind?: string) => ({
@@ -373,11 +409,7 @@ vi.mock("@/state", () => ({
     isUpdating: false,
     isLoading: false,
   }),
-  usePortfolioPosition: () => ({
-    rows: [],
-    isLoading: false,
-    summary: null,
-  }),
+  usePortfolioPosition: () => portfolioPositionMock,
   usePermission: () => ({
     allowed: true,
     isTrial: false,
@@ -391,7 +423,7 @@ vi.mock("@/state", () => ({
     isReadOnly: false,
     canWrite: true,
     tier: "pro_annual",
-    hasFeature: () => true,
+    hasFeature: (feature: string) => hasFeatureMock(feature),
   }),
 }));
 
@@ -421,7 +453,19 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     debtsLoadingMock = false;
     govInsightsLoadingMock = false;
     corporateDividendsLoadingMock = false;
+    corporateDividendsAvailableMock = [];
+    corporateDividendsTotalAvailableMock = 0;
     userPreferencesMock = null;
+    tripsMock = [];
+    portfolioPositionMock = {
+      rows: [],
+      totalBRL: 0,
+      cashBRL: 0,
+      isLoading: false,
+      summary: null,
+    };
+    isDemoActiveMock = false;
+    hasFeatureMock = () => true;
     localStorage.removeItem("financasnew:dashboard_alert_dismissals");
     onboardingCountsMock = {
       expenseCategories: 2,
@@ -1445,7 +1489,7 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
       expect(screen.queryByText("Reforçar Reserva de Emergência")).not.toBeInTheDocument();
     });
 
-    it("Cenário 4: silêncio intencional em conta saudável e teto estrito de 2 cards no carrossel", () => {
+    it("Cenário 4: silêncio intencional em conta saudável e teto estrito de 3 cards no carrossel (Onda 2)", () => {
       // 5 metas elegíveis simultâneas
       publicSharesMock = [1, 2, 3, 4, 5].map((i) => ({
         id: `goal-share-${i}`,
@@ -1470,10 +1514,10 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
 
       render(<OverviewPage />);
 
-      // O carrossel é limitado estritamente a 2 slides (homeMaxCards)
+      // Na Onda 2 o carrossel da Home é limitado a 3 slides (homeMaxCards)
       const carouselDots = screen.getAllByRole("button", { name: /Ir para alerta \d/i });
-      expect(carouselDots.length).toBe(2);
-      expect(screen.getByText("1 de 2")).toBeInTheDocument();
+      expect(carouselDots.length).toBe(3);
+      expect(screen.getByText("1 de 3")).toBeInTheDocument();
     });
 
     it("mantém o carrossel oculto enquanto govInsights, corporateDividends ou subscription estiverem carregando e exibe sem flash após resolver", () => {
@@ -1615,12 +1659,354 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
         render(<OverviewPage />);
 
         expect(screen.getAllByText("Reforçar Reserva de Emergência").length).toBeGreaterThan(0);
-        expect(screen.queryByText("Receba alertas de vencimentos e Pix")).not.toBeInTheDocument();
+        // Com homeMaxCards=3 na Onda 2, Reforçar Reserva permanece à frente de jit-device-alerts-invite sem ser deslocado
+        const slideIds = Array.from(document.querySelectorAll("[data-carousel-slide-id]")).map(
+          (el) => el.getAttribute("data-carousel-slide-id"),
+        );
+        expect(slideIds).toContain("cashflow.surplus");
+        const surplusIdx = slideIds.indexOf("cashflow.surplus");
+        const inviteIdx = slideIds.indexOf("device.alerts_invite");
+        if (inviteIdx !== -1) {
+          expect(surplusIdx).toBeLessThan(inviteIdx);
+        }
       } finally {
         cleanup();
         permSpy.mockRestore();
         onboardingCountsMock = { ...onboardingCountsMock, notificationsEnabled: true };
       }
+    });
+  });
+
+  describe("Onda 2 · Fase 5 — Pontes bidirecionais e contrato zero-query na Home", () => {
+    it("montagem fria com e sem investimentos, em modo demo e em conta virgem não registra nem dispara queryFn extra nem persiste evidência em storage", () => {
+      const profiles = [
+        {
+          name: "auth com investimentos",
+          setup: () => {
+            isDemoActiveMock = false;
+            hasFeatureMock = () => true;
+          },
+        },
+        {
+          name: "auth sem investimentos",
+          setup: () => {
+            isDemoActiveMock = false;
+            hasFeatureMock = (key: string) => key !== "investments";
+          },
+        },
+        {
+          name: "modo demo",
+          setup: () => {
+            isDemoActiveMock = true;
+            hasFeatureMock = () => true;
+          },
+        },
+        {
+          name: "conta virgem",
+          setup: () => {
+            isDemoActiveMock = false;
+            hasFeatureMock = () => true;
+            onboardingCountsMock = {
+              expenseCategories: 0,
+              incomeCategories: 0,
+              cashCheckpoints: 0,
+              cards: 0,
+              transactions: 0,
+              notificationsEnabled: false,
+            };
+            incomesMock.data = () => [];
+            expensesMock.data = () => [];
+          },
+        },
+      ];
+
+      const forbiddenWarmRoots = new Set(["loans", "group_targets", "portfolio_assets"]);
+
+      for (const profile of profiles) {
+        testQueryClient.clear();
+        localStorage.clear();
+        sessionStorage.clear();
+        setActiveUserId("user-1");
+        profile.setup();
+
+        const fetchedKeys: Array<readonly unknown[]> = [];
+        const unsub = testQueryClient.getQueryCache().subscribe((event) => {
+          if (event.type === "updated" && event.action.type === "fetch") {
+            fetchedKeys.push(event.query.queryKey);
+          }
+        });
+
+        const { unmount } = render(<OverviewPage />);
+
+        const entries = testQueryClient.getQueryCache().getAll();
+        expect(
+          fetchedKeys.some(
+            (key) =>
+              forbiddenWarmRoots.has(String(key[0] ?? "")) ||
+              key[0] === CAROUSEL_EVIDENCE_PREFIX[0] ||
+              (key[0] === "trips" && key[1] === "detail"),
+          ),
+          profile.name,
+        ).toBe(false);
+        expect(
+          entries.some(
+            (e) =>
+              forbiddenWarmRoots.has(String(e.queryKey[0] ?? "")) ||
+              (e.queryKey[0] === "trips" &&
+                e.queryKey[1] === "detail" &&
+                e.queryKey[2] != null &&
+                e.state.status === "success"),
+          ),
+          profile.name,
+        ).toBe(false);
+
+        const evidenceEntries = testQueryClient
+          .getQueryCache()
+          .findAll({ queryKey: CAROUSEL_EVIDENCE_PREFIX });
+        for (const evEntry of evidenceEntries) {
+          expect(evEntry.options.queryFn).toBeUndefined();
+        }
+
+        const storageKeys = [
+          ...Object.keys(localStorage),
+          ...Object.keys(sessionStorage),
+        ];
+        expect(
+          storageKeys.some((k) => k.includes("carousel-evidence")),
+          profile.name,
+        ).toBe(false);
+
+        unsub();
+        unmount();
+      }
+    });
+
+    it("bridge.combined_contribution soma sobra + caixa na corretora sem somar proventos pendentes e suprime redundantes", () => {
+      // Sobra real R$ 1.000 e reserva completa (R$ 60.000 >= 6x R$ 3.100) => intent portfolio_aporte
+      cardsMock = [];
+      debtsMock = [];
+      realCashBalanceMock.safeToSpend.committedObligationsCents = 0;
+      realCashBalanceMock.safeToSpend.safeToSpendCents = 100_000;
+      realCashBalanceMock.cashBalance.currentBalanceCents = 6_000_000;
+      portfolioPositionMock = {
+        rows: [
+          {
+            assetId: "a1",
+            ticker: "PETR4",
+            assetClass: "Renda Variável",
+            valueBRL: 1000,
+            isCash: false,
+          },
+          {
+            assetId: "a2",
+            ticker: "CDB",
+            assetClass: "Renda Fixa",
+            valueBRL: 4000,
+            isCash: false,
+          },
+        ],
+        totalBRL: 5200,
+        cashBRL: 200,
+        isLoading: false,
+        summary: null,
+      };
+      corporateDividendsAvailableMock = [
+        {
+          eventId: "div-1",
+          corporateDividendId: "cd-1",
+          assetId: "a1",
+          ticker: "PETR4",
+          type: "DIVIDENDO",
+          comDate: "2026-08-01",
+          paymentDate: "2026-08-20",
+          rate: 1,
+          netRate: 1,
+          taxRatePct: 0,
+          quantityOnComDate: 50,
+          totalAmount: 50,
+          currency: "BRL",
+          isManual: false,
+        },
+      ];
+      corporateDividendsTotalAvailableMock = 50;
+
+      testQueryClient.setQueryData(
+        [...PORTFOLIO_QUERY_KEYS.groupTargets, "class"],
+        [
+          { id: "gt-1", user_id: "user-1", group_by: "class", name: "Renda Variável", target_percentage: 60 },
+          { id: "gt-2", user_id: "user-1", group_by: "class", name: "Renda Fixa", target_percentage: 40 },
+        ],
+      );
+
+      render(<OverviewPage />);
+
+      expect(screen.getAllByText("Aporte combinado disponível").length).toBeGreaterThan(0);
+      // R$ 1.000 sobra + R$ 200 caixa corretora = R$ 1.200 (NÃO soma R$ 50 de proventos pendentes)
+      expect(screen.getAllByText(/total de R\$\s*1\.200,00/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/provento\(s\) a conferir separadamente/i).length).toBeGreaterThan(0);
+      // Suprime sobra/caixa isolados
+      expect(screen.queryByText("Capacidade de Aporte Estimada")).not.toBeInTheDocument();
+      expect(screen.queryByText(/parados na corretora/i)).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getAllByRole("button", { name: "Simular aporte combinado", hidden: true })[0]!);
+      expect(navigateMock).toHaveBeenCalledWith(
+        "/investments?tab=rebalancear&view=simulador&valor=100000&usarCaixa=1",
+      );
+    });
+
+    it("bridge.debt_vs_invest só aparece com cache quente de empréstimos, dispara CTA para /dividas e desaparece ao invalidar", () => {
+      realCashBalanceMock.safeToSpend.safeToSpendCents = 100_000;
+      realCashBalanceMock.cashBalance.currentBalanceCents = 6_000_000;
+      cardsMock = [];
+      debtsMock = [
+        {
+          id: "d-loan-1",
+          name: "Parcela Financiamento 1/12",
+          type: "payable",
+          amount: 1200,
+          due_date: "2026-08-25",
+          paid_at: null,
+          installment_group_id: "ig-expensive",
+        },
+      ];
+
+      const { rerender } = render(<OverviewPage />);
+      expect(screen.queryByText(/antes de aportar/i)).not.toBeInTheDocument();
+
+      testQueryClient.setQueryData(LOANS_QUERY_KEY, [
+        {
+          id: "loan-expensive",
+          user_id: "user-1",
+          name: "Empréstimo Pessoal",
+          loan_type: "loan",
+          principal_amount: 10000,
+          interest_rate_monthly: 2.5,
+          amortization_system: "price",
+          total_installments: 12,
+          start_date: "2026-01-10",
+          installment_group_id: "ig-expensive",
+          created_at: "2026-01-01T00:00:00Z",
+        },
+      ]);
+      rerender(<OverviewPage />);
+
+      expect(screen.getAllByText("Avalie contrato a 2,50% a.m. antes de aportar").length).toBeGreaterThan(0);
+      fireEvent.click(screen.getAllByRole("button", { name: "Comparar contrato", hidden: true })[0]!);
+      expect(navigateMock).toHaveBeenCalledWith("/dividas?type=loans&q=loan-expensive");
+
+      testQueryClient.invalidateQueries({ queryKey: LOANS_QUERY_KEY, refetchType: "none" });
+      rerender(<OverviewPage />);
+      expect(screen.queryByText("Avalie contrato a 2,50% a.m. antes de aportar")).not.toBeInTheDocument();
+    });
+
+    it("aciona cashflow.bill_impact, budget.category_pace e trip.settlement_pending com caches quentes e navega com prefill", () => {
+      vi.setSystemTime(new Date("2026-08-12T12:00:00Z"));
+      userPreferencesMock = {
+        custom_settings: {
+          notificationCategories: { billClosing: true },
+        },
+      };
+      realCashBalanceMock.safeToSpend.safeToSpendCents = 200_000;
+      realCashBalanceMock.cashBalance.currentBalanceCents = 250_000;
+      cardsMock = [{ id: "card1", name: "Nubank", is_active: true, closing_day: 11, due_day: 18 }];
+      cardExpensesMock = [{ id: "ce1", card_id: "card1", bill_competence: "2026-08", value: 1800, report_weight: 1 }];
+      expensesMock.data = (m: string) =>
+        m === "2026-08"
+          ? [
+              { id: "e1", value: 3000, report_weight: 1, date: "2026-08-05", category_id: "c1" },
+              { id: "e2", value: 1700, report_weight: 1, date: "2026-08-06", category_id: "c2" },
+            ]
+          : [];
+      tripsMock = [
+        {
+          id: "trip-1",
+          title: "Ubatuba",
+          status: "settling",
+          start_date: "2026-08-01",
+          end_date: "2026-08-05",
+          host_user_id: "user-1",
+        },
+      ];
+      testQueryClient.setQueryData(TRIP_QUERY_KEYS.detail("trip-1"), {
+        trip: tripsMock[0],
+        members: [{ id: "tm-1", trip_id: "trip-1", user_id: "user-1", name: "Gabriel", is_host: true }],
+        balances: [{ memberId: "tm-1", memberName: "Gabriel", netBalanceCents: -15000 }],
+        totalExpensesCents: 60000,
+      });
+
+      render(<OverviewPage />);
+
+      expect(screen.getAllByText(/Fatura Nubank concentra/i).length).toBeGreaterThan(0);
+      fireEvent.click(screen.getAllByRole("button", { name: "Conferir fatura", hidden: true })[0]!);
+      expect(navigateMock).toHaveBeenCalledWith("/cartoes?card=card1&month=2026-08");
+
+      expect(screen.getAllByText("Lazer já consumiu 85% do limite").length).toBeGreaterThan(0);
+      fireEvent.click(screen.getAllByRole("button", { name: "Ajustar orçamento", hidden: true })[0]!);
+      expect(navigateMock).toHaveBeenCalledWith("/orcamentos?tab=limits&mes=2026-08&categoria=c2");
+
+      expect(screen.getAllByText("Acerto pendente em Ubatuba").length).toBeGreaterThan(0);
+      fireEvent.click(screen.getAllByRole("button", { name: "Abrir acerto", hidden: true })[0]!);
+      expect(navigateMock).toHaveBeenCalledWith("/viagens/trip-1?tab=settlements&member=tm-1");
+    });
+
+    it("aciona consistência mensal (dia >= 22 sem aporte), higiene de classificação e limpa evidência ao trocar mês ou UID", async () => {
+      const user = userEvent.setup();
+      vi.setSystemTime(new Date("2026-08-24T12:00:00Z"));
+      realCashBalanceMock.safeToSpend.safeToSpendCents = 100_000;
+      realCashBalanceMock.cashBalance.currentBalanceCents = 6_000_000;
+      portfolioContributionsMock = [];
+      expensesMock.data = (m: string) =>
+        m === "2026-08"
+          ? [
+              { id: "hx1", value: 40, report_weight: 1, date: "2026-08-10", category_id: "" },
+              { id: "hx2", value: 40, report_weight: 1, date: "2026-08-11", category_id: "" },
+              { id: "hx3", value: 40, report_weight: 1, date: "2026-08-12", category_id: "" },
+              { id: "hx4", value: 40, report_weight: 1, date: "2026-08-13", category_id: "" },
+              { id: "hx5", value: 40, report_weight: 1, date: "2026-08-14", category_id: "" },
+            ]
+          : [];
+
+      render(<OverviewPage />);
+
+      expect(screen.getAllByText("Nenhum aporte registrado neste mês").length).toBeGreaterThan(0);
+      fireEvent.click(screen.getAllByRole("button", { name: "Simular aporte do mês", hidden: true })[0]!);
+      expect(navigateMock).toHaveBeenCalledWith("/investments?tab=rebalancear&view=simulador&valor=100000");
+
+      expect(screen.getAllByText("5 lançamentos sem classificação definida").length).toBeGreaterThan(0);
+      fireEvent.click(screen.getAllByRole("button", { name: "Revisar lançamentos", hidden: true })[0]!);
+      expect(navigateMock).toHaveBeenCalledWith(
+        "/transacoes?mes=2026-08&ids=hx1%2Chx2%2Chx3%2Chx4%2Chx5",
+      );
+
+      // Evidência foi publicada passivamente em memória para user-1 em 2026-08
+      expect(
+        readCarouselEvidence(testQueryClient, {
+          userId: "user-1",
+          mode: "auth",
+          scope: "all",
+          month: "2026-08",
+          asOf: "2026-08-24",
+        }),
+      ).not.toBeNull();
+
+      // Troca de UID limpa imediatamente todas as projeções em memória
+      setActiveUserId("user-2");
+      expect(
+        testQueryClient.getQueryCache().findAll({ queryKey: CAROUSEL_EVIDENCE_PREFIX }),
+      ).toHaveLength(0);
+
+      // Restaura UID e testa navegação para mês passado (mês não atual não publica projeção ativa)
+      setActiveUserId("user-1");
+      await user.click(screen.getByRole("button", { name: "Mês anterior" }));
+      expect(
+        readCarouselEvidence(testQueryClient, {
+          userId: "user-1",
+          mode: "auth",
+          scope: "all",
+          month: "2026-07",
+          asOf: "2026-08-24",
+        }),
+      ).toBeNull();
     });
   });
 });

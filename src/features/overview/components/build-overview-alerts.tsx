@@ -1,4 +1,6 @@
+import type { ReactNode } from "react";
 import {
+  BridgeAlertCard,
   CashGapAlert,
   type DashboardAlertItem,
   OnboardingCarouselBanner,
@@ -20,14 +22,33 @@ import {
   buildSurplusCapacityBreakdown,
 } from "@/domain/calculation-memory";
 import {
-  applyHomeCarouselAttentionBudget,
   type InsightThemeFamily,
   type SmartDecayRecord,
 } from "@/domain/insights";
 import { resolveInsightThemeFamily } from "@/domain/insights/attention-budget";
 import type { SmartAdvisorInsight } from "@/domain/insights/advisor";
 import type { CalibrationDecision } from "@/domain/insights/feedback";
-import type { CarouselDismissPreset } from "@/domain/notifications/hub";
+import {
+  detectClosedCardBills,
+  detectConsolidatedBudgetOverrun,
+  evaluateBillImpactBridge,
+  evaluateBudgetCategoryPaceBridge,
+  evaluateCombinedContributionBridge,
+  evaluateDataHygieneReviewBridge,
+  evaluateDebtVsInvestBridge,
+  evaluateMonthlyContributionConsistencyBridge,
+  evaluatePortfolioCriticalRiskForHome,
+  evaluatePortfolioDiscountForHome,
+  evaluatePortfolioIdleCashForHome,
+  evaluateTripSettlementPendingBridge,
+  selectCarouselSlots,
+  type BridgeAlertEvaluation,
+  type CarouselDismissPreset,
+  type CarouselSlotCandidate,
+} from "@/domain/notifications/hub";
+import type { GovernanceInsight } from "@/domain/portfolio/asset-governance-insights";
+import { computePortfolioCarouselDrift } from "@/domain/portfolio/insights-carousel-drift";
+import { evaluatePortfolioStructuralRisk } from "@/domain/portfolio/portfolio-risk-policy";
 import { ActiveTripBanner } from "@/features/trips/components";
 import type { OnboardingGoalId, PublicShare } from "@/types";
 import type { useOverviewData } from "../hooks/use-overview-data";
@@ -47,6 +68,7 @@ export interface BuildOverviewAlertItemsParams {
   onPermissionsAction: () => void;
   onPermissionsDismiss: (preset?: CarouselDismissPreset) => void;
   onSelectPreset?: (cardKey: string, preset: CarouselDismissPreset) => void;
+  onNavigate?: (to: string) => void;
   onNavigateInsights: () => void;
   onDismissPace: (days: 7 | 30) => void;
   onOpenGoalDeposit: (share: PublicShare) => void;
@@ -56,6 +78,7 @@ export interface BuildOverviewAlertItemsParams {
   onInspectDividends: () => void;
   canViewInvestments: boolean;
   overdueReviewsCount: number;
+  govInsights?: readonly GovernanceInsight[];
   onReviewGovernance: () => void;
   onDismissGovernance?: (days: 7 | 30) => void;
   isGovernanceDismissed?: boolean;
@@ -590,20 +613,292 @@ export function buildOverviewAlertItems(
       },
   ];
 
+interface HomeSlotCandidate extends CarouselSlotCandidate {
+  content: ReactNode;
+}
+
   const operationalItems = rawOperationalItems.filter(
     (item): item is DashboardAlertItem => Boolean(item && item.content),
   );
-  const maxAdvisorSlides = Math.max(0, 2 - operationalItems.length);
-  const advisorSlides: DashboardAlertItem[] = (params.advisorInsights ?? [])
+
+  const goalStageByCanonicalId = new Map<
+    string,
+    "completed" | "final_stretch" | "has_surplus" | "regular"
+  >();
+  for (const share of eligibleGoalShares) {
+    const pld = (share.payload as Record<string, unknown> | null) ?? {};
+    const targetCents = Number(pld.target_cents ?? 0);
+    const live = liveGoalProgress.get(share.id)?.currentCents;
+    const currentCents = live !== undefined ? live : Number(pld.current_cents ?? 0);
+    const percentage = targetCents > 0 ? Math.round((currentCents / targetCents) * 100) : 0;
+    const isCompleted = targetCents > 0 ? currentCents >= targetCents : pld.status === "completed";
+    const isFinalStretch = percentage >= 80 && !isCompleted;
+    const stage: "completed" | "final_stretch" | "has_surplus" | "regular" = isCompleted
+      ? "completed"
+      : isFinalStretch
+        ? "final_stretch"
+        : surplusCapacity.hasSurplus
+          ? "has_surplus"
+          : "regular";
+    goalStageByCanonicalId.set(`goal.progress.${share.id}`, stage);
+  }
+
+  const operationalCandidates: HomeSlotCandidate[] = operationalItems.map((item) => {
+    const canonicalId = item.id === "subscription-past-due" ? "billing.past_due" : item.id;
+    const currentGoalStage = goalStageByCanonicalId.get(canonicalId);
+    const policyContext =
+      canonicalId === "billing.trial_ending"
+        ? { trialDaysRemaining: subscription.trialDaysRemaining ?? undefined }
+        : currentGoalStage
+          ? { goalStage: currentGoalStage }
+          : undefined;
+    return {
+      id: item.id,
+      canonicalId,
+      priority: item.priority,
+      channels: ["home_carousel"],
+      ...(policyContext ? { policyContext } : {}),
+      ...(currentGoalStage ? { currentGoalStage } : {}),
+      isMandatoryBlocking: item.id === "subscription-past-due",
+      content: item.content,
+    };
+  });
+
+  const effectiveMonth = params.month ?? data.month;
+  const brokerageCashBRL =
+    typeof data.portfolioPositionQuery?.cashBRL === "number"
+      ? data.portfolioPositionQuery.cashBRL
+      : null;
+  const brokerageCashCents =
+    brokerageCashBRL !== null ? Math.round(brokerageCashBRL * 100) : null;
+
+  const warmDrift =
+    params.canViewInvestments && data.warmClassTargets !== undefined
+      ? computePortfolioCarouselDrift({
+          classTargets: data.warmClassTargets,
+          rows: (data.portfolioPositionQuery?.rows ?? []).map((r) => ({
+            assetClass: r.assetClass,
+            valueBRL: r.valueBRL,
+            isCash: Boolean(r.isCash),
+          })),
+          totalBRL: data.portfolioPositionQuery?.totalBRL ?? 0,
+          cashBRL: brokerageCashBRL ?? 0,
+        })
+      : null;
+
+  const hasEligibleDeficitTarget = warmDrift
+    ? warmDrift.allocationDrift.hasTargets &&
+      warmDrift.allocationDrift.underweightItems.length > 0
+    : null;
+
+  const eligibleClassName = warmDrift?.allocationDrift.underweightItems[0]?.name;
+
+  const combinedContributionEval =
+    params.canViewInvestments && !data.showVirginGuide
+      ? evaluateCombinedContributionBridge({
+          asOf: data.today,
+          month: effectiveMonth,
+          isCurrentMonth,
+          allocationIntent: surplusCapacity.allocationIntent,
+          suggestedAporteCents: surplusCapacity.suggestedAporteCents,
+          brokerageCashCents,
+          minTicketCents: Math.round((data.portfolioRiskPolicy?.minTicketBRL ?? 100) * 100),
+          hasEligibleDeficitTarget,
+          eligibleClass: eligibleClassName,
+          pendingDividendsCount: effectiveAvailableDividends.length,
+          pendingDividendsBRLCents: Math.round(effectiveAvailableAmount * 100),
+        })
+      : null;
+
+  const closedBillsForImpact =
+    data.notificationCategoryPrefs?.billClosing &&
+    isCurrentMonth &&
+    data.scopedCards &&
+    data.cardExpensesQuery?.data &&
+    data.cardPaymentsQuery?.data
+      ? detectClosedCardBills({
+          cards: data.scopedCards,
+          cardExpenses: data.cardExpensesQuery.data,
+          cardPayments: data.cardPaymentsQuery.data,
+          today: data.today,
+        })
+      : [];
+
+  const billImpactEval = !data.showVirginGuide
+    ? evaluateBillImpactBridge({
+        isCurrentMonth,
+        billClosingEnabled: Boolean(data.notificationCategoryPrefs?.billClosing),
+        hasLiquidityContext: Boolean(data.financialContext?.lens?.liquidity?.hasLiquidityContext),
+        safeToSpendCents: data.realCashData?.safeToSpend?.safeToSpendCents ?? 0,
+        closedBills: closedBillsForImpact,
+        cycleInvoices: data.realCashData?.cycleBreakdown?.invoices ?? [],
+      })
+    : null;
+
+  const overrunAlert =
+    isCurrentMonth &&
+    data.budgetsQuery?.data &&
+    data.scopedExpenses &&
+    data.expenseCategories?.data
+      ? detectConsolidatedBudgetOverrun({
+          month: effectiveMonth,
+          budgets: data.budgetsQuery.data,
+          expenses: data.scopedExpenses,
+          categories: data.expenseCategories.data,
+        })
+      : null;
+  const excludedExceededIds = overrunAlert
+    ? new Set(overrunAlert.topCategories.map((c) => c.categoryId))
+    : undefined;
+
+  const budgetCategoryPaceEval = !data.showVirginGuide
+    ? evaluateBudgetCategoryPaceBridge({
+        month: effectiveMonth,
+        isCurrentMonth,
+        dayOfMonth: data.financialContext.dayOfMonth,
+        daysInMonth: data.financialContext.daysInMonth,
+        budgets: data.budgetsQuery?.data,
+        expenses: data.scopedExpenses,
+        categories: data.expenseCategories?.data,
+        excludedExceededCategoryIds: excludedExceededIds,
+      })
+    : null;
+
+  const debtVsInvestEval = !data.showVirginGuide
+    ? evaluateDebtVsInvestBridge({
+        asOf: data.today,
+        debts: data.scopedDebts,
+        loans: data.warmLoans,
+        allocationIntent: surplusCapacity.allocationIntent,
+        suggestedAporteCents: surplusCapacity.suggestedAporteCents,
+        brokerageCashCents,
+      })
+    : null;
+
+  const monthlyConsistencyEval =
+    params.canViewInvestments && !data.showVirginGuide && data.contributionsQuery?.data
+      ? evaluateMonthlyContributionConsistencyBridge({
+          month: effectiveMonth,
+          isCurrentMonth,
+          dayOfMonth: data.financialContext.dayOfMonth,
+          daysInMonth: data.financialContext.daysInMonth,
+          allocationIntent: surplusCapacity.allocationIntent,
+          suggestedAporteCents: surplusCapacity.suggestedAporteCents,
+          contributions: data.contributionsQuery.data,
+          hasCombinedContributionBridge: Boolean(combinedContributionEval),
+        })
+      : null;
+
+  const tripSettlementEval = !data.showVirginGuide
+    ? evaluateTripSettlementPendingBridge({
+        trips: data.tripsQuery?.data,
+        warmTripDetailsById: data.warmTripDetailsById,
+        currentUserId,
+        today: data.today,
+      })
+    : null;
+
+  const dataHygieneEval = !data.showVirginGuide
+    ? evaluateDataHygieneReviewBridge({
+        month: effectiveMonth,
+        isCurrentMonth,
+        expenses: data.scopedExpenses,
+        categories: data.expenseCategories?.data,
+      })
+    : null;
+
+  const portfolioCriticalEval =
+    params.canViewInvestments &&
+    !data.showVirginGuide &&
+    data.warmPortfolioAssets &&
+    data.portfolioPositionQuery?.rows
+      ? evaluatePortfolioCriticalRiskForHome({
+          alerts: evaluatePortfolioStructuralRisk(
+            data.warmPortfolioAssets,
+            data.portfolioRiskPolicy,
+            {
+              positionRows: data.portfolioPositionQuery.rows,
+              cashBRL: brokerageCashBRL ?? 0,
+              asOf: data.today,
+            },
+          ),
+        })
+      : null;
+
+  const portfolioIdleCashEval =
+    params.canViewInvestments && !data.showVirginGuide
+      ? evaluatePortfolioIdleCashForHome({
+          brokerageCashBRL,
+          hasEligibleDeficitTarget,
+          hasCombinedContributionBridge: Boolean(combinedContributionEval),
+        })
+      : null;
+
+  const portfolioDiscountEval =
+    params.canViewInvestments && !data.showVirginGuide
+      ? evaluatePortfolioDiscountForHome({
+          discountInsights: params.govInsights,
+          allocationIntent: surplusCapacity.allocationIntent,
+          suggestedAporteCents: surplusCapacity.suggestedAporteCents,
+        })
+      : null;
+
+  const rawBridgeEvaluations: (BridgeAlertEvaluation | null)[] = [
+    billImpactEval,
+    portfolioCriticalEval,
+    combinedContributionEval,
+    budgetCategoryPaceEval,
+    tripSettlementEval,
+    debtVsInvestEval,
+    monthlyConsistencyEval,
+    portfolioIdleCashEval,
+    portfolioDiscountEval,
+    dataHygieneEval,
+  ];
+
+  const handleBridgeNavigate = (to: string) => {
+    if (params.onNavigate) {
+      params.onNavigate(to);
+    } else if (to.startsWith("/insights")) {
+      params.onNavigateInsights();
+    }
+  };
+
+  const bridgeCandidates: HomeSlotCandidate[] = rawBridgeEvaluations
+    .filter((ev): ev is BridgeAlertEvaluation => Boolean(ev))
+    .filter((ev) => !data.isCardDismissed(ev.canonicalId))
+    .map((ev) => ({
+      id: ev.canonicalId,
+      canonicalId: ev.canonicalId,
+      priority: ev.priority,
+      severity: ev.severity,
+      cycleRelevance: ev.cycleRelevance,
+      channels: ev.channels,
+      entityRefs: ev.entityRefs,
+      suppressCanonicalIds: ev.suppressCanonicalIds,
+      content: (
+        <BridgeAlertCard
+          evaluation={ev}
+          onNavigate={handleBridgeNavigate}
+          onSelectPreset={params.onSelectPreset}
+        />
+      ),
+    }));
+
+  const advisorCandidates: HomeSlotCandidate[] = (params.advisorInsights ?? [])
     .filter((insight) => !data.isCardDismissed(`advisor.${insight.themeKey}`))
-    .slice(0, maxAdvisorSlides)
     .map((insight) => {
       const canPauseFamily =
         (params.decayByFamily?.[resolveInsightThemeFamily(insight.themeKey)]?.dismissCount ?? 0) >=
         2;
+      // Mantém precedência da Onda 1: sinais operacionais e pontes (0..5) ocupam slots antes do Assistente
+      const priority = insight.priority === 1 ? 5.2 : insight.priority === 2 ? 5.6 : 6.2;
+      const canonicalId = `advisor.${insight.themeKey}`;
       return {
         id: `smart-advisor-${insight.id}`,
-        priority: insight.priority === 1 ? 3.2 : insight.priority === 2 ? 3.6 : 4.2,
+        canonicalId,
+        priority,
+        channels: ["home_carousel"] as const,
         content: (
           <SmartAdvisorCard
             embeddedInCarousel
@@ -612,7 +907,7 @@ export function buildOverviewAlertItems(
             onDismiss={params.onDismissAdvisor}
             onSelectPreset={
               params.onSelectPreset
-                ? (preset) => params.onSelectPreset?.(`advisor.${insight.themeKey}`, preset)
+                ? (preset) => params.onSelectPreset?.(canonicalId, preset)
                 : undefined
             }
             onConfirmRecurrence={
@@ -656,5 +951,15 @@ export function buildOverviewAlertItems(
       };
     });
 
-  return applyHomeCarouselAttentionBudget([...operationalItems, ...advisorSlides]).visibleItems;
+  return selectCarouselSlots({
+    channel: "home_carousel",
+    items: [...operationalCandidates, ...bridgeCandidates, ...advisorCandidates],
+    carouselDismissals: data.carouselDismissalsMap,
+    invalidIds: data.carouselDismissalsInvalidIds,
+    maxSlots: 3,
+  }).visibleItems.map(({ id, priority, content }) => ({
+    id,
+    priority,
+    content,
+  }));
 }

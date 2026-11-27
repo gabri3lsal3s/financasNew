@@ -27,6 +27,8 @@ let mockExpenses = [
   { id: "e1", category_id: "c1", value: 1200, report_weight: 1 },
   { id: "e2", category_id: "c2", value: 100, report_weight: 1 },
 ];
+let requestedExpenseMonths: string[] = [];
+let requestedIncomeMonths: string[] = [];
 
 let mockBudgets = [
   { category_id: "c1", month: "2026-08", limit: 1000 },
@@ -82,20 +84,26 @@ vi.mock("@/state", () => ({
   useDeleteCategory: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSeedDefaultCategories: () => ({ mutateAsync: vi.fn(), isPending: false, isError: false }),
   useInstallCategoryKit: () => ({ mutateAsync: vi.fn(), isPending: false, isError: false }),
-  useExpenses: () => ({
-    data: mockExpenses,
-    isLoading: false,
-    isError: false,
-    error: null,
-    refetch: vi.fn(),
-  }),
-  useIncomes: () => ({
-    data: [{ id: "in1", category_id: "i1", value: 5000, report_weight: 1 }],
-    isLoading: false,
-    isError: false,
-    error: null,
-    refetch: vi.fn(),
-  }),
+  useExpenses: (month?: string) => {
+    if (month) requestedExpenseMonths.push(month);
+    return {
+      data: mockExpenses,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    };
+  },
+  useIncomes: (month?: string) => {
+    if (month) requestedIncomeMonths.push(month);
+    return {
+      data: [{ id: "in1", category_id: "i1", value: 5000, report_weight: 1 }],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    };
+  },
   useSetBudgetLimit: () => ({ mutateAsync: setBudgetLimitMock, isPending: false }),
   useRemoveBudgetLimit: () => ({ mutateAsync: removeBudgetLimitMock, isPending: false }),
   useSetBatchBudgetLimits: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -124,6 +132,8 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(new Date("2026-08-15T12:00:00Z"));
+    requestedExpenseMonths = [];
+    requestedIncomeMonths = [];
     baseCategories = [
       { id: "c1", name: "Moradia", icon: "moradia", color: null, type: "expense", is_reserved: false },
       { id: "c2", name: "Lazer", icon: "lazer", color: null, type: "expense", is_reserved: false },
@@ -359,6 +369,35 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
 
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Limite — Lazer" })).toBeInTheDocument();
+  });
+
+  it("prefill ?tab=limits&mes=2026-07&categoria=c2 carrega a competência solicitada, destaca Lazer e limpa ?mes ao avançar no seletor", async () => {
+    mockBudgets = [
+      { category_id: "c1", month: "2026-07", limit: 1000 },
+      { category_id: "c2", month: "2026-07", limit: 1000 },
+    ];
+    const user = userEvent.setup();
+    renderBudgetsPage(["/orcamentos?tab=limits&mes=2026-07&categoria=c2"]);
+
+    expect(requestedExpenseMonths).toContain("2026-07");
+    expect(requestedIncomeMonths).toContain("2026-07");
+
+    const limitsTab = screen.getByRole("tab", { name: /Despesas/i });
+    expect(limitsTab).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("Julho de 2026")).toBeInTheDocument();
+
+    const lazerHighlighted = screen
+      .getAllByText("Lazer")
+      .some((el) => el.closest(".ring-primary") !== null);
+    expect(lazerHighlighted).toBe(true);
+    const moradiaHighlighted = screen
+      .getAllByText("Moradia")
+      .some((el) => el.closest(".ring-primary") !== null);
+    expect(moradiaHighlighted).toBe(false);
+
+    await user.click(screen.getByRole("button", { name: "Próximo mês" }));
+    expect(screen.getByText("Agosto de 2026")).toBeInTheDocument();
+    expect(requestedExpenseMonths).toContain("2026-08");
   });
 });
 

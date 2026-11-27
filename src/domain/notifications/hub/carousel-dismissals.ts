@@ -12,6 +12,7 @@ import type {
   PortfolioAlertDismissalsMap,
 } from "@/types/schema";
 import {
+  resolveCanonicalDismissalAliases,
   resolveCarouselCardPolicy,
   resolveLegacyAliasesForCanonicalId,
   type CarouselDismissalRecord,
@@ -284,18 +285,33 @@ export function evaluateCarouselCardVisibility(
     return { visible: true, reason: "mandatory" };
   }
 
-  if (input.invalidIds?.has(input.canonicalId)) {
-    return { visible: true, reason: "invalid_fail_open" };
+  const candidateKeys = [
+    input.canonicalId,
+    ...resolveCanonicalDismissalAliases(input.canonicalId),
+  ];
+
+  for (const candidateKey of candidateKeys) {
+    if (input.invalidIds?.has(candidateKey)) {
+      return { visible: true, reason: "invalid_fail_open" };
+    }
   }
 
-  const canonical = input.carouselDismissals?.[input.canonicalId];
+  let canonical: CarouselDismissalRecord | undefined;
+  for (const candidateKey of candidateKeys) {
+    const found = input.carouselDismissals?.[candidateKey];
+    if (found) {
+      canonical = canonical ? pickWinningRecord(canonical, found) : found;
+    }
+  }
+
   if (canonical) {
     if (canonical.revokedAt != null && canonical.revokedAt >= canonical.dismissedAt) {
       return { visible: true, reason: "revoked", source: "canonical" };
     }
 
     if (
-      input.canonicalId.startsWith("goals.progress.") &&
+      (input.canonicalId.startsWith("goals.progress.") ||
+        input.canonicalId.startsWith("goal.progress.")) &&
       input.currentGoalStage === "completed" &&
       canonical.stage !== "completed"
     ) {

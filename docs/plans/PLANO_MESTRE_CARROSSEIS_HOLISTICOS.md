@@ -14,7 +14,7 @@
 | 2B | Builders de memória de cálculo | Concluída | testes focais + `npm run verify` |
 | 3 | Componentes únicos e acessibilidade | Concluída | testes focais + `npm run verify` |
 | 4 | Migração integral e release da Onda 1 | Concluída | `npm run verify:full` |
-| 5 | Avaliadores e projeção bidirecional (Onda 2) | Aguardando | `npm run verify` |
+| 5 | Avaliadores e projeção bidirecional (Onda 2) | Concluída | `npm run verify` |
 | 6 | Central, ações contextuais e encerramento | Aguardando | `npm run verify:full` |
 
 | Decisão | Situação |
@@ -247,9 +247,9 @@ Cada fase roda em branch de trabalho. Primeiro fixar as expectativas que disting
 
 ### Onda 2 · Fase 5 — Avaliadores e projeção bidirecional
 
-- [ ] Criar `src/domain/notifications/hub/{bridge-evaluators,slot-selector}.ts` e os testes colocalizados; `src/state/selectors/carousel-evidence.ts` e seu teste para publicação/leitura passiva. Estender `src/domain/notifications/hub/{types,build-notification-center,event-detectors,index}.ts`, `src/hooks/use-notification-center.ts`, `src/domain/insights/attention-budget.ts`, `src/features/overview/hooks/use-overview-data.ts`, `src/features/overview/components/{build-overview-alerts,overview-dashboard-content}.tsx` e `src/features/investments/components/portfolio-insights-carousel.tsx`. Usar discriminantes de ponte e período nos builders do §4.1 para provar valor combinado, peso de fatura, orçamento, taxa e saldo de acerto. Acrescentar prefill e destinos aos arquivos de aporte acima, `src/features/debts/hooks/use-debts-page-state.ts`, `src/features/trips/components/details/use-trip-details-state.ts` e `src/features/transactions/components/list/use-transaction-list.ts`.
-- [ ] Medir lista de queryKeys **e chamadas reais ao queryFn/rede** na montagem fria de / com e sem acesso, demo e conta virgem, e em deep-link /investments. Com mesmas fontes, nenhuma nova requisição, refetch, expansão de intervalo ou bloqueio de skeleton por causa das pontes. Cache quente produz card; invalidação, mudança de conta/escopo ou data remove. Para cada uma das sete linhas testar gatilho, ausência de fonte, limite, dispensa, ação e resolução. Fusão não soma provento pendente e não altera saldo livre.
-- [ ] Rodar `npx vitest run src/domain/notifications/hub src/state/selectors/carousel-evidence.test.ts src/domain/insights/attention-budget.test.ts src/features/overview/pages/overview-page.test.tsx src/features/investments/components/portfolio-insights-carousel.test.tsx` e `npm run verify`.
+- [x] Criar `src/domain/notifications/hub/{bridge-evaluators,slot-selector}.ts` e os testes colocalizados; `src/state/selectors/carousel-evidence.ts` e seu teste para publicação/leitura passiva. Estender `src/domain/notifications/hub/{types,build-notification-center,event-detectors,index}.ts`, `src/hooks/use-notification-center.ts`, `src/domain/insights/attention-budget.ts`, `src/features/overview/hooks/use-overview-data.ts`, `src/features/overview/components/{build-overview-alerts,overview-dashboard-content}.tsx` e `src/features/investments/components/portfolio-insights-carousel.tsx`. Usar discriminantes de ponte e período nos builders do §4.1 para provar valor combinado, peso de fatura, orçamento, taxa e saldo de acerto. Acrescentar prefill e destinos aos arquivos de aporte acima, `src/features/debts/hooks/use-debts-page-state.ts`, `src/features/trips/components/details/use-trip-details-state.ts` e `src/features/transactions/components/list/use-transaction-list.ts`.
+- [x] Medir lista de queryKeys **e chamadas reais ao queryFn/rede** na montagem fria de / com e sem acesso, demo e conta virgem, e em deep-link /investments. Com mesmas fontes, nenhuma nova requisição, refetch, expansão de intervalo ou bloqueio de skeleton por causa das pontes. Cache quente produz card; invalidação, mudança de conta/escopo ou data remove. Para cada uma das sete linhas testar gatilho, ausência de fonte, limite, dispensa, ação e resolução. Fusão não soma provento pendente e não altera saldo livre.
+- [x] Rodar `npx vitest run src/domain/notifications/hub src/state/selectors/carousel-evidence.test.ts src/domain/insights/attention-budget.test.ts src/features/overview/pages/overview-page.test.tsx src/features/investments/components/portfolio-insights-carousel.test.tsx` e `npm run verify`.
 
 ### Fase 6 — Central, ações contextuais e encerramento
 

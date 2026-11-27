@@ -1,13 +1,27 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { TransactionListPage } from "./transaction-list-page";
 
 let params: URLSearchParams;
+let setParamsSpy = vi.fn();
 let requestedMonths: string[] = [];
+const defaultExpensesMock = [
+  {
+    id: "e1",
+    value: 250,
+    date: "2026-01-15",
+    description: "Mercado antigo",
+    installments_total: 1,
+    installment_number: 1,
+    category_id: "c1",
+    payment_method: "pix",
+  },
+];
+let expensesMock = defaultExpensesMock;
 
 vi.mock("react-router", () => ({
   Link: ({ children, to }: { children: React.ReactNode; to: string }) => <a href={to}>{children}</a>,
-  useSearchParams: () => [params, vi.fn()],
+  useSearchParams: () => [params, setParamsSpy],
   useNavigate: () => vi.fn(),
 }));
 
@@ -33,18 +47,7 @@ vi.mock("@/state", () => ({
   useExpenses: (month: string) => {
     requestedMonths.push(month);
     return {
-      data: [
-        {
-          id: "e1",
-          value: 250,
-          date: "2026-01-15",
-          description: "Mercado antigo",
-          installments_total: 1,
-          installment_number: 1,
-          category_id: "c1",
-          payment_method: "pix",
-        },
-      ],
+      data: expensesMock,
       isLoading: false,
       error: null,
       refetch: vi.fn(),
@@ -114,10 +117,60 @@ describe("TransactionListPage — deep-link da busca global (§3.9)", () => {
   });
 
   it("seleciona a aba de Despesas quando ?tipo=despesas ou ?filter=expenses", () => {
+    expensesMock = defaultExpensesMock;
     params = new URLSearchParams("tipo=despesas");
     render(<TransactionListPage />);
 
     const despesasTab = screen.getByRole("tab", { name: "Despesas" });
     expect(despesasTab).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("filtra exatamente pelos IDs em ?ids=..., exibe badge de revisão e limpa ?ids ao clicar Limpar revisão", () => {
+    params = new URLSearchParams("mes=2026-01&ids=e1,e2");
+    setParamsSpy = vi.fn((updater: unknown) => {
+      if (typeof updater === "function") {
+        params = (updater as (prev: URLSearchParams) => URLSearchParams)(params);
+      }
+    });
+    requestedMonths = [];
+    expensesMock = [
+      ...defaultExpensesMock,
+      {
+        id: "e2",
+        value: 80,
+        date: "2026-01-16",
+        description: "Padaria sem categoria",
+        installments_total: 1,
+        installment_number: 1,
+        category_id: "",
+        payment_method: "pix",
+      },
+      {
+        id: "e3",
+        value: 150,
+        date: "2026-01-17",
+        description: "Despesa já classificada",
+        installments_total: 1,
+        installment_number: 1,
+        category_id: "c1",
+        payment_method: "pix",
+      },
+    ];
+
+    const { rerender } = render(<TransactionListPage />);
+
+    expect(requestedMonths).toContain("2026-01");
+    expect(screen.getByText("Mercado antigo")).toBeInTheDocument();
+    expect(screen.getByText("Padaria sem categoria")).toBeInTheDocument();
+    expect(screen.queryByText("Despesa já classificada")).not.toBeInTheDocument();
+    expect(screen.getByText("2 em revisão")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Limpar revisão" }));
+    expect(setParamsSpy).toHaveBeenCalled();
+    expect(params.has("ids")).toBe(false);
+    expect(params.get("mes")).toBe("2026-01");
+
+    rerender(<TransactionListPage />);
+    expect(screen.getByText("Despesa já classificada")).toBeInTheDocument();
   });
 });

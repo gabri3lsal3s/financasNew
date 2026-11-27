@@ -129,6 +129,7 @@ function TripDetailsPageContent({ tripId }: { tripId: string | undefined }) {
       content: (
         <TripSettlementsTab
           suggestedSettlements={suggestedSettlements}
+          highlightMemberId={state.highlightMemberId}
           onOpenSettlement={() => state.setIsSettlementOpen(true)}
         />
       ),

@@ -40,7 +40,7 @@ export interface GovernedInsightItem {
 }
 
 export interface AttentionBudgetPolicy {
-  /** Maximo de itens no carrossel da Home (padrao: 2; 1 se houver alerta critico P0). */
+  /** Maximo de itens no carrossel da Home (padrao: 3 na Onda 2; 1 se houver alerta critico P0). */
   homeMaxCards: number;
   /** Maximo de banners operacionais fora do carrossel expandidos acima da dobra na Home (padrao: 1). */
   homeMaxOperationalBanners: number;
@@ -53,7 +53,7 @@ export interface AttentionBudgetPolicy {
 }
 
 export const DEFAULT_ATTENTION_BUDGET_POLICY: AttentionBudgetPolicy = {
-  homeMaxCards: 2,
+  homeMaxCards: 3,
   homeMaxOperationalBanners: 1,
   insightsAttentionMaxVisible: 2,
   maxCalibrationsVisible: 1,
@@ -72,7 +72,7 @@ export interface HomeCarouselBudgetResult<T extends { id: string; priority: numb
  *   - Ordenacao estavel por `priority` crescente;
  *   - Se vazio e `allowIntentionalSilence === true`, retorna `isSilent: true`;
  *   - Se existir alerta critico P0 (`priority <= 1`), ativa modo focado (`limit = min(1, homeMaxCards)`);
- *   - Caso contrario, limita a `homeMaxCards` (padrao 2).
+ *   - Caso contrario, limita a `homeMaxCards` (padrao 3 na Onda 2).
  */
 export function applyHomeCarouselAttentionBudget<T extends { id: string; priority: number }>(
   items: readonly T[],

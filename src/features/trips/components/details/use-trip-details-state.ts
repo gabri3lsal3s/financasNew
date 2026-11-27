@@ -1,12 +1,44 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { useSearchParams } from "react-router";
 import { useRemoveTripMemberMutation } from "@/state/queries/use-trips";
 import { getPublicAppUrl } from "@/services/app-url";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import type { TripExpense, TripMember } from "@/types/trips";
 
+export type TripDetailsTabKey = "expenses" | "members" | "settlements";
+
+function parseTripTabParam(raw: string | null): TripDetailsTabKey | null {
+  if (raw === "expenses" || raw === "members" || raw === "settlements") {
+    return raw;
+  }
+  return null;
+}
+
 export function useTripDetailsState(tripId: string) {
-  const [activeTab, setActiveTab] = useState<string>("expenses");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [pickedTab, setPickedTab] = useState<string>("expenses");
+  const paramTab = parseTripTabParam(searchParams.get("tab"));
+  const highlightMemberId = searchParams.get("member");
+  const activeTab = paramTab ?? (highlightMemberId ? "settlements" : pickedTab);
+
+  const setActiveTab = useCallback(
+    (next: string) => {
+      setPickedTab(next);
+      if (searchParams.has("tab") || searchParams.has("member")) {
+        setSearchParams(
+          (prev) => {
+            const updated = new URLSearchParams(prev);
+            updated.delete("tab");
+            updated.delete("member");
+            return updated;
+          },
+          { replace: true },
+        );
+      }
+    },
+    [searchParams, setSearchParams],
+  );
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
@@ -57,6 +89,7 @@ export function useTripDetailsState(tripId: string) {
   return {
     activeTab,
     setActiveTab,
+    highlightMemberId,
     isAddExpenseOpen,
     setIsAddExpenseOpen,
     isAddMemberOpen,

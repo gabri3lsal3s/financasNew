@@ -203,3 +203,7 @@ export {
   InteractivePlaybookModal,
   type InteractivePlaybookModalProps,
 } from "./playbooks";
+export {
+  BridgeAlertCard,
+  type BridgeAlertCardProps,
+} from "./bridge-alert-card";

@@ -34,6 +34,7 @@ import type {
   SupportTicket,
   UserSubscription,
 } from "@/types";
+import { useCarouselDismissals } from "./use-carousel-dismissals";
 import { useOnboardingDismissed } from "./use-onboarding-dismissed";
 
 const DEFAULT_REMINDER_PREFERENCES: ReminderPreferences = {
@@ -118,6 +119,7 @@ function useNotificationCenterCompute(
   const onboardingQuery = useOnboardingCounts();
   const { isDismissed: isOnboardingDismissed, dismiss: dismissOnboarding } =
     useOnboardingDismissed();
+  const { dismissalsMap: carouselDismissals } = useCarouselDismissals();
 
   const preferences = reminders?.preferences ?? DEFAULT_REMINDER_PREFERENCES;
   const categoryPreferences = useMemo(
@@ -381,7 +383,7 @@ function useNotificationCenterCompute(
         onboardingCompletedCount: onboardingProg.done,
         onboardingTotalSteps: onboardingProg.total,
         isOnboardingDismissed: !showOnboarding,
-        carouselDismissals: userPrefsQuery?.data?.custom_settings?.carouselDismissals,
+        carouselDismissals,
       }),
     [
       items,
@@ -398,7 +400,7 @@ function useNotificationCenterCompute(
       showOnboarding,
       onboardingProg.done,
       onboardingProg.total,
-      userPrefsQuery?.data?.custom_settings?.carouselDismissals,
+      carouselDismissals,
     ],
   );
 

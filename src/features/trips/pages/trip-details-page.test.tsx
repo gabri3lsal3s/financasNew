@@ -254,4 +254,48 @@ describe("TripDetailsPage - Reabertura, Exclusão e Saída de Viagem", () => {
       expect.objectContaining({ onSuccess: expect.any(Function) }),
     );
   });
+
+  it("prefill ?tab=settlements&member=m-guest ativa a aba Acerto e destaca o acerto envolvendo o membro", () => {
+    vi.mocked(authHook.useAuth).mockReturnValue({
+      user: { id: "user-guest-2", email: "mariana@teste.com" } as unknown as User,
+      session: {} as unknown as Session,
+      loading: false,
+      configError: null,
+    } as unknown as ReturnType<typeof authHook.useAuth>);
+
+    vi.mocked(tripsQuery.useTripDetails).mockReturnValue({
+      data: {
+        ...mockCompletedTripData,
+        trip: {
+          ...mockCompletedTripData.trip,
+          status: "settling" as const,
+        },
+        suggestedSettlements: [
+          {
+            fromMemberId: "m-guest",
+            fromMemberName: "Mariana Convidada",
+            toMemberId: "m-host",
+            toMemberName: "Gabriel Organizador",
+            amountCents: 5000,
+          },
+          {
+            fromMemberId: "m-host",
+            fromMemberName: "Gabriel Organizador",
+            toMemberId: "m-other",
+            toMemberName: "Carlos Terceiro",
+            amountCents: 2000,
+          },
+        ],
+      } as unknown as NonNullable<ReturnType<typeof tripsQuery.useTripDetails>["data"]>,
+      isLoading: false,
+    } as unknown as ReturnType<typeof tripsQuery.useTripDetails>);
+
+    renderTripDetailsPage("/viagens/trip-ubatuba?tab=settlements&member=m-guest");
+
+    expect(screen.getByText("Compensação Líquida Calculada")).toBeInTheDocument();
+    const highlightedCard = screen.getByText("Mariana Convidada").closest("[data-highlighted='true']");
+    expect(highlightedCard).not.toBeNull();
+    const unrelatedCard = screen.getByText("Carlos Terceiro").closest("[data-highlighted='true']");
+    expect(unrelatedCard).toBeNull();
+  });
 });

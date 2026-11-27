@@ -141,6 +141,14 @@ export function useTransactionList() {
   const totals = useMemo(() => computeTransactionTotals(expenses, incomes), [expenses, incomes]);
 
   const paramBusca = searchParams.get("busca") ?? "";
+  const paramIds = searchParams.get("ids") ?? "";
+  const filterIds = useMemo(() => {
+    const raw = paramIds
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    return raw.length > 0 ? new Set(raw) : null;
+  }, [paramIds]);
   const [searchQuery, setSearchQueryState] = useState(paramBusca);
   const [prevParamBusca, setPrevParamBusca] = useState(paramBusca);
   if (prevParamBusca !== paramBusca) {
@@ -150,14 +158,27 @@ export function useTransactionList() {
     }
   }
 
+  const clearIdsFilter = useCallback(() => {
+    if (!searchParams.has("ids")) return;
+    setSearchParams(
+      (prev) => {
+        const updated = new URLSearchParams(prev);
+        updated.delete("ids");
+        return updated;
+      },
+      { replace: true },
+    );
+  }, [searchParams, setSearchParams]);
+
   const setSearchQuery = useCallback(
     (nextQuery: string) => {
       setSearchQueryState(nextQuery);
-      if (!nextQuery && searchParams.has("busca")) {
+      if (!nextQuery && (searchParams.has("busca") || searchParams.has("ids"))) {
         setSearchParams(
           (prev) => {
             const updated = new URLSearchParams(prev);
             updated.delete("busca");
+            updated.delete("ids");
             return updated;
           },
           { replace: true },
@@ -168,8 +189,10 @@ export function useTransactionList() {
   );
 
   const [visibleCount, setVisibleCount] = useState(TRANSACTIONS_PAGE_SIZE);
-  const [prevFilterKey, setPrevFilterKey] = useState(() => `${month}-${filter}-${searchQuery}`);
-  const currentFilterKey = `${month}-${filter}-${searchQuery}`;
+  const [prevFilterKey, setPrevFilterKey] = useState(
+    () => `${month}-${filter}-${searchQuery}-${paramIds}`,
+  );
+  const currentFilterKey = `${month}-${filter}-${searchQuery}-${paramIds}`;
   if (currentFilterKey !== prevFilterKey) {
     setPrevFilterKey(currentFilterKey);
     setVisibleCount(TRANSACTIONS_PAGE_SIZE);
@@ -207,6 +230,7 @@ export function useTransactionList() {
         filter,
         businessSubFilter,
         searchQuery,
+        filterIds,
         categoryById,
         cardById,
         merchantLearning,
@@ -223,6 +247,7 @@ export function useTransactionList() {
       filter,
       businessSubFilter,
       searchQuery,
+      filterIds,
       categoryById,
       cardById,
       merchantLearning,
@@ -374,7 +399,9 @@ export function useTransactionList() {
     filteredFeedItemsCount: feed.filteredFeedItems.length,
     effectiveVisibleCount: feed.effectiveVisibleCount,
     hasMore: feed.hasMore,
-    isSearching: searchQuery.trim().length > 0,
+    isSearching: searchQuery.trim().length > 0 || Boolean(filterIds && filterIds.size > 0),
+    activeIdsFilterCount: filterIds?.size ?? 0,
+    clearIdsFilter,
     structuredFilterBadges: feed.structuredFilterBadges,
     feedGroups: feed.feedGroups,
     recurrenceLabel,

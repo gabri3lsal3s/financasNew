@@ -74,7 +74,10 @@ export function resolveCarouselCardPolicy(
     };
   }
 
-  if (canonicalId.startsWith("goals.progress.")) {
+  if (
+    canonicalId.startsWith("goals.progress.") ||
+    canonicalId.startsWith("goal.progress.")
+  ) {
     const isUrgentGoal =
       context?.goalStage === "completed" || context?.goalStage === "final_stretch";
     return {
@@ -98,11 +101,13 @@ export function resolveCarouselCardPolicy(
 
   if (
     canonicalId === "portfolio.reviews_overdue" ||
+    canonicalId === "portfolio.governance_review" ||
     canonicalId === "portfolio.reviews_upcoming" ||
     canonicalId === "portfolio.unscored" ||
     canonicalId === "portfolio.low_conviction" ||
     canonicalId === "portfolio.quarantine" ||
     canonicalId === "portfolio.drift" ||
+    canonicalId === "portfolio.allocation_drift" ||
     canonicalId === "portfolio.idle_cash" ||
     canonicalId.startsWith("portfolio.risk.")
   ) {
@@ -112,6 +117,87 @@ export function resolveCarouselCardPolicy(
       allowedPresets: LONG_PRESETS,
       displayName: resolvePortfolioDisplayName(canonicalId),
       module: "Investimentos",
+    };
+  }
+
+  if (
+    canonicalId === "bridge.debt_vs_invest" ||
+    canonicalId.startsWith("bridge.debt_vs_invest.")
+  ) {
+    return {
+      canonicalId,
+      category: "structural_long",
+      allowedPresets: LONG_PRESETS,
+      displayName: "Dívida cara vs. aporte",
+      module: "Dívidas & Investimentos",
+    };
+  }
+
+  if (canonicalId === "data.hygiene_review") {
+    return {
+      canonicalId,
+      category: "structural_long",
+      allowedPresets: LONG_PRESETS,
+      displayName: "Revisão de classificação",
+      module: "Transações",
+    };
+  }
+
+  if (
+    canonicalId === "bridge.combined_contribution" ||
+    canonicalId === "bridge.monthly_contribution_consistency"
+  ) {
+    return {
+      canonicalId,
+      category: "tactical",
+      allowedPresets: TACTICAL_PRESETS,
+      displayName:
+        canonicalId === "bridge.combined_contribution"
+          ? "Aporte combinado"
+          : "Consistência de aporte mensal",
+      module:
+        canonicalId === "bridge.combined_contribution"
+          ? "Visão Geral & Investimentos"
+          : "Investimentos",
+    };
+  }
+
+  if (
+    canonicalId === "cashflow.bill_impact" ||
+    canonicalId.startsWith("cashflow.bill_impact.")
+  ) {
+    return {
+      canonicalId,
+      category: "tactical",
+      allowedPresets: TACTICAL_PRESETS,
+      displayName: "Impacto de fatura no caixa",
+      module: "Cartões",
+    };
+  }
+
+  if (
+    canonicalId === "budget.category_pace" ||
+    canonicalId.startsWith("budget.category_pace.")
+  ) {
+    return {
+      canonicalId,
+      category: "tactical",
+      allowedPresets: TACTICAL_PRESETS,
+      displayName: "Ritmo de orçamento por categoria",
+      module: "Orçamentos",
+    };
+  }
+
+  if (
+    canonicalId === "trip.settlement_pending" ||
+    canonicalId.startsWith("trip.settlement_pending.")
+  ) {
+    return {
+      canonicalId,
+      category: "tactical",
+      allowedPresets: TACTICAL_PRESETS,
+      displayName: "Acerto pendente de viagem",
+      module: "Viagens",
     };
   }
 
@@ -157,7 +243,7 @@ export function resolveCarouselCardPolicy(
       canonicalId,
       category: "tactical",
       allowedPresets: TACTICAL_PRESETS,
-      displayName: canonicalId.includes(".ceiling.")
+      displayName: canonicalId.includes("ceiling")
         ? "Teto familiar"
         : "Acerto familiar",
       module: "Família",
@@ -187,6 +273,7 @@ export function resolveCarouselCardPolicy(
   if (
     canonicalId === "cashflow.pace" ||
     canonicalId === "cashflow.surplus_aporte" ||
+    canonicalId === "cashflow.surplus" ||
     canonicalId === "cashflow.cash_gap"
   ) {
     return {
@@ -196,7 +283,7 @@ export function resolveCarouselCardPolicy(
       displayName:
         canonicalId === "cashflow.pace"
           ? "Ritmo de gastos"
-          : canonicalId === "cashflow.surplus_aporte"
+          : canonicalId === "cashflow.surplus_aporte" || canonicalId === "cashflow.surplus"
             ? "Capacidade de aporte"
             : "Furo de caixa previsto",
       module: "Visão Geral",
@@ -214,12 +301,19 @@ export function resolveCarouselCardPolicy(
 }
 
 function resolvePortfolioDisplayName(canonicalId: string): string {
-  if (canonicalId === "portfolio.reviews_overdue") return "Revisão de teses vencida";
+  if (
+    canonicalId === "portfolio.reviews_overdue" ||
+    canonicalId === "portfolio.governance_review"
+  ) {
+    return "Revisão de teses vencida";
+  }
   if (canonicalId === "portfolio.reviews_upcoming") return "Revisão de teses próxima";
   if (canonicalId === "portfolio.unscored") return "Ativos sem nota";
   if (canonicalId === "portfolio.low_conviction") return "Nota baixa com sobrepeso";
   if (canonicalId === "portfolio.quarantine") return "Ativos em quarentena";
-  if (canonicalId === "portfolio.drift") return "Desvio de alocação";
+  if (canonicalId === "portfolio.drift" || canonicalId === "portfolio.allocation_drift") {
+    return "Desvio de alocação";
+  }
   if (canonicalId === "portfolio.idle_cash") return "Caixa disponível na corretora";
   if (canonicalId.startsWith("portfolio.risk.single_asset.")) return "Concentração em ativo único";
   if (canonicalId.startsWith("portfolio.risk.private_issuer.")) return "Exposição a emissor privado";
@@ -252,20 +346,29 @@ export function resolveLegacyAliasesForCanonicalId(
   if (canonicalId === "cashflow.pace") {
     return { dashboardCardKeys: [], portfolioKeys: [], advisorThemeKeys: [], dashboardPace: true };
   }
-  if (canonicalId === "cashflow.surplus_aporte") {
+  if (
+    canonicalId === "cashflow.surplus_aporte" ||
+    canonicalId === "cashflow.surplus"
+  ) {
     return { dashboardCardKeys: [], portfolioKeys: [], advisorThemeKeys: [], dashboardSurplus: true };
   }
   if (canonicalId === "cashflow.cash_gap") {
     return { dashboardCardKeys: ["cash-gap-alert"], portfolioKeys: [], advisorThemeKeys: [] };
   }
-  if (canonicalId.startsWith("household.ceiling.")) {
+  if (
+    canonicalId.startsWith("household.ceiling.") ||
+    canonicalId === "household.ceiling_exceeded"
+  ) {
     return {
       dashboardCardKeys: ["household-ceiling-exceeded"],
       portfolioKeys: [],
       advisorThemeKeys: ["household:ceiling_exceeded", "household:ceiling_warning"],
     };
   }
-  if (canonicalId.startsWith("household.settlement.")) {
+  if (
+    canonicalId.startsWith("household.settlement.") ||
+    canonicalId === "household.settlement_pending"
+  ) {
     return {
       dashboardCardKeys: ["household-settlement-pending"],
       portfolioKeys: [],
@@ -280,6 +383,14 @@ export function resolveLegacyAliasesForCanonicalId(
       goalShareId: canonicalId.slice("goals.progress.".length),
     };
   }
+  if (canonicalId.startsWith("goal.progress.")) {
+    return {
+      dashboardCardKeys: [],
+      portfolioKeys: [],
+      advisorThemeKeys: [],
+      goalShareId: canonicalId.slice("goal.progress.".length),
+    };
+  }
   if (canonicalId.startsWith("trip.active.")) {
     const tripId = canonicalId.slice("trip.active.".length);
     return {
@@ -291,7 +402,10 @@ export function resolveLegacyAliasesForCanonicalId(
   if (canonicalId === "split.pending") {
     return { dashboardCardKeys: ["split-pending-banner"], portfolioKeys: [], advisorThemeKeys: [] };
   }
-  if (canonicalId === "portfolio.reviews_overdue") {
+  if (
+    canonicalId === "portfolio.reviews_overdue" ||
+    canonicalId === "portfolio.governance_review"
+  ) {
     return {
       dashboardCardKeys: [],
       portfolioKeys: ["overdue-reviews-alert"],
@@ -314,7 +428,7 @@ export function resolveLegacyAliasesForCanonicalId(
   if (canonicalId === "portfolio.discount") {
     return { dashboardCardKeys: [], portfolioKeys: ["discount-opportunity-alert"], advisorThemeKeys: [] };
   }
-  if (canonicalId === "portfolio.drift") {
+  if (canonicalId === "portfolio.drift" || canonicalId === "portfolio.allocation_drift") {
     return { dashboardCardKeys: [], portfolioKeys: ["allocation-drift-alert"], advisorThemeKeys: [] };
   }
   if (canonicalId === "portfolio.idle_cash") {
@@ -390,4 +504,44 @@ export function resolveLegacyAliasesForCanonicalId(
   }
 
   return { dashboardCardKeys: [], portfolioKeys: [], advisorThemeKeys: [] };
+}
+
+/**
+ * Resolve IDs canônicos irmãos emitidos na Onda 1 para garantir paridade estrita
+ * quando uma superfície grava a forma curta/singular e outra consulta a longa.
+ */
+export function resolveCanonicalDismissalAliases(canonicalId: string): readonly string[] {
+  if (canonicalId === "portfolio.reviews_overdue") {
+    return ["portfolio.governance_review"];
+  }
+  if (canonicalId === "portfolio.governance_review") {
+    return ["portfolio.reviews_overdue"];
+  }
+  if (canonicalId === "portfolio.drift") {
+    return ["portfolio.allocation_drift"];
+  }
+  if (canonicalId === "portfolio.allocation_drift") {
+    return ["portfolio.drift"];
+  }
+  if (canonicalId === "cashflow.surplus_aporte") {
+    return ["cashflow.surplus"];
+  }
+  if (canonicalId === "cashflow.surplus") {
+    return ["cashflow.surplus_aporte"];
+  }
+  if (canonicalId.startsWith("goals.progress.")) {
+    const shareId = canonicalId.slice("goals.progress.".length);
+    return [`goal.progress.${shareId}`];
+  }
+  if (canonicalId.startsWith("goal.progress.")) {
+    const shareId = canonicalId.slice("goal.progress.".length);
+    return [`goals.progress.${shareId}`];
+  }
+  if (canonicalId.startsWith("household.ceiling.")) {
+    return ["household.ceiling_exceeded"];
+  }
+  if (canonicalId.startsWith("household.settlement.")) {
+    return ["household.settlement_pending"];
+  }
+  return [];
 }

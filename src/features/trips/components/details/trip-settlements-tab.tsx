@@ -1,14 +1,17 @@
 import { ShieldCheck } from "lucide-react";
 import { Button, Card, EmptyState, MoneyText } from "@/components/ui";
+import { cn } from "@/lib/utils";
 import type { SuggestedSettlement } from "@/types/trips";
 
 export interface TripSettlementsTabProps {
   suggestedSettlements: readonly SuggestedSettlement[];
+  highlightMemberId?: string | null;
   onOpenSettlement: () => void;
 }
 
 export function TripSettlementsTab({
   suggestedSettlements,
+  highlightMemberId = null,
   onOpenSettlement,
 }: TripSettlementsTabProps) {
   return (
@@ -38,23 +41,35 @@ export function TripSettlementsTab({
         />
       ) : (
         <div className="space-y-2">
-          {suggestedSettlements.map((s, idx) => (
-            <Card
-              key={`${s.fromMemberId}-${s.toMemberId}-${idx}`}
-              className="p-3.5 sm:p-4 rounded-xl border border-border/80 bg-surface shadow-xs flex items-center justify-between gap-3 text-xs"
-            >
-              <div className="min-w-0">
-                <span className="font-semibold text-foreground">{s.fromMemberName}</span>
-                <span className="text-muted-foreground mx-1.5">transfere para</span>
-                <span className="font-semibold text-primary-strong">{s.toMemberName}</span>
-              </div>
-              <MoneyText
-                cents={s.amountCents}
-                tone="default"
-                className="font-bold shrink-0"
-              />
-            </Card>
-          ))}
+          {suggestedSettlements.map((s, idx) => {
+            const isHighlighted = Boolean(
+              highlightMemberId &&
+                (s.fromMemberId === highlightMemberId || s.toMemberId === highlightMemberId),
+            );
+            return (
+              <Card
+                key={`${s.fromMemberId}-${s.toMemberId}-${idx}`}
+                data-highlighted={isHighlighted ? "true" : undefined}
+                className={cn(
+                  "p-3.5 sm:p-4 rounded-xl border bg-surface shadow-xs flex items-center justify-between gap-3 text-xs transition-colors",
+                  isHighlighted
+                    ? "border-primary/70 bg-primary/5 ring-1 ring-primary/30"
+                    : "border-border/80",
+                )}
+              >
+                <div className="min-w-0">
+                  <span className="font-semibold text-foreground">{s.fromMemberName}</span>
+                  <span className="text-muted-foreground mx-1.5">transfere para</span>
+                  <span className="font-semibold text-primary-strong">{s.toMemberName}</span>
+                </div>
+                <MoneyText
+                  cents={s.amountCents}
+                  tone="default"
+                  className="font-bold shrink-0"
+                />
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

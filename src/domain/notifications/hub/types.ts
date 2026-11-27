@@ -39,6 +39,7 @@ export type NotificationChannel =
   | "bell"
   | "reminders_page"
   | "home_carousel"
+  | "investments_carousel"
   | "os_push"
   | "email_digest";
 
@@ -122,6 +123,7 @@ export interface BuildNotificationCenterInput {
   onboardingTotalSteps?: number;
   isOnboardingDismissed?: boolean;
   carouselDismissals?: CarouselDismissalsMap;
+  bridgeNotifications?: readonly AppNotification[];
   nowMs?: number;
 }
 
@@ -129,6 +131,7 @@ export interface NotificationCenterSummary {
   notifications: AppNotification[];
   bellNotifications: AppNotification[];
   carouselNotifications: AppNotification[];
+  investmentsCarouselNotifications: AppNotification[];
   payableItems: ReminderItem[];
   receivableItems: ReminderItem[];
   closedBillAlerts: ClosedCardBillAlert[];
