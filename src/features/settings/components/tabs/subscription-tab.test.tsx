@@ -8,6 +8,8 @@ import { SubscriptionTab } from "./subscription-tab";
 import type { SubscriptionStatus } from "@/types";
 
 const mockSchedulePlanChange = vi.fn().mockResolvedValue({ ok: true, message: "Agendado" });
+const mockCancelPendingPix = vi.fn().mockResolvedValue({ ok: true, canceledCount: 1, message: "Cancelado" });
+const mockUseInvoices = vi.fn(() => ({ data: [] as unknown[], isLoading: false }));
 
 let mockSubscription: SubscriptionStatus = {
   tier: "trial",
@@ -44,13 +46,18 @@ vi.mock("@/state", () => ({
     isPending: false,
   }),
   useCancelPendingPixMutation: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({ ok: true, canceledCount: 1, message: "Cancelado" }),
+    mutateAsync: mockCancelPendingPix,
     isPending: false,
   }),
   useCumulativeCheckoutMutation: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+}));
+
+vi.mock("@/state/queries/use-invoices", () => ({
+  INVOICES_KEY: ["billing_invoices"],
+  useInvoices: () => mockUseInvoices(),
 }));
 
 vi.mock("@/data/repositories/billing", () => ({
@@ -205,5 +212,55 @@ describe("SubscriptionTab", () => {
 
     await user.click(screen.getByRole("button", { name: /Mudar Agendamento para Anual/i }));
     expect(mockSchedulePlanChange).toHaveBeenCalledWith("annual");
+  });
+
+  it("exibe botão Cancelar para PIX pendente em Faturas Recentes e dispara cancelamento pelo paymentId", async () => {
+    const user = userEvent.setup();
+    mockSubscription = {
+      ...mockSubscription,
+      tier: "pro_monthly",
+      plan: "monthly",
+      status: "active",
+      isTrial: false,
+      isPro: true,
+      currentPeriodEnd: "2026-12-27T12:00:00Z",
+    };
+    mockUseInvoices.mockReturnValueOnce({
+      isLoading: false,
+      data: [
+        {
+          id: "pay_pix_pending_1",
+          dateCreated: "2026-11-27",
+          dueDate: "2026-11-27",
+          value: 56.97,
+          billingType: "PIX",
+          status: "PENDING",
+          description: "Axir Pro — Antecipação de 3 meses (5% OFF)",
+          invoiceUrl: "https://sandbox.asaas.com/i/pix1",
+        },
+        {
+          id: "pay_card_paid_1",
+          dateCreated: "2026-11-20",
+          dueDate: "2026-11-20",
+          paymentDate: "2026-11-20",
+          value: 19.99,
+          billingType: "CREDIT_CARD",
+          status: "RECEIVED",
+          description: "Axir Pro Mensal",
+          transactionReceiptUrl: "https://sandbox.asaas.com/r/rec1",
+        },
+      ],
+    });
+
+    renderSubscriptionTab();
+
+    expect(screen.getByRole("link", { name: /Abrir fatura/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Recibo/i })).toBeInTheDocument();
+
+    const cancelButtons = screen.getAllByRole("button", { name: /^Cancelar$/i });
+    expect(cancelButtons).toHaveLength(1);
+
+    await user.click(cancelButtons[0]!);
+    expect(mockCancelPendingPix).toHaveBeenCalledWith({ paymentId: "pay_pix_pending_1" });
   });
 });

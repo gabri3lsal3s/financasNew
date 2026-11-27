@@ -1,6 +1,8 @@
-import { ExternalLink, FileText, Receipt } from "lucide-react";
+import { useState } from "react";
+import { ExternalLink, FileText, Loader2, Receipt, Trash2 } from "lucide-react";
 import {
   Badge,
+  Button,
   buttonVariants,
   Card,
   CardContent,
@@ -11,6 +13,7 @@ import {
 } from "@/components/ui";
 import { numberToCents } from "@/domain/money";
 import { cn } from "@/lib/utils";
+import { useCancelPendingPixMutation } from "@/state";
 import { useInvoices } from "@/state/queries/use-invoices";
 import type { SubscriptionStatus } from "@/types";
 
@@ -78,7 +81,20 @@ function formatInvoiceDate(rawDate: string | null | undefined): string {
 
 export function InvoiceHistoryCard({ subscription }: InvoiceHistoryCardProps) {
   const { data: invoices, isLoading } = useInvoices(subscription.isPro);
+  const cancelPixMutation = useCancelPendingPixMutation();
+  const [cancelingId, setCancelingId] = useState<string | null>(null);
   const isPastDue = subscription.status === "past_due";
+
+  const handleCancelPendingPix = async (paymentId: string) => {
+    setCancelingId(paymentId);
+    try {
+      await cancelPixMutation.mutateAsync({ paymentId });
+    } catch {
+      // Toast destrutivo já disparado pelo hook de mutação
+    } finally {
+      setCancelingId((curr) => (curr === paymentId ? null : curr));
+    }
+  };
 
   const planName =
     subscription.plan === "annual" ? "Plano Pro Anual (12 meses)" : "Plano Pro Mensal";
@@ -176,6 +192,10 @@ export function InvoiceHistoryCard({ subscription }: InvoiceHistoryCardProps) {
                       "CONFIRMED",
                       "RECEIVED_IN_CASH",
                     ].includes(normalizedStatus);
+                    const isCancelablePix =
+                      (inv.billingType || "").toUpperCase() === "PIX" &&
+                      ["PENDING", "OVERDUE"].includes(normalizedStatus);
+                    const isRowCanceling = cancelPixMutation.isPending && cancelingId === inv.id;
                     const linkLabel = isSettledInvoice ? "Recibo" : "Abrir fatura";
                     const linkTitle = isSettledInvoice
                       ? "Abrir recibo em nova aba"
@@ -198,13 +218,33 @@ export function InvoiceHistoryCard({ subscription }: InvoiceHistoryCardProps) {
                             {inv.description ? ` — ${inv.description}` : ""}
                           </span>
                         </div>
-                        <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                        <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 flex-wrap">
                           <MoneyText
                             cents={numberToCents(inv.value)}
                             variant="caption"
                             tone="default"
                             className="font-semibold"
                           />
+                          {isCancelablePix ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              sensoryIntent="destructive"
+                              disabled={isRowCanceling}
+                              onClick={() => {
+                                void handleCancelPendingPix(inv.id);
+                              }}
+                              className="gap-1.5 text-critical-strong hover:text-critical-strong hover:bg-critical/10"
+                            >
+                              {isRowCanceling ? (
+                                <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                              ) : (
+                                <Trash2 className="size-3.5" aria-hidden="true" />
+                              )}
+                              <span>{isRowCanceling ? "Cancelando..." : "Cancelar"}</span>
+                            </Button>
+                          ) : null}
                           {receiptUrl ? (
                             <a
                               href={receiptUrl}

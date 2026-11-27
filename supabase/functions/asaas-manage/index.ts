@@ -1,7 +1,9 @@
 import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
   cancelAsaasSubscription,
+  deleteAsaasPayment,
   formatBrtDisplayDate,
+  getAsaasPayment,
   getAsaasSubscriptionPayments,
   isAsaasAlreadyCanceledError,
   isValidCardExpiry,
@@ -897,21 +899,69 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      if (reconcile.canceledPaymentIds.length > 0) {
+      let totalCanceled = reconcile.canceledPaymentIds.length;
+      const canceledIds = [...reconcile.canceledPaymentIds];
+
+      // Fallback seguro para cobranças PIX órfãs no Asaas (ex.: emitidas antes da migration 0170)
+      if (paymentId && totalCanceled === 0 && userSub.asaas_customer_id) {
+        try {
+          const orphanPayment = await getAsaasPayment(paymentId);
+          const statusUpper = (orphanPayment.status || "").toUpperCase();
+          const billingUpper = (orphanPayment.billingType || "").toUpperCase();
+
+          if (["CONFIRMED", "RECEIVED", "RECEIVED_IN_CASH"].includes(statusUpper)) {
+            return jsonResponse(
+              req,
+              { error: "Este pagamento Pix já foi confirmado e não pode ser cancelado." },
+              409,
+            );
+          }
+
+          if (
+            orphanPayment.customer === userSub.asaas_customer_id &&
+            billingUpper === "PIX" &&
+            ["PENDING", "OVERDUE"].includes(statusUpper)
+          ) {
+            try {
+              await deleteAsaasPayment(paymentId);
+            } catch (delErr: unknown) {
+              if (!isAsaasAlreadyCanceledError(delErr)) {
+                throw delErr;
+              }
+            }
+            totalCanceled = 1;
+            canceledIds.push(paymentId);
+          }
+        } catch (orphanErr: unknown) {
+          if (!isAsaasAlreadyCanceledError(orphanErr)) {
+            console.error(
+              "[asaas-manage] Falha ao cancelar cobrança Pix órfã no gateway:",
+              sanitizePaymentLog(orphanErr),
+            );
+            return safeErrorResponse(
+              req,
+              502,
+              "Não foi possível cancelar a cobrança Pix no gateway. Tente novamente.",
+            );
+          }
+        }
+      }
+
+      if (canceledIds.length > 0) {
         await supabase.from("audit_events").insert({
           user_id: user.id,
           entity_type: "user_subscription",
           entity_id: userSub.id,
           action: "pending_pix_canceled",
-          payload: { payment_ids: reconcile.canceledPaymentIds },
+          payload: { payment_ids: canceledIds },
         });
       }
 
       return jsonResponse(req, {
         ok: true,
-        canceledCount: reconcile.canceledPaymentIds.length,
+        canceledCount: totalCanceled,
         message:
-          reconcile.canceledPaymentIds.length > 0
+          totalCanceled > 0
             ? "Cobrança Pix cancelada com sucesso."
             : "Nenhuma cobrança Pix pendente encontrada.",
       });

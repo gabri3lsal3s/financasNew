@@ -549,6 +549,8 @@ export async function getAsaasPixQrCode(paymentId: string): Promise<{
  */
 export async function getAsaasPayment(paymentId: string): Promise<{
   id: string;
+  customer?: string;
+  billingType?: string;
   status: string;
   value: number;
   dateCreated?: string;
@@ -557,6 +559,8 @@ export async function getAsaasPayment(paymentId: string): Promise<{
 }> {
   return asaasFetch<{
     id: string;
+    customer?: string;
+    billingType?: string;
     status: string;
     value: number;
     dateCreated?: string;
