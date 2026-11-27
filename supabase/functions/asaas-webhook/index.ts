@@ -491,10 +491,12 @@ Deno?.serve?.(async (req: Request) => {
         userSub.status === "read_only_expired" ||
         userSub.tier === "read_only";
 
-      // W01: Ao ativar pagamento avulso/PIX com assinatura recorrente prévia no Asaas, cancela recorrência anterior
+      // W01: Ao ativar pagamento avulso/PIX ou nova assinatura diferente da recorrência prévia no Asaas,
+      // cancela a recorrência anterior. Nunca cancela quando o pagamento pertence à mesma assinatura (troca de ciclo in-place).
       let syncStatus = "synced";
       const shouldCancelPreviousSub =
         Boolean(userSub.asaas_subscription_id) &&
+        userSub.asaas_subscription_id !== subscriptionId &&
         (decision.isUpgradeFromMonthly || !subscriptionId);
 
       if (shouldCancelPreviousSub && userSub.asaas_subscription_id) {

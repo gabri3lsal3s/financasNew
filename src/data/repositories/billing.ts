@@ -41,7 +41,7 @@ const DirectCreditCardSchema = z.object({
   paymentId: z.string().optional(),
   tier: z.enum(["free", "pro_monthly", "pro_annual", "lifetime"]).optional(),
   status: z.enum(["active", "trialing", "pending", "incomplete"]).optional(),
-  phase: z.enum(["trial_scheduled", "immediate"]).optional(),
+  phase: z.enum(["trial_scheduled", "plan_change_scheduled", "immediate"]).optional(),
   firstChargeAt: z.string().optional(),
   needsEmailConfirmation: z.boolean().optional(),
   email: z.string().optional(),

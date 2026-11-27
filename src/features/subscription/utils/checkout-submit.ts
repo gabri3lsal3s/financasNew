@@ -205,16 +205,30 @@ async function processCreditCardCheckout(
     return;
   }
 
-  const isScheduled = Boolean(res && "phase" in res && res.phase === "trial_scheduled");
+  const isTrialScheduled = Boolean(res && "phase" in res && res.phase === "trial_scheduled");
+  const isPlanChangeScheduled = Boolean(res && "phase" in res && res.phase === "plan_change_scheduled");
+  const scheduledPhase = isTrialScheduled
+    ? "trial_scheduled"
+    : isPlanChangeScheduled
+      ? "plan_change_scheduled"
+      : null;
   const firstChargeParam =
-    isScheduled && res && "firstChargeAt" in res && typeof res.firstChargeAt === "string"
-      ? `&fase=trial_scheduled&primeira_cobranca=${encodeURIComponent(res.firstChargeAt)}`
+    scheduledPhase && res && "firstChargeAt" in res && typeof res.firstChargeAt === "string"
+      ? `&fase=${scheduledPhase}&primeira_cobranca=${encodeURIComponent(res.firstChargeAt)}`
       : "";
 
   triggerSensory("success");
   pushToast({
-    title: isScheduled ? "Cartão cadastrado com sucesso!" : "Plano Pro ativado com sucesso!",
-    description: isScheduled ? "Seu período de teste de 30 dias está ativo." : "Bem-vindo ao Axir Pro.",
+    title: isPlanChangeScheduled
+      ? "Mudança de plano agendada!"
+      : isTrialScheduled
+        ? "Cartão cadastrado com sucesso!"
+        : "Plano Pro ativado com sucesso!",
+    description: isPlanChangeScheduled
+      ? "Nenhuma cobrança hoje. A cobrança ocorrerá somente após o período que você já possui."
+      : isTrialScheduled
+        ? "Seu período de teste de 30 dias está ativo."
+        : "Bem-vindo ao Axir Pro.",
     variant: "default",
   });
   params.onNavigateSuccess(`/assinatura/sucesso?plano=${params.plan}&metodo=credit_card${firstChargeParam}`);

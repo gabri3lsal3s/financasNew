@@ -7,6 +7,7 @@ import { buildCheckoutUrl } from "@/domain/subscription/plans";
 import {
   useCancelScheduledPlanChangeMutation,
   useCancelSubscriptionMutation,
+  useSchedulePlanChangeMutation,
   useUserSubscription,
 } from "@/state";
 import type { SubscriptionPlan } from "@/types";
@@ -17,6 +18,7 @@ import { CurrentPlanHeroCard } from "../subscription/current-plan-hero-card";
 import { InvoiceHistoryCard } from "../subscription/invoice-history-card";
 import { PaymentMethodCard } from "../subscription/payment-method-card";
 import { PlanComparisonCard } from "../subscription/plan-comparison-card";
+import { SwitchToAnnualModal } from "../subscription/switch-to-annual-modal";
 import { UpdateCardModal } from "../subscription/update-card-modal";
 
 export function SubscriptionTab() {
@@ -28,6 +30,7 @@ export function SubscriptionTab() {
   const [cancelReason, setCancelReason] = useState("too_expensive");
   const [cancelStep, setCancelStep] = useState<"reason" | "confirm">("reason");
   const [updateCardOpen, setUpdateCardOpen] = useState(false);
+  const [switchToAnnualOpen, setSwitchToAnnualOpen] = useState(false);
 
   const { isWithinGuarantee, daysRemaining: guaranteeDaysRemaining } = useMemo(
     () =>
@@ -48,7 +51,21 @@ export function SubscriptionTab() {
     : null;
 
   const cancelMutation = useCancelSubscriptionMutation();
+  const schedulePlanChangeMutation = useSchedulePlanChangeMutation();
   const cancelScheduledPlanMutation = useCancelScheduledPlanChangeMutation();
+
+  const hasActiveRecurringCard = Boolean(
+    (subscription.hasCardRegistered || subscription.hasAutoRenew) && !subscription.cancelAtPeriodEnd,
+  );
+
+  const handleConfirmScheduleAnnual = async () => {
+    try {
+      await schedulePlanChangeMutation.mutateAsync("annual");
+      setSwitchToAnnualOpen(false);
+    } catch {
+      // Erro notificado pela mutation
+    }
+  };
 
   const handleProceedToCheckout = (plan: SubscriptionPlan) => {
     setUpgradeOpen(false);
@@ -99,7 +116,8 @@ export function SubscriptionTab() {
       !subscription.pendingPlanId ? (
         <CumulativeRenewalCard
           currentPeriodEnd={subscription.currentPeriodEnd}
-          onUpgradeToAnnual={() => handleProceedToCheckout("annual")}
+          cancelAtPeriodEnd={Boolean(subscription.cancelAtPeriodEnd)}
+          onUpgradeToAnnual={() => setSwitchToAnnualOpen(true)}
         />
       ) : null}
 
@@ -155,6 +173,26 @@ export function SubscriptionTab() {
       />
 
       <UpdateCardModal open={updateCardOpen} onOpenChange={setUpdateCardOpen} />
+
+      <SwitchToAnnualModal
+        open={switchToAnnualOpen}
+        hasActiveRecurringCard={hasActiveRecurringCard}
+        cardLast4={subscription.cardLast4 ?? null}
+        effectiveDateFormatted={currentPeriodFormatted}
+        isPending={schedulePlanChangeMutation.isPending}
+        onClose={() => setSwitchToAnnualOpen(false)}
+        onConfirmScheduleCard={() => {
+          void handleConfirmScheduleAnnual();
+        }}
+        onPayWithPix={() => {
+          setSwitchToAnnualOpen(false);
+          navigate("/assinatura?plano=pro-anual&metodo=pix");
+        }}
+        onRegisterNewCard={() => {
+          setSwitchToAnnualOpen(false);
+          navigate("/assinatura?plano=pro-anual&metodo=cartao");
+        }}
+      />
     </div>
   );
 }

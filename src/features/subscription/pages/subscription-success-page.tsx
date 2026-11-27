@@ -19,6 +19,8 @@ export function SubscriptionSuccessPage() {
   const primeiraCobrancaParam = searchParams.get("primeira_cobranca");
 
   const isTrialScheduled = faseParam === "trial_scheduled";
+  const isPlanChangeScheduled = faseParam === "plan_change_scheduled";
+  const isDeferredCharge = isTrialScheduled || isPlanChangeScheduled;
   const plan: SubscriptionPlan = resolvePlanFromQuery(planoParam);
   const planConfig = PLAN_CONFIGS[plan];
   const isAnnual = plan === "annual";
@@ -35,7 +37,7 @@ export function SubscriptionSuccessPage() {
 
   const nextRenewalDate = addCivilMonths(new Date(), isAnnual ? 12 : 1);
   const formattedRenewal =
-    isTrialScheduled && scheduledChargeFormatted
+    isDeferredCharge && scheduledChargeFormatted
       ? scheduledChargeFormatted
       : nextRenewalDate.toLocaleDateString("pt-BR", {
           timeZone: "America/Sao_Paulo",
@@ -80,17 +82,29 @@ export function SubscriptionSuccessPage() {
           <div className="space-y-2">
             <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-3 py-0.5 text-xs font-semibold text-primary-strong">
               <Sparkles className="size-3.5" aria-hidden="true" />
-              <span>{isTrialScheduled ? "Período de Teste Ativo" : "Assinatura Ativa"}</span>
+              <span>
+                {isPlanChangeScheduled
+                  ? "Mudança de Plano Agendada"
+                  : isTrialScheduled
+                    ? "Período de Teste Ativo"
+                    : "Assinatura Ativa"}
+              </span>
             </div>
 
             <h1 className="font-display text-2xl sm:text-4xl font-extrabold tracking-tight text-foreground">
-              {isTrialScheduled ? "Cartão Cadastrado com Sucesso!" : "Pagamento Confirmado!"}
+              {isPlanChangeScheduled
+                ? "Mudança Agendada com Sucesso!"
+                : isTrialScheduled
+                  ? "Cartão Cadastrado com Sucesso!"
+                  : "Pagamento Confirmado!"}
             </h1>
 
             <p className="text-sm sm:text-base text-muted-foreground max-w-lg mx-auto leading-relaxed">
-              {isTrialScheduled ? (
+              {isDeferredCharge ? (
                 <>
-                  Seu período de teste de 30 dias está ativo. Nenhuma cobrança foi realizada hoje. Sua primeira cobrança de{" "}
+                  {isPlanChangeScheduled
+                    ? "Seu período atual continua ativo normalmente. Nenhuma cobrança foi realizada hoje. Sua primeira cobrança de "
+                    : "Seu período de teste de 30 dias está ativo. Nenhuma cobrança foi realizada hoje. Sua primeira cobrança de "}
                   <strong className="text-foreground">
                     <MoneyText cents={planConfig.priceCents} variant="value" tone="default" deemphasizeCents={false} />
                     /{isAnnual ? "ano" : "mês"}
@@ -114,7 +128,7 @@ export function SubscriptionSuccessPage() {
             priceCents={planConfig.priceCents}
             isAnnual={isAnnual}
             isPix={isPix}
-            isTrialScheduled={isTrialScheduled}
+            isTrialScheduled={isDeferredCharge}
             todayFormatted={today}
             renewalFormatted={formattedRenewal}
           />

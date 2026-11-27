@@ -141,7 +141,7 @@ Deno.serve(async (req: Request) => {
     const { data: userSub, error: subErr } = await supabase
       .from("user_subscriptions")
       .select(
-        "id, user_id, asaas_subscription_id, asaas_payment_id, asaas_customer_id, starts_at, billing_start_at, created_at, status, tier, current_period_end, trial_ends_at, trial_consumed_at, scheduled_plan_id, scheduled_first_charge_at, pending_plan_id",
+        "id, user_id, asaas_subscription_id, asaas_payment_id, asaas_customer_id, starts_at, billing_start_at, created_at, status, tier, current_period_end, trial_ends_at, trial_consumed_at, scheduled_plan_id, scheduled_first_charge_at, pending_plan_id, cancel_at_period_end",
       )
       .eq("user_id", user.id)
       .single();
@@ -160,15 +160,64 @@ Deno.serve(async (req: Request) => {
         return jsonResponse(req, { error: "Plano de destino inválido." }, 400);
       }
 
-      if (!userSub.asaas_subscription_id) {
+      if (!userSub.asaas_subscription_id || userSub.cancel_at_period_end) {
         return jsonResponse(
           req,
-          { error: "Esta operação está disponível apenas para assinaturas recorrentes no cartão de crédito." },
+          { error: "Esta operação está disponível apenas para assinaturas recorrentes ativas no cartão de crédito." },
           400,
         );
       }
 
       const targetMeta = targetPlan === "annual" ? ASAAS_PLAN_CATALOG.annual : ASAAS_PLAN_CATALOG.monthly;
+      const isTrialScheduled =
+        !userSub.billing_start_at &&
+        (userSub.tier === "trial" || Boolean(userSub.scheduled_first_charge_at));
+
+      if (isTrialScheduled) {
+        if (userSub.scheduled_plan_id === targetMeta.planId) {
+          return jsonResponse(req, { error: "Seu agendamento já está configurado para este plano." }, 400);
+        }
+        const trialChargeDate = userSub.scheduled_first_charge_at || userSub.trial_ends_at;
+        if (!trialChargeDate) {
+          return jsonResponse(req, { error: "Não foi possível identificar a data da primeira cobrança." }, 400);
+        }
+
+        try {
+          await updateAsaasSubscriptionCycle(userSub.asaas_subscription_id, {
+            value: targetMeta.value,
+            cycle: targetMeta.cycle,
+            nextDueDate: trialChargeDate,
+            updatePendingPayments: true,
+          });
+        } catch (err: unknown) {
+          console.error("[asaas-manage] Falha ao atualizar plano agendado no trial:", sanitizePaymentLog(err));
+          return safeErrorResponse(
+            req,
+            502,
+            "Não foi possível atualizar o plano agendado no gateway. Tente novamente.",
+          );
+        }
+
+        const { error: trialPlanErr } = await supabase
+          .from("user_subscriptions")
+          .update({
+            scheduled_plan_id: targetMeta.planId,
+            updated_at: nowIso,
+          })
+          .eq("user_id", user.id);
+
+        if (trialPlanErr) {
+          console.error("[asaas-manage] Erro ao salvar scheduled_plan_id:", trialPlanErr);
+          return safeErrorResponse(req, 500, "Falha ao salvar alteração do plano agendado.");
+        }
+
+        const formattedDate = formatBrtDisplayDate(trialChargeDate);
+        return jsonResponse(req, {
+          ok: true,
+          message: `Plano agendado atualizado para ${targetMeta.name}. A primeira cobrança ocorrerá em ${formattedDate}.`,
+        });
+      }
+
       if (userSub.tier === targetMeta.planId) {
         return jsonResponse(req, { error: "Você já está no plano solicitado." }, 400);
       }
@@ -181,6 +230,8 @@ Deno.serve(async (req: Request) => {
         await updateAsaasSubscriptionCycle(userSub.asaas_subscription_id, {
           value: targetMeta.value,
           cycle: targetMeta.cycle,
+          nextDueDate: userSub.current_period_end,
+          updatePendingPayments: true,
         });
       } catch (err: unknown) {
         console.error("[asaas-manage] Falha ao atualizar ciclo de cobrança no Asaas:", sanitizePaymentLog(err));
@@ -281,6 +332,8 @@ Deno.serve(async (req: Request) => {
         await updateAsaasSubscriptionCycle(userSub.asaas_subscription_id, {
           value: currentMeta.value,
           cycle: currentMeta.cycle,
+          nextDueDate: userSub.current_period_end || undefined,
+          updatePendingPayments: true,
         });
       } catch (err: unknown) {
         console.error("[asaas-manage] Falha ao reverter ciclo de cobrança no Asaas:", sanitizePaymentLog(err));

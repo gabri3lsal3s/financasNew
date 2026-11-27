@@ -75,7 +75,7 @@ export interface DirectCreditCardResult {
   paymentId?: string;
   tier?: SubscriptionTier;
   status?: "active" | "trialing" | "pending" | "incomplete";
-  phase?: "trial_scheduled" | "immediate";
+  phase?: "trial_scheduled" | "plan_change_scheduled" | "immediate";
   firstChargeAt?: string;
   needsEmailConfirmation?: boolean;
   email?: string;

@@ -31,6 +31,10 @@ vi.mock("@/state", () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  useSchedulePlanChangeMutation: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
   useCancelScheduledPlanChangeMutation: () => ({
     mutateAsync: vi.fn(),
     isPending: false,

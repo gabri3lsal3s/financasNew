@@ -26,8 +26,28 @@ export function hasPeriodEndAdvanced(baseline: string | null, current: string | 
   return currentMs > baselineMs;
 }
 
+export function computeMaxAnticipationMonths(currentPeriodEnd: string | null, now = new Date()): number {
+  const currentEnd = currentPeriodEnd ? new Date(currentPeriodEnd) : now;
+  const base = currentEnd > now ? currentEnd : now;
+  const maxAllowedFuture = addCivilMonths(now, 11);
+
+  let maxMonths = 0;
+  for (let m = 2; m <= 11; m++) {
+    if (addCivilMonths(base, m) <= maxAllowedFuture) {
+      maxMonths = m;
+    }
+  }
+  return maxMonths;
+}
+
 export function useCumulativeRenewal(currentPeriodEnd: string | null) {
-  const [selectedMonths, setSelectedMonths] = useState<number>(3);
+  const maxAllowedMonths = useMemo(
+    () => computeMaxAnticipationMonths(currentPeriodEnd),
+    [currentPeriodEnd],
+  );
+  const [rawSelectedMonths, setSelectedMonths] = useState<number>(3);
+  const selectedMonths =
+    maxAllowedMonths >= 2 ? Math.min(rawSelectedMonths, maxAllowedMonths) : 2;
   const [pixModalOpen, setPixModalOpen] = useState(false);
   const [copiedKey, setCopiedKey] = useState(false);
   const [pixData, setPixData] = useState<PixRenewalData | null>(null);
@@ -143,6 +163,7 @@ export function useCumulativeRenewal(currentPeriodEnd: string | null) {
 
   return {
     selectedMonths,
+    maxAllowedMonths,
     pixModalOpen: effectiveModalOpen,
     setPixModalOpen: handleModalOpenChange,
     copiedKey,

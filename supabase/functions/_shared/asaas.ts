@@ -804,15 +804,27 @@ export async function updateAsaasSubscriptionCycle(
   params: {
     value: number;
     cycle: "MONTHLY" | "YEARLY";
+    nextDueDate?: string;
+    updatePendingPayments?: boolean;
   },
 ): Promise<{ id: string; status: string }> {
+  const body: Record<string, unknown> = {
+    value: params.value,
+    cycle: params.cycle,
+    updatePendingPayments: params.updatePendingPayments ?? true,
+  };
+
+  if (params.nextDueDate) {
+    const todayIso = formatBrtIsoDate(new Date());
+    const normalizedDue = formatBrtIsoDate(params.nextDueDate);
+    if (normalizedDue >= todayIso) {
+      body.nextDueDate = normalizedDue;
+    }
+  }
+
   return asaasFetch<{ id: string; status: string }>(`/subscriptions/${subscriptionId}`, {
     method: "PUT",
-    body: JSON.stringify({
-      value: params.value,
-      cycle: params.cycle,
-      updatePendingPayments: false,
-    }),
+    body: JSON.stringify(body),
   });
 }
 

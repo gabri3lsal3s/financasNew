@@ -697,8 +697,21 @@ Deno?.serve?.(async (req: Request) => {
     }
 
     const previousSubscriptionId = userSub.asaas_subscription_id || null;
+    const activePeriodEnd =
+      !isDelayedByTrial && userSub.status === "active" && userSub.current_period_end
+        ? new Date(userSub.current_period_end)
+        : null;
+    const isDelayedByActivePeriod = Boolean(
+      activePeriodEnd &&
+        !Number.isNaN(activePeriodEnd.getTime()) &&
+        formatBrtIsoDate(activePeriodEnd) > formatBrtIsoDate(now),
+    );
     const nextDueDate =
-      isDelayedByTrial && serverTrialEnds ? formatBrtIsoDate(serverTrialEnds) : undefined;
+      isDelayedByTrial && serverTrialEnds
+        ? formatBrtIsoDate(serverTrialEnds)
+        : isDelayedByActivePeriod && activePeriodEnd
+          ? formatBrtIsoDate(activePeriodEnd)
+          : undefined;
 
     let subscription: { id: string; status: string };
     try {
@@ -801,6 +814,53 @@ Deno?.serve?.(async (req: Request) => {
         phase: "trial_scheduled",
         subscriptionId: subscription.id,
         firstChargeAt: serverTrialEnds.toISOString(),
+        email: customerEmail,
+        cardLast4,
+      });
+    }
+
+    // Cenário 1b: Usuário já possui período pago ativo futuro — agenda cobrança para current_period_end (R$ 0 hoje)
+    if (isDelayedByActivePeriod && activePeriodEnd) {
+      if (previousSubscriptionId && previousSubscriptionId !== subscription.id) {
+        await ensurePreviousSubscriptionCanceled(previousSubscriptionId);
+      }
+
+      const nowIso = now.toISOString();
+      const { error: planSchedErr } = await supabase
+        .from("user_subscriptions")
+        .update({
+          pending_plan_id: planMeta.planId,
+          pending_plan_effective_at: activePeriodEnd.toISOString(),
+          cancel_at_period_end: false,
+          payment_method: "credit_card",
+          card_last4: cardLast4,
+          asaas_customer_id: customer.id,
+          asaas_subscription_id: subscription.id,
+          updated_at: nowIso,
+        })
+        .eq("user_id", user.id);
+
+      if (planSchedErr) {
+        await ensurePreviousSubscriptionCanceled(subscription.id);
+        console.error("[asaas-checkout] Falha ao salvar mudança agendada de plano:", planSchedErr);
+        return safeErrorResponse(req, 500, "Falha ao registrar agendamento do cartão na assinatura.");
+      }
+
+      await supabase
+        .from("billing_intents")
+        .update({
+          status: "pending",
+          provider_subscription_id: subscription.id,
+          updated_at: nowIso,
+        })
+        .eq("id", intentId);
+
+      return jsonResponse(req, {
+        ok: true,
+        method: "credit_card",
+        phase: "plan_change_scheduled",
+        subscriptionId: subscription.id,
+        firstChargeAt: activePeriodEnd.toISOString(),
         email: customerEmail,
         cardLast4,
       });

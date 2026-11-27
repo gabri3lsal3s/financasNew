@@ -209,7 +209,7 @@ export function useCheckoutMutation() {
           (data.status === "active" ||
             data.status === "trialing" ||
             data.status === "incomplete")) ||
-        ("phase" in data && data.phase === "trial_scheduled");
+        ("phase" in data && (data.phase === "trial_scheduled" || data.phase === "plan_change_scheduled"));
 
       if (shouldInvalidate) {
         void queryClient.invalidateQueries({ queryKey: USER_SUBSCRIPTION_KEY });
