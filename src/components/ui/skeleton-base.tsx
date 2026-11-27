@@ -6,7 +6,7 @@ export function Skeleton({ className, ...props }: HTMLAttributes<HTMLDivElement>
     <div
       aria-hidden="true"
       className={cn(
-        "animate-shimmer rounded-md bg-muted/80 bg-[linear-gradient(110deg,var(--color-muted)_30%,var(--color-surface-active)_50%,var(--color-muted)_70%)] bg-[length:200%_100%]",
+        "animate-shimmer relative overflow-hidden rounded-md bg-muted/80",
         className,
       )}
       {...props}
