@@ -99,7 +99,7 @@ export function useScrollSpy({
 
     const documentRoot = document.documentElement;
     const getScrollRange = () => documentRoot.scrollHeight - documentRoot.clientHeight;
-    let scrollRange = getScrollRange();
+    let scrollRange = 0;
     const handleScroll = () => {
       if (rafIdRef.current !== null) cancelAnimationFrame(rafIdRef.current);
 
