@@ -63,7 +63,8 @@
         "ENVIRONMENT": "production",
         "SESSION_COOKIE_NAME": "__Host-axir_session",
         "ALLOWED_HOSTS": "axir.com.br,www.axir.com.br",
-        "ALLOWED_ORIGINS": "https://axir.com.br,https://www.axir.com.br"
+        "ALLOWED_ORIGINS": "https://axir.com.br,https://www.axir.com.br",
+        "SUPABASE_URL": "https://lnsfcajcfofgvpvabwbi.supabase.co"
       }
     },
     "admin": {
@@ -85,7 +86,8 @@
         "ENVIRONMENT": "admin",
         "SESSION_COOKIE_NAME": "__Host-axir_admin_session",
         "ALLOWED_HOSTS": "admin.axir.com.br",
-        "ALLOWED_ORIGINS": "https://admin.axir.com.br"
+        "ALLOWED_ORIGINS": "https://admin.axir.com.br",
+        "SUPABASE_URL": "https://lnsfcajcfofgvpvabwbi.supabase.co"
       }
     }
   }
