@@ -40,11 +40,11 @@ export function OnboardingCarouselBanner({
   );
   const nextStep = pendingSteps[0];
   const nextStepLabel = nextStep ? ONBOARDING_STEP_META[nextStep.id]?.label : null;
-  const policy = resolveCarouselCardPolicy("onboarding.checklist");
+  const policy = resolveCarouselCardPolicy("onboarding.progress");
 
   return (
     <AlertCarouselCard
-      id="onboarding.checklist"
+      id="onboarding.progress"
       tone="info"
       role="region"
       ariaLabel="Progresso dos primeiros passos"

@@ -1,6 +1,7 @@
 import { ChevronRight, Coins } from "lucide-react";
 import { AlertCarouselCard } from "@/components/modules/alert-carousel-card";
 import { MoneyText } from "@/components/ui";
+import type { CalculationBreakdown } from "@/domain/calculation-memory";
 import {
   resolveCarouselCardPolicy,
   type CarouselDismissPreset,
@@ -13,6 +14,7 @@ export interface CorporateDividendsBannerProps {
   totalAvailableAmount: number;
   totalProjectedAmount: number;
   hasUncertainTax?: boolean;
+  calculationBreakdown?: CalculationBreakdown;
   onInspect: () => void;
   onDismiss?: (days: 7 | 30) => void;
   onSelectPreset?: (preset: CarouselDismissPreset) => void;
@@ -27,6 +29,7 @@ export function CorporateDividendsBanner({
   totalAvailableAmount,
   totalProjectedAmount,
   hasUncertainTax = false,
+  calculationBreakdown,
   onInspect,
   onDismiss,
   onSelectPreset,
@@ -92,6 +95,7 @@ export function CorporateDividendsBanner({
         variant: "default",
         icon: <ChevronRight className="size-3.5" aria-hidden="true" />,
       }}
+      calculationBreakdown={calculationBreakdown}
       dismissPolicy={
         onSelectPreset || onDismiss
           ? {

@@ -23,6 +23,24 @@ const testWrapper = ({ children }: { children: React.ReactNode }) => (
 const render = (ui: React.ReactElement, options?: Parameters<typeof rtlRender>[1]) =>
   rtlRender(ui, { wrapper: testWrapper, ...options });
 
+vi.mock("@/hooks/use-auth", () => ({
+  useAuth: () => ({
+    user: { id: "user-1", email: "gabriel@axir.app" },
+    session: { user: { id: "user-1", email: "gabriel@axir.app" } },
+    loading: false,
+    configError: null,
+    mfaRequired: false,
+    mfaVerified: false,
+    aalLevel: "aal1",
+    mfaError: null,
+    signOut: vi.fn(),
+  }),
+  resetEnsuredProfiles: vi.fn(),
+  signInWithEmail: vi.fn(),
+  signUpWithEmail: vi.fn(),
+  resetPasswordForEmail: vi.fn(),
+}));
+
 vi.mock("react-router", () => ({
   useNavigate: () => navigateMock,
   Link: ({ children, to }: { children: React.ReactNode; to: string }) => <a href={to}>{children}</a>,
@@ -134,6 +152,14 @@ let expensesMock = {
   isLoading: false,
   error: null as Error | null,
 };
+
+vi.mock("@/state/queries/use-user-preferences", () => ({
+  useUserPreferences: () => ({ data: userPreferencesMock, isLoading: false, isPending: false, status: "success", isError: false, error: null }),
+}));
+
+vi.mock("@/state/mutations/use-preference-mutations", () => ({
+  useUpdateCustomSettings: () => ({ mutate: vi.fn(), mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
+}));
 
 vi.mock("@/state", () => ({
   useUpdateReminderPreferences: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
@@ -376,6 +402,7 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(new Date("2026-08-15T12:00:00Z"));
     localStorage.clear();
+    setActiveUserId(null);
     setActiveUserId("user-1");
     resetCarouselDismissalsStore();
     resetVisualCustomization(null);
@@ -887,7 +914,6 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
   });
 
   it("permite dispensar o card do carrossel na Fase 2 com 1 clique", async () => {
-    const user = userEvent.setup();
     onboardingCountsMock = {
       expenseCategories: 11,
       incomeCategories: 3,
@@ -902,8 +928,8 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
         name: /Dispensar guia de primeiros passos/i,
       })
     )[0]!;
-    await user.click(dismissBtn);
-    await user.click(screen.getByRole("button", { name: /7 dias/i }));
+    fireEvent.click(dismissBtn);
+    fireEvent.click(screen.getByRole("button", { name: /7 dias/i }));
     expect(screen.queryByText("Primeiros passos no Axir")).not.toBeInTheDocument();
   });
 

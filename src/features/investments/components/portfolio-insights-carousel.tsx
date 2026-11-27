@@ -1,9 +1,13 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { DashboardAlertsCarousel, type DashboardAlertItem } from "@/components/modules/dashboard-alerts-carousel";
+import { buildPortfolioCarouselBreakdown } from "@/domain/calculation-memory/builders/portfolio-carousel-breakdown";
 import { todaySaoPauloISO } from "@/domain/portfolio";
 import { computePortfolioCarouselDrift } from "@/domain/portfolio/insights-carousel-drift";
-import { evaluatePortfolioStructuralRisk } from "@/domain/portfolio/portfolio-risk-policy";
+import {
+  evaluatePortfolioStructuralRisk,
+  resolvePortfolioRiskPolicy,
+} from "@/domain/portfolio/portfolio-risk-policy";
 import { FALLBACK_USD_RATE } from "@/domain/portfolio/valuation";
 import { useCarouselDismissals } from "@/hooks/use-carousel-dismissals";
 import { currentMonth } from "@/lib/date";
@@ -179,21 +183,103 @@ export function PortfolioInsightsCarousel({ className }: PortfolioInsightsCarous
     [classTargetsQuery?.data, position?.rows, position?.totalBRL, position?.cashBRL],
   );
 
+  const riskPolicy = useMemo(
+    () =>
+      resolvePortfolioRiskPolicy(
+        userPreferencesQuery?.data?.custom_settings?.portfolioRiskPolicy,
+      ),
+    [userPreferencesQuery?.data?.custom_settings?.portfolioRiskPolicy],
+  );
+
   const structuralAlerts = useMemo(
     () =>
       evaluatePortfolioStructuralRisk(
         assetsQuery?.data ?? [],
-        null,
+        riskPolicy,
         {
           fxRateUSD: usdRate,
           positionRows: position?.rows,
           cashBRL: position?.cashBRL,
         },
       ),
-    [assetsQuery?.data, usdRate, position?.rows, position?.cashBRL],
+    [assetsQuery?.data, riskPolicy, usdRate, position?.rows, position?.cashBRL],
   );
 
   const competence = currentMonth();
+  const totalPortfolioCents = Math.round((position?.totalBRL ?? 0) * 100);
+  const lowScoreSample = useMemo(() => {
+    if (totalPortfolioCents <= 0) return undefined;
+    const threshold = riskPolicy.lowScoreThreshold;
+    const candidates = (assetsQuery?.data ?? [])
+      .filter(
+        (a) =>
+          a.allocation_status !== "exit" &&
+          a.score !== null &&
+          a.score !== undefined &&
+          a.score <= threshold,
+      )
+      .map((asset) => {
+        const row = position?.rows?.find((r) => r.assetId === asset.id);
+        const valCents = Math.round(
+          (row?.valueBRL ?? asset.quantity * asset.average_price) * 100,
+        );
+        const weightPct = (valCents / totalPortfolioCents) * 100;
+        return { asset, valCents, weightPct };
+      })
+      .sort((a, b) => b.weightPct - a.weightPct || a.asset.ticker.localeCompare(b.asset.ticker));
+    const picked = candidates.find((c) => c.weightPct > 5) ?? candidates[0];
+    if (!picked) return undefined;
+    return buildPortfolioCarouselBreakdown({
+      kind: "lowScore",
+      ticker: picked.asset.ticker,
+      score: picked.asset.score ?? 0,
+      scoreLimit: threshold,
+      valueCents: picked.valCents,
+      totalCents: totalPortfolioCents,
+      weightPct: picked.weightPct,
+      weightLimitPct: 5,
+    });
+  }, [assetsQuery?.data, position?.rows, totalPortfolioCents, riskPolicy.lowScoreThreshold]);
+
+  const discountSample = useMemo(() => {
+    const candidates = (assetsQuery?.data ?? [])
+      .filter(
+        (a) =>
+          a.allocation_status !== "exit" &&
+          a.score !== null &&
+          a.score !== undefined &&
+          a.score >= 8 &&
+          a.ceiling_price !== null &&
+          a.ceiling_price !== undefined &&
+          a.ceiling_price > 0,
+      )
+      .map((asset) => {
+        const row = position?.rows?.find((r) => r.assetId === asset.id);
+        const quote =
+          row && !row.isEstimate && Number.isFinite(row.priceQuote) && row.priceQuote > 0
+            ? row.priceQuote
+            : null;
+        const ceiling = asset.ceiling_price!;
+        if (quote === null || quote >= ceiling) return null;
+        const discountPct = ((ceiling - quote) / ceiling) * 100;
+        return { asset, row, quote, ceiling, discountPct };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null)
+      .sort((a, b) => b.discountPct - a.discountPct || a.asset.ticker.localeCompare(b.asset.ticker));
+    const picked = candidates.find((c) => c.discountPct >= 15) ?? candidates[0];
+    if (!picked) return undefined;
+    return buildPortfolioCarouselBreakdown({
+      kind: "discount",
+      ticker: picked.asset.ticker,
+      currency: picked.asset.currency === "USD" ? "USD" : "BRL",
+      quote: picked.quote,
+      ceiling: picked.ceiling,
+      quoteSource: picked.row?.canonicalSource ?? picked.row?.source ?? "Cotação de mercado",
+      score: picked.asset.score ?? 8,
+      discountPct: picked.discountPct,
+    });
+  }, [assetsQuery?.data, position?.rows]);
+
   const items: (DashboardAlertItem | false)[] = [
     ...buildStructuralRiskItems({
       alerts: structuralAlerts,
@@ -259,6 +345,8 @@ export function PortfolioInsightsCarousel({ className }: PortfolioInsightsCarous
       quarantinedCount: gov.quarantinedCount ?? 0,
       discountOpportunitiesCount: gov.discountOpportunitiesCount ?? 0,
       lowScoreRiskCount: gov.lowScoreRiskCount ?? 0,
+      lowScoreBreakdown: lowScoreSample,
+      discountBreakdown: discountSample,
       overdueAssets: gov.overdueAssets ?? [],
       upcomingReviewAssets: gov.upcomingReviewAssets ?? [],
       unscoredAssets: gov.unscoredAssets ?? [],
@@ -301,7 +389,7 @@ export function PortfolioInsightsCarousel({ className }: PortfolioInsightsCarous
     <>
       <DashboardAlertsCarousel
         items={items}
-        maxItems={3}
+        maxItems={5}
         isLoading={isCarouselLoading}
         presenceHintKey="portfolio_insights"
         className={className}

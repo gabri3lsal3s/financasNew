@@ -1,6 +1,7 @@
 import { AlertTriangle, ShieldAlert, TrendingDown } from "lucide-react";
 import { AlertCarouselCard } from "@/components/modules/alert-carousel-card";
 import type { DashboardAlertItem } from "@/components/modules/dashboard-alerts-carousel";
+import type { CalculationBreakdown } from "@/domain/calculation-memory";
 import {
   resolveCarouselCardPolicy,
   type CarouselDismissPreset,
@@ -10,6 +11,8 @@ export function buildGovernanceRiskItems({
   lowScoreRiskCount,
   quarantinedCount,
   discountOpportunitiesCount,
+  lowScoreBreakdown,
+  discountBreakdown,
   isCardVisible,
   onSelectPreset,
   isAlertDismissed,
@@ -20,6 +23,8 @@ export function buildGovernanceRiskItems({
   lowScoreRiskCount: number;
   quarantinedCount: number;
   discountOpportunitiesCount: number;
+  lowScoreBreakdown?: CalculationBreakdown;
+  discountBreakdown?: CalculationBreakdown;
   isCardVisible?: (cardKey: string) => boolean;
   onSelectPreset?: (cardKey: string, preset: CarouselDismissPreset) => void;
   isAlertDismissed?: (alertId: string, fingerprint: string) => boolean;
@@ -57,6 +62,7 @@ export function buildGovernanceRiskItems({
               variant: "critical",
             }}
             description="Ativos com nota baixa (≤ 4) representam mais de 5% da carteira. Avalie reduzir exposição."
+            calculationBreakdown={lowScoreBreakdown}
             className={className}
             primaryAction={{
               label: "Auditar Carteira",
@@ -139,6 +145,7 @@ export function buildGovernanceRiskItems({
               variant: "positive",
             }}
             description="Ativos de alta convicção (Nota ≥ 8) com margem de segurança frente ao Preço Teto."
+            calculationBreakdown={discountBreakdown}
             className={className}
             primaryAction={{
               label: "Simular Aporte",

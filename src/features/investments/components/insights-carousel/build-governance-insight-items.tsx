@@ -1,6 +1,7 @@
 import { CalendarClock, Check, Clock, Loader2, Sparkles } from "lucide-react";
 import { AlertCarouselCard } from "@/components/modules/alert-carousel-card";
 import type { DashboardAlertItem } from "@/components/modules/dashboard-alerts-carousel";
+import type { CalculationBreakdown } from "@/domain/calculation-memory";
 import {
   resolveCarouselCardPolicy,
   type CarouselDismissPreset,
@@ -16,6 +17,8 @@ export interface BuildGovernanceInsightItemsParams {
   quarantinedCount: number;
   discountOpportunitiesCount: number;
   lowScoreRiskCount: number;
+  lowScoreBreakdown?: CalculationBreakdown;
+  discountBreakdown?: CalculationBreakdown;
   overdueAssets: PortfolioAsset[];
   upcomingReviewAssets: PortfolioAsset[];
   unscoredAssets: PortfolioAsset[];
@@ -40,6 +43,8 @@ export function buildGovernanceInsightItems({
   quarantinedCount,
   discountOpportunitiesCount,
   lowScoreRiskCount,
+  lowScoreBreakdown,
+  discountBreakdown,
   overdueAssets,
   upcomingReviewAssets,
   unscoredAssets,
@@ -248,6 +253,8 @@ export function buildGovernanceInsightItems({
       lowScoreRiskCount,
       quarantinedCount,
       discountOpportunitiesCount,
+      lowScoreBreakdown,
+      discountBreakdown,
       isCardVisible,
       onSelectPreset,
       isAlertDismissed,

@@ -11,6 +11,9 @@ import {
 import type { PermissionAlertBannerType } from "@/components/modules/permissions-alert-banner";
 import {
   buildCashGapBreakdown,
+  buildDividendCarouselBreakdown,
+  buildFamilyCeilingBreakdown,
+  buildFamilySettlementBreakdown,
   buildGoalProgressBreakdown,
   buildPaceProjectionBreakdown,
   buildSplitPendingBreakdown,
@@ -220,6 +223,12 @@ export function buildOverviewAlertItems(
             ceilingCents={householdData!.monthly_ceiling_cents}
             spentPercentage={householdData!.spent_percentage}
             daysRemaining={daily.daysRemaining ?? undefined}
+            calculationBreakdown={buildFamilyCeilingBreakdown({
+              monthlyCeilingCents: householdData!.monthly_ceiling_cents,
+              totalSpentCents: householdData!.total_spent_cents,
+              spentPercentage: householdData!.spent_percentage,
+              periodLabel: params.month ?? data.month,
+            })}
             onDismiss={(days) => params.onDismissCard?.("household-ceiling-exceeded", days)}
             onSelectPreset={
               params.onSelectPreset
@@ -249,7 +258,7 @@ export function buildOverviewAlertItems(
       },
     params.showOnboardingCarousel &&
       data.onboardingQuery?.data && {
-        id: "onboarding.checklist",
+        id: "onboarding.progress",
         priority: 2,
         content: (
           <OnboardingCarouselBanner
@@ -258,10 +267,11 @@ export function buildOverviewAlertItems(
             initialGoal={params.initialGoal}
             onContinue={() => params.onOpenOnboardingChecklist?.()}
             onDismiss={() => params.onDismissOnboarding?.()}
-            onSelectPreset={(preset) => {
-              params.onSelectPreset?.("onboarding.checklist", preset);
-              params.onDismissOnboarding?.();
-            }}
+            onSelectPreset={
+              params.onSelectPreset
+                ? (preset) => params.onSelectPreset?.("onboarding.progress", preset)
+                : undefined
+            }
           />
         ),
       },
@@ -296,6 +306,22 @@ export function buildOverviewAlertItems(
             settlementReceiverName={householdData!.settlement!.receiver_name}
             isCurrentUserPayer={currentUserId ? householdData!.settlement!.payer_id === currentUserId : false}
             isCurrentUserReceiver={currentUserId ? householdData!.settlement!.receiver_id === currentUserId : false}
+            calculationBreakdown={buildFamilySettlementBreakdown({
+              userId: currentUserId ?? "user",
+              displayName:
+                currentUserId && householdData!.settlement!.payer_id === currentUserId
+                  ? "Você"
+                  : (householdData!.settlement!.payer_name ?? "Parceiro"),
+              spentCents: householdData!.total_spent_cents,
+              fairShareCents: Math.max(
+                0,
+                householdData!.total_spent_cents - householdData!.settlement!.amount_cents,
+              ),
+              netBalanceCents:
+                currentUserId && householdData!.settlement!.payer_id === currentUserId
+                  ? -householdData!.settlement!.amount_cents
+                  : householdData!.settlement!.amount_cents,
+            })}
             onDismiss={(days) => params.onDismissCard?.("household-settlement-pending", days)}
             onSelectPreset={
               params.onSelectPreset
@@ -456,6 +482,40 @@ export function buildOverviewAlertItems(
             totalAvailableAmount={effectiveAvailableAmount}
             totalProjectedAmount={effectiveProjectedAmount}
             hasUncertainTax={effectiveAvailableDividends.some((d) => Boolean(d.isTypeUncertain))}
+            calculationBreakdown={buildDividendCarouselBreakdown({
+              kind: effectiveAvailableDividends.length > 0 ? "available" : "monthly",
+              asOf: params.month ?? data.month,
+              month: params.month ?? data.month,
+              fxRate: 5,
+              items: (effectiveAvailableDividends.length > 0
+                ? effectiveAvailableDividends
+                : effectiveProjectedDividends
+              ).map((d, idx) => ({
+                key: d.eventId ?? `${d.ticker}:${idx}`,
+                ticker: d.ticker,
+                currency: d.currency,
+                quantityOnComDate: d.quantityOnComDate,
+                grossRate: d.rate,
+                netRate: d.netRate,
+                taxPct: d.taxRatePct ?? (d.currency === "USD" ? 30 : d.type === "JCP" ? 15 : 0),
+                taxSource: d.isTypeUncertain ? "Estimado" : "Oficial",
+                paymentDate: d.paymentDate,
+                nativeNetCents: Math.round(d.totalAmount * 100),
+                netBRLCents: Math.round(
+                  d.totalAmount * (d.currency === "USD" ? 5 : 1) * 100,
+                ),
+                included: d.totalAmount > 0,
+              })),
+              count:
+                effectiveAvailableDividends.length > 0
+                  ? effectiveAvailableDividends.length
+                  : effectiveProjectedDividends.length,
+              totalBRLCents: Math.round(
+                (effectiveAvailableDividends.length > 0
+                  ? effectiveAvailableAmount
+                  : effectiveProjectedAmount) * 100,
+              ),
+            })}
             onInspect={params.onInspectDividends}
             onDismiss={(days) => params.onDismissCard?.("corporate-dividends-alert", days)}
             onSelectPreset={
@@ -535,6 +595,7 @@ export function buildOverviewAlertItems(
   );
   const maxAdvisorSlides = Math.max(0, 2 - operationalItems.length);
   const advisorSlides: DashboardAlertItem[] = (params.advisorInsights ?? [])
+    .filter((insight) => !data.isCardDismissed(`advisor.${insight.themeKey}`))
     .slice(0, maxAdvisorSlides)
     .map((insight) => {
       const canPauseFamily =
@@ -549,6 +610,11 @@ export function buildOverviewAlertItems(
             month={params.month}
             insight={insight}
             onDismiss={params.onDismissAdvisor}
+            onSelectPreset={
+              params.onSelectPreset
+                ? (preset) => params.onSelectPreset?.(`advisor.${insight.themeKey}`, preset)
+                : undefined
+            }
             onConfirmRecurrence={
               params.onConfirmRecurrence
                 ? async (key) => {

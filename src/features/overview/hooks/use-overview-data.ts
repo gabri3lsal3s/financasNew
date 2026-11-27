@@ -128,9 +128,14 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
     enabled: canUseInvestments,
   });
   const subscription = useUserSubscription();
+  const { isCardVisible } = useCarouselDismissals();
   const { isDismissed: isOnboardingDismissed, dismiss: rawDismissOnboarding } = useOnboardingDismissed();
   const isEffectiveOnboardingDismissed =
-    isOnboardingDismissed || isTimedAlertDismissed(alertDismissals.cards?.["onboarding-progress-banner"]);
+    isOnboardingDismissed ||
+    isTimedAlertDismissed(alertDismissals.cards?.["onboarding-progress-banner"]) ||
+    !isCardVisible("onboarding.progress", {
+      legacySources: { dashboardAlertDismissals: alertDismissals },
+    });
 
   const dismissOnboarding = useCallback(() => {
     rawDismissOnboarding();
@@ -266,7 +271,6 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
     () => userPreferencesQuery.data?.custom_settings?.advisorDecayMeta ?? {},
     [userPreferencesQuery.data?.custom_settings?.advisorDecayMeta],
   );
-  const { isCardVisible } = useCarouselDismissals();
   const legacyDismissalSources = useMemo(
     () => ({ dashboardAlertDismissals: alertDismissals }),
     [alertDismissals],

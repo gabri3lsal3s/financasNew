@@ -2,6 +2,7 @@ import { ArrowRight, HandCoins, Users } from "lucide-react";
 import { useNavigate } from "react-router";
 import { AlertCarouselCard } from "@/components/modules/alert-carousel-card";
 import { MoneyText } from "@/components/ui/money-text";
+import type { CalculationBreakdown } from "@/domain/calculation-memory";
 import {
   resolveCarouselCardPolicy,
   type CarouselDismissPreset,
@@ -19,6 +20,7 @@ export interface HouseholdAlertBannerProps {
   isCurrentUserPayer?: boolean;
   isCurrentUserReceiver?: boolean;
   daysRemaining?: number;
+  calculationBreakdown?: CalculationBreakdown;
   onDismiss?: (days: 7 | 30) => void;
   onSelectPreset?: (preset: CarouselDismissPreset) => void;
   className?: string;
@@ -36,6 +38,7 @@ export function HouseholdAlertBanner({
   isCurrentUserPayer,
   isCurrentUserReceiver,
   daysRemaining,
+  calculationBreakdown,
   onDismiss,
   onSelectPreset,
   className,
@@ -132,6 +135,7 @@ export function HouseholdAlertBanner({
         variant: "outline",
         icon: <ArrowRight className="size-3.5" aria-hidden="true" />,
       }}
+      calculationBreakdown={calculationBreakdown}
       dismissPolicy={
         onSelectPreset || onDismiss
           ? {

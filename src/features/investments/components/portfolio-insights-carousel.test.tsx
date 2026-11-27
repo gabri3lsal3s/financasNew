@@ -16,8 +16,9 @@ const mockUpdateCustomSettings = {
   mutate: vi.fn(),
   mutateAsync: vi.fn(),
 };
+let mockUserCustomSettings: Record<string, unknown> = {};
 const mockUserPreferencesState = () => ({
-  data: { custom_settings: {} },
+  data: { custom_settings: mockUserCustomSettings },
   isLoading: false,
 });
 
@@ -67,6 +68,7 @@ vi.mock("@/state", async (importOriginal) => {
 describe("PortfolioInsightsCarousel (Regra 19)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUserCustomSettings = {};
     window.localStorage.clear();
     setActiveUserId("user-1");
     resetCarouselDismissalsStore();
@@ -680,5 +682,69 @@ describe("PortfolioInsightsCarousel (Regra 19)", () => {
     rerender(<PortfolioInsightsCarousel />);
     expect(screen.getByText("Revisão de Teses Pendente")).toBeInTheDocument();
     expect(screen.getByText("2 ativos")).toBeInTheDocument();
+  });
+
+  it("respeita lowScoreThreshold da política, prioriza ativo >5% no lowScoreSample e exclui cotação >= teto no discountSample", () => {
+    mockUserCustomSettings = {
+      portfolioRiskPolicy: { lowScoreThreshold: 6 },
+    };
+    mockUseCorporateDividends.mockReturnValue({
+      available: [],
+      projected: [],
+      totalAvailableAmount: 0,
+      totalProjectedAmount: 0,
+      isLoading: false,
+    });
+    mockUsePortfolioAssets.mockReturnValue({
+      data: [
+        { id: "a-small", ticker: "SMALL3", asset_class: "Ações", score: 5, quantity: 10, average_price: 20 },
+        { id: "a-big", ticker: "BIG3", asset_class: "Ações", score: 6, quantity: 100, average_price: 10 },
+        { id: "d-over", ticker: "OVER3", asset_class: "Ações", score: 9, ceiling_price: 20, quantity: 10, average_price: 15 },
+        { id: "d-ok", ticker: "DISC3", asset_class: "Ações", score: 9, ceiling_price: 30, quantity: 10, average_price: 20 },
+      ],
+      isLoading: false,
+    });
+    mockUsePortfolioPosition.mockReturnValue({
+      rows: [
+        { assetId: "a-small", ticker: "SMALL3", valueBRL: 200, priceQuote: 20, isEstimate: false },
+        { assetId: "a-big", ticker: "BIG3", valueBRL: 1000, priceQuote: 10, isEstimate: false },
+        { assetId: "d-over", ticker: "OVER3", valueBRL: 250, priceQuote: 25, isEstimate: false, canonicalSource: "quote_cache" },
+        { assetId: "d-ok", ticker: "DISC3", valueBRL: 210, priceQuote: 21, isEstimate: false, canonicalSource: "quote_cache" },
+      ],
+      totalBRL: 10000,
+      cashBRL: 0,
+      isLoading: false,
+    });
+    mockUseAssetGovernanceInsights.mockReturnValue({
+      overdueReviewsCount: 0,
+      upcomingReviewsCount: 0,
+      unscoredAssetsCount: 0,
+      quarantinedCount: 0,
+      discountOpportunitiesCount: 1,
+      lowScoreRiskCount: 1,
+      overdueAssets: [],
+      upcomingReviewAssets: [],
+      unscoredAssets: [],
+      isLoading: false,
+    });
+
+    render(<PortfolioInsightsCarousel />);
+
+    const lowMemBtn = screen.getByRole("button", {
+      name: /Ver memória de cálculo.*Concentração em Baixa Convicção/i,
+      hidden: true,
+    });
+    fireEvent.click(lowMemBtn);
+    expect(screen.getAllByText(/Sobrepeso em Baixa Convicção: BIG3/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/nota <= 6/i).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getAllByRole("button", { name: /Fechar/i })[0]!);
+
+    const discMemBtn = screen.getByRole("button", {
+      name: /Ver memória de cálculo.*Oportunidade em Desconto/i,
+      hidden: true,
+    });
+    fireEvent.click(discMemBtn);
+    expect(screen.getAllByText(/Margem de Segurança: DISC3/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/OVER3/)).not.toBeInTheDocument();
   });
 });

@@ -11,6 +11,10 @@ import { buildSmartAdvisorBreakdown } from "@/domain/calculation-memory/builders
 import type { SmartAdvisorCardContext, SmartAdvisorInsight } from "@/domain/insights/advisor";
 import { resolveInsightThemeFamily } from "@/domain/insights/attention-budget";
 import type { CalibrationDecision } from "@/domain/insights/feedback";
+import {
+  resolveCarouselCardPolicy,
+  type CarouselDismissPreset,
+} from "@/domain/notifications/hub";
 import { useSmartAdvisorInsights } from "@/features/overview/hooks";
 import { currentMonth } from "@/lib/date";
 import { cn } from "@/lib/utils";
@@ -68,6 +72,8 @@ export interface SmartAdvisorCardProps {
   committedObligationsCents?: number;
   suppressedThemeKeys?: readonly string[];
   embeddedInCarousel?: boolean;
+  onSelectPreset?: (preset: CarouselDismissPreset) => void;
+  allowedPresets?: readonly CarouselDismissPreset[];
 }
 
 interface SmartAdvisorCardViewProps {
@@ -80,6 +86,8 @@ interface SmartAdvisorCardViewProps {
   onNext?: () => void;
   onPrev?: () => void;
   onDismiss: (themeKey?: string, days?: number, options?: SmartAdvisorDismissOptions) => void;
+  onSelectPreset?: (preset: CarouselDismissPreset) => void;
+  allowedPresets?: readonly CarouselDismissPreset[];
   onConfirmRecurrence?: (occurrenceKey: string) => void | Promise<void>;
   onIgnoreRecurrence?: (occurrenceKey: string, reason?: CalibrationDecision) => void | Promise<void>;
   onConfirmIncome?: (payload: { name: string; valueCents: number; categoryId: string; date?: string }) => void | Promise<void>;
@@ -120,6 +128,8 @@ function SmartAdvisorCardView({
   onPauseFamily,
   canPauseFamily,
   embeddedInCarousel,
+  onSelectPreset,
+  allowedPresets,
 }: SmartAdvisorCardViewProps) {
   const navigate = useNavigate();
   const cardContext =
@@ -340,6 +350,11 @@ function SmartAdvisorCardView({
           ) : (
             <div className="absolute top-3 right-3 sm:static">
               <CarouselDismissPopover
+                allowedPresets={
+                  allowedPresets ??
+                  resolveCarouselCardPolicy(`advisor.${activeInsight.themeKey}`).allowedPresets
+                }
+                onSelectPreset={onSelectPreset}
                 onDismiss={(days) => handleDismiss(days)}
                 label="Dispensar sugestão"
               />
@@ -521,6 +536,8 @@ export function SmartAdvisorCard(props: SmartAdvisorCardProps) {
         onPauseFamily={props.onPauseFamily}
         canPauseFamily={props.canPauseFamily ?? false}
         embeddedInCarousel={props.embeddedInCarousel ?? false}
+        onSelectPreset={props.onSelectPreset}
+        allowedPresets={props.allowedPresets}
       />
     );
   }
