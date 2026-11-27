@@ -363,22 +363,27 @@ Para validar a integridade transacional de ponta a ponta com o gateway bancário
 1. Acesse o **Painel Asaas** (Sandbox ou Produção) → **Menu Superior** → **Configurações da Conta** → **Integrações** → **Webhooks**;
 2. Adicione um novo webhook para Cobranças/Assinaturas:
    - **URL de Envio:** `https://<PROJECT_REF>.supabase.co/functions/v1/asaas-webhook`
-   - **E-mail para Alertas de Erro:** `suporte@axis.app`
+   - **E-mail para Alertas de Erro:** `suporte@axir.com.br`
    - **Versão da API:** `v3`
    - **Token de Autenticação (`asaas-access-token`):** Insira a mesma chave gerada para o secret `ASAAS_WEBHOOK_TOKEN` do Supabase;
 3. Marque obrigatoriamente os seguintes eventos:
    - `PAYMENT_RECEIVED` (Pagamento recebido via Pix ou saldo)
    - `PAYMENT_CONFIRMED` (Compensação bancária confirmada)
    - `PAYMENT_OVERDUE` (Cobrança vencida sem pagamento)
-   - `PAYMENT_DELETED` (Cobrança cancelada ou estornada)
+   - `PAYMENT_DELETED` (Cobrança pendente cancelada/excluída)
+   - `PAYMENT_REFUNDED` (Estorno integral)
+   - `PAYMENT_PARTIALLY_REFUNDED` (Estorno parcial)
+   - `PAYMENT_CHARGEBACK_REQUESTED` / `PAYMENT_CHARGEBACK_DISPUTE` / `PAYMENT_AWAITING_CHARGEBACK_REVERSAL` (Disputas e chargeback)
+   - `PAYMENT_DUNNING_RECEIVED` (Recuperação após cobrança em atraso)
+   - `SUBSCRIPTION_UPDATED` (Atualização de recorrência)
    - `SUBSCRIPTION_DELETED` (Assinatura recorrente encerrada)
 
-#### 2. Execução da Cobrança Real de Teste (R$ 1,00 / Go-Live)
+#### 2. Execução da Cobrança Real de Teste (Catálogo Oficial / Go-Live)
 1. Crie uma conta de teste no aplicativo web ou mobile;
-2. Navegue até a tela de assinatura (`/subscription/checkout`);
-3. Gere o QR Code Pix ou utilize a modalidade cartão de crédito;
-4. **Auditoria de Marca no Pix:** Certifique-se de que o comprovante bancário e a descrição exibem a marca oficial `"Áxis Finance"`;
-5. Efetue o pagamento de R$ 1,00 (ou valor configurado na sandbox).
+2. Navegue até a tela de assinatura (`/assinatura`);
+3. Gere o QR Code Pix (Plano Anual — R$ 143,88) ou utilize a modalidade cartão de crédito (Mensal — R$ 19,99 / Anual — R$ 143,88);
+4. **Auditoria de Marca no Pix:** Certifique-se de que o comprovante bancário e a descrição exibem a marca oficial `"Axir"`;
+5. Efetue o pagamento no valor oficial do catálogo (`R$ 19,99` mensal ou `R$ 143,88` anual; valores fora do catálogo são rejeitados com `ignore_unknown_plan`).
 
 #### 3. Auditoria da Transição Atômica no Banco de Dados
 Execute a seguinte query no Supabase SQL Editor para auditar o registro do usuário:
@@ -401,13 +406,15 @@ where user_id = '<ID_DO_USUARIO_TESTE>';
 - **Verificação dos Invariantes:**
   * `status`: transiciona de `'trialing'` para `'active'`;
   * `tier`: assume `'pro_annual'` ou `'pro_monthly'`;
-  * `current_period_end`: preenchido com a vigência correspondente (+1 ano ou +1 mês);
+  * `current_period_end`: preenchido com a vigência correspondente (+12 meses ou +1 mês civil);
   * Permissão de escrita ativa: a chamada `public.can_current_user_write()` deve retornar `true`.
 
-#### 4. Homologação do Estorno em 7 Dias (CDC Artigo 49)
-1. No painel do Asaas, selecione o pagamento de teste e efetue o **Estorno/Reembolso** da cobrança;
-2. O webhook receberá `PAYMENT_DELETED` e marcará atomicamente `cancel_at_period_end = true`;
-3. Caso o pagamento seja revertido por inadimplência (`PAYMENT_OVERDUE`), o status passa para `'past_due'` bloqueando escritas futuras com elegância sem quebrar o acesso somente-leitura.
+#### 4. Homologação do Estorno em 7 Dias (CDC Artigo 49), Cancelamento, Parcial e Chargeback
+1. **Cancelamento `<= 7 dias`:** na tela `/assinatura`, acionar o cancelamento dentro da janela de 7 dias solicita estorno integral no Asaas, encerra imediatamente o acesso pago (`tier = 'read_only'`, `status = 'canceled'`) e cancela a recorrência; o webhook `PAYMENT_REFUNDED` confirma a transição de forma idempotente;
+2. **Cancelamento `> 7 dias`:** o cancelamento voluntário ou o evento `SUBSCRIPTION_DELETED` marca `cancel_at_period_end = true`, preservando o acesso `active` até o término do período já pago;
+3. **Estorno parcial (`PAYMENT_PARTIALLY_REFUNDED`):** registra trilha imutável em `audit_events` (`payment_partially_refunded`) e alerta administrativo no Telegram sem revogar o período integral automaticamente;
+4. **Chargeback (`PAYMENT_CHARGEBACK_REQUESTED`):** aplica bloqueio imediato para `read_only` (`status = 'canceled'`, `chargeback_flagged_at` preenchido), cancela a recorrência no Asaas e dispara alerta crítico;
+5. **Inadimplência (`PAYMENT_OVERDUE`):** altera o status para `'past_due'` conforme a carência configurada, recuperando para `'active'` na liquidação (`PAYMENT_CONFIRMED`/`PAYMENT_RECEIVED`).
 
 ---
 
@@ -548,5 +555,79 @@ O projeto adota uma arquitetura de compilação dual rigorosa para conciliar a a
 3. O pacote resultante estará em `android/app/build/outputs/bundle/release/app-release.aab`.
 
 > Para o guia operacional detalhado, respostas do formulário Data Safety e roteiro de submissão na Google Play, consulte [`docs/NATIVE_DISTRIBUTION_GUIDE.md`](./NATIVE_DISTRIBUTION_GUIDE.md) (§8).
+
+---
+
+## 8. CLOUDFLARE WORKER E DURABLE OBJECTS — CUSTÓDIA DE SESSÕES (T02)
+
+A partir da etapa T02 do [`PLANO_MESTRE_MULTICONTA_E_ISOLAMENTO_SESSOES.md`](../plans/PLANO_MESTRE_MULTICONTA_E_ISOLAMENTO_SESSOES.md), a borda da aplicação passa a contar com um **Cloudflare Worker** (`scripts/cloudflare/sessions/`) acoplado a **Durable Objects** para custódia de sessões e mediação das rotas `/api/sessions/v1/*` e `/api/data/v1/*`.
+
+### 8.1 Precedência de Rotas sobre Cloudflare Pages
+
+No Cloudflare, **Worker Routes** anexadas à zona DNS prevalecem sobre o fallback estático do **Cloudflare Pages** para os prefixos declarados:
+
+| Host | Rotas atendidas pelo Worker | Fallback estático (Pages) |
+|---|---|---|
+| `axir.com.br` / `www.axir.com.br` (Produção) | `axir.com.br/api/sessions/v1/*`, `axir.com.br/api/data/v1/*` | Demais rotas da SPA/PWA |
+| `preview.axir.com.br` (Prévia isolada) | `preview.axir.com.br/api/sessions/v1/*`, `preview.axir.com.br/api/data/v1/*` | Preview Deployment do Pages |
+| `admin.axir.com.br` (Origem administrativa) | `admin.axir.com.br/api/sessions/v1/*`, `admin.axir.com.br/api/data/v1/*` | Build administrativo dedicado |
+
+- **Regra crítica:** Nenhuma chamada `/api/sessions/v1/*` ou `/api/data/v1/*` deve cair no fallback `index.html` do Pages. O Worker responde sempre com `Cache-Control: no-store` e `Pragma: no-cache`, desabilita rotas `*.workers.dev` públicas e valida o cabeçalho `Host` e `Origin` contra a allowlist do ambiente.
+
+### 8.2 Bindings, Namespaces e Segredos por Ambiente
+
+Cada ambiente (`preview`, `production`, `admin`) possui configuração isolada em `scripts/cloudflare/sessions/wrangler.jsonc`:
+
+| Binding / Variável | Tipo | Descrição |
+|---|---|---|
+| `SESSION_COORDINATOR` | Durable Object (`SessionCoordinatorDO`) | Coordenação por instalação (SQLite-backed DO). Namespaces independentes por ambiente. |
+| `ENVIRONMENT` | `vars` | `"preview"`, `"production"` ou `"admin"` — impede aceitação cruzada de cookies/provas entre ambientes. |
+| `ALLOWED_HOSTS` | `vars` | Lista separada por vírgula dos hosts válidos do ambiente. |
+| `ALLOWED_ORIGINS` | `vars` | Lista separada por vírgula das origens aceitas para escrita/CSRF. |
+| `SESSION_COOKIE_NAME` | `vars` | `__Host-axir_session` (pessoal/prévia) ou `__Host-axir_admin_session` (admin). |
+| `SUPABASE_URL` | `vars` / `secret` | URL do projeto Supabase correspondente ao ambiente (prévia usa projeto isolado). |
+| `SUPABASE_ANON_KEY` | `secret` | Chave pública do projeto Supabase do ambiente (mantida no Worker). |
+| `SESSION_ENCRYPTION_KEY_CURRENT` | `secret` | Chave AES-GCM 256-bit (base64) corrente para cifragem de tokens no DO. |
+| `SESSION_ENCRYPTION_KEY_PREVIOUS` | `secret` *(opcional)* | Chave anterior aceita somente para leitura durante janela de rotação. |
+
+Provisionamento de segredos em prévia (sem gravar valores no repositório):
+
+```bash
+npx wrangler secret put SUPABASE_ANON_KEY --config scripts/cloudflare/sessions/wrangler.jsonc --env preview
+npx wrangler secret put SESSION_ENCRYPTION_KEY_CURRENT --config scripts/cloudflare/sessions/wrangler.jsonc --env preview
+```
+
+### 8.3 DNS e Origem Administrativa (`admin.axir.com.br`)
+
+1. Criar registro DNS proxied (laranja) para `admin.axir.com.br` apontando para o projeto Pages administrativo dedicado e para `preview.axir.com.br` apontando para a prévia.
+2. Anexar as Worker Routes específicas em cada zona/ambiente (`wrangler deploy --config scripts/cloudflare/sessions/wrangler.jsonc --env preview`).
+3. Em **Supabase → Authentication → URL Configuration**, manter `Redirect URLs` estritas para prévia e produção sem wildcards amplos.
+
+### 8.4 Comandos de Reprodução Local e Prévia
+
+```bash
+# 1. Executar suíte local do Worker + Durable Object com Miniflare
+npx vitest run scripts/cloudflare/sessions/worker.test.ts
+
+# 2. Subir Worker localmente com Wrangler (Miniflare integrado)
+npx wrangler dev --config scripts/cloudflare/sessions/wrangler.jsonc --env preview
+
+# 3. Deploy do Worker em prévia isolada
+npx wrangler deploy --config scripts/cloudflare/sessions/wrangler.jsonc --env preview
+```
+
+### 8.5 Consumo, Capacidade e Custos Estimados (Piloto)
+
+Considerando o piloto inicial (~100–500 usuários ativos diários, ~50–150 requisições autenticadas/usuário/dia, incluindo revalidação de sessão a cada 15s em aba visível):
+
+| Recurso Cloudflare | Estimativa Piloto (mensal) | Plano / Limite | Custo Estimado |
+|---|---|---|---|
+| **Workers Requests** | ~1,5M – 4M req/mês | Workers Paid (inclui 10M req/mês) | **$5,00/mês** (base do plano) |
+| **Durable Objects Requests** | ~0,5M – 1,5M req/mês (custódia/troca/revalidação) | Inclui 1M req/mês; $0,15 por milhão adicional | **$0,00 – $0,15/mês** |
+| **Durable Objects Duration & Storage** | < 100k GB-s e < 100 MB (estado mínimo cifrado por instalação) | Inclui 400k GB-s e 1 GB SQLite | **$0,00/mês** |
+| **Egress / Pages Assets** | Ilimitado no Cloudflare Pages | Free / Paid | **$0,00/mês** |
+
+- **Nota de otimização:** A consulta periódica de revogação (15s em aba visível) atinge o Durable Object apenas com leitura leve em memória/SQLite local do DO (~1–3 ms no edge), sem acionar o Postgres/Supabase a cada tick.
+
 
 

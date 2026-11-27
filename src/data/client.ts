@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import { getSupabaseEnv } from "@/lib/env";
+import { isSharedDeviceSession } from "@/services/session-policy";
 
 /**
  * Cliente tipado com o Schema REAL do Database.
@@ -57,14 +58,44 @@ function createDevFunctionsProxyFetch(supabaseUrl: string): typeof fetch | undef
  * Lazy: o import não lança; a primeira chamada valida o env (mensagem clara se
  * faltar configuração). Em testes, use `vi.mock("@/data/client")`.
  */
+function clearLegacyPersistedSupabaseTokens(): void {
+  if (typeof window === "undefined" || !window.localStorage) return;
+  try {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i);
+      if (key && key.startsWith("sb-") && key.endsWith("-auth-token")) {
+        keysToRemove.push(key);
+      }
+    }
+    for (const key of keysToRemove) {
+      window.localStorage.removeItem(key);
+    }
+  } catch {
+    // no-op
+  }
+}
+
+/**
+ * Reseta o singleton do cliente Supabase para reaplicar a política de persistência
+ * antes do próximo bootstrap (ex.: alternância para Computador Compartilhado).
+ */
+export function resetSupabaseClient(): void {
+  client = null;
+}
+
 export function getSupabase(): Supabase {
   if (!client) {
     const { url, anonKey } = getSupabaseEnv();
     const devFetch = createDevFunctionsProxyFetch(url);
+    const sharedMode = isSharedDeviceSession();
+    if (sharedMode) {
+      clearLegacyPersistedSupabaseTokens();
+    }
     client = createClient<Database, "public">(url, anonKey, {
       auth: {
         flowType: "pkce",
-        persistSession: true,
+        persistSession: !sharedMode,
         autoRefreshToken: true,
         detectSessionInUrl: true,
       },

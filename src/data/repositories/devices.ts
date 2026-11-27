@@ -14,40 +14,9 @@ import type { DeviceRegistrationInput, UserDevice } from "@/types";
 export async function registerDevice(input: DeviceRegistrationInput): Promise<UserDevice> {
   try {
     return await registerDeviceSessionRpc(input);
-  } catch {
-    const supabase = getSupabase();
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      throw new AppError("session-expired", "Sessão expirada ao registrar dispositivo.");
-    }
-
-    const { data, error } = await supabase
-      .from("user_devices")
-      .upsert(
-        {
-          user_id: user.id,
-          device_id: input.deviceId,
-          device_name: input.deviceName,
-          browser: input.browser,
-          os: input.os,
-          ip_address: input.ipAddress ?? null,
-          last_seen_at: new Date().toISOString(),
-          is_revoked: false,
-        },
-        { onConflict: "user_id,device_id" },
-      )
-      .select()
-      .single();
-
-    if (error) {
-      const classified = classifyError(error);
-      throw new AppError(classified.kind, classified.message, error);
-    }
-    return data as unknown as UserDevice;
+  } catch (err) {
+    const classified = classifyError(err);
+    throw new AppError(classified.kind, classified.message, err);
   }
 }
 

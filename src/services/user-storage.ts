@@ -152,6 +152,56 @@ export function removeUserStorageItem(key: string, userId?: string | null): void
 }
 
 /**
+ * Expurga seletivamente todas as chaves de armazenamento local pertencentes
+ * exclusivamente à conta informada (`financas_<accountKey>_*`), preservando
+ * integralmente os dados e preferências de quaisquer outras contas.
+ */
+export function purgeAccountStorage(accountKey: string): number {
+  if (typeof window === "undefined") return 0;
+  const normalizedKey = accountKey.trim();
+  if (!normalizedKey || normalizedKey === "guest" || normalizedKey === "active") {
+    return 0;
+  }
+
+  const underscorePrefix = `financas_${normalizedKey}_`;
+  const colonPrefix = `financas:${normalizedKey}:`;
+  let removedCount = 0;
+
+  try {
+    const keysToRemove: string[] = [];
+    for (let idx = 0; idx < window.localStorage.length; idx += 1) {
+      const storageKey = window.localStorage.key(idx);
+      if (
+        storageKey !== null &&
+        (storageKey.startsWith(underscorePrefix) || storageKey.startsWith(colonPrefix))
+      ) {
+        keysToRemove.push(storageKey);
+      }
+    }
+
+    for (const storageKey of keysToRemove) {
+      window.localStorage.removeItem(storageKey);
+      removedCount += 1;
+    }
+
+    if (getActiveUserId() === normalizedKey) {
+      activeUserId = null;
+      window.localStorage.removeItem(ACTIVE_USER_ID_STORAGE_KEY);
+      window.localStorage.removeItem("financas_active_accent_theme");
+      window.localStorage.removeItem("financas_active_biometric_lock_enabled");
+      if (typeof document !== "undefined") {
+        document.documentElement.removeAttribute("data-accent");
+      }
+      userListeners.forEach((listener) => listener(null));
+    }
+  } catch {
+    // no-op em ambientes com storage restrito
+  }
+
+  return removedCount;
+}
+
+/**
  * Remove chaves legadas e despadronizadas sem namespace de usuário
  * para evitar que dados antigos vazem ou poluam sessões futuras.
  */

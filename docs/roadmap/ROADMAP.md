@@ -1,5 +1,11 @@
 # ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.37.0 (Multiconta, Custódia de Sessões, Portal Admin Isolado & Endurecimento Push/Android — T00–T09)** (2026-11-27):
+> - **T00–T01 (`0175`, `admin-super-action`, `use-auth`):** inventário de superfícies, revogação server-side global e por `session_id` (`revoked_auth_sessions`), endurecimento uniforme de `is_admin()`/`is_superadmin()` com AAL2, modo fail-closed para computador compartilhado e entrega de links administrativos exclusivamente por canal verificado.
+> - **T02–T03 (`scripts/cloudflare/sessions/`, `0176`, `src/domain/auth/`, `src/types/session-custody.ts`):** Worker + Durable Object SQLite (`SessionCoordinatorDO`) com custódia AES-GCM 256-bit e rotação de chave, teto atômico de 5 contas pessoais, roteador fechado `POST /api/sessions/v1/:operation`, handlers separados de PKCE e recuperação, revisão monotônica anti-concorrência e registry privado `private_auth.session_revocation_registry`.
+> - **T04–T05 (`session-context.ts`, `session-transport.ts`, `admin.html`, `0177`):** isolamento de contexto por geração com descarte de respostas tardias, revalidação BFCache, expurgo seletivo de storage por conta, sanitização S09 em `observability.ts`, build administrativo dedicado sem Service Worker e concessão server-side + step-up de uso único (5 min) para ações destrutivas.
+> - **T06–T09 (`AccountSwitcherPanel`, `0178`, `sw-push.js`, `android-session-transport.ts`, `public/_headers`):** alternador com estados comum/efêmero/bloqueado/neutro, e-mail mascarado e sem identidade de operador na tela inicial; isolamento de push por `installation_id` e `recipient_version` com payloads neutros; bloqueio de backup no `AndroidManifest.xml` e validador estrito de App Links.
+
 > **v3.34.0 — Desempenho da landing pública**
 > - A raiz antecipa o módulo da landing para visitantes web. A barra de leitura e os skeletons usam transformações CSS, e o scroll spy reaproveita a primeira medição.
 > - O build emite um preload por fonte para Inter e Sora. A avaliação do ganho de LCP e a configuração do Web Analytics seguem o [plano Lighthouse](../PLANO_LIGHTHOUSE_FINAL.md).

@@ -27,8 +27,9 @@ function precachePublicShell(patterns: string[]): Plugin {
 
       for (const chunk of Object.values(bundle)) {
         if (chunk.type !== "chunk") continue;
-        const isLanding = chunk.facadeModuleId?.replaceAll("\\", "/")
-          .endsWith("/features/landing/pages/landing-page.tsx");
+        const facade = chunk.facadeModuleId?.replaceAll("\\", "/") ?? "";
+        if (facade.endsWith("/src/app/admin-main.tsx")) continue;
+        const isLanding = facade.endsWith("/features/landing/pages/landing-page.tsx");
         if (chunk.isEntry || isLanding) visit(chunk.fileName);
       }
       patterns.push(...files);
@@ -40,6 +41,9 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const supabaseUrl = (env.VITE_SUPABASE_URL || "").trim();
   const precachePatterns = ["index.html", "offline.html", "pwa/offline.html", "assets/index-*.css"];
+  const adminHtmlPath = path.resolve(process.cwd(), "admin.html");
+  const buildAdminPortal =
+    env.VITE_BUILD_ADMIN_PORTAL !== "false" && fs.existsSync(adminHtmlPath);
 
   return {
   server: supabaseUrl
@@ -77,6 +81,7 @@ export default defineConfig(({ mode }) => {
           "**/pdfjs-*",
           "**/vendor-sentry-*",
           "**/admin-*",
+          "admin.html",
           "**/sw-push.js",
         ],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
@@ -85,6 +90,7 @@ export default defineConfig(({ mode }) => {
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [
           /^\/(?:api|assets|brand|pwa|releases|\.well-known)\//,
+          /^\/admin\.html(?:\?|$)/,
           /^\/(?:robots\.txt|sitemap\.xml|llms(?:-full)?\.txt|ai-catalog\.json)(?:\?|$)/,
         ],
         runtimeCaching: [
@@ -148,6 +154,10 @@ export default defineConfig(({ mode }) => {
     chunkSizeWarningLimit: 1700,
     // Vite 8 (Oxc/Rolldown): drop de console/debugger no minifier — esbuild.drop é ignorado.
     rolldownOptions: {
+      input: {
+        main: path.resolve(process.cwd(), "index.html"),
+        ...(buildAdminPortal ? { admin: adminHtmlPath } : {}),
+      },
       output: {
         minify: {
           compress: { dropConsole: true, dropDebugger: true },

@@ -1,7 +1,7 @@
 # Plano mestre de multiconta e isolamento de sessões
 
 > **Classificação:** Fluxo Completo (Feature / Plano), com bump MINOR na entrega da funcionalidade.
-> **Status:** arquitetura definida e plano pronto para execução a partir de T00. Implementação, provisionamento e homologação pendentes.
+> **Status:** implementação local concluída para T00–T09 (`v3.37.0`); provisionamento remoto (Cloudflare Workers/DO, DNS `admin.axir.com.br` e migrations Supabase) e observação de piloto (T10) pendentes de execução em ambiente.
 > **Escopo:** Web, PWA e Android Pro. React/Vite, Cloudflare Pages + Worker/Durable Objects e Supabase Auth/Postgres com RLS.
 > **Execução:** seguir as dependências e os critérios de saída da seção 5. Usar as políticas da seção 3 e a [especificação técnica](../architecture/ESPECIFICACAO_TECNICA.md) como contrato.
 

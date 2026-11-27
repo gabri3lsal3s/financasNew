@@ -26,6 +26,53 @@ interface ProvisionUserPayload {
   status?: "active" | "pending_approval";
 }
 
+const STEP_UP_REQUIRED_ACTIONS = new Set([
+  "delete_user",
+  "restore_user",
+  "reset_mfa",
+  "revoke_sessions",
+]);
+
+function extractSessionIdFromJwt(jwt: string): string | null {
+  try {
+    const parts = jwt.split(".");
+    if (parts.length !== 3 || !parts[1]) return null;
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
+    const payload = JSON.parse(atob(padded)) as { session_id?: unknown };
+    return typeof payload.session_id === "string" && payload.session_id.trim()
+      ? payload.session_id.trim()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+async function pseudonymizeRef(ref: string): Promise<string> {
+  const bytes = new TextEncoder().encode(ref.trim());
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  const hex = Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  return `ref_${hex.slice(0, 16)}`;
+}
+
+async function logSensitiveAdminAction(
+  action: string,
+  result: "success" | "denied" | "error",
+  targetRef: string,
+): Promise<void> {
+  const pseudoRef = await pseudonymizeRef(targetRef || "unknown");
+  console.info(
+    JSON.stringify({
+      event: "admin_super_action",
+      action,
+      result,
+      target_ref: pseudoRef,
+    }),
+  );
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: buildCorsHeaders(req) });
@@ -99,29 +146,77 @@ Deno.serve(async (req: Request) => {
         403,
       );
     }
-    try {
-      const token = authHeader.replace(/^Bearer\s+/i, "").trim();
-      const payloadBase64 = token.split(".")[1] ?? "";
-      const normalized = payloadBase64.replace(/-/g, "+").replace(/_/g, "/");
-      const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
-      const jwtPayload = JSON.parse(atob(padded));
-      if (jwtPayload?.aal !== "aal2") {
-        return jsonResponse(
-          req,
-          { error: "Verificação de segundo fator (MFA/2FA AAL2) obrigatória para ações de Superadmin." },
-          403,
-        );
-      }
-    } catch {
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+    const { data: aalData, error: aalError } = await userClient.auth.mfa.getAuthenticatorAssuranceLevel(token);
+    if (aalError || aalData?.currentLevel !== "aal2") {
       return jsonResponse(
         req,
-        { error: "Não foi possível validar o nível de segurança MFA (AAL2) do token." },
+        { error: "Verificação de segundo fator (MFA/2FA AAL2) obrigatória para ações de Superadmin." },
+        403,
+      );
+    }
+
+    // 4. Exigir concessão ativa do portal administrativo isolado (private_auth)
+    const callerSessionId = extractSessionIdFromJwt(token);
+    const { data: portalGranted, error: portalGrantError } = await adminClient.rpc(
+      "admin_verify_portal_grant_service",
+      {
+        p_user_id: callerUser.id,
+        p_session_id: callerSessionId,
+        p_scope: "admin_portal",
+      },
+    );
+    if (portalGrantError || !portalGranted) {
+      return jsonResponse(
+        req,
+        { error: "Concessão ativa do portal administrativo é obrigatória para esta operação." },
         403,
       );
     }
 
     const body = await req.json();
     const { action } = body;
+
+    // 5. Exigir prova de step-up de uso único para ações destrutivas/sensíveis
+    if (typeof action === "string" && STEP_UP_REQUIRED_ACTIONS.has(action)) {
+      const targetRef = String(body.target_user_id || body.target_ref || "").trim();
+      const stepUpToken = String(
+        body.step_up_token || req.headers.get("x-admin-step-up-token") || "",
+      ).trim();
+
+      if (!targetRef) {
+        return jsonResponse(req, { error: "ID de usuário é obrigatório." }, 400);
+      }
+
+      if (!stepUpToken) {
+        await logSensitiveAdminAction(action, "denied", targetRef);
+        return jsonResponse(
+          req,
+          { error: "Prova de confirmação adicional (step-up) é obrigatória para esta operação." },
+          403,
+        );
+      }
+
+      const { data: stepUpConsumed, error: stepUpError } = await adminClient.rpc(
+        "admin_consume_step_up_challenge_service",
+        {
+          p_user_id: callerUser.id,
+          p_operation: action,
+          p_target_ref: targetRef,
+          p_step_up_token: stepUpToken,
+          p_session_id: callerSessionId,
+        },
+      );
+
+      if (stepUpError || !stepUpConsumed) {
+        await logSensitiveAdminAction(action, "denied", targetRef);
+        return jsonResponse(
+          req,
+          { error: "Prova de confirmação adicional (step-up) inválida, expirada ou já utilizada." },
+          403,
+        );
+      }
+    }
 
     // -------------------------------------------------------------------------
     // AÇÃO 1: PROVISIONAR NOVO USUÁRIO COM LINK DE ATIVAÇÃO / DEFINIÇÃO DE SENHA
@@ -159,26 +254,13 @@ Deno.serve(async (req: Request) => {
       });
 
       if (inviteError) {
-        // Se o usuário já existe no Auth, tentar gerar link de recovery (redefinição/ativação)
         if (
           inviteError.message?.toLowerCase().includes("already registered") ||
           inviteError.message?.toLowerCase().includes("already exists")
         ) {
-          const { data: recoveryData, error: recoveryError } =
-            await adminClient.auth.admin.generateLink({
-              type: "recovery",
-              email: cleanEmail,
-            });
-
-          if (recoveryError || !recoveryData?.user) {
-            return safeErrorResponse(req, 400, "Usuário já existe e não foi possível gerar link de acesso.");
-          }
-
-          targetUserId = recoveryData.user.id;
-          actionLink = recoveryData.properties?.action_link ?? null;
-        } else {
-          return safeErrorResponse(req, 400, `Erro ao provisionar usuário: ${inviteError.message}`);
+          return jsonResponse(req, { error: "Usuário já cadastrado. Utilize a recuperação por e-mail verificado." }, 409);
         }
+        return safeErrorResponse(req, 400, `Erro ao provisionar usuário: ${inviteError.message}`);
       } else if (inviteData?.user) {
         targetUserId = inviteData.user.id;
         actionLink = inviteData.properties?.action_link ?? null;
@@ -238,11 +320,26 @@ Deno.serve(async (req: Request) => {
         },
       });
 
+      let sentToVerifiedEmail = false;
+      if (actionLink) {
+        const emailDispatch = await sendTransactionalEmail(adminClient, {
+          to: cleanEmail,
+          subject: "Ative seu acesso ao Axir",
+          template: "admin_provision_invite",
+          html: `<p>Olá ${cleanName},</p><p>Sua conta no Axir foi criada. <a href="${actionLink}">Clique aqui para definir sua senha</a>.</p>`,
+          text: `Olá ${cleanName}, sua conta no Axir foi criada. Acesse para definir sua senha: ${actionLink}`,
+          userId: targetUserId,
+          idempotencyKey: `provision_invite_${targetUserId}_${Date.now()}`,
+        });
+        sentToVerifiedEmail = emailDispatch.success;
+      }
+
       return jsonResponse(req, {
         success: true,
         userId: targetUserId,
         email: cleanEmail,
-        actionLink,
+        actionLink: null,
+        sentToVerifiedEmail,
       });
     }
 
@@ -280,9 +377,24 @@ Deno.serve(async (req: Request) => {
         },
       });
 
+      const recoveryEmailRes = await sendTransactionalEmail(adminClient, {
+        to: cleanEmail,
+        subject: "Recuperação de acesso ao Axir",
+        template: "admin_recovery_verified_email",
+        html: `<p>Recebemos uma solicitação de recuperação de acesso para sua conta Axir.</p><p><a href="${recoveryData.properties.action_link}">Clique aqui para redefinir sua senha</a>.</p>`,
+        text: `Acesse o link para redefinir sua senha no Axir: ${recoveryData.properties.action_link}`,
+        userId: resolvedTargetId,
+        idempotencyKey: `admin_recovery_${resolvedTargetId}_${Date.now()}`,
+      });
+
+      if (!recoveryEmailRes.success) {
+        return safeErrorResponse(req, 502, recoveryEmailRes.error || "Falha ao enviar e-mail de recuperação ao endereço verificado.");
+      }
+
       return jsonResponse(req, {
         success: true,
-        actionLink: recoveryData.properties.action_link,
+        actionLink: null,
+        sentToVerifiedEmail: true,
       });
     }
 
@@ -295,25 +407,20 @@ Deno.serve(async (req: Request) => {
         return jsonResponse(req, { error: "ID de usuário é obrigatório." }, 400);
       }
 
-      const { error: signOutError } = await adminClient.auth.admin.signOut(targetUserId, "global");
-      if (signOutError) {
-        return safeErrorResponse(req, 400, `Falha ao encerrar sessões: ${signOutError.message}`);
+      const { data: revokeResult, error: revokeRpcError } = await userClient.rpc(
+        "admin_revoke_user_sessions",
+        { p_target_user_id: targetUserId },
+      );
+      if (revokeRpcError) {
+        await logSensitiveAdminAction("revoke_sessions", "error", String(targetUserId));
+        return safeErrorResponse(req, 400, `Falha ao encerrar sessões: ${revokeRpcError.message}`);
       }
 
-      await adminClient.from("audit_events").insert({
-        user_id: callerUser.id,
-        entity_type: "profiles",
-        entity_id: targetUserId,
-        action: "ADMIN_REVOKE_SESSIONS",
-        payload: {
-          revoked_by: callerUser.id,
-          target_user_id: targetUserId,
-          scope: "global",
-          timestamp: new Date().toISOString(),
-        },
+      await logSensitiveAdminAction("revoke_sessions", "success", String(targetUserId));
+      return jsonResponse(req, {
+        success: true,
+        ...(typeof revokeResult === "object" && revokeResult !== null ? revokeResult : {}),
       });
-
-      return jsonResponse(req, { success: true });
     }
 
     // -------------------------------------------------------------------------
@@ -330,9 +437,59 @@ Deno.serve(async (req: Request) => {
       });
 
       if (rpcError) {
+        await logSensitiveAdminAction("reset_mfa", "error", String(targetUserId));
         return safeErrorResponse(req, 400, `Falha ao remover autenticador 2FA: ${rpcError.message}`);
       }
 
+      await logSensitiveAdminAction("reset_mfa", "success", String(targetUserId));
+      return jsonResponse(req, { success: true });
+    }
+
+    // -------------------------------------------------------------------------
+    // AÇÃO 4B: EXCLUIR USUÁRIO DEFINITIVAMENTE (COM STEP-UP DE USO ÚNICO)
+    // -------------------------------------------------------------------------
+    if (action === "delete_user") {
+      const { target_user_id: targetUserId } = body;
+      if (!targetUserId) {
+        return jsonResponse(req, { error: "ID de usuário é obrigatório." }, 400);
+      }
+
+      const { error: rpcError } = await userClient.rpc("admin_delete_user", {
+        target_user_id: targetUserId,
+      });
+
+      if (rpcError) {
+        await logSensitiveAdminAction("delete_user", "error", String(targetUserId));
+        return safeErrorResponse(req, 400, `Falha ao excluir usuário: ${rpcError.message}`);
+      }
+
+      await logSensitiveAdminAction("delete_user", "success", String(targetUserId));
+      return jsonResponse(req, { success: true });
+    }
+
+    // -------------------------------------------------------------------------
+    // AÇÃO 4C: RESTAURAR ACESSO DE USUÁRIO (COM STEP-UP DE USO ÚNICO)
+    // -------------------------------------------------------------------------
+    if (action === "restore_user") {
+      const { target_user_id: targetUserId } = body;
+      if (!targetUserId) {
+        return jsonResponse(req, { error: "ID de usuário é obrigatório." }, 400);
+      }
+
+      const { error: restoreError } = await adminClient
+        .from("profiles")
+        .update({
+          status: "active",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", targetUserId);
+
+      if (restoreError) {
+        await logSensitiveAdminAction("restore_user", "error", String(targetUserId));
+        return safeErrorResponse(req, 400, `Falha ao restaurar usuário: ${restoreError.message}`);
+      }
+
+      await logSensitiveAdminAction("restore_user", "success", String(targetUserId));
       return jsonResponse(req, { success: true });
     }
 
@@ -669,7 +826,8 @@ Deno.serve(async (req: Request) => {
         })
         .eq("id", subRow.id);
 
-      const cronSecret = Deno.env.get("CRON_SECRET") || supabaseServiceKey;
+      const cronSecret = Deno.env.get("CRON_SECRET");
+      if (cronSecret) {
       try {
         await fetch(`${supabaseUrl}/functions/v1/push-dispatcher`, {
           method: "POST",
@@ -694,6 +852,7 @@ Deno.serve(async (req: Request) => {
         });
       } catch {
         // Falha de push não bloqueia o envio oficial por e-mail
+      }
       }
 
       await adminClient.from("audit_events").insert({

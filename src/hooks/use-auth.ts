@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { getSupabase } from "@/data/client";
+import { getSupabase, resetSupabaseClient } from "@/data/client";
+import { subscribeSharedDeviceSessionChange } from "@/services/session-policy";
 import { ensureOwnProfile } from "@/data/repositories/profiles";
 import { ensureDefaultCategories } from "@/data/repositories/categories";
 import { getErrorMessage } from "@/services/errors/index";
@@ -373,7 +374,30 @@ export function useAuth(): AuthState {
     authSubscribers.add(setSnapshot);
     initGlobalAuth();
 
+    const unsubscribeSharedMode = subscribeSharedDeviceSessionChange(() => {
+      if (globalAuthSubscription) {
+        globalAuthSubscription.unsubscribe();
+        globalAuthSubscription = null;
+      }
+      isGlobalAuthInitialized = false;
+      authGeneration += 1;
+      if (typeof resetSupabaseClient === "function") {
+        resetSupabaseClient();
+      }
+      updateGlobalAuthState({
+        session: null,
+        user: null,
+        loading: true,
+        mfaRequired: false,
+        mfaVerified: false,
+        aalLevel: null,
+        mfaError: null,
+      });
+      initGlobalAuth();
+    });
+
     return () => {
+      unsubscribeSharedMode();
       authSubscribers.delete(setSnapshot);
       if (authSubscribers.size === 0 && globalAuthSubscription) {
         globalAuthSubscription.unsubscribe();

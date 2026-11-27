@@ -120,6 +120,7 @@
 │
 ├── scripts/                       # Scripts operacionais e de automação
 │   ├── build-apk.sh               #   Pipeline automatizado de compilação de APKs em 1 comando
+│   ├── cloudflare/sessions/       #   Worker, Durable Object de custódia de sessões, wrangler.jsonc e suíte Miniflare (T02/T03)
 │   ├── deploy-quotes.mjs          #   Deploy e cron da edge function de cotações
 │   ├── generate-icons.mjs         #   Gerador de ícones e favicons
 │   ├── generate-play-protect-appeal.ts # Extrator de fingerprints SHA-256 e gerador de dossiê para apelação do Play Protect (npm run playprotect:info)
@@ -616,6 +617,12 @@ src/features/transactions/
 | Cor, fonte, raio, sombra | `src/styles/tokens.css` — **nunca** em componente |
 | Manifest, ícone, splash, offline | `public/pwa/` |
 | Script operacional fora do bundle (deploy/cron de edge function) | `scripts/` (ex.: `deploy-quotes.mjs`, `notifications-cron.mjs`) |
+| Worker, Durable Object e configuração Wrangler de custódia de sessões | `scripts/cloudflare/sessions/` (T02/T03) |
+| Contratos e políticas puras de sessão multiconta | `src/types/session-custody.ts`, `src/domain/auth/session-policy.ts` |
+| Contexto de sessão por geração e transporte BFF | `src/services/session-context.ts`, `src/data/session-transport.ts` |
+| Portal administrativo isolado (entry-point sem SW) | `admin.html`, `src/app/admin-main.tsx` |
+| Alternador de contas e hook de estado | `src/state/use-account-switcher.ts`, `src/components/modules/account-switcher/` |
+| Validador de transporte nativo Android Pro | `src/services/native/android-session-transport.ts` |
 | SQL de operação manual (`pg_cron` de cotações e notificações) | `supabase/quotes-cron.sql` e `supabase/notifications-cron.sql` |
 | Nova documentação | `docs/<UPPER_SNAKE_CASE>.md` |
 | Roadmap canônico e histórico de fases | `docs/ROADMAP.md` (Fases consolidadas de 0 a 91+) |

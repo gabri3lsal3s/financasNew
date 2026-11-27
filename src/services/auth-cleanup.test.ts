@@ -1,9 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { resetAppState } from "./auth-cleanup";
+import { purgeAccountState, purgeAccountStorage, resetAppState } from "./auth-cleanup";
 import { QueryClient } from "@tanstack/react-query";
 import { setPrivacyMasked, getPrivacyMasked } from "@/hooks/use-privacy-mask";
 import { updateVisualCustomization, getVisualCustomization } from "@/hooks/use-visual-customization";
-import { getActiveUserId, setActiveUserId, setUserStorageItem } from "@/services/user-storage";
+import {
+  getActiveUserId,
+  getUserStorageItem,
+  setActiveUserId,
+  setUserStorageItem,
+} from "@/services/user-storage";
 import { getCachedIconTier, setCachedIconTier } from "@/services/native/app-icon";
 import {
   clearRecentReceipts,
@@ -11,6 +16,17 @@ import {
   registerReceiptDeduplication,
 } from "@/services/native/suggestions-store";
 import { getSupabase } from "@/data/client";
+import {
+  captureContext,
+  isContextCurrent,
+  resetSessionContextForTests,
+  setSessionContext,
+} from "@/services/session-context";
+import {
+  sanitizeTelemetryBreadcrumb,
+  sanitizeTelemetryEvent,
+  scrubSensitiveData,
+} from "@/services/observability";
 
 const mockRemoveAllChannels = vi.fn();
 
@@ -25,6 +41,7 @@ describe("auth-cleanup", () => {
     window.localStorage.clear();
     window.sessionStorage.clear();
     clearRecentReceipts();
+    resetSessionContextForTests();
     mockRemoveAllChannels.mockClear();
     vi.mocked(getSupabase).mockReturnValue({
       removeAllChannels: mockRemoveAllChannels,
@@ -166,5 +183,149 @@ describe("auth-cleanup", () => {
 
     expect(getActiveUserId()).toBeNull();
     clearSpy.mockRestore();
+  });
+
+  it("expurga seletivamente o storage da conta A preservando integralmente os dados e preferências da conta B", () => {
+    setActiveUserId("account-b");
+    setUserStorageItem("theme", "dark", "account-a");
+    setUserStorageItem("accent_theme", "gold", "account-a");
+    setUserStorageItem("dashboard_widgets", "[1,2]", "account-a");
+
+    setUserStorageItem("theme", "light", "account-b");
+    setUserStorageItem("accent_theme", "mono", "account-b");
+    setUserStorageItem("dashboard_widgets", "[3,4]", "account-b");
+    window.sessionStorage.setItem("active_b_draft", "keep-me");
+
+    const removed = purgeAccountState("account-a");
+
+    expect(removed).toBe(3);
+    expect(getUserStorageItem("theme", "account-a")).toBeNull();
+    expect(getUserStorageItem("accent_theme", "account-a")).toBeNull();
+    expect(getUserStorageItem("dashboard_widgets", "account-a")).toBeNull();
+
+    // Conta B continua ativa e com todas as preferências preservadas
+    expect(getActiveUserId()).toBe("account-b");
+    expect(getUserStorageItem("theme", "account-b")).toBe("light");
+    expect(getUserStorageItem("accent_theme", "account-b")).toBe("mono");
+    expect(getUserStorageItem("dashboard_widgets", "account-b")).toBe("[3,4]");
+    expect(window.sessionStorage.getItem("active_b_draft")).toBe("keep-me");
+  });
+
+  it("expurga conta A ativa durante transição para conta B e invalida contexto de sessão em voo", () => {
+    setActiveUserId("account-a");
+    setUserStorageItem("accent_theme", "gold", "account-a");
+    setUserStorageItem("accent_theme", "mono", "account-b");
+
+    setSessionContext({
+      status: "authenticated",
+      contextId: "ctx-a",
+      csrfToken: "csrf-a",
+      generation: 1,
+      revision: 1,
+      environment: "production",
+      mode: "personal",
+      accountRef: "account-a",
+      displayName: "Conta A",
+      expiresAt: Date.now() + 60_000,
+    });
+    const capturedA = captureContext();
+
+    const queryClient = new QueryClient();
+    const clearSpy = vi.spyOn(queryClient, "clear");
+
+    resetAppState(queryClient, "account-b", { purgeAccountKey: "account-a" });
+
+    expect(clearSpy).toHaveBeenCalledTimes(1);
+    expect(isContextCurrent(capturedA)).toBe(false);
+    expect(getUserStorageItem("accent_theme", "account-a")).toBeNull();
+    expect(getActiveUserId()).toBe("account-b");
+    expect(getUserStorageItem("accent_theme", "account-b")).toBe("mono");
+  });
+
+  it("ignora chaves reservadas (guest/active/vazio) em purgeAccountStorage", () => {
+    window.localStorage.setItem("financas_guest_theme", "dark");
+    window.localStorage.setItem("financas_active_theme", "dark");
+
+    expect(purgeAccountStorage("")).toBe(0);
+    expect(purgeAccountStorage("guest")).toBe(0);
+    expect(purgeAccountStorage("active")).toBe(0);
+    expect(window.localStorage.getItem("financas_guest_theme")).toBe("dark");
+    expect(window.localStorage.getItem("financas_active_theme")).toBe("dark");
+  });
+
+  it("endurecimento S09: remove chaves de token/sessão/csrf/contextId/email de eventos e breadcrumbs", () => {
+    const fakeJwt = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyLTEyMyJ9.signature1234567890";
+
+    const sanitizedBreadcrumb = sanitizeTelemetryBreadcrumb({
+      category: "fetch",
+      message: `Sessão para joao@empresa.com com jwt ${fakeJwt}`,
+      data: {
+        url: "/api/sessions/v1/switch?csrfToken=csrf123&contextId=ctx999",
+        csrfToken: "secret-csrf",
+        "x-axir-csrf": "header-csrf",
+        contextId: "ctx-999",
+        "x-axir-context": "header-ctx",
+        session: { id: "sess-1" },
+        sessionId: "sess-1",
+        accessToken: "acc-tok",
+        refresh_token: "ref-tok",
+        userEmail: "joao@empresa.com",
+        statusCode: 200,
+      },
+    });
+
+    expect(sanitizedBreadcrumb.message).toBe(
+      "Sessão para [REDACTED_EMAIL] com jwt [REDACTED_TOKEN]",
+    );
+    expect(sanitizedBreadcrumb.data).toEqual({
+      url: "/api/sessions/v1/switch?csrfToken=[REDACTED]&contextId=[REDACTED]",
+      statusCode: 200,
+    });
+
+    const sanitizedEvent = sanitizeTelemetryEvent({
+      message: "Erro de sessão para maria@exemplo.com",
+      user: {
+        id: "opaque-user-id",
+        email: "maria@exemplo.com",
+        sessionId: "sess-2",
+      },
+      extra: {
+        contextId: "ctx-abc",
+        csrf: "csrf-abc",
+        session: "raw-session",
+        access_token: "tok-123",
+        safeMetric: "ok",
+      },
+      breadcrumbs: [sanitizedBreadcrumb],
+      request: {
+        url: "https://app.axir.com.br/api/data/v1/overview?sessionId=s1&email=maria@exemplo.com",
+        headers: {
+          "x-axir-context": "ctx-abc",
+          "x-axir-csrf": "csrf-abc",
+          "content-type": "application/json",
+        },
+      },
+    });
+
+    expect(sanitizedEvent.message).toBe("Erro de sessão para [REDACTED_EMAIL]");
+    expect(sanitizedEvent.user).toEqual({ id: "opaque-user-id" });
+    expect(sanitizedEvent.extra).toEqual({ safeMetric: "ok" });
+    expect(sanitizedEvent.request?.url).toBe(
+      "https://app.axir.com.br/api/data/v1/overview?sessionId=[REDACTED]&email=[REDACTED]",
+    );
+    expect(sanitizedEvent.request?.headers).toEqual({
+      "content-type": "application/json",
+    });
+
+    // Verifica também scrubSensitiveData direto
+    expect(
+      scrubSensitiveData({
+        csrf_token: "x",
+        context_id: "y",
+        session_id: "z",
+        maskedEmail: "jo***@empresa.com",
+        keep: "visible",
+      }),
+    ).toEqual({ keep: "visible" });
   });
 });

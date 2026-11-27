@@ -11,6 +11,8 @@ type PushSeverity = "P0" | "P1" | "P2" | "P3";
 interface PushDispatcherPayload {
   eventType?: string;
   targetUserIds?: string[];
+  targetInstallationId?: string;
+  expectedRecipientVersion?: number;
   title?: string;
   body?: string;
   url?: string;
@@ -28,6 +30,9 @@ interface PushSubscriptionRow {
   p256dh: string | null;
   auth: string | null;
   fcm_token: string | null;
+  installation_id: string | null;
+  recipient_version: number;
+  multi_account_opt_in: boolean;
 }
 
 interface QuietHoursSetting {
@@ -59,10 +64,42 @@ interface FcmServiceAccount {
   private_key: string;
 }
 
+const NEUTRAL_PUSH_TITLE = "Axir";
+const NEUTRAL_PUSH_BODY = "Você tem uma nova atualização na sua Central de Notificações.";
+
+const SENSITIVE_PUSH_PATTERNS = [
+  /R\$\s*[\d.,]+/i,
+  /\$\s*[\d.,]+/,
+  /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i,
+  /\b\d{3}\.\d{3}\.\d{3}-\d{2}\b/,
+  /\b\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\b/,
+];
+
+function sanitizeNeutralPushText(raw: string | undefined, fallback: string): string {
+  const trimmed = (raw || "").trim();
+  if (!trimmed) return fallback;
+  for (const pattern of SENSITIVE_PUSH_PATTERNS) {
+    if (pattern.test(trimmed)) {
+      return fallback;
+    }
+  }
+  return trimmed;
+}
+
 function sanitizeRelativeAppUrl(raw: string | undefined): string {
   const candidate = (raw || "").trim();
   if (candidate.startsWith("/") && !candidate.startsWith("//")) {
-    return candidate;
+    try {
+      const parsed = new URL(candidate, "https://axir.local");
+      parsed.searchParams.delete("account");
+      parsed.searchParams.delete("switchAccount");
+      parsed.searchParams.delete("user_id");
+      parsed.searchParams.delete("userId");
+      parsed.searchParams.delete("token");
+      return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    } catch {
+      return "/lembretes";
+    }
   }
   return "/lembretes";
 }
@@ -245,8 +282,20 @@ Deno.serve(async (req: Request) => {
     const payload: PushDispatcherPayload = await req.json().catch(() => ({}));
 
     const eventType = (payload.eventType || "general").trim();
-    const title = (payload.title || "").trim();
-    const body = (payload.body || "").trim();
+    const rawTitle = (payload.title || "").trim();
+    const rawBody = (payload.body || "").trim();
+    if (!rawTitle || !rawBody) {
+      return jsonResponse(req, { error: "Título e corpo da notificação são obrigatórios" }, 400);
+    }
+    const title = sanitizeNeutralPushText(rawTitle, NEUTRAL_PUSH_TITLE);
+    const body = sanitizeNeutralPushText(rawBody, NEUTRAL_PUSH_BODY);
+    const targetInstallationId = payload.targetInstallationId?.trim() || null;
+    const expectedRecipientVersion =
+      typeof payload.expectedRecipientVersion === "number" &&
+      Number.isInteger(payload.expectedRecipientVersion) &&
+      payload.expectedRecipientVersion >= 1
+        ? payload.expectedRecipientVersion
+        : null;
     const url = sanitizeRelativeAppUrl(payload.url);
     const tag = payload.tag?.trim() || undefined;
     const severity: PushSeverity = payload.severity ?? "P2";
@@ -532,7 +581,7 @@ Deno.serve(async (req: Request) => {
 
       const { data: subs, error: subsError } = await supabaseAdmin
         .from("user_push_subscriptions")
-        .select("id, user_id, platform, endpoint, p256dh, auth, fcm_token")
+        .select("id, user_id, platform, endpoint, p256dh, auth, fcm_token, installation_id, recipient_version, multi_account_opt_in")
         .eq("user_id", uid)
         .eq("is_active", true);
 
@@ -543,7 +592,14 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
-      const activeSubs = (subs ?? []) as PushSubscriptionRow[];
+      const rawSubs = (subs ?? []) as PushSubscriptionRow[];
+      const activeSubs = rawSubs.filter((sub) => {
+        if (sub.user_id !== uid) return false;
+        if (!Number.isInteger(sub.recipient_version) || sub.recipient_version < 1) return false;
+        if (targetInstallationId && sub.installation_id !== targetInstallationId) return false;
+        if (expectedRecipientVersion !== null && sub.recipient_version !== expectedRecipientVersion) return false;
+        return true;
+      });
       if (activeSubs.length === 0) {
         await finalizeDeliveryLog(uid, userIdempKey, "none", "skipped_no_subscription");
         skipped += 1;
@@ -575,7 +631,17 @@ Deno.serve(async (req: Request) => {
             await withTimeout(
               webPushClient.sendNotification(
                 { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-                JSON.stringify({ title, body, url, tag, eventType, severity }),
+                JSON.stringify({
+                  title,
+                  body,
+                  url,
+                  tag,
+                  eventType,
+                  severity,
+                  installationId: sub.installation_id ?? undefined,
+                  recipientVersion: sub.recipient_version,
+                  recipientUserId: uid,
+                }),
               ),
               OUTBOUND_TIMEOUT_MS,
               "web_push_timeout",
@@ -638,6 +704,9 @@ Deno.serve(async (req: Request) => {
                       eventType,
                       tag: tag ?? "",
                       severity,
+                      installationId: sub.installation_id ?? "",
+                      recipientVersion: String(sub.recipient_version),
+                      recipientUserId: uid,
                     },
                   },
                 }),

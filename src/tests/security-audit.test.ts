@@ -55,7 +55,7 @@ describe("F6.2 — RLS: cobertura total (D4 — multiusuário isolado)", () => {
       .map((m) => m[1]?.toLowerCase())
       .filter((name): name is string => Boolean(name));
     const created = Array.from(new Set(createdMatches));
-    expect(created.length).toBe(81);
+    expect(created.length).toBe(82);
     for (const table of created) {
       expect(ALL_SQL).toMatch(
         new RegExp(`alter\\s+table\\s+(?:only\\s+)?public\\.${table}\\s+enable\\s+row\\s+level\\s+security`, "i"),
@@ -219,7 +219,7 @@ describe("F6.2 — RPCs transacionais endurecidos (D1)", () => {
     for (const fn of activeFunctions.values()) {
       if (fn.isSecDef && /\b(insert\s+into|update\s+|delete\s+from)\b/i.test(fn.body)) {
         if (/returns\s+trigger/i.test(fn.body)) continue;
-        if (/is_admin\(\)|is_superadmin\(\)/i.test(fn.body)) continue;
+        if (/is_admin\(\)|is_superadmin\(\)|assert_active_superadmin_aal2\(/i.test(fn.body)) continue;
 
         // Excecao fundamentada: RPC publica para participantes externos sinalizarem pagamentos no Racha Pix (/r/:token).
         // Por ser publica (executavel por anon), nao valida auth.uid(), mas exige clausulas defensivas estritas:
@@ -260,7 +260,10 @@ describe("F6.2 — RPCs transacionais endurecidos (D1)", () => {
 
         // Exceção fundamentada: RPC de ativação atômica de assinatura via webhook/checkout.
         // Exclusiva para service_role (sem auth.uid() em webhooks) e filtra por user_id = p_user_id.
-        if (fn.cleanName === "activate_subscription_from_payment") {
+        if (
+          fn.cleanName === "activate_subscription_from_payment" ||
+          fn.cleanName === "apply_cumulative_renewal_from_payment"
+        ) {
           expect(fn.body).toMatch(/auth\.role\(\)\s*<>\s*'service_role'/i);
           expect(fn.body).toMatch(/user_id\s*=\s*p_user_id/i);
           continue;
@@ -882,7 +885,7 @@ describe("Tarefa 3.4 — Expansão da Suíte de Auditoria Integral de Banco & Go
       .map((m) => m[1]?.toLowerCase())
       .filter((name): name is string => Boolean(name));
     const created = Array.from(new Set(createdMatches));
-    expect(created.length).toBe(81);
+    expect(created.length).toBe(82);
     for (const table of created) {
       expect(ALL_SQL).toMatch(
         new RegExp(`alter\\s+table\\s+(?:only\\s+)?public\\.${table}\\s+enable\\s+row\\s+level\\s+security`, "i"),
@@ -2042,5 +2045,28 @@ describe("S6 — Corte Definitivo, Backfill de Dispensas e Proteção DML (Migra
     const cronSql = readFileSync(resolve(root, "supabase/quotes-cron.sql"), "utf8");
     expect(cronSql).toMatch(/'dividends-sync-global'[\s\S]*'0 10 \* \* \*'/);
     expect(cronSql).toMatch(/'dividends-process-user'[\s\S]*'30 11 \* \* \*'/);
+  });
+});
+
+describe("T01 — Contenção de Sessões, AAL2 e S08", () => {
+  const root = resolve(__dirname, "../..");
+
+  it("S03/S08: admin-super-action usa RPC admin_revoke_user_sessions e não retorna actionLink portador", () => {
+    const fn = readFileSync(resolve(root, "supabase/functions/admin-super-action/index.ts"), "utf8");
+    expect(fn).toContain("admin_revoke_user_sessions");
+    expect(fn).not.toContain("admin.signOut(targetUserId");
+    expect(fn).not.toMatch(/actionLink:\s*recoveryData.properties.action_link/);
+    expect(fn).not.toContain("|| supabaseServiceKey");
+  });
+
+  it("S02/S03/S04: migration T01 exige AAL2 em is_admin(), cria revoked_auth_sessions e bloqueia reativação", () => {
+    const sql = readFileSync(
+      resolve(root, "supabase/migrations/20260101000175_t01_session_containment_hardening.sql"),
+      "utf8",
+    );
+    expect(sql).toMatch(/create table if not exists public.revoked_auth_sessions/i);
+    expect(sql).toMatch(/create or replace function public.is_admin()[\s\S]*v_aal <> 'aal2'/i);
+    expect(sql).toMatch(/create or replace function public.register_device_session[\s\S]*Sessão revogada não pode ser reativada/i);
+    expect(sql).toMatch(/create or replace function public.admin_revoke_user_sessions[\s\S]*assert_active_superadmin_aal2/i);
   });
 });

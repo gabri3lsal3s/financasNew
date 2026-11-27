@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { LogOut } from "lucide-react";
+import { ArrowLeftRight, LogOut } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { BrandLogo } from "@/components/layout/brand-logo";
+import { AccountSwitcherPanel } from "@/components/modules/account-switcher";
 import { DemoTrackSelectModal } from "@/components/modules/demo-track-select-modal";
 import { HelpModal } from "@/components/modules/help-modal";
 import { useAuth } from "@/hooks/use-auth";
 import { useModalTransition } from "@/hooks/use-modal-transition";
 import { useSignOut } from "@/hooks/use-sign-out";
+import { useAccountSwitcher } from "@/state/use-account-switcher";
 import { useUserSubscription } from "@/state/queries/use-user-subscription";
 import { AXIR_APP_NAME, AXIR_APP_VERSION } from "@/services/native/app-links";
 import { triggerSensory } from "@/services/sensory";
@@ -43,7 +45,8 @@ export interface LogoProfileButtonProps {
 
 /**
  * Botão da logo (mobile no header e desktop na sidebar) que abre o modal de perfil.
- * Combina identidade visual da marca com acesso rápido a configurações, perfil, plano e logout.
+ * Combina identidade visual da marca com acesso rápido a configurações, perfil, plano,
+ * alternador de contas e logout.
  */
 export function LogoProfileButton({
   showWordmark = false,
@@ -51,6 +54,7 @@ export function LogoProfileButton({
   className,
 }: LogoProfileButtonProps) {
   const [open, setOpen] = useState(false);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
   const [demoSelectOpen, setDemoSelectOpen] = useState(false);
   const [helpModalOpen, setHelpModalOpen] = useState(false);
   const { scheduleAfterClose, cancelTransition } = useModalTransition();
@@ -58,10 +62,19 @@ export function LogoProfileButton({
   const navigate = useNavigate();
   const { signOut } = useSignOut();
   const subscription = useUserSubscription();
+  const accountSwitcher = useAccountSwitcher();
+  const { listAccounts } = accountSwitcher;
 
   useEffect(() => {
     if (open) cancelTransition();
   }, [open, cancelTransition]);
+
+  useEffect(() => {
+    if (!switcherOpen) return;
+    const controller = new AbortController();
+    void listAccounts({ signal: controller.signal });
+    return () => controller.abort();
+  }, [switcherOpen, listAccounts]);
 
   const name: string | undefined = user?.user_metadata?.name as string | undefined;
   const email = user?.email;
@@ -84,6 +97,12 @@ export function LogoProfileButton({
   const navigateFromButton = (path: string) => {
     cancelTransition();
     setOpen(false);
+    navigate(path);
+  };
+
+  const navigateFromSwitcher = (path: string) => {
+    cancelTransition();
+    setSwitcherOpen(false);
     navigate(path);
   };
 
@@ -114,16 +133,33 @@ export function LogoProfileButton({
         size="lg"
         footer={
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 w-full">
-            <Button
-              type="button"
-              variant="ghost"
-              sensoryIntent="destructive"
-              className="w-full sm:w-auto justify-start gap-2.5 text-critical-strong hover:text-critical-strong hover:bg-critical/10 text-xs sm:text-sm"
-              onClick={handleLogout}
-            >
-              <LogOut className="size-4 shrink-0" aria-hidden="true" />
-              <span>Sair da Conta</span>
-            </Button>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full sm:w-auto justify-start gap-2 text-xs sm:text-sm"
+                onClick={() => {
+                  scheduleAfterClose(
+                    () => setOpen(false),
+                    () => setSwitcherOpen(true),
+                  );
+                }}
+              >
+                <ArrowLeftRight className="size-4 shrink-0" aria-hidden="true" />
+                <span>Alternar conta</span>
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                sensoryIntent="destructive"
+                className="w-full sm:w-auto justify-start gap-2.5 text-critical-strong hover:text-critical-strong hover:bg-critical/10 text-xs sm:text-sm"
+                onClick={handleLogout}
+              >
+                <LogOut className="size-4 shrink-0" aria-hidden="true" />
+                <span>Sair da Conta</span>
+              </Button>
+            </div>
             <p className="text-[11px] text-muted-foreground/70 text-center sm:text-right select-none">
               {AXIR_APP_NAME} - v{AXIR_APP_VERSION}
             </p>
@@ -158,6 +194,70 @@ export function LogoProfileButton({
             }}
           />
         </div>
+      </Modal>
+
+      <Modal
+        open={switcherOpen}
+        onOpenChange={setSwitcherOpen}
+        title="Contas e Sessões"
+        description="Alterne entre contas com isolamento por aba ou encerre sessões deste dispositivo."
+        size="lg"
+      >
+        <AccountSwitcherPanel
+          context={accountSwitcher.context}
+          accounts={accountSwitcher.accounts}
+          loading={accountSwitcher.loading}
+          busyAction={accountSwitcher.busyAction}
+          error={accountSwitcher.error}
+          onClearError={accountSwitcher.clearError}
+          onRefresh={() => void accountSwitcher.listAccounts()}
+          onSwitchAccount={async (account) => {
+            const res = await accountSwitcher.switchAccount({
+              accountRef: account.accountRef,
+              expectedGeneration: account.generation,
+            });
+            if (res.ok) {
+              setSwitcherOpen(false);
+              navigate("/");
+            }
+          }}
+          onOpenTab={async (account) => {
+            const res = await accountSwitcher.openTab({
+              accountRef: account.accountRef,
+              expectedGeneration: account.generation,
+            });
+            if (res.ok && typeof window !== "undefined") {
+              const params = new URLSearchParams({ tab_intent: res.intent.intentToken });
+              window.open(`/login?${params.toString()}`, "_blank", "noopener,noreferrer");
+            }
+          }}
+          onAddAccount={() => navigateFromSwitcher("/login?mode=add")}
+          onReauthAccount={() => navigateFromSwitcher("/login?mode=reauth")}
+          onUnlock={() => navigateFromSwitcher("/login?mode=unlock")}
+          onOpenAdminPortal={() => {
+            setSwitcherOpen(false);
+            if (typeof window !== "undefined") {
+              window.location.assign("/admin.html");
+            }
+          }}
+          onLogout={async ({ remember }) => {
+            const res = await accountSwitcher.logout({ remember });
+            if (res.ok) {
+              setSwitcherOpen(false);
+              await signOut();
+            }
+          }}
+          onLogoutDevice={async () => {
+            const res = await accountSwitcher.logoutDevice();
+            if (res.ok) {
+              setSwitcherOpen(false);
+              await signOut();
+            }
+          }}
+          onForgetAccount={async (account) => {
+            await accountSwitcher.forgetAccount({ accountRef: account.accountRef });
+          }}
+        />
       </Modal>
 
       <HelpModal

@@ -26,16 +26,14 @@ export function UserSuperadminSupportActions({ user, revealContact }: UserSupera
 
   const handleGenerateRecoveryLink = async () => {
     if (!user.email) {
-      pushToast({ title: "E-mail indisponível", description: "Este usuário não possui e-mail cadastrado para gerar link de recuperação.", variant: "destructive" });
+      pushToast({ title: "E-mail indisponível", description: "Este usuário não possui e-mail cadastrado para enviar recuperação.", variant: "destructive" });
       return;
     }
     try {
-      const recoveryLink = await generateRecoveryMutation.mutateAsync({ userId: user.id, email: user.email });
-      if (recoveryLink) {
-        setGeneratedRecoveryLink(recoveryLink);
-        triggerSensory("success");
-        pushToast({ title: "Link gerado com sucesso", description: "Link temporário de recuperação pronto para despacho." });
-      }
+      await generateRecoveryMutation.mutateAsync({ userId: user.id, email: user.email });
+      setGeneratedRecoveryLink(null);
+      triggerSensory("success");
+      pushToast({ title: "Recuperação enviada", description: "E-mail de recuperação despachado para o endereço verificado do usuário." });
     } catch {
       triggerSensory("destructive");
     }

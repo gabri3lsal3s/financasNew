@@ -56,27 +56,42 @@ export function setIdleLogoutPolicy(
  * É limpa automaticamente no logout via `resetAppState()` (`sessionStorage.clear()`).
  */
 export function setSharedDeviceSession(enabled: boolean): void {
-  if (typeof window === "undefined" || !window.sessionStorage) return;
-  try {
-    if (enabled) {
-      window.sessionStorage.setItem(SHARED_DEVICE_SESSION_KEY, "1");
-    } else {
-      window.sessionStorage.removeItem(SHARED_DEVICE_SESSION_KEY);
+  if (typeof window !== "undefined" && window.sessionStorage) {
+    try {
+      if (enabled) {
+        window.sessionStorage.setItem(SHARED_DEVICE_SESSION_KEY, "1");
+      } else {
+        window.sessionStorage.removeItem(SHARED_DEVICE_SESSION_KEY);
+      }
+    } catch {
+      // no-op em ambiente restrito
     }
-  } catch {
-    // no-op em ambiente restrito
   }
+  sharedModeListeners.forEach((listener) => listener(enabled));
 }
 
 /**
  * Indica se a sessão atual foi iniciada no modo "Computador compartilhado".
  */
+const sharedModeListeners = new Set<(enabled: boolean) => void>();
+
+export function subscribeSharedDeviceSessionChange(
+  listener: (enabled: boolean) => void,
+): () => void {
+  sharedModeListeners.add(listener);
+  return () => {
+    sharedModeListeners.delete(listener);
+  };
+}
+
 export function isSharedDeviceSession(): boolean {
-  if (typeof window === "undefined" || !window.sessionStorage) return false;
+  if (typeof window === "undefined") return false;
   try {
+    if (!window.sessionStorage) return true;
     return window.sessionStorage.getItem(SHARED_DEVICE_SESSION_KEY) === "1";
   } catch {
-    return false;
+    // Falha de storage nunca promove para modo pessoal (fail-closed para efêmero)
+    return true;
   }
 }
 

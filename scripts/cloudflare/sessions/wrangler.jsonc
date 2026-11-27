@@ -1,0 +1,92 @@
+{
+  "$schema": "../../../node_modules/wrangler/config-schema.json",
+  "name": "axir-sessions-edge",
+  "main": "worker.ts",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": false,
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "SESSION_COORDINATOR",
+        "class_name": "SessionCoordinatorDO"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["SessionCoordinatorDO"]
+    }
+  ],
+  "env": {
+    "preview": {
+      "name": "axir-sessions-edge-preview",
+      "workers_dev": false,
+      "routes": [
+        { "pattern": "preview.axir.com.br/api/sessions/v1/*", "zone_name": "axir.com.br" },
+        { "pattern": "preview.axir.com.br/api/data/v1/*", "zone_name": "axir.com.br" }
+      ],
+      "durable_objects": {
+        "bindings": [
+          {
+            "name": "SESSION_COORDINATOR",
+            "class_name": "SessionCoordinatorDO"
+          }
+        ]
+      },
+      "vars": {
+        "ENVIRONMENT": "preview",
+        "SESSION_COOKIE_NAME": "__Host-axir_session",
+        "ALLOWED_HOSTS": "preview.axir.com.br,localhost,127.0.0.1",
+        "ALLOWED_ORIGINS": "https://preview.axir.com.br,http://localhost:5173,http://127.0.0.1:5173",
+        "SUPABASE_URL": "https://preview-placeholder.supabase.co"
+      }
+    },
+    "production": {
+      "name": "axir-sessions-edge-prod",
+      "workers_dev": false,
+      "routes": [
+        { "pattern": "axir.com.br/api/sessions/v1/*", "zone_name": "axir.com.br" },
+        { "pattern": "axir.com.br/api/data/v1/*", "zone_name": "axir.com.br" },
+        { "pattern": "www.axir.com.br/api/sessions/v1/*", "zone_name": "axir.com.br" },
+        { "pattern": "www.axir.com.br/api/data/v1/*", "zone_name": "axir.com.br" }
+      ],
+      "durable_objects": {
+        "bindings": [
+          {
+            "name": "SESSION_COORDINATOR",
+            "class_name": "SessionCoordinatorDO"
+          }
+        ]
+      },
+      "vars": {
+        "ENVIRONMENT": "production",
+        "SESSION_COOKIE_NAME": "__Host-axir_session",
+        "ALLOWED_HOSTS": "axir.com.br,www.axir.com.br",
+        "ALLOWED_ORIGINS": "https://axir.com.br,https://www.axir.com.br"
+      }
+    },
+    "admin": {
+      "name": "axir-sessions-edge-admin",
+      "workers_dev": false,
+      "routes": [
+        { "pattern": "admin.axir.com.br/api/sessions/v1/*", "zone_name": "axir.com.br" },
+        { "pattern": "admin.axir.com.br/api/data/v1/*", "zone_name": "axir.com.br" }
+      ],
+      "durable_objects": {
+        "bindings": [
+          {
+            "name": "SESSION_COORDINATOR",
+            "class_name": "SessionCoordinatorDO"
+          }
+        ]
+      },
+      "vars": {
+        "ENVIRONMENT": "admin",
+        "SESSION_COOKIE_NAME": "__Host-axir_admin_session",
+        "ALLOWED_HOSTS": "admin.axir.com.br",
+        "ALLOWED_ORIGINS": "https://admin.axir.com.br"
+      }
+    }
+  }
+}

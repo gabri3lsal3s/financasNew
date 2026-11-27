@@ -164,4 +164,14 @@ describe("useSignOut", () => {
     expect(resetAppState).toHaveBeenCalledTimes(1);
     vi.useRealTimers();
   });
+  it("propaga erro em scope others quando revokeOtherDevices falha no servidor", async () => {
+    vi.mocked(revokeOtherDevices).mockRejectedValueOnce(new Error("Falha server-side"));
+    const { result } = renderHook(() => useSignOut());
+
+    await expect(
+      act(async () => {
+        await result.current.signOut({ scope: "others" });
+      }),
+    ).rejects.toThrow("Falha server-side");
+  });
 });

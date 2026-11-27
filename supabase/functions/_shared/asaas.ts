@@ -575,12 +575,14 @@ export async function getAsaasPayment(paymentId: string): Promise<{
 export async function getAsaasSubscription(subscriptionId: string): Promise<{
   id: string;
   status: string;
+  deleted?: boolean;
   nextDueDate?: string;
   value?: number;
 }> {
   return asaasFetch<{
     id: string;
     status: string;
+    deleted?: boolean;
     nextDueDate?: string;
     value?: number;
   }>(`/subscriptions/${subscriptionId}`);
@@ -683,9 +685,72 @@ export async function ensurePreviousSubscriptionCanceled(subscriptionId?: string
   try {
     await cancelAsaasSubscription(subscriptionId.trim());
     return true;
-  } catch {
+  } catch (err) {
+    if (isAsaasAlreadyCanceledError(err)) {
+      return true;
+    }
     return false;
   }
+}
+
+export async function findAsaasSubscriptionByExternalReference(
+  externalReference: string,
+): Promise<{ id: string; status: string; deleted?: boolean } | null> {
+  const cleanRef = (externalReference || "").trim();
+  if (!cleanRef) return null;
+  const res = await asaasFetch<{
+    data?: Array<{ id: string; status: string; deleted?: boolean }>;
+  }>(`/subscriptions?externalReference=${encodeURIComponent(cleanRef)}&limit=5`);
+  const list = res.data || [];
+  return list.find((s) => !s.deleted) || list[0] || null;
+}
+
+export interface EarlyWebhookResolution {
+  confirmedByEarlyWebhook: boolean;
+  responseStatus: "active" | "incomplete";
+  shouldPersistPending: boolean;
+  shouldMarkPendingResync: boolean;
+}
+
+/**
+ * Resolve o estado de retorno e persistência do checkout quando a consulta inicial
+ * ao Asaas retorna PENDING, verificando se o webhook já liquidou ESTA intenção/fatura.
+ */
+export function resolveEarlyWebhookSettlement(params: {
+  latestIntent: {
+    status?: string | null;
+    provider_subscription_id?: string | null;
+    provider_payment_id?: string | null;
+  } | null;
+  subscriptionId: string;
+  firstPaymentId?: string | null;
+  prevCancelOk: boolean;
+}): EarlyWebhookResolution {
+  const { latestIntent, subscriptionId, firstPaymentId, prevCancelOk } = params;
+  const confirmedByEarlyWebhook = Boolean(
+    latestIntent?.status === "paid" &&
+      (!latestIntent.provider_subscription_id ||
+        latestIntent.provider_subscription_id === subscriptionId) &&
+      (!firstPaymentId ||
+        !latestIntent.provider_payment_id ||
+        latestIntent.provider_payment_id === firstPaymentId),
+  );
+
+  if (confirmedByEarlyWebhook) {
+    return {
+      confirmedByEarlyWebhook: true,
+      responseStatus: "active",
+      shouldPersistPending: false,
+      shouldMarkPendingResync: !prevCancelOk,
+    };
+  }
+
+  return {
+    confirmedByEarlyWebhook: false,
+    responseStatus: "incomplete",
+    shouldPersistPending: true,
+    shouldMarkPendingResync: false,
+  };
 }
 
 /**
