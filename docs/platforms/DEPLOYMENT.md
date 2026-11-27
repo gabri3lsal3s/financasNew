@@ -370,15 +370,20 @@ Para validar a integridade transacional de ponta a ponta com o gateway bancário
    - `PAYMENT_RECEIVED` (Pagamento recebido via Pix ou saldo)
    - `PAYMENT_CONFIRMED` (Compensação bancária confirmada)
    - `PAYMENT_OVERDUE` (Cobrança vencida sem pagamento)
-   - `PAYMENT_DELETED` (Cobrança cancelada ou estornada)
+   - `PAYMENT_DELETED` (Cobrança pendente cancelada/excluída)
+   - `PAYMENT_REFUNDED` (Estorno integral)
+   - `PAYMENT_PARTIALLY_REFUNDED` (Estorno parcial)
+   - `PAYMENT_CHARGEBACK_REQUESTED` / `PAYMENT_CHARGEBACK_DISPUTE` / `PAYMENT_AWAITING_CHARGEBACK_REVERSAL` (Disputas e chargeback)
+   - `PAYMENT_DUNNING_RECEIVED` (Recuperação após cobrança em atraso)
+   - `SUBSCRIPTION_UPDATED` (Atualização de recorrência)
    - `SUBSCRIPTION_DELETED` (Assinatura recorrente encerrada)
 
-#### 2. Execução da Cobrança Real de Teste (R$ 1,00 / Go-Live)
+#### 2. Execução da Cobrança Real de Teste (Catálogo Oficial / Go-Live)
 1. Crie uma conta de teste no aplicativo web ou mobile;
-2. Navegue até a tela de assinatura (`/subscription/checkout`);
-3. Gere o QR Code Pix ou utilize a modalidade cartão de crédito;
-4. **Auditoria de Marca no Pix:** Certifique-se de que o comprovante bancário e a descrição exibem a marca oficial `"Áxis Finance"`;
-5. Efetue o pagamento de R$ 1,00 (ou valor configurado na sandbox).
+2. Navegue até a tela de assinatura (`/assinatura`);
+3. Gere o QR Code Pix (Plano Anual — R$ 143,88) ou utilize a modalidade cartão de crédito (Mensal — R$ 19,99 / Anual — R$ 143,88);
+4. **Auditoria de Marca no Pix:** Certifique-se de que o comprovante bancário e a descrição exibem a marca oficial `"Axir"`;
+5. Efetue o pagamento no valor oficial do catálogo (`R$ 19,99` mensal ou `R$ 143,88` anual; valores fora do catálogo são rejeitados com `ignore_unknown_plan`).
 
 #### 3. Auditoria da Transição Atômica no Banco de Dados
 Execute a seguinte query no Supabase SQL Editor para auditar o registro do usuário:
@@ -401,13 +406,14 @@ where user_id = '<ID_DO_USUARIO_TESTE>';
 - **Verificação dos Invariantes:**
   * `status`: transiciona de `'trialing'` para `'active'`;
   * `tier`: assume `'pro_annual'` ou `'pro_monthly'`;
-  * `current_period_end`: preenchido com a vigência correspondente (+1 ano ou +1 mês);
+  * `current_period_end`: preenchido com a vigência correspondente (+12 meses ou +1 mês civil);
   * Permissão de escrita ativa: a chamada `public.can_current_user_write()` deve retornar `true`.
 
-#### 4. Homologação do Estorno em 7 Dias (CDC Artigo 49)
-1. No painel do Asaas, selecione o pagamento de teste e efetue o **Estorno/Reembolso** da cobrança;
-2. O webhook receberá `PAYMENT_DELETED` e marcará atomicamente `cancel_at_period_end = true`;
-3. Caso o pagamento seja revertido por inadimplência (`PAYMENT_OVERDUE`), o status passa para `'past_due'` bloqueando escritas futuras com elegância sem quebrar o acesso somente-leitura.
+#### 4. Homologação do Estorno em 7 Dias (CDC Artigo 49) e Cancelamento
+1. Na tela `/assinatura`, acione o cancelamento dentro da janela de 7 dias (ou efetue o **Estorno/Reembolso** da cobrança no painel Asaas);
+2. O webhook receberá `PAYMENT_REFUNDED`, encerrando imediatamente o acesso pago (`tier = 'read_only'`, `status = 'canceled'`) e cancelando a recorrência no Asaas;
+3. Fora dos 7 dias, o cancelamento voluntário ou evento `SUBSCRIPTION_DELETED` marca `cancel_at_period_end = true` preservando o acesso até o fim do período já pago;
+4. Em inadimplência (`PAYMENT_OVERDUE`), o status passa para `'past_due'` conforme a carência configurada, recuperando para `'active'` na liquidação (`PAYMENT_CONFIRMED`/`PAYMENT_RECEIVED`).
 
 ---
 

@@ -575,12 +575,14 @@ export async function getAsaasPayment(paymentId: string): Promise<{
 export async function getAsaasSubscription(subscriptionId: string): Promise<{
   id: string;
   status: string;
+  deleted?: boolean;
   nextDueDate?: string;
   value?: number;
 }> {
   return asaasFetch<{
     id: string;
     status: string;
+    deleted?: boolean;
     nextDueDate?: string;
     value?: number;
   }>(`/subscriptions/${subscriptionId}`);
@@ -683,9 +685,24 @@ export async function ensurePreviousSubscriptionCanceled(subscriptionId?: string
   try {
     await cancelAsaasSubscription(subscriptionId.trim());
     return true;
-  } catch {
+  } catch (err) {
+    if (isAsaasAlreadyCanceledError(err)) {
+      return true;
+    }
     return false;
   }
+}
+
+export async function findAsaasSubscriptionByExternalReference(
+  externalReference: string,
+): Promise<{ id: string; status: string; deleted?: boolean } | null> {
+  const cleanRef = (externalReference || "").trim();
+  if (!cleanRef) return null;
+  const res = await asaasFetch<{
+    data?: Array<{ id: string; status: string; deleted?: boolean }>;
+  }>(`/subscriptions?externalReference=${encodeURIComponent(cleanRef)}&limit=5`);
+  const list = res.data || [];
+  return list.find((s) => !s.deleted) || list[0] || null;
 }
 
 /**

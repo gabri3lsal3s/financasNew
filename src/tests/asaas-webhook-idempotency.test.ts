@@ -164,6 +164,133 @@ describe("Webhook Asaas — Lógica de Decisão e Idempotência", () => {
     }
   });
 
+  it("permite renovação do segundo mês mesmo quando a intent da 1ª fatura já está 'paid'", () => {
+    const activeCardSub: UserSubscriptionSnapshot = {
+      ...baseTrialSub,
+      status: "active",
+      tier: "pro_monthly",
+      plan_id: "pro_monthly",
+      asaas_subscription_id: "sub_card_777",
+      asaas_payment_id: "pay_first_invoice",
+      current_period_end: "2026-11-24T12:00:00.000Z",
+    };
+
+    const firstChargePaidIntent = {
+      id: "intent_first_1",
+      user_id: "user_1",
+      kind: "subscription_start" as const,
+      plan_id: "pro_monthly",
+      amount_cents: 1999,
+      status: "paid",
+      provider_payment_id: "pay_first_invoice",
+    };
+
+    const renewalDecision = decideWebhookAction({
+      eventType: "PAYMENT_CONFIRMED",
+      payment: {
+        id: "pay_second_invoice",
+        subscription: "sub_card_777",
+        externalReference: "intent_first_1",
+        billingType: "CREDIT_CARD",
+        value: 19.99,
+        confirmedDate: "2026-11-24T10:00:00.000Z",
+      },
+      currentSub: activeCardSub,
+      intent: firstChargePaidIntent,
+      isPaymentAlreadyProcessed: false,
+      now: new Date("2026-11-24T10:00:00.000Z"),
+    });
+
+    expect(renewalDecision.action).toBe("activate");
+    if (renewalDecision.action === "activate") {
+      expect(renewalDecision.targetTier).toBe("pro_monthly");
+    }
+
+    // Mas se a própria 1ª fatura chegar repetida, continua sendo bloqueada como duplicada
+    const duplicateFirst = decideWebhookAction({
+      eventType: "PAYMENT_CONFIRMED",
+      payment: {
+        id: "pay_first_invoice",
+        subscription: "sub_card_777",
+        externalReference: "intent_first_1",
+        billingType: "CREDIT_CARD",
+        value: 19.99,
+      },
+      currentSub: activeCardSub,
+      intent: firstChargePaidIntent,
+      isPaymentAlreadyProcessed: true,
+    });
+
+    expect(duplicateFirst.action).toBe("ignore_duplicate");
+  });
+
+  it("sinaliza pagamento de assinatura antiga quando conta já migrou para nova recorrência", () => {
+    const subOnNew: UserSubscriptionSnapshot = {
+      ...baseTrialSub,
+      status: "active",
+      tier: "pro_annual",
+      plan_id: "pro_annual",
+      asaas_subscription_id: "sub_new",
+      asaas_payment_id: "pay_annual_1",
+      current_period_end: "2027-11-24T12:00:00.000Z",
+    };
+
+    const oldSubIntent = {
+      id: "intent_old_1",
+      user_id: "user_1",
+      kind: "subscription_start" as const,
+      plan_id: "pro_monthly",
+      amount_cents: 1999,
+      status: "paid",
+      provider_payment_id: "pay_old_1",
+      provider_subscription_id: "sub_old",
+    };
+
+    const decision = decideWebhookAction({
+      eventType: "PAYMENT_CONFIRMED",
+      payment: {
+        id: "pay_old_2",
+        subscription: "sub_old",
+        externalReference: "intent_old_1",
+        billingType: "CREDIT_CARD",
+        value: 19.99,
+      },
+      currentSub: subOnNew,
+      intent: oldSubIntent,
+      isPaymentAlreadyProcessed: false,
+    });
+
+    expect(decision.action).toBe("flag_unexpected_old_subscription_payment");
+  });
+
+  it("ignora PAYMENT_OVERDUE quando a fatura já foi liquidada no ledger", () => {
+    const activeCardSub: UserSubscriptionSnapshot = {
+      ...baseTrialSub,
+      status: "active",
+      tier: "pro_monthly",
+      plan_id: "pro_monthly",
+      asaas_subscription_id: "sub_card_777",
+      asaas_payment_id: "pay_first_invoice",
+    };
+
+    const decision = decideWebhookAction({
+      eventType: "PAYMENT_OVERDUE",
+      payment: {
+        id: "pay_first_invoice",
+        subscription: "sub_card_777",
+        billingType: "CREDIT_CARD",
+        value: 19.99,
+      },
+      currentSub: activeCardSub,
+      isPaymentAlreadyProcessed: true,
+    });
+
+    expect(decision.action).toBe("ignore_duplicate");
+    if (decision.action === "ignore_duplicate") {
+      expect(decision.reason).toBe("already_active");
+    }
+  });
+
   it("rejeita com 'ignore_unknown_plan' quando o valor não corresponder a nenhum plano oficial", () => {
     const decision = decideWebhookAction({
       eventType: "PAYMENT_RECEIVED",

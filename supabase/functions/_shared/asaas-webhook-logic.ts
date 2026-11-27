@@ -53,6 +53,8 @@ export interface BillingIntentSnapshot {
   months_count?: number | null;
   amount_cents: number;
   status: string;
+  provider_payment_id?: string | null;
+  provider_subscription_id?: string | null;
   metadata?: Record<string, unknown>;
 }
 
@@ -86,6 +88,12 @@ export type WebhookDecision =
       intentId: string;
       intentKind: BillingIntentSnapshot["kind"];
       intentStatus: string;
+    }
+  | {
+      action: "flag_unexpected_old_subscription_payment";
+      paymentId: string;
+      subscriptionId: string;
+      currentSubscriptionId: string;
     }
   | {
       action: "refund_cumulative_renewal";
@@ -188,14 +196,7 @@ export function decideWebhookAction(params: {
       };
     }
 
-    // 1. Reconciliação prioritária por Billing Intent + lock prévio
-    if (intent?.status === "paid") {
-      return {
-        action: "ignore_duplicate",
-        reason: "intent_already_paid",
-      };
-    }
-
+    // 1. Reconciliação prioritária por lock prévio de pagamento + Billing Intent
     if (isPaymentAlreadyProcessed) {
       return {
         action: "ignore_duplicate",
@@ -203,7 +204,28 @@ export function decideWebhookAction(params: {
       };
     }
 
-    if (intent && (intent.status === "canceled" || intent.status === "expired")) {
+    // Uma intenção já paga só representa duplicidade se pertencer a ESTE mesmo pagamento
+    // (ou se for uma renovação acumulativa / cobrança avulsa sem assinatura).
+    // Faturas subsequentes de uma assinatura recorrente compartilham subscriptionId e
+    // externalReference com a 1ª fatura — nunca podem ser descartadas pela intent anterior.
+    const isDifferentPaymentOnSubscription = Boolean(
+      payment.subscription &&
+        intent?.provider_payment_id &&
+        intent.provider_payment_id !== payment.id,
+    );
+
+    if (intent?.status === "paid" && !isDifferentPaymentOnSubscription) {
+      return {
+        action: "ignore_duplicate",
+        reason: "intent_already_paid",
+      };
+    }
+
+    if (
+      intent &&
+      (intent.status === "canceled" || intent.status === "expired") &&
+      !isDifferentPaymentOnSubscription
+    ) {
       return {
         action: "flag_canceled_intent_paid",
         intentId: intent.id,
@@ -212,7 +234,7 @@ export function decideWebhookAction(params: {
       };
     }
 
-    if (intent?.kind === "cumulative_renewal") {
+    if (intent?.kind === "cumulative_renewal" && !isDifferentPaymentOnSubscription) {
       const months = intent.months_count ?? 1;
       const currentEnd = currentSub.current_period_end && new Date(currentSub.current_period_end) > now
         ? new Date(currentSub.current_period_end)
@@ -225,6 +247,30 @@ export function decideWebhookAction(params: {
         monthsCount: months,
         newPeriodEnd,
       };
+    }
+
+    // Se a assinatura já possui um asaas_subscription_id diferente do payment.subscription recebido,
+    // só autorizamos a troca se existir uma intenção inicial ainda válida (pending/processing)
+    // correspondente a essa nova assinatura. Caso contrário, sinaliza pagamento de recorrência antiga.
+    if (
+      currentSub.asaas_subscription_id &&
+      payment.subscription &&
+      payment.subscription !== currentSub.asaas_subscription_id
+    ) {
+      const hasValidNewSubIntent = Boolean(
+        intent &&
+          (intent.status === "pending" || intent.status === "processing") &&
+          (!intent.provider_subscription_id ||
+            intent.provider_subscription_id === payment.subscription),
+      );
+      if (!hasValidNewSubIntent) {
+        return {
+          action: "flag_unexpected_old_subscription_payment",
+          paymentId: payment.id,
+          subscriptionId: payment.subscription,
+          currentSubscriptionId: currentSub.asaas_subscription_id,
+        };
+      }
     }
 
     // 2. Resolução padrão por Catálogo de Valores
@@ -270,6 +316,13 @@ export function decideWebhookAction(params: {
   }
 
   if (eventType === "PAYMENT_OVERDUE") {
+    if (isPaymentAlreadyProcessed) {
+      return {
+        action: "ignore_duplicate",
+        reason: "already_active",
+      };
+    }
+
     const billingTypeUpper = (payment?.billingType ?? "").toUpperCase();
     if (
       intent?.kind === "cumulative_renewal" ||

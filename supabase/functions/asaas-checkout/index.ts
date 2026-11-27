@@ -7,6 +7,7 @@ import {
   getAsaasPixQrCode,
   getAsaasSubscriptionPayments,
   ensurePreviousSubscriptionCanceled,
+  findAsaasSubscriptionByExternalReference,
   PIX_REUSE_WINDOW_MS,
   isValidCPF,
   isValidLuhn,
@@ -35,6 +36,7 @@ import {
 } from "../_shared/http.ts";
 import { sendTransactionalEmail } from "../_shared/resend.ts";
 import { renderTrialCardScheduledEmail } from "../_shared/email-templates.ts";
+import { escapeTelegramHtml, sendTelegramNotification } from "../_shared/telegram.ts";
 
 declare const Deno: {
   env?: {
@@ -44,6 +46,41 @@ declare const Deno: {
 } | undefined;
 
 const CONFIRMED_PAYMENT_STATUSES = new Set(["CONFIRMED", "RECEIVED"]);
+
+async function recordPreviousSubCancelFailure(
+  supabase: SupabaseClient,
+  userId: string,
+  subscriptionRowId: string,
+  previousSubId: string,
+  newSubId: string,
+): Promise<void> {
+  await supabase.from("audit_events").insert({
+    user_id: userId,
+    entity_type: "user_subscription",
+    entity_id: subscriptionRowId,
+    action: "previous_subscription_cancel_failed",
+    payload: {
+      previous_subscription_id: previousSubId,
+      new_subscription_id: newSubId,
+    },
+  });
+
+  const botToken = Deno?.env?.get?.("TELEGRAM_BOT_TOKEN");
+  const chatId = Deno?.env?.get?.("TELEGRAM_CHAT_ID");
+  if (botToken && chatId) {
+    await sendTelegramNotification({
+      botToken,
+      chatId,
+      text: [
+        `<b>[AXIR] ALERTA: FALHA AO CANCELAR ASSINATURA ANTERIOR NO CHECKOUT</b>`,
+        `<b>Usuário:</b> <code>${escapeTelegramHtml(userId)}</code>`,
+        `<b>Sub anterior (pode estar ativa):</b> <code>${escapeTelegramHtml(previousSubId)}</code>`,
+        `<b>Nova sub:</b> <code>${escapeTelegramHtml(newSubId)}</code>`,
+        `<b>Ação:</b> Cancelar manualmente no painel Asaas para evitar cobrança dupla.`,
+      ].join("\n"),
+    }).catch(() => {});
+  }
+}
 
 async function enforceBillingRateLimit(
   req: Request,
@@ -731,26 +768,7 @@ Deno?.serve?.(async (req: Request) => {
       }
     }
 
-    // [B-08] Lock anti-double-submit em processamento concorrente (< 90s)
-    const lockCutoffIso = new Date(now.getTime() - 90_000).toISOString();
-    const { data: activeProcessingIntent } = await supabase
-      .from("billing_intents")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("method", "credit_card")
-      .eq("status", "processing")
-      .gte("created_at", lockCutoffIso)
-      .limit(1)
-      .maybeSingle();
-
-    if (activeProcessingIntent) {
-      return jsonResponse(
-        req,
-        { error: "Já existe um pagamento com cartão em processamento. Aguarde alguns instantes." },
-        409,
-      );
-    }
-
+    // [B-08] Lock atômico anti-double-submit garantido pelo índice único parcial no Postgres
     const cardIntentKind =
       userSub.status === "active"
         ? "plan_change"
@@ -759,19 +777,95 @@ Deno?.serve?.(async (req: Request) => {
           : "subscription_start";
 
     const intentId = crypto.randomUUID();
-    const { error: cardIntentInsertErr } = await supabase
+    const cardIntentPayload = {
+      id: intentId,
+      user_id: user.id,
+      kind: cardIntentKind,
+      plan_id: planMeta.planId,
+      amount_cents: planMeta.valueCents,
+      method: "credit_card",
+      status: "processing",
+      provider: "asaas",
+      external_reference: intentId,
+    };
+
+    let { error: cardIntentInsertErr } = await supabase
       .from("billing_intents")
-      .insert({
-        id: intentId,
-        user_id: user.id,
-        kind: cardIntentKind,
-        plan_id: planMeta.planId,
-        amount_cents: planMeta.valueCents,
-        method: "credit_card",
-        status: "processing",
-        provider: "asaas",
-        external_reference: intentId,
-      });
+      .insert(cardIntentPayload);
+
+    if (cardIntentInsertErr?.code === "23505") {
+      const { data: existingProcessing } = await supabase
+        .from("billing_intents")
+        .select("id, created_at")
+        .eq("user_id", user.id)
+        .eq("method", "credit_card")
+        .eq("status", "processing")
+        .maybeSingle();
+
+      const lockCutoffMs = now.getTime() - 90_000;
+      const existingCreatedMs = existingProcessing?.created_at
+        ? new Date(existingProcessing.created_at).getTime()
+        : now.getTime();
+
+      if (!existingProcessing || existingCreatedMs >= lockCutoffMs) {
+        return jsonResponse(
+          req,
+          { error: "Já existe um pagamento com cartão em processamento. Aguarde alguns instantes." },
+          409,
+        );
+      }
+
+      // Lock antigo (> 90s): reconciliar com o Asaas pelo externalReference antes de liberar novo envio
+      let existingAsaasSub: { id: string; status: string; deleted?: boolean } | null = null;
+      try {
+        existingAsaasSub = await findAsaasSubscriptionByExternalReference(existingProcessing.id);
+      } catch (lookupErr) {
+        console.warn("[asaas-checkout] Falha ao reconciliar tentativa anterior no Asaas:", sanitizePaymentLog(lookupErr));
+        return jsonResponse(
+          req,
+          { error: "Não foi possível verificar sua tentativa anterior. Tente novamente em instantes." },
+          503,
+        );
+      }
+
+      if (existingAsaasSub) {
+        // Mantém status 'processing' para impedir 3ª tentativa concorrente enquanto vincula o ID remoto
+        await supabase
+          .from("billing_intents")
+          .update({
+            provider_subscription_id: existingAsaasSub.id,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existingProcessing.id)
+          .eq("status", "processing");
+
+        return jsonResponse(
+          req,
+          { error: "Identificamos uma tentativa anterior já registrada no gateway. Atualize a página para acompanhar o status." },
+          409,
+        );
+      }
+
+      await supabase
+        .from("billing_intents")
+        .update({
+          status: "failed",
+          updated_at: new Date().toISOString(),
+          metadata: { expired_stale_processing: true },
+        })
+        .eq("id", existingProcessing.id)
+        .eq("status", "processing");
+
+      const retryInsert = await supabase.from("billing_intents").insert(cardIntentPayload);
+      cardIntentInsertErr = retryInsert.error;
+      if (cardIntentInsertErr?.code === "23505") {
+        return jsonResponse(
+          req,
+          { error: "Já existe um pagamento com cartão em processamento. Aguarde alguns instantes." },
+          409,
+        );
+      }
+    }
 
     if (cardIntentInsertErr) {
       console.error("[asaas-checkout] Falha ao criar lock de intenção de cartão:", cardIntentInsertErr);
@@ -819,11 +913,17 @@ Deno?.serve?.(async (req: Request) => {
         remoteIp: asaasRemoteIp,
         externalReference: intentId,
       });
-    } catch (cardErr) {
-      await supabase
-        .from("billing_intents")
-        .update({ status: "failed", updated_at: new Date().toISOString() })
-        .eq("id", intentId);
+    } catch (cardErr: unknown) {
+      const errStatus = (cardErr as { status?: number })?.status;
+      // Só libera o lock ('failed') em rejeição definitiva do gateway (400/422).
+      // Em falhas indeterminadas (timeout/rede/5xx/429), preserva 'processing' para reconciliação.
+      if (errStatus === 400 || errStatus === 422) {
+        await supabase
+          .from("billing_intents")
+          .update({ status: "failed", updated_at: new Date().toISOString() })
+          .eq("id", intentId)
+          .eq("status", "processing");
+      }
       throw cardErr;
     }
 
@@ -833,8 +933,18 @@ Deno?.serve?.(async (req: Request) => {
     // Cenário 1: Cartão agendado para o fim dos 30 dias grátis de Trial
     if (isDelayedByTrial && serverTrialEnds) {
       // [B-08] Cancela assinatura anterior somente APÓS aprovação da nova
+      let prevCancelOk = true;
       if (previousSubscriptionId && previousSubscriptionId !== subscription.id) {
-        await ensurePreviousSubscriptionCanceled(previousSubscriptionId);
+        prevCancelOk = await ensurePreviousSubscriptionCanceled(previousSubscriptionId);
+        if (!prevCancelOk) {
+          await recordPreviousSubCancelFailure(
+            supabase,
+            user.id,
+            userSub.id,
+            previousSubscriptionId,
+            subscription.id,
+          );
+        }
       }
 
       const { error: schedUpdateErr } = await supabase
@@ -846,6 +956,7 @@ Deno?.serve?.(async (req: Request) => {
           card_last4: cardLast4,
           asaas_customer_id: customer.id,
           asaas_subscription_id: subscription.id,
+          asaas_sync_status: prevCancelOk ? "synced" : "pending_resync",
           updated_at: new Date().toISOString(),
         })
         .eq("user_id", user.id);
@@ -863,7 +974,8 @@ Deno?.serve?.(async (req: Request) => {
           provider_subscription_id: subscription.id,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", intentId);
+        .eq("id", intentId)
+        .eq("status", "processing");
 
       // [A-03 / D-07] Usa planMeta.name e formatBrtDisplayDate
       try {
@@ -910,8 +1022,18 @@ Deno?.serve?.(async (req: Request) => {
 
     // Cenário 1b: Usuário já possui período pago ativo futuro — agenda cobrança para current_period_end (R$ 0 hoje)
     if (isDelayedByActivePeriod && activePeriodEnd) {
+      let prevCancelOk = true;
       if (previousSubscriptionId && previousSubscriptionId !== subscription.id) {
-        await ensurePreviousSubscriptionCanceled(previousSubscriptionId);
+        prevCancelOk = await ensurePreviousSubscriptionCanceled(previousSubscriptionId);
+        if (!prevCancelOk) {
+          await recordPreviousSubCancelFailure(
+            supabase,
+            user.id,
+            userSub.id,
+            previousSubscriptionId,
+            subscription.id,
+          );
+        }
       }
 
       const nowIso = now.toISOString();
@@ -926,6 +1048,7 @@ Deno?.serve?.(async (req: Request) => {
           card_last4: cardLast4,
           asaas_customer_id: customer.id,
           asaas_subscription_id: subscription.id,
+          asaas_sync_status: prevCancelOk ? "synced" : "pending_resync",
           updated_at: nowIso,
         })
         .eq("user_id", user.id);
@@ -943,7 +1066,8 @@ Deno?.serve?.(async (req: Request) => {
           provider_subscription_id: subscription.id,
           updated_at: nowIso,
         })
-        .eq("id", intentId);
+        .eq("id", intentId)
+        .eq("status", "processing");
 
       await cleanupPendingPixBestEffort({
         supabase: supabase as unknown as PixIntentsSupabaseClient,
@@ -981,11 +1105,22 @@ Deno?.serve?.(async (req: Request) => {
     }
 
     // [B-08] Cancela assinatura anterior somente APÓS sucesso da criação da nova
+    let prevCancelOk = true;
     if (previousSubscriptionId && previousSubscriptionId !== subscription.id) {
-      await ensurePreviousSubscriptionCanceled(previousSubscriptionId);
+      prevCancelOk = await ensurePreviousSubscriptionCanceled(previousSubscriptionId);
+      if (!prevCancelOk) {
+        await recordPreviousSubCancelFailure(
+          supabase,
+          user.id,
+          userSub.id,
+          previousSubscriptionId,
+          subscription.id,
+        );
+      }
     }
 
     const nowIso = now.toISOString();
+    let confirmedByEarlyWebhook = false;
 
     if (isFirstPaymentConfirmed) {
       const currentPeriodBase =
@@ -998,7 +1133,7 @@ Deno?.serve?.(async (req: Request) => {
         userSub.status === "read_only_expired" ||
         userSub.tier === "read_only";
 
-      const { error: atomicErr } = await supabase.rpc("activate_subscription_from_payment", {
+      const { data: atomicResult, error: atomicErr } = await supabase.rpc("activate_subscription_from_payment", {
         p_user_id: user.id,
         p_subscription_row_id: userSub.id,
         p_provider_payment_id: firstPaymentId ?? null,
@@ -1009,7 +1144,7 @@ Deno?.serve?.(async (req: Request) => {
         p_asaas_customer_id: customer.id,
         p_asaas_subscription_id: subscription.id,
         p_clear_asaas_subscription: false,
-        p_asaas_sync_status: "synced",
+        p_asaas_sync_status: prevCancelOk ? "synced" : "pending_resync",
         p_set_billing_start_at: isReactivation || !userSub.billing_start_at,
         p_billing_start_at: nowIso,
         p_trial_consumed_at: userSub.trial_consumed_at || nowIso,
@@ -1023,36 +1158,96 @@ Deno?.serve?.(async (req: Request) => {
         console.error("[asaas-checkout] Falha atômica ao ativar assinatura:", atomicErr);
         return safeErrorResponse(req, 500, "Falha ao registrar confirmação e ativar assinatura.");
       }
+
+      if (atomicResult?.terminal_intent) {
+        await supabase.from("audit_events").insert({
+          user_id: user.id,
+          entity_type: "user_subscription",
+          entity_id: userSub.id,
+          action: "canceled_intent_payment_received",
+          payload: {
+            payment_id: firstPaymentId ?? null,
+            intent_id: atomicResult.intent_id ?? intentId,
+            intent_kind: atomicResult.intent_kind ?? cardIntentKind,
+            intent_status: atomicResult.intent_status ?? "canceled",
+            value: planMeta.value,
+          },
+        });
+        return jsonResponse(
+          req,
+          { error: "Esta tentativa de pagamento foi cancelada antes da confirmação. Atualize a página para verificar sua assinatura." },
+          409,
+        );
+      }
     } else {
-      // [B-05] Pagamento ainda não confirmado: NÃO altera current_period_end nem consome período
-      const nextStatus = userSub.status === "active" ? "active" : "incomplete";
-      const { error: incUpdateErr } = await supabase
-        .from("user_subscriptions")
-        .update({
-          status: nextStatus,
+      // [B-05] Pagamento ainda não confirmado: NÃO altera current_period_end nem consome período.
+      // Verifica se o webhook já liquidou ESTA intenção/fatura específica durante a chamada ao Asaas.
+      const { data: latestIntent } = await supabase
+        .from("billing_intents")
+        .select("status, provider_payment_id, provider_subscription_id")
+        .eq("id", intentId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      confirmedByEarlyWebhook = Boolean(
+        latestIntent?.status === "paid" &&
+          (!latestIntent.provider_subscription_id ||
+            latestIntent.provider_subscription_id === subscription.id) &&
+          (!firstPaymentId ||
+            !latestIntent.provider_payment_id ||
+            latestIntent.provider_payment_id === firstPaymentId),
+      );
+
+      if (!confirmedByEarlyWebhook) {
+        const baseMetaFields = {
           payment_method: "credit_card",
           card_last4: cardLast4,
           asaas_customer_id: customer.id,
           asaas_subscription_id: subscription.id,
+          asaas_sync_status: prevCancelOk ? "synced" : "pending_resync",
           updated_at: nowIso,
-          ...(firstPaymentId ? { asaas_payment_id: firstPaymentId } : {}),
-        })
-        .eq("user_id", user.id);
+        };
 
-      if (incUpdateErr) {
-        console.error("[asaas-checkout] Falha ao gravar status pendente em user_subscriptions:", incUpdateErr);
-        return safeErrorResponse(req, 500, "Falha ao registrar assinatura pendente.");
+        const { data: updatedNonActive, error: incUpdateErr } = await supabase
+          .from("user_subscriptions")
+          .update({
+            ...baseMetaFields,
+            status: "incomplete",
+            ...(firstPaymentId ? { asaas_payment_id: firstPaymentId } : {}),
+          })
+          .eq("user_id", user.id)
+          .neq("status", "active")
+          .select("id")
+          .maybeSingle();
+
+        if (incUpdateErr) {
+          console.error("[asaas-checkout] Falha ao gravar status pendente em user_subscriptions:", incUpdateErr);
+          return safeErrorResponse(req, 500, "Falha ao registrar assinatura pendente.");
+        }
+
+        if (!updatedNonActive) {
+          const { error: activeMetaErr } = await supabase
+            .from("user_subscriptions")
+            .update(baseMetaFields)
+            .eq("user_id", user.id)
+            .eq("status", "active");
+          if (activeMetaErr) {
+            console.error("[asaas-checkout] Falha ao atualizar metadados em user_subscriptions ativa:", activeMetaErr);
+            return safeErrorResponse(req, 500, "Falha ao registrar assinatura pendente.");
+          }
+        }
+
+        await supabase
+          .from("billing_intents")
+          .update({
+            status: "pending",
+            provider_subscription_id: subscription.id,
+            provider_payment_id: firstPaymentId ?? null,
+            updated_at: nowIso,
+          })
+          .eq("id", intentId)
+          .eq("status", "processing");
       }
-
-      await supabase
-        .from("billing_intents")
-        .update({
-          status: "pending",
-          provider_subscription_id: subscription.id,
-          provider_payment_id: firstPaymentId ?? null,
-          updated_at: nowIso,
-        })
-        .eq("id", intentId);
     }
 
     await cleanupPendingPixBestEffort({
@@ -1067,7 +1262,7 @@ Deno?.serve?.(async (req: Request) => {
       method: "credit_card",
       subscriptionId: subscription.id,
       tier: planMeta.planId,
-      status: isFirstPaymentConfirmed ? "active" : "incomplete",
+      status: isFirstPaymentConfirmed || confirmedByEarlyWebhook ? "active" : "incomplete",
       email: customerEmail,
       cardLast4,
     });

@@ -2,8 +2,10 @@ import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
   cancelAsaasSubscription,
   deleteAsaasPayment,
+  findAsaasSubscriptionByExternalReference,
   getAsaasPayment,
   getAsaasSubscription,
+  getAsaasSubscriptionPayments,
   isAsaasAlreadyCanceledError,
   postponeAsaasSubscriptionAfterPrepayment,
   sanitizePaymentLog,
@@ -21,6 +23,7 @@ import {
   renderTrialExpiredReadOnlyEmail,
 } from "../_shared/email-templates.ts";
 import { formatBrtDisplayDate } from "../_shared/asaas.ts";
+import { addCivilMonthsServer, resolveTierFromPayment } from "../_shared/asaas-plans.ts";
 import { escapeTelegramHtml, sendTelegramNotification } from "../_shared/telegram.ts";
 
 declare const Deno: {
@@ -153,7 +156,8 @@ Deno.serve(async (req: Request) => {
               asaas_sync_status: "synced",
               updated_at: new Date().toISOString(),
             })
-            .eq("id", sub.id);
+            .eq("id", sub.id)
+            .eq("asaas_subscription_id", sub.asaas_subscription_id);
           resyncedCount++;
           continue;
         }
@@ -215,7 +219,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: stalePixIntents, error: stalePixErr } = await supabaseAdmin
       .from("billing_intents")
-      .select("id, user_id, provider_payment_id, metadata")
+      .select("id, user_id, kind, plan_id, months_count, amount_cents, provider_payment_id, metadata")
       .eq("method", "pix")
       .eq("status", "pending")
       .or(`expires_at.lte.${pixGraceCutoffIso},and(expires_at.is.null,created_at.lte.${legacyPixCutoffIso})`)
@@ -253,9 +257,162 @@ Deno.serve(async (req: Request) => {
         const statusUpper = (payment.status || "").toUpperCase();
 
         if (["CONFIRMED", "RECEIVED", "RECEIVED_IN_CASH"].includes(statusUpper)) {
-          console.warn(
-            `[billing-lifecycle-cron] Intent PIX ${intent.id} já paga no Asaas (${payment.status}); ignorando expiração.`,
-          );
+          // Reconcilia pagamento PIX já confirmado no Asaas cuja aplicação via webhook falhou ou atrasou
+          const { data: userSub } = await supabaseAdmin
+            .from("user_subscriptions")
+            .select(
+              "id, user_id, tier, status, asaas_subscription_id, current_period_end, trial_ends_at, billing_start_at, trial_consumed_at",
+            )
+            .eq("user_id", intent.user_id)
+            .maybeSingle();
+
+          if (!userSub) {
+            console.warn(`[billing-lifecycle-cron] Assinatura ausente ao reconciliar intent PIX ${intent.id}.`);
+            continue;
+          }
+
+          if (intent.kind === "cumulative_renewal") {
+            const billingTypeUpper = (payment.billingType || "PIX").toUpperCase();
+            if (billingTypeUpper !== "PIX" || typeof payment.value !== "number" || payment.value <= 0) {
+              console.error(
+                `[billing-lifecycle-cron] Payload PIX cumulativo inválido para ${intent.provider_payment_id} (type=${billingTypeUpper}, value=${payment.value}).`,
+              );
+              continue;
+            }
+            const months = intent.months_count ?? 1;
+            const initialSync = userSub.asaas_subscription_id ? "pending_resync" : "synced";
+            const { data: cumRes, error: cumErr } = await supabaseAdmin.rpc(
+              "apply_cumulative_renewal_from_payment",
+              {
+                p_user_id: intent.user_id,
+                p_subscription_row_id: userSub.id,
+                p_provider_payment_id: intent.provider_payment_id,
+                p_amount_cents: Math.round(payment.value * 100),
+                p_months_count: months,
+                p_asaas_sync_status: initialSync,
+                p_intent_id: intent.id,
+                p_metadata: { reconciled_by: "billing_lifecycle_cron", asaas_status: payment.status },
+              },
+            );
+            if (cumErr) {
+              console.error(`[billing-lifecycle-cron] Erro ao reconciliar PIX acumulativo ${intent.id}:`, cumErr);
+              continue;
+            }
+            if (cumRes?.applied && userSub.asaas_subscription_id && typeof cumRes?.new_period_end === "string") {
+              try {
+                const postRes = await postponeAsaasSubscriptionAfterPrepayment(
+                  userSub.asaas_subscription_id,
+                  cumRes.new_period_end,
+                );
+                if (postRes.success) {
+                  await supabaseAdmin
+                    .from("user_subscriptions")
+                    .update({ asaas_sync_status: "synced", updated_at: new Date().toISOString() })
+                    .eq("id", userSub.id)
+                    .eq("asaas_subscription_id", userSub.asaas_subscription_id)
+                    .eq("current_period_end", cumRes.new_period_end);
+                }
+              } catch (postErr) {
+                console.warn("[billing-lifecycle-cron] Adiamento pós-reconciliação pendente:", sanitizePaymentLog(postErr));
+              }
+            }
+          } else {
+            const resolvedTier = resolveTierFromPayment({
+              value: payment.value,
+              billingType: payment.billingType || "PIX",
+            });
+            if (!resolvedTier) {
+              console.error(
+                `[billing-lifecycle-cron] Pagamento PIX ${intent.provider_payment_id} fora do catálogo oficial (value=${payment.value}); ignorando reconciliação.`,
+              );
+              continue;
+            }
+
+            let prevSubCanceled = false;
+            if (resolvedTier === "pro_annual" && userSub.asaas_subscription_id) {
+              try {
+                await cancelAsaasSubscription(userSub.asaas_subscription_id);
+                prevSubCanceled = true;
+              } catch (cancelErr: unknown) {
+                if (isAsaasAlreadyCanceledError(cancelErr)) {
+                  prevSubCanceled = true;
+                } else {
+                  console.warn(
+                    `[billing-lifecycle-cron] Falha ao cancelar sub recorrente ${userSub.asaas_subscription_id} ao reconciliar PIX anual:`,
+                    sanitizePaymentLog(cancelErr),
+                  );
+                }
+              }
+            }
+
+            const nowDate = new Date();
+            const baseDate =
+              userSub.current_period_end && new Date(userSub.current_period_end) > nowDate
+                ? new Date(userSub.current_period_end)
+                : userSub.trial_ends_at && new Date(userSub.trial_ends_at) > nowDate
+                  ? new Date(userSub.trial_ends_at)
+                  : nowDate;
+            const nextEnd = addCivilMonthsServer(baseDate, resolvedTier === "pro_annual" ? 12 : 1);
+            const isFirstCharge = !userSub.billing_start_at || userSub.tier === "trial";
+            const isReactivation =
+              userSub.status === "canceled" ||
+              userSub.status === "read_only_expired" ||
+              userSub.tier === "read_only";
+            const needsResync =
+              resolvedTier === "pro_annual" && Boolean(userSub.asaas_subscription_id) && !prevSubCanceled;
+
+            const { data: actRes, error: actErr } = await supabaseAdmin.rpc("activate_subscription_from_payment", {
+              p_user_id: intent.user_id,
+              p_subscription_row_id: userSub.id,
+              p_provider_payment_id: intent.provider_payment_id,
+              p_kind: isFirstCharge ? "subscription_first_charge" : "subscription_renewal",
+              p_amount_cents: Math.round((payment.value || 0) * 100),
+              p_target_tier: resolvedTier,
+              p_current_period_end: nextEnd.toISOString(),
+              p_asaas_customer_id: null,
+              p_asaas_subscription_id: null,
+              p_clear_asaas_subscription: prevSubCanceled,
+              p_asaas_sync_status: needsResync ? "pending_resync" : "synced",
+              p_set_billing_start_at: isFirstCharge || isReactivation,
+              p_billing_start_at: nowDate.toISOString(),
+              p_trial_consumed_at: userSub.trial_consumed_at || nowDate.toISOString(),
+              p_payment_method: "pix",
+              p_intent_id: intent.id,
+              p_metadata: { reconciled_by: "billing_lifecycle_cron", asaas_status: payment.status },
+            });
+            if (actErr) {
+              console.error(`[billing-lifecycle-cron] Erro ao reconciliar PIX ${intent.id}:`, actErr);
+              continue;
+            }
+            if (actRes?.terminal_intent) {
+              await supabaseAdmin.from("audit_events").insert({
+                user_id: intent.user_id,
+                entity_type: "user_subscription",
+                entity_id: userSub.id,
+                action: "canceled_intent_payment_received",
+                payload: {
+                  payment_id: intent.provider_payment_id,
+                  intent_id: actRes.intent_id ?? intent.id,
+                  intent_kind: actRes.intent_kind ?? intent.kind,
+                  intent_status: actRes.intent_status ?? "canceled",
+                  value: payment.value ?? null,
+                },
+              });
+              continue;
+            }
+            if (!actRes?.applied) {
+              continue;
+            }
+          }
+
+          await supabaseAdmin.from("audit_events").insert({
+            user_id: intent.user_id,
+            entity_type: "user_subscription",
+            entity_id: userSub.id,
+            action: "cron_reconciled_paid_pix",
+            payload: { intent_id: intent.id, payment_id: intent.provider_payment_id, kind: intent.kind },
+          });
+          resyncedCount++;
           continue;
         }
 
@@ -289,6 +446,208 @@ Deno.serve(async (req: Request) => {
             sanitizePaymentLog(err),
           );
         }
+      }
+    }
+
+    // 2c. Reconciliação persistente de assinaturas anteriores que falharam ao cancelar no checkout
+    const { data: resolvedPrevCancels } = await supabaseAdmin
+      .from("audit_events")
+      .select("payload")
+      .eq("action", "previous_subscription_cancel_resolved")
+      .order("created_at", { ascending: false })
+      .limit(500);
+
+    const resolvedEventIds = new Set<string>();
+    const resolvedSubIds = new Set<string>();
+    for (const r of resolvedPrevCancels || []) {
+      const p = r.payload as Record<string, unknown> | null;
+      if (typeof p?.source_event_id === "string" && p.source_event_id) {
+        resolvedEventIds.add(p.source_event_id);
+      }
+      if (typeof p?.previous_subscription_id === "string" && p.previous_subscription_id) {
+        resolvedSubIds.add(p.previous_subscription_id);
+      }
+    }
+
+    let failedQuery = supabaseAdmin
+      .from("audit_events")
+      .select("id, user_id, entity_id, payload")
+      .eq("action", "previous_subscription_cancel_failed")
+      .order("created_at", { ascending: true });
+
+    if (resolvedEventIds.size > 0) {
+      failedQuery = failedQuery.not("id", "in", `(${Array.from(resolvedEventIds).join(",")})`);
+    }
+
+    const { data: failedPrevCancels } = await failedQuery.limit(20);
+
+    for (const evt of failedPrevCancels || []) {
+      const prevSubId = (evt.payload as Record<string, unknown> | null)?.previous_subscription_id;
+      if (typeof prevSubId !== "string" || !prevSubId) continue;
+      if (resolvedSubIds.has(prevSubId)) {
+        await supabaseAdmin.from("audit_events").insert({
+          user_id: evt.user_id,
+          entity_type: "user_subscription",
+          entity_id: evt.entity_id,
+          action: "previous_subscription_cancel_resolved",
+          payload: { previous_subscription_id: prevSubId, source_event_id: evt.id },
+        });
+        continue;
+      }
+      try {
+        try {
+          await cancelAsaasSubscription(prevSubId);
+        } catch (cancelErr: unknown) {
+          if (!isAsaasAlreadyCanceledError(cancelErr)) throw cancelErr;
+        }
+        await supabaseAdmin.from("audit_events").insert({
+          user_id: evt.user_id,
+          entity_type: "user_subscription",
+          entity_id: evt.entity_id,
+          action: "previous_subscription_cancel_resolved",
+          payload: { previous_subscription_id: prevSubId, source_event_id: evt.id },
+        });
+        resolvedSubIds.add(prevSubId);
+        resyncedCount++;
+      } catch (retryErr: unknown) {
+        console.warn(
+          `[billing-lifecycle-cron] Falha ao retentar cancelamento da sub anterior ${prevSubId}:`,
+          sanitizePaymentLog(retryErr),
+        );
+      }
+    }
+
+    // 2d. Reconciliação de locks 'processing' antigos de cartão (> 2 min)
+    const staleCardCutoffIso = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+    const { data: staleCardIntents } = await supabaseAdmin
+      .from("billing_intents")
+      .select("id, user_id, plan_id, amount_cents, provider_subscription_id, metadata")
+      .eq("method", "credit_card")
+      .eq("status", "processing")
+      .lte("created_at", staleCardCutoffIso)
+      .order("created_at", { ascending: true })
+      .limit(15);
+
+    for (const cardIntent of staleCardIntents || []) {
+      try {
+        let remoteSub: { id: string; status: string; deleted?: boolean } | null = null;
+        if (cardIntent.provider_subscription_id) {
+          try {
+            remoteSub = await getAsaasSubscription(cardIntent.provider_subscription_id);
+          } catch (getErr: unknown) {
+            if (isAsaasAlreadyCanceledError(getErr) || (getErr as { status?: number })?.status === 404) {
+              remoteSub = null;
+            } else {
+              throw getErr;
+            }
+          }
+        } else {
+          remoteSub = await findAsaasSubscriptionByExternalReference(cardIntent.id);
+        }
+
+        if (!remoteSub || remoteSub.deleted) {
+          await supabaseAdmin
+            .from("billing_intents")
+            .update({
+              status: "failed",
+              updated_at: new Date().toISOString(),
+              metadata: {
+                ...((cardIntent.metadata as Record<string, unknown> | null) || {}),
+                reconciled_by: "lifecycle_cron",
+                reason: "not_found_in_asaas",
+              },
+            })
+            .eq("id", cardIntent.id)
+            .eq("status", "processing");
+          continue;
+        }
+
+        const subPayments = await getAsaasSubscriptionPayments(remoteSub.id);
+        const paidPayment = subPayments.find((p) =>
+          ["CONFIRMED", "RECEIVED", "RECEIVED_IN_CASH"].includes((p.status || "").toUpperCase()),
+        );
+
+        if (paidPayment) {
+          const resolvedTier = resolveTierFromPayment({
+            value: paidPayment.value,
+            billingType: "CREDIT_CARD",
+          });
+          const { data: userSub } = await supabaseAdmin
+            .from("user_subscriptions")
+            .select("id, user_id, tier, status, current_period_end, trial_ends_at, billing_start_at, trial_consumed_at")
+            .eq("user_id", cardIntent.user_id)
+            .maybeSingle();
+
+          if (resolvedTier && userSub) {
+            const nowDate = new Date();
+            const baseDate =
+              userSub.current_period_end && new Date(userSub.current_period_end) > nowDate
+                ? new Date(userSub.current_period_end)
+                : nowDate;
+            const nextEnd = addCivilMonthsServer(baseDate, resolvedTier === "pro_annual" ? 12 : 1);
+            const { data: cardActRes, error: cardActErr } = await supabaseAdmin.rpc("activate_subscription_from_payment", {
+              p_user_id: cardIntent.user_id,
+              p_subscription_row_id: userSub.id,
+              p_provider_payment_id: paidPayment.id,
+              p_kind: !userSub.billing_start_at || userSub.tier === "trial" ? "subscription_first_charge" : "subscription_renewal",
+              p_amount_cents: Math.round((paidPayment.value || 0) * 100),
+              p_target_tier: resolvedTier,
+              p_current_period_end: nextEnd.toISOString(),
+              p_asaas_customer_id: null,
+              p_asaas_subscription_id: remoteSub.id,
+              p_clear_asaas_subscription: false,
+              p_asaas_sync_status: "synced",
+              p_set_billing_start_at: !userSub.billing_start_at,
+              p_billing_start_at: nowDate.toISOString(),
+              p_trial_consumed_at: userSub.trial_consumed_at || nowDate.toISOString(),
+              p_payment_method: "credit_card",
+              p_intent_id: cardIntent.id,
+              p_metadata: { reconciled_by: "billing_lifecycle_cron" },
+            });
+            if (cardActErr) {
+              console.error(`[billing-lifecycle-cron] Erro na RPC ao reconciliar cartão ${cardIntent.id}:`, cardActErr);
+              continue;
+            }
+            if (cardActRes?.terminal_intent) {
+              await supabaseAdmin.from("audit_events").insert({
+                user_id: cardIntent.user_id,
+                entity_type: "user_subscription",
+                entity_id: userSub.id,
+                action: "canceled_intent_payment_received",
+                payload: {
+                  payment_id: paidPayment.id,
+                  intent_id: cardActRes.intent_id ?? cardIntent.id,
+                  intent_kind: cardActRes.intent_kind ?? "subscription_start",
+                  intent_status: cardActRes.intent_status ?? "canceled",
+                  value: paidPayment.value ?? null,
+                },
+              });
+              continue;
+            }
+            if (cardActRes?.applied || cardActRes?.duplicate) {
+              resyncedCount++;
+            }
+            continue;
+          }
+        }
+
+        const { error: pendingErr } = await supabaseAdmin
+          .from("billing_intents")
+          .update({
+            status: "pending",
+            provider_subscription_id: remoteSub.id,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", cardIntent.id)
+          .eq("status", "processing");
+        if (!pendingErr) {
+          resyncedCount++;
+        }
+      } catch (cardRecErr: unknown) {
+        console.warn(
+          `[billing-lifecycle-cron] Falha ao reconciliar intent cartão ${cardIntent.id}:`,
+          sanitizePaymentLog(cardRecErr),
+        );
       }
     }
 
