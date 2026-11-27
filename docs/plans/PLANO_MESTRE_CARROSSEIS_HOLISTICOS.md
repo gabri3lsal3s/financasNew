@@ -11,7 +11,7 @@
 | 0 | Entrega das alterações pendentes do usuário (fora dos carrosséis) | Em validação (Preview) | `npm run verify` |
 | 1 | Persistência compatível da dispensa | Concluída | testes focais + `npm run verify` |
 | 2A | Precisão matemática dos motores e destinos | Concluída | testes focais + `npm run verify` |
-| 2B | Builders de memória de cálculo | Aguardando | idem |
+| 2B | Builders de memória de cálculo | Concluída | testes focais + `npm run verify` |
 | 3 | Componentes únicos e acessibilidade | Aguardando | idem |
 | 4 | Migração integral e release da Onda 1 | Aguardando | `npm run verify:full` |
 | 5 | Avaliadores e projeção bidirecional (Onda 2) | Aguardando | `npm run verify` |
@@ -226,9 +226,9 @@ Cada fase roda em branch de trabalho. Primeiro fixar as expectativas que disting
 
 ### Fase 2B — Builders de memória de cálculo
 
-- [ ] Criar `src/domain/calculation-memory/builders/{portfolio-risk-breakdown,portfolio-carousel-breakdown,overview-carousel-breakdown}.ts` e os três testes colocalizados. Estender `src/domain/calculation-memory/builders/{cash-breakdown,insights-breakdown,family-breakdown}.ts` com seus testes e `src/domain/calculation-memory/index.ts`. Conectar trips-breakdown existente apenas ao acerto pessoal. Anotar FX, origem, prazo e ticker em fallback nos casos correspondentes.
-- [ ] Para cada linha analítica dos §§1–2, alimentar gatilho e memória com a mesma fixture; comparar resultado com CTA, passo a passo e cópia. Testar signos, units e locale, 1 centavo e zero, prova ausente para pura configuração; impedir fallback “impacto anual” em ocorrência sem recorrência comprovada.
-- [ ] Rodar `npx vitest run src/domain/calculation-memory` e `npm run verify`.
+- [x] Criar `src/domain/calculation-memory/builders/{portfolio-risk-breakdown,portfolio-carousel-breakdown,overview-carousel-breakdown}.ts` e os três testes colocalizados. Estender `src/domain/calculation-memory/builders/{cash-breakdown,insights-breakdown,family-breakdown}.ts` com seus testes e `src/domain/calculation-memory/index.ts`. Conectar trips-breakdown existente apenas ao acerto pessoal. Anotar FX, origem, prazo e ticker em fallback nos casos correspondentes.
+- [x] Para cada linha analítica dos §§1–2, alimentar gatilho e memória com a mesma fixture; comparar resultado com CTA, passo a passo e cópia. Testar signos, units e locale, 1 centavo e zero, prova ausente para pura configuração; impedir fallback “impacto anual” em ocorrência sem recorrência comprovada.
+- [x] Rodar `npx vitest run src/domain/calculation-memory` e `npm run verify`.
 
 ### Fase 3 — Componentes únicos e acessibilidade
 

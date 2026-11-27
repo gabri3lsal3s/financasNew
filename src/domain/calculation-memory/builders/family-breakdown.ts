@@ -199,3 +199,73 @@ export function buildFamilyCeilingBreakdown(
 
   return enrichBreakdown(breakdown);
 }
+
+export interface FamilyTransferBreakdownData {
+  payerId: string;
+  payerName?: string;
+  receiverId: string;
+  receiverName?: string;
+  amountCents: number;
+  payerBalanceCents: number;
+  receiverBalanceCents: number;
+  periodLabel?: string;
+}
+
+/**
+ * Monta o breakdown de uma transferência proposta entre dois membros da família
+ * quando o valor da perna diverge do saldo líquido individual (3+ membros ou acertos parciais).
+ */
+export function buildFamilyTransferBreakdown(
+  data: FamilyTransferBreakdownData,
+): CalculationBreakdown {
+  const payerLabel = data.payerName ?? data.payerId;
+  const receiverLabel = data.receiverName ?? data.receiverId;
+  const residualPayerCents = data.payerBalanceCents + data.amountCents;
+
+  const steps: BreakdownStep[] = [
+    {
+      label: `Saldo Líquido de ${payerLabel} (Pagador)`,
+      operator: "=",
+      rawValue: data.payerBalanceCents,
+      unit: "currency",
+      tone: data.payerBalanceCents < 0 ? "negative" : "default",
+    },
+    {
+      label: `Saldo Líquido de ${receiverLabel} (Recebedor)`,
+      operator: "=",
+      rawValue: data.receiverBalanceCents,
+      unit: "currency",
+      tone: data.receiverBalanceCents > 0 ? "positive" : "default",
+    },
+    {
+      label: `Transferência Proposta (${payerLabel} -> ${receiverLabel})`,
+      operator: "+",
+      rawValue: data.amountCents,
+      unit: "currency",
+      tone: "portfolio",
+    },
+    {
+      label: `Saldo Residual de ${payerLabel} após Transferência`,
+      operator: "=",
+      rawValue: residualPayerCents,
+      unit: "currency",
+      tone: residualPayerCents === 0 ? "positive" : "default",
+    },
+  ];
+
+  return enrichBreakdown({
+    id: `family-transfer-${data.payerId}-${data.receiverId}`,
+    title: `Transferência Familiar: ${payerLabel} para ${receiverLabel}`,
+    description: "Exibe a perna de compensação proposta entre os membros e o saldo residual após a transferência.",
+    periodLabel: data.periodLabel ?? "Mês de Referência",
+    formulaExpression: "Saldo Residual = Saldo Líquido do Pagador + Transferência",
+    unit: "currency",
+    steps,
+    result: {
+      label: "Valor da Transferência",
+      rawValue: data.amountCents,
+      unit: "currency",
+      tone: "portfolio",
+    },
+  });
+}
