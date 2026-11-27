@@ -133,12 +133,12 @@ export type {
   AlertCarouselCardAction,
   AlertCarouselCardTone,
 } from "./alert-carousel-card";
+export { CarouselPauseProvider } from "./carousel-pause-context";
 export {
-  CarouselPauseProvider,
   useCarouselPauseContext,
   useCarouselPauseLock,
-} from "./carousel-pause-context";
-export type { CarouselPauseContextValue } from "./carousel-pause-context";
+  type CarouselPauseContextValue,
+} from "./carousel-pause-context-def";
 export { WelcomeFeatureModal } from "./welcome-feature-modal";
 export type { WelcomeFeatureModalProps } from "./welcome-feature-modal";
 export { WELCOME_MODAL_STORAGE_KEY, WELCOME_SLIDES } from "./welcome-feature-modal-data";

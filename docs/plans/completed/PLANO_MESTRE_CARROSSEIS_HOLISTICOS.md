@@ -195,16 +195,16 @@ Cada fase roda em branch de trabalho. Primeiro fixar as expectativas que disting
 
 ### Fase 0 — Entrega das alterações pendentes do usuário (pré-requisito, fora do escopo dos carrosséis)
 
-- [ ] Escopo (hoje staged na `main`): remoção dos filtros de classe e setor do painel de atividade em `src/features/investments/components/activity-panel/{activity-filter-bar.tsx,use-activity-filters-export.ts}`, `src/features/investments/components/portfolio-activity-panel.tsx` e `src/features/investments/components/pending-dividends-dialog.tsx`. Proposta de classificação: Fluxo Rápido (Patch). Confirmar com o usuário se há mudança de funcionalidade que justifique MINOR.
-- [ ] Verificação: `npm run verify` e Vitest focal do painel de atividade; conferir props e imports órfãos (`selectedClass`, `selectedSector`, `inferSectorFromTicker`, `FilterX`, `Select`), testes que referenciem os filtros removidos e estados loading, vazio e erro do painel em desktop e mobile.
-- [ ] Entrega conforme `AGENTS.md` §10: sem commit direto na `main`. Criar branch `bot/ajustes-painel-atividade`, commitar, bump PATCH em `package.json` e `package-lock.json`, push da branch para o Preview Deployment e merge na `main` somente após validação visual do usuário.
-- [ ] Commit de documentação separado (`docs:`) com este plano e `docs/AUDITORIA_CARROSSEIS_HOME_E_INVESTIMENTOS.md`, sem misturar com o código da Fase 0. Não tocar no stash `plano 17 seguranca wip`.
-- [ ] Só depois da Fase 0 concluída e da `main` atualizada, abrir a branch da Onda 1 (`bot/carrosseis-onda-1`), com um commit por fase. A linha de base do §7 foi medida com as alterações pendentes presentes na árvore; a Fase 0 reexecuta `npm run verify` isoladamente para confirmar.
+- [x] Escopo (hoje staged na `main`): remoção dos filtros de classe e setor do painel de atividade em `src/features/investments/components/activity-panel/{activity-filter-bar.tsx,use-activity-filters-export.ts}`, `src/features/investments/components/portfolio-activity-panel.tsx` e `src/features/investments/components/pending-dividends-dialog.tsx`. Proposta de classificação: Fluxo Rápido (Patch). Confirmar com o usuário se há mudança de funcionalidade que justifique MINOR.
+- [x] Verificação: `npm run verify` e Vitest focal do painel de atividade; conferir props e imports órfãos (`selectedClass`, `selectedSector`, `inferSectorFromTicker`, `FilterX`, `Select`), testes que referenciem os filtros removidos e estados loading, vazio e erro do painel em desktop e mobile.
+- [x] Entrega conforme `AGENTS.md` §10: sem commit direto na `main`. Criar branch `bot/ajustes-painel-atividade`, commitar, bump PATCH em `package.json` e `package-lock.json`, push da branch para o Preview Deployment e merge na `main` somente após validação visual do usuário.
+- [x] Commit de documentação separado (`docs:`) com este plano e `docs/AUDITORIA_CARROSSEIS_HOME_E_INVESTIMENTOS.md`, sem misturar com o código da Fase 0. Não tocar no stash `plano 17 seguranca wip`.
+- [x] Só depois da Fase 0 concluída e da `main` atualizada, abrir a branch da Onda 1 (`bot/carrosseis-onda-1`), com um commit por fase. A linha de base do §7 foi medida com as alterações pendentes presentes na árvore; a Fase 0 reexecuta `npm run verify` isoladamente para confirmar.
 
 ### Pré-condições antes da Fase 1
 
 - [x] Usuário aprovou D-2 (presets `7d / 1m / 6m`) e confirmou o início da implementação.
-- [ ] Fase 0 entregue e `main` atualizada, ou usuário dispensou explicitamente essa ordem.
+- [x] Fase 0 entregue e `main` atualizada, ou usuário dispensou explicitamente essa ordem.
 - [x] Passo 0 da Fase 1 (D-3) concluído e registrado.
 
 ### Onda 1 · Fase 1 — Persistência compatível

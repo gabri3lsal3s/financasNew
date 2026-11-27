@@ -3,7 +3,7 @@ import { ShieldCheck } from "lucide-react";
 import { useNavigate } from "react-router";
 import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
 import { CarouselDismissPopover } from "@/components/modules/carousel-dismiss-popover";
-import { useCarouselPauseLock } from "@/components/modules/carousel-pause-context";
+import { useCarouselPauseLock } from "@/components/modules/carousel-pause-context-def";
 import { SmartAdvisorCardSkeleton } from "@/components/modules/smart-advisor-card-skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

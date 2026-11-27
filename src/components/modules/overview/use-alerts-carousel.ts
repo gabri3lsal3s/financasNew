@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type TouchEvent } from "react";
 import { useVisualCustomization } from "@/hooks/use-visual-customization";
 import { triggerSensory } from "@/services/sensory";
-import { useCarouselPauseContext } from "../carousel-pause-context";
+import { useCarouselPauseContext } from "../carousel-pause-context-def";
 
 const SWIPE_THRESHOLD_PX = 40;
 export const ALERTS_CAROUSEL_TRANSITION_MS = 280;

@@ -83,9 +83,8 @@ describe("AlertCarouselCard", () => {
 
   it("abre CalculationMemoryModal com priority=p0 (acessível no mobile) e pausa autoplay via CarouselPauseContext", async () => {
     const { MemoryRouter } = await import("react-router");
-    const { CarouselPauseProvider, useCarouselPauseContext } = await import(
-      "./carousel-pause-context"
-    );
+    const { CarouselPauseProvider } = await import("./carousel-pause-context");
+    const { useCarouselPauseContext } = await import("./carousel-pause-context-def");
     const { buildGoalProgressBreakdown } = await import(
       "@/domain/calculation-memory/builders/overview-carousel-breakdown"
     );

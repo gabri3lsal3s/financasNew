@@ -9,7 +9,7 @@ import {
 } from "@/domain/notifications/hub";
 import { cn } from "@/lib/utils";
 import { triggerSensory } from "@/services/sensory";
-import { useCarouselPauseLock } from "./carousel-pause-context";
+import { useCarouselPauseLock } from "./carousel-pause-context-def";
 
 export interface CarouselDismissPopoverProps {
   /** Callback canônico (Onda 1). */

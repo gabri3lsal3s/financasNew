@@ -6,7 +6,7 @@ import type { CarouselDismissPreset } from "@/domain/notifications/hub";
 import { cn } from "@/lib/utils";
 import { CalculationMemoryModal } from "./calculation-memory";
 import { CarouselDismissPopover } from "./carousel-dismiss-popover";
-import { useCarouselPauseLock } from "./carousel-pause-context";
+import { useCarouselPauseLock } from "./carousel-pause-context-def";
 
 export type AlertCarouselCardTone =
   | "critical"

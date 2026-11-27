@@ -1,38 +1,15 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
   useState,
   type ReactNode,
 } from "react";
-
-export interface CarouselPauseContextValue {
-  /** Verdadeiro quando há pelo menos 1 lock ativo ou pausa manual acionada. */
-  isPaused: boolean;
-  /** Verdadeiro quando o usuário acionou o botão de pausa manual. */
-  manualPaused: boolean;
-  /** Alterna pausa manual do carrossel. */
-  toggleManualPause: () => void;
-  /** Adquire um lock identificado por token único; retorna função de liberação idempotente. */
-  acquireLock: (reason: string) => () => void;
-  /** Contagem de locks ativos (útil para diagnóstico/testes). */
-  activeLocksCount: number;
-}
-
-const NOOP_RELEASE = () => {};
-
-const DEFAULT_PAUSE_CONTEXT: CarouselPauseContextValue = {
-  isPaused: false,
-  manualPaused: false,
-  toggleManualPause: NOOP_RELEASE,
-  acquireLock: () => NOOP_RELEASE,
-  activeLocksCount: 0,
-};
-
-const CarouselPauseContext = createContext<CarouselPauseContextValue>(DEFAULT_PAUSE_CONTEXT);
+import {
+  CarouselPauseContext,
+  type CarouselPauseContextValue,
+} from "./carousel-pause-context-def";
 
 export function CarouselPauseProvider({ children }: { children: ReactNode }) {
   const locksRef = useRef<Map<symbol, string>>(new Map());
@@ -98,24 +75,4 @@ export function CarouselPauseProvider({ children }: { children: ReactNode }) {
       {children}
     </CarouselPauseContext.Provider>
   );
-}
-
-export function useCarouselPauseContext(): CarouselPauseContextValue {
-  return useContext(CarouselPauseContext);
-}
-
-/**
- * Adquire um lock de pausa no `CarouselPauseContext` enquanto `active` for verdadeiro
- * e garante liberação limpa na desmontagem (sem liberar locks de outros controles).
- */
-export function useCarouselPauseLock(active: boolean, reason: string): void {
-  const { acquireLock } = useCarouselPauseContext();
-
-  useEffect(() => {
-    if (!active) return;
-    const release = acquireLock(reason);
-    return () => {
-      release();
-    };
-  }, [active, reason, acquireLock]);
 }
