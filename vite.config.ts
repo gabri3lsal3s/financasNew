@@ -33,19 +33,6 @@ function precachePublicShell(patterns: string[]): Plugin {
       }
       patterns.push(...files);
     },
-    transformIndexHtml(html, ctx) {
-      if (!ctx.bundle) return html;
-      const fontPreloads = Object.keys(ctx.bundle)
-        .filter((fileName) => /^assets\/(?:inter|sora)-.*\.woff2$/.test(fileName))
-        .sort()
-        .map(
-          (fileName) =>
-            `    <link rel="preload" as="font" type="font/woff2" href="/${fileName}" crossorigin />`,
-        )
-        .join("\n");
-      if (!fontPreloads) return html;
-      return html.replace("</head>", `${fontPreloads}\n  </head>`);
-    },
   };
 }
 
