@@ -13,6 +13,7 @@ export type ErrorKind =
   | "rate-limit"
   | "service-unavailable"
   | "email-not-confirmed"
+  | "email-send-failed"
   | "user-already-exists"
   | "user_already_exists"
   | "invalid-credentials"
@@ -48,6 +49,8 @@ export const MESSAGES: Record<ErrorKind, string> = {
   "rate-limit": "Muitas requisições simultâneas. Aguarde alguns instantes e tente novamente.",
   "service-unavailable": "Serviço temporariamente indisponível para manutenção. Aguarde alguns instantes e tente novamente.",
   "email-not-confirmed": "E-mail ainda não confirmado. Verifique sua caixa de entrada.",
+  "email-send-failed":
+    "Não foi possível enviar o e-mail de confirmação no momento. Tente novamente em instantes ou entre em contato com o suporte.",
   "user-already-exists":
     "Este e-mail já está cadastrado no Axir. Faça login ou recupere sua senha se tiver esquecido.",
   user_already_exists:
@@ -183,6 +186,9 @@ export function classifyError(error: unknown): ClassifiedError {
     ((status === 422 || code === "422") && !/login|credential|factor|mfa/i.test(message) && !/factor|mfa/i.test(code))
   ) {
     return { kind: "email-not-confirmed", message: MESSAGES["email-not-confirmed"], raw: error };
+  }
+  if (/error sending (?:confirmation |recovery |magic link |email change )?email/i.test(message)) {
+    return { kind: "email-send-failed", message: MESSAGES["email-send-failed"], raw: error };
   }
   if (code.includes("invalid_credentials") || /invalid login credentials|invalid credentials/i.test(message)) {
     return { kind: "invalid-credentials", message: MESSAGES["invalid-credentials"], raw: error };
