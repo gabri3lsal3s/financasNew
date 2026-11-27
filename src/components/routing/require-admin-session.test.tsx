@@ -26,6 +26,16 @@ vi.mock("@/hooks/use-idle-session-timeout", () => ({
   useIdleSessionTimeout: (opts?: unknown) => mockUseIdleSessionTimeout(opts),
 }));
 
+vi.mock("@/components/modules/idle-session-warning-modal", () => ({
+  IdleSessionWarningModal: ({
+    open,
+    secondsRemaining,
+  }: {
+    open: boolean;
+    secondsRemaining: number;
+  }) => (open ? <div data-testid="admin-idle-modal">Aviso Admin {secondsRemaining}s</div> : null),
+}));
+
 vi.mock("@/components/modules", () => ({
   IdleSessionWarningModal: ({
     open,
@@ -36,7 +46,7 @@ vi.mock("@/components/modules", () => ({
   }) => (open ? <div data-testid="admin-idle-modal">Aviso Admin {secondsRemaining}s</div> : null),
 }));
 
-vi.mock("@/state", () => ({
+vi.mock("@/state/queries/use-user-access", () => ({
   useUserAccess: () => mockUseUserAccess(),
 }));
 

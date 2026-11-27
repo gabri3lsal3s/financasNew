@@ -25,10 +25,10 @@ export function ResponsiveLabel({
       {iconOnlyBelow380 ? (
         <>
           <span className="sr-only min-[380px]:hidden">{full}</span>
-          <span className="hidden min-[380px]:inline sm:hidden">{short}</span>
+          <span aria-hidden="true" className="hidden min-[380px]:inline sm:hidden">{short}</span>
         </>
       ) : (
-        <span className="sm:hidden">{short}</span>
+        <span aria-hidden="true" className="sm:hidden">{short}</span>
       )}
       <span className="hidden sm:inline">{full}</span>
     </>

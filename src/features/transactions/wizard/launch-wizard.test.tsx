@@ -34,6 +34,14 @@ vi.mock("react-router", () => ({
   useNavigate: () => navigateMock,
 }));
 
+vi.mock("@/services/native/receipt-extractor", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/services/native/receipt-extractor")>();
+  return {
+    ...actual,
+    extractReceiptTextFromFile: (...args: unknown[]) => extractReceiptTextFromFileMock(...args),
+  };
+});
+
 vi.mock("@/services/native", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/services/native")>();
   return {
@@ -119,6 +127,20 @@ vi.mock("@/state", () => ({
   useCreateRecurrence: () => ({ mutateAsync: vi.fn(), isPending: false }),
   usePredictionHistory: () => ({ entries: predictionHistoryMock(), isLoading: false, error: null, refetch: vi.fn() }),
   useFamilyMode: () => ({ isFamilyModeEnabled: mockIsFamilyModeEnabled }),
+  useBusinessMode: () => ({
+    isBusinessModeEnabled: false,
+    businessProfile: null,
+    toggleBusinessMode: vi.fn().mockResolvedValue(true),
+    updateBusinessProfile: vi.fn().mockResolvedValue(true),
+    isLoading: false,
+    isPending: false,
+  }),
+  useViewScope: () => ({
+    viewScope: "all" as const,
+    effectiveViewScope: "all" as const,
+    setViewScope: vi.fn(),
+    isBusinessModeEnabled: false,
+  }),
   useMyFamily: () => ({ data: mockMyFamily, isLoading: false }),
   useTripMode: () => ({ isTripModeEnabled: true }),
   useUserPreferences: () => ({ data: mockUserPreferences, isLoading: false }),
@@ -148,7 +170,16 @@ vi.mock("@/hooks/use-auth", () => ({
   }),
 }));
 
+vi.mock("@/state/queries/use-user-subscription", () => ({
+  useUserSubscription: () => ({ isPro: true, isTrial: false, plan: "pro", isReadOnly: false, canWrite: true }),
+}));
+vi.mock("@/state/queries/use-permission", () => ({
+  usePermission: () => ({ isHidden: false, canRead: true, canWrite: true, isReadOnlyMode: false, accessLevel: "admin" }),
+}));
+
 vi.mock("@/state/queries/use-user-access", () => ({
+  USER_SUBSCRIPTION_KEY: ["user_subscription"],
+  userSubscriptionQueryKey: (userId?: string | null) => ["user_subscription", userId ?? "anon"],
   useUserAccess: () => ({
     profile: {
       id: "user-123",
@@ -766,9 +797,8 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
         expect(descInput.value).toMatch(/Padaria S[ãa]o Bento/i);
         const valInput = screen.getByRole("textbox", { name: "Valor do lançamento" }) as HTMLInputElement;
         expect(valInput.value).toMatch(/38,00/);
+        expect(isClipboardTextDismissed(emvWithValue, "user-123")).toBe(true);
       });
-
-      expect(isClipboardTextDismissed(emvWithValue, "user-123")).toBe(true);
     });
 
     it("para PIX_BRCODE sem Tag 54 (valueCents = 0), destaca MoneyInput sem usar autoFocus", async () => {

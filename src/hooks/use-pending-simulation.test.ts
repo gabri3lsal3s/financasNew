@@ -15,7 +15,7 @@ vi.mock("./use-auth", () => ({
   useAuth: () => mockUseAuth(),
 }));
 
-vi.mock("@/state", () => ({
+vi.mock("@/state/mutations/use-public-share-mutations", () => ({
   useSaveSimulationToAccount: () => ({
     mutateAsync: mockMutateAsync,
   }),

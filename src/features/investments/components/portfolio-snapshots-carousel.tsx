@@ -54,9 +54,15 @@ export function PortfolioSnapshotsCarousel({
     updateScrollBounds();
     el.addEventListener("scroll", updateScrollBounds, { passive: true });
     window.addEventListener("resize", updateScrollBounds);
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => updateScrollBounds())
+        : null;
+    resizeObserver?.observe(el);
     return () => {
       el.removeEventListener("scroll", updateScrollBounds);
       window.removeEventListener("resize", updateScrollBounds);
+      resizeObserver?.disconnect();
     };
   }, [updateScrollBounds, orderedSeries]);
 

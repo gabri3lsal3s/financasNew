@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
@@ -36,6 +36,11 @@ export interface TabsProps {
    * Útil para preservação de estado em formulários, SEO e checagens no DOM.
    */
   forceMount?: boolean;
+  /**
+   * Monta cada aba sob demanda na primeira visita e a preserva montada (oculta via CSS)
+   * nas trocas subsequentes, mantendo scroll, carrosséis e estado local sem custo inicial.
+   */
+  keepMountedAfterFirstVisit?: boolean;
 }
 
 /** Tabs próprias do app (Radix) — acessível, com teclado e micro-interação (F11). */
@@ -49,8 +54,18 @@ export function Tabs({
   ariaLabel,
   swipeable = false,
   forceMount = false,
+  keepMountedAfterFirstVisit = false,
 }: TabsProps) {
   const contentRef = useRef<HTMLDivElement>(null);
+  const [visitedValues, setVisitedValues] = useState<Set<string>>(() => new Set([value]));
+
+  if (keepMountedAfterFirstVisit && value && !visitedValues.has(value)) {
+    setVisitedValues((prev) => {
+      const next = new Set(prev);
+      next.add(value);
+      return next;
+    });
+  }
   const currentIndex = Math.max(0, items.findIndex((item) => item.value === value));
   const isFullWidth = fullWidth ?? false;
   const { containerRef: listRef, dragScrollProps } = useHorizontalDragScroll<HTMLDivElement>(value);
@@ -155,19 +170,23 @@ export function Tabs({
           }}
           data-swipe-tabs-content={swipeable ? "" : undefined}
         >
-          {items.map((item) => (
-            <TabsPrimitive.Content
-              key={item.value}
-              value={item.value}
-              forceMount={forceMount ? true : undefined}
-              className={cn(
-                "outline-none focus-visible:ring-1 focus-visible:ring-ring animate-route-in",
-                forceMount && "data-[state=inactive]:hidden",
-              )}
-            >
-              {item.content}
-            </TabsPrimitive.Content>
-          ))}
+          {items.map((item) => {
+            const shouldKeepMounted =
+              forceMount || (keepMountedAfterFirstVisit && visitedValues.has(item.value));
+            return (
+              <TabsPrimitive.Content
+                key={item.value}
+                value={item.value}
+                forceMount={shouldKeepMounted ? true : undefined}
+                className={cn(
+                  "outline-none focus-visible:ring-1 focus-visible:ring-ring animate-route-in",
+                  shouldKeepMounted && "data-[state=inactive]:hidden",
+                )}
+              >
+                {item.content}
+              </TabsPrimitive.Content>
+            );
+          })}
         </div>
       ) : (
         items.map((item) => (

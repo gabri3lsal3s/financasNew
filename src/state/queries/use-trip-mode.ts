@@ -2,13 +2,16 @@ import { useUserPreferences } from "@/state/queries/use-user-preferences";
 import { useUserAccess } from "@/state/queries/use-user-access";
 import { useUpdateCustomSettings } from "@/state/mutations/use-preference-mutations";
 import { useDemoSession } from "@/state/demo-mode";
+import { isQueryPending } from "@/state/query-readiness";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 
 /**
  * Hook centralizado para controle e leitura do Modo Viagem.
  *
- * Por padrão, o Modo Viagem inicia desabilitado (`false`).
+ * Durante o carregamento (`isPending`), adota default-deny (`false`) para evitar flash.
+ * Após resolvido (`isSuccess`), inicia habilitado (`true`) por padrão para usuários
+ * com finanças pessoais, respeitando a preferência explícita salva na nuvem.
  * Quando desabilitado ou quando o usuário possui licença restrita a Investimentos,
  * os atalhos de navegação e seletores são ocultados na interface.
  */
@@ -24,9 +27,11 @@ export function useTripMode() {
     hasFeature("debts") ||
     hasFeature("budgets");
 
+  const isPrefsPending = isQueryPending(preferencesQuery);
+
   const isTripModeEnabled = isDemoActive
     ? true
-    : !hasFinanceFeatures
+    : isPrefsPending || !hasFinanceFeatures
       ? false
       : (preferencesQuery.data?.custom_settings?.tripModeEnabled ?? true);
 
@@ -52,7 +57,7 @@ export function useTripMode() {
   return {
     isTripModeEnabled,
     toggleTripMode,
-    isLoading: preferencesQuery.isLoading,
+    isLoading: isPrefsPending,
     isPending: updateSettingsMutation.isPending,
   };
 }

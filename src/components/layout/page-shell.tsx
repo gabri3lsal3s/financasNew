@@ -5,7 +5,6 @@ import type { ThemePreference } from "@/app/theme-provider";
 import { cn } from "@/lib/utils";
 import { trackFeatureUse } from "@/services/analytics/tracker";
 import { resetPageScroll } from "@/services/scroll";
-import { ContentLoading } from "@/components/ui/content-loading";
 import { buildCheckoutUrl } from "@/domain/subscription/plans";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { BackToTop } from "@/components/layout/back-to-top";
@@ -145,7 +144,7 @@ export function PageShell({ children }: { children?: ReactNode } = {}) {
       {wizardOpen && (
         <Suspense fallback={null}>
           <LaunchWizard
-            key={`${initialType}-${initialMode}-${wizardOpen ? "open" : "closed"}-${sugIdParam ?? ""}`}
+            key={sugIdParam ?? "default"}
             open={wizardOpen}
             initialMode={initialMode}
             initialType={initialType}
@@ -194,7 +193,7 @@ export function PageShell({ children }: { children?: ReactNode } = {}) {
         <NetworkStatusBanner />
         <main id="main-content" className="flex-1 overflow-y-auto overflow-x-hidden overscroll-none min-h-0 w-full">
           <div className="mx-auto w-full max-w-7xl px-3 sm:px-6 pb-[calc(6.5rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))] lg:pb-10 pt-4 sm:pt-6 lg:px-8 min-w-0">
-            <div key={location.pathname} className="animate-route-in min-w-0 w-full">
+            <div className="min-w-0 w-full">
               <Suspense fallback={<RouteSkeletonFallback />}>{children ?? <Outlet />}</Suspense>
             </div>
           </div>
@@ -205,7 +204,7 @@ export function PageShell({ children }: { children?: ReactNode } = {}) {
       <BottomNav />
 
       {headerUpgradeOpen ? (
-        <Suspense fallback={<ContentLoading />}>
+        <Suspense fallback={null}>
           <UpgradeDialog
             open={headerUpgradeOpen}
             onOpenChange={setHeaderUpgradeOpen}

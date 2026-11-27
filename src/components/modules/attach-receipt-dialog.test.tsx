@@ -18,6 +18,18 @@ import type { CreditCard } from "@/types/schema";
 
 const mockExtractReceiptTextFromFile = vi.fn();
 
+vi.mock("@/services/native/receipt-extractor", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/services/native/receipt-extractor")>();
+  return {
+    ...actual,
+    extractReceiptTextFromFile: (...args: unknown[]) => mockExtractReceiptTextFromFile(...args),
+  };
+});
+
+vi.mock("@/services/native/bank-listener", () => ({
+  processPixShare: vi.fn(),
+}));
+
 vi.mock("@/services/native", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/services/native")>();
   return {

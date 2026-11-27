@@ -62,7 +62,33 @@ const mockUseReminders = vi.fn().mockReturnValue({
   error: null,
 });
 
+vi.mock("@/state/mutations/use-preference-mutations", () => ({
+  useUpdateCustomSettings: () => ({
+    mutate: mockUpdateCustomSettingsMutate,
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+}));
+
 vi.mock("@/state", () => ({
+  useAllCardExpenses: () => ({ data: [], isLoading: false, error: null }),
+  useAllCardPayments: () => ({ data: [], isLoading: false, error: null }),
+  useBudgets: () => ({ data: [], isLoading: false, error: null }),
+  useCategories: () => ({ data: [], isLoading: false, error: null }),
+  useCorporateDividends: () => ({ data: [], isLoading: false, error: null }),
+  useCreditCards: () => ({ data: [], isLoading: false, error: null }),
+  useExpenses: () => ({ data: [], isLoading: false, error: null }),
+  useIncomes: () => ({ data: [], isLoading: false, error: null }),
+  useDebts: () => ({ data: [], isLoading: false, error: null }),
+  useFeedback: () => ({ data: {}, isLoading: false, error: null }),
+  useSetFeedback: () => ({ mutateAsync: vi.fn(), mutate: vi.fn() }),
+  useCreateIncome: () => ({ mutateAsync: vi.fn() }),
+  useDeleteIncome: () => ({ mutateAsync: vi.fn() }),
+  useCreateExpense: () => ({ mutateAsync: vi.fn() }),
+  useDeleteExpense: () => ({ mutateAsync: vi.fn() }),
+  useRecurrences: () => ({ data: [], isLoading: false, error: null }),
+  useUserTrips: () => ({ data: [], isLoading: false, error: null }),
+  usePortfolioAssets: () => ({ data: [], isLoading: false, error: null }),
   useGlobalSearchEntries: () => ({
     entries: [],
     isLoading: false,
@@ -70,6 +96,8 @@ vi.mock("@/state", () => ({
     error: null,
   }),
   useReminders: () => mockUseReminders(),
+  useReminderStates: () => ({ data: [], isLoading: false }),
+  useMyPublicShares: () => ({ data: [], isLoading: false }),
   useUserPreferences: () => ({
     data: {
       custom_settings: {
@@ -385,7 +413,7 @@ describe("PageShell (F7.2/F7.3)", () => {
 
     renderShell();
 
-    expect(screen.getByRole("dialog", { name: /Tour guiado interativo/i })).toBeInTheDocument();
+    expect(await screen.findByRole("dialog", { name: /Tour guiado interativo/i })).toBeInTheDocument();
     expect(screen.queryByTestId("header-demo-indicator")).not.toBeInTheDocument();
     expect(screen.getByText("Passo 1 de 5")).toBeInTheDocument();
     expect(screen.getByText("Dashboard & Saldo Livre Real")).toBeInTheDocument();

@@ -2,6 +2,7 @@ import { useUserPreferences } from "@/state/queries/use-user-preferences";
 import { useUserAccess } from "@/state/queries/use-user-access";
 import { useUpdateCustomSettings } from "@/state/mutations/use-preference-mutations";
 import { useDemoSession } from "@/state/demo-mode";
+import { isQueryPending } from "@/state/query-readiness";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 
@@ -24,9 +25,11 @@ export function useFamilyMode() {
     hasFeature("debts") ||
     hasFeature("budgets");
 
+  const isPrefsPending = isQueryPending(preferencesQuery);
+
   const isFamilyModeEnabled = isDemoActive
     ? true
-    : !hasFinanceFeatures
+    : isPrefsPending || !hasFinanceFeatures
       ? false
       : (preferencesQuery.data?.custom_settings?.familyModeEnabled ?? true);
 
@@ -52,7 +55,7 @@ export function useFamilyMode() {
   return {
     isFamilyModeEnabled,
     toggleFamilyMode,
-    isLoading: preferencesQuery.isLoading,
+    isLoading: isPrefsPending,
     isPending: updateSettingsMutation.isPending,
   };
 }

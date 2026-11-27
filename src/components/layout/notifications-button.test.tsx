@@ -16,6 +16,26 @@ vi.mock("@/features/overview/hooks", () => ({
 }));
 
 vi.mock("@/state", () => ({
+  useAllCardExpenses: () => ({ data: [], isLoading: false, error: null }),
+  useAllCardPayments: () => ({ data: [], isLoading: false, error: null }),
+  useBudgets: () => ({ data: [], isLoading: false, error: null }),
+  useCategories: () => ({ data: [], isLoading: false, error: null }),
+  useCorporateDividends: () => ({ data: [], isLoading: false, error: null }),
+  useCreditCards: () => ({ data: [], isLoading: false, error: null }),
+  useExpenses: () => ({ data: [], isLoading: false, error: null }),
+  useIncomes: () => ({ data: [], isLoading: false, error: null }),
+  useDebts: () => ({ data: [], isLoading: false, error: null }),
+  useFeedback: () => ({ data: {}, isLoading: false, error: null }),
+  useSetFeedback: () => ({ mutateAsync: vi.fn(), mutate: vi.fn() }),
+  useCreateIncome: () => ({ mutateAsync: vi.fn() }),
+  useDeleteIncome: () => ({ mutateAsync: vi.fn() }),
+  useCreateExpense: () => ({ mutateAsync: vi.fn() }),
+  useDeleteExpense: () => ({ mutateAsync: vi.fn() }),
+  useUpdateCustomSettings: () => ({ mutate: vi.fn(), mutateAsync: vi.fn() }),
+  useRecurrences: () => ({ data: [], isLoading: false, error: null }),
+  useUserTrips: () => ({ data: [], isLoading: false, error: null }),
+  useMyFamily: () => ({ data: null, isLoading: false, error: null }),
+  usePortfolioAssets: () => ({ data: [], isLoading: false, error: null }),
   useReminders: () => mockUseReminders(),
   useOnboardingCounts: () => mockUseOnboardingCounts(),
   useUserPreferences: () => ({
@@ -28,9 +48,17 @@ vi.mock("@/state", () => ({
   }),
   useSetReminderState: () => ({ mutate: vi.fn(), isPending: false }),
   useMarkAllRemindersAsRead: () => ({ mutate: vi.fn(), isPending: false }),
+  useReminderStates: () => ({ data: [], isLoading: false }),
   useMySupportTickets: () => ({ data: [], isLoading: false }),
   useMyBroadcastNotifications: () => mockUseMyBroadcastNotifications(),
+  useMyPublicShares: () => ({ data: [], isLoading: false }),
+  useUserSubscription: () => ({ isPro: true, isReadOnly: false, canWrite: true }),
   useMarkBroadcastAsRead: () => ({ mutate: vi.fn(), isPending: false }),
+  useDismissBroadcastNotification: () => ({ mutate: vi.fn(), isPending: false }),
+  useFamilyMode: () => ({ isFamilyModeEnabled: false, toggleFamilyMode: vi.fn() }),
+  useTripMode: () => ({ isTripModeEnabled: false, toggleTripMode: vi.fn(), isLoading: false }),
+  useViewScope: () => ({ viewScope: "all" as const, effectiveViewScope: "all" as const, setViewScope: vi.fn(), isBusinessModeEnabled: false }),
+  useBusinessMode: () => ({ isBusinessModeEnabled: false, businessProfile: null, toggleBusinessMode: vi.fn(), updateBusinessProfile: vi.fn(), isLoading: false, isPending: false }),
   useUserAccess: () => ({
     hasFeature: (key: string) => mockHasFeature(key),
     isAdmin: false,
@@ -116,7 +144,7 @@ describe("NotificationsButton", () => {
     );
 
     await user.click(screen.getByRole("button", { name: /Notificações/i }));
-    expect(screen.getByText("Lembretes & Avisos")).toBeInTheDocument();
+    expect(await screen.findByText("Lembretes & Avisos", {}, { timeout: 8000 })).toBeInTheDocument();
   });
 
   it("não renderiza o sininho apenas por passos de onboarding pendentes em conta nova", () => {

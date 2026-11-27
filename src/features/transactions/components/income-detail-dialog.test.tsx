@@ -12,8 +12,40 @@ const createIncomeMock = vi.fn();
 let mockIsFamilyModeEnabled = true;
 let mockMyFamily: unknown = null;
 
+vi.mock("@/state/queries/use-user-subscription", () => ({
+  useUserSubscription: () => ({
+    canWrite: true,
+    isReadOnly: false,
+    tier: "pro_annual",
+  }),
+}));
+vi.mock("@/state/queries/use-permission", () => ({
+  usePermission: () => ({
+    canWrite: true,
+    canRead: true,
+    level: "write",
+  }),
+}));
+
 vi.mock("@/state", () => ({
+  useIncomeGoals: () => ({ data: [], isLoading: false, error: null }),
+  usePortfolioContributions: () => ({ data: [], isLoading: false, error: null }),
+  useAllPortfolioTransactions: () => ({ data: [], isLoading: false, error: null }),
+  usePortfolioSnapshots: () => ({ data: [], isLoading: false, error: null }),
+  usePortfolioDividends: () => ({ data: [], isLoading: false, error: null }),
+  useUserAccess: () => ({ role: "user", status: "active", isAdmin: false, isSuperAdmin: false, hasFeature: () => true, isLoading: false }),
+  useSavePocketCostMilestoneAtomic: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteInternalTransferPair: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUserFinancialContext: () => ({ context: undefined, isLoading: false }),
   useFamilyMode: () => ({ isFamilyModeEnabled: mockIsFamilyModeEnabled }),
+  useBusinessMode: () => ({
+    isBusinessModeEnabled: false,
+    businessProfile: null,
+    toggleBusinessMode: vi.fn().mockResolvedValue(true),
+    updateBusinessProfile: vi.fn().mockResolvedValue(true),
+    isLoading: false,
+    isPending: false,
+  }),
   useMyFamily: () => ({ data: mockMyFamily, isLoading: false }),
   useUserSubscription: () => ({
     canWrite: true,

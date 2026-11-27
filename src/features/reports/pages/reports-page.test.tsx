@@ -23,6 +23,28 @@ let mockHasFeature: (key: string) => boolean = () => true;
 let mockSnapshots: Array<{ id: string; month: string; total_value: number; total_cost: number }> = [];
 
 
+vi.mock("@/state/queries/use-user-access", () => ({
+  useUserAccess: () => ({
+    role: "user",
+    status: "active",
+    isAdmin: false,
+    isSuperAdmin: false,
+    hasFeature: (key: string) => mockHasFeature(key),
+    isLoading: false,
+  }),
+}));
+
+vi.mock("@/state/queries/use-corporate-dividends", () => ({
+  useCorporateDividends: () => ({
+    available: [],
+    projected: [],
+    assetsNeedingCalibration: [],
+    trackingStartDate: null,
+    fxRate: 5.25,
+    isLoading: false,
+  }),
+}));
+
 vi.mock("@/state", () => ({
   useExpenses: () => ({
     data: expenses,
@@ -71,6 +93,20 @@ vi.mock("@/state", () => ({
     data: [],
     isLoading: false,
     error: null,
+  }),
+  useBusinessMode: () => ({
+    isBusinessModeEnabled: false,
+    businessProfile: null,
+    toggleBusinessMode: vi.fn().mockResolvedValue(true),
+    updateBusinessProfile: vi.fn().mockResolvedValue(true),
+    isLoading: false,
+    isPending: false,
+  }),
+  useViewScope: () => ({
+    viewScope: "all" as const,
+    effectiveViewScope: "all" as const,
+    setViewScope: vi.fn(),
+    isBusinessModeEnabled: false,
   }),
   usePortfolioContributions: () => ({
     data: [],

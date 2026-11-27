@@ -35,6 +35,10 @@ vi.mock("@/state", () => ({
     mutateAsync: mockDismissMutateAsync,
     isPending: false,
   }),
+  useDismissUserDividendEventsBatch: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
   useCreateManualUserDividendEvent: () => ({
     mutateAsync: mockCreateManualMutateAsync,
     isPending: false,
@@ -46,6 +50,19 @@ vi.mock("@/state", () => ({
   useUpdateUserDividendEvent: () => ({
     mutateAsync: mockUpdateEventMutateAsync,
     isPending: false,
+  }),
+  useUpdatePortfolioDividend: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useCreatePortfolioDividend: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  usePortfolioDividends: () => ({
+    data: [],
+    isLoading: false,
+    error: null,
   }),
   useSetDividendTracking: () => ({
     mutateAsync: mockSetTrackingMutateAsync,

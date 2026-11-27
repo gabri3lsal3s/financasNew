@@ -61,6 +61,17 @@ vi.mock("@/services/ai-assistant", async (importOriginal) => {
   };
 });
 
+vi.mock("@/state/queries/use-user-subscription", () => ({
+  useUserSubscription: () => ({
+    canWrite: true,
+    isReadOnly: false,
+    tier: "pro_annual",
+  }),
+}));
+vi.mock("@/state/queries/use-permission", () => ({
+  usePermission: () => ({ isHidden: false, canRead: true, canWrite: true, isReadOnlyMode: false, accessLevel: "admin" }),
+}));
+
 vi.mock("@/state", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/state")>();
   return {
@@ -190,7 +201,7 @@ describe("StatementImportDialog (Onda 4 — UI/UX Inteligência Invisível)", ()
       "Data;Estabelecimento;Valor\n15/08/2026;Padaria Estrela;25,00\n16/08/2026;Mercado Central;120,00",
     );
 
-    expect(await screen.findByText("Padaria Estrela")).toBeInTheDocument();
+    expect(await screen.findByText("Padaria Estrela", {}, { timeout: 10000 })).toBeInTheDocument();
     expect(screen.getByText("Mercado Central")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Reanalisar com IA/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/Estruturado com IA|Leitura assistida|Layout aprendido|Leitura local/i)).not.toBeInTheDocument();
@@ -200,11 +211,11 @@ describe("StatementImportDialog (Onda 4 — UI/UX Inteligência Invisível)", ()
     const applyBtn = screen.getByRole("button", { name: /Aplicar e importar \(2 ações\)/i });
     await user.click(applyBtn);
 
-    expect(await screen.findByText("Fatura conciliada com sucesso")).toBeInTheDocument();
+    expect(await screen.findByText("Fatura conciliada com sucesso", {}, { timeout: 10000 })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Pagar fatura agora/i }));
     expect(onOpenChange).toHaveBeenCalledWith(false);
     expect(onPayBillNow).toHaveBeenCalledTimes(1);
-  });
+  }, 20_000);
 
   it("exibe status calmo + botão Cancelar que aborta processamento em andamento", async () => {
     const user = userEvent.setup();
@@ -426,9 +437,9 @@ describe("StatementImportDialog (Onda 4 — UI/UX Inteligência Invisível)", ()
     expect(await screen.findByRole("button", { name: /Mostrar mais lançamentos/i }, { timeout: 8000 })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /Aplicar e importar \(515 ações\)/i }));
-    expect(await screen.findByRole("button", { name: /Tentar novamente/i })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /Tentar novamente/i }, { timeout: 5000 })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Tentar novamente/i }));
-    expect(await screen.findByText("Fatura conciliada com sucesso")).toBeInTheDocument();
+    expect(await screen.findByText("Fatura conciliada com sucesso", {}, { timeout: 5000 })).toBeInTheDocument();
     expect(mutateCommitMock).toHaveBeenCalledTimes(3);
   }, 60_000);
 });

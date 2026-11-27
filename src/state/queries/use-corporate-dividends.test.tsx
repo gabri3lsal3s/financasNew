@@ -14,7 +14,7 @@ import type {
 import { useCorporateDividends } from "./use-corporate-dividends";
 import { useSetDividendTracking } from "../mutations/portfolio/use-portfolio-asset-mutations";
 import { PORTFOLIO_QUERY_KEYS } from "../mutations/portfolio/portfolio-keys";
-import { userPreferencesKey } from "./use-user-preferences";
+import { userPreferencesQueryKey } from "./use-user-preferences";
 
 let mockAssets: PortfolioAsset[] = [];
 let mockTxs: PortfolioTransaction[] = [];
@@ -57,7 +57,9 @@ vi.mock("./use-portfolio", () => ({
 }));
 
 vi.mock("./use-user-preferences", () => ({
+  USER_PREFERENCES_KEY: ["user-preferences"] as const,
   userPreferencesKey: ["user-preferences"] as const,
+  userPreferencesQueryKey: (userId: string | null) => ["user-preferences", userId] as const,
   useUserPreferences: () => ({ data: mockUserPrefs, isLoading: false, isError: false }),
 }));
 
@@ -289,7 +291,7 @@ describe("useCorporateDividends + useSetDividendTracking (S1)", () => {
 
   it("useSetDividendTracking aplica cache de preferências, ativos e eventos invalidados antes do refetch", async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    client.setQueryData(userPreferencesKey, mockUserPrefs);
+    client.setQueryData(userPreferencesQueryKey(null), mockUserPrefs);
     client.setQueryData(PORTFOLIO_QUERY_KEYS.assets, [
       {
         id: "a1",
@@ -350,7 +352,7 @@ describe("useCorporateDividends + useSetDividendTracking (S1)", () => {
       });
     });
 
-    const updatedPrefs = client.getQueryData<UserPreferences>(userPreferencesKey);
+    const updatedPrefs = client.getQueryData<UserPreferences>(userPreferencesQueryKey(null));
     const updatedAssets = client.getQueryData<PortfolioAsset[]>(PORTFOLIO_QUERY_KEYS.assets);
     const updatedEvents = client.getQueryData<UserDividendEvent[]>(
       PORTFOLIO_QUERY_KEYS.userDividendEvents,

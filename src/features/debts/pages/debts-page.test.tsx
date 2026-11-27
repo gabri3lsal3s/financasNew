@@ -27,7 +27,20 @@ vi.mock("@/services/export-actions", () => ({
   shareText: vi.fn(),
 }));
 
+vi.mock("@/state/queries/use-user-subscription", () => ({
+  useUserSubscription: () => ({
+    canWrite: true,
+    isReadOnly: false,
+    tier: "pro_annual",
+  }),
+}));
+vi.mock("@/state/queries/use-permission", () => ({
+  usePermission: () => ({ isHidden: false, canRead: true, canWrite: true, isReadOnlyMode: false, accessLevel: "admin" }),
+}));
+
 vi.mock("@/state", () => ({
+  useBusinessMode: () => ({ isBusinessModeEnabled: false, businessProfile: null, toggleBusinessMode: vi.fn(), updateBusinessProfile: vi.fn(), isLoading: false, isPending: false }),
+  useViewScope: () => ({ viewScope: "all" as const, effectiveViewScope: "all" as const, setViewScope: vi.fn(), isBusinessModeEnabled: false }),
   useUserSubscription: () => ({
     canWrite: true,
     isReadOnly: false,

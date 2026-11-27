@@ -13,6 +13,10 @@ vi.mock("@/hooks/use-auth", () => ({
   useAuth: () => mockUseAuth(),
 }));
 
+vi.mock("@/state/queries/use-user-access", () => ({
+  useUserAccess: () => mockUseUserAccess(),
+}));
+
 vi.mock("@/state", () => ({
   useUserAccess: () => mockUseUserAccess(),
   useAdminUsers: () => mockUseAdminUsers(),

@@ -12,8 +12,11 @@ let mockSubscription = {
   isReadOnly: false,
 };
 
-vi.mock("@/state", () => ({
+vi.mock("@/state/queries/use-user-subscription", () => ({
   useUserSubscription: () => mockSubscription,
+}));
+
+vi.mock("@/state/queries/use-permission", () => ({
   usePermission: (moduleKey?: string) => ({
     module: moduleKey ?? "transactions",
     accessLevel: mockSubscription.isReadOnly ? "read" : "write",

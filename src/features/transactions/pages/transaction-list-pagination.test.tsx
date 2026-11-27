@@ -37,7 +37,26 @@ const mockExpenses: Expense[] = Array.from({ length: 75 }).map((_, i) => ({
   updated_at: "2026-08-15T12:00:00Z",
 }));
 
+vi.mock("@/state/queries/use-user-subscription", () => ({
+  useUserSubscription: () => ({
+    canWrite: true,
+    isReadOnly: false,
+    tier: "pro_annual",
+  }),
+}));
+vi.mock("@/state/queries/use-permission", () => ({
+  usePermission: () => ({
+    isHidden: false,
+    canRead: true,
+    canWrite: true,
+    isReadOnlyMode: false,
+    accessLevel: "admin",
+  }),
+}));
+
 vi.mock("@/state", () => ({
+  useBusinessMode: () => ({ isBusinessModeEnabled: false, businessProfile: null, toggleBusinessMode: vi.fn(), updateBusinessProfile: vi.fn(), isLoading: false, isPending: false }),
+  useViewScope: () => ({ viewScope: "all" as const, effectiveViewScope: "all" as const, setViewScope: vi.fn(), isBusinessModeEnabled: false }),
   useUserSubscription: () => ({
     canWrite: true,
     isReadOnly: false,

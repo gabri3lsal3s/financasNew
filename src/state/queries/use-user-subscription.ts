@@ -23,7 +23,7 @@ export function useUserSubscription(): SubscriptionStatus {
     queryFn: getMySubscription,
     enabled: Boolean(profile?.id),
     staleTime: 30_000, // 30 segundos para reatividade de faturamento
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
     gcTime: STATIC_GC_TIME,
   });
 

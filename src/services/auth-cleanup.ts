@@ -23,11 +23,11 @@ export function resetAppState(queryClient?: QueryClient, nextUserId: string | nu
     queryClient.clear();
   }
 
-  // 2.1 Reseta o bloqueio biométrico e o ícone de abertura ao encerrar sessão
+  // 2.1 Reseta o bloqueio biométrico ao encerrar sessão e o ícone em cache em qualquer troca de conta
+  setCachedIconTier("FREE");
   if (nextUserId === null) {
     setAppLocked(false);
     resetAppLockBackgroundTimer();
-    setCachedIconTier("FREE");
     if (typeof window !== "undefined") {
       try {
         window.localStorage.removeItem("financas_active_biometric_lock_enabled");

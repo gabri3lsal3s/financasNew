@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { checkPWAUpdateNow } from "@/app/pwa";
 import { getSupabase } from "@/data/client";
 import { resetAppState } from "@/services/auth-cleanup";
+import { getActiveUserId, setActiveUserId } from "@/services/user-storage";
 import { initAppLockListener } from "@/services/native/app-lock";
 import { isNativePlatform } from "@/services/native/platform";
 
@@ -39,7 +40,7 @@ function clearSessionNotifications(previousUserId: string | null) {
  */
 function AuthQuerySync({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
-  const activeUserIdRef = useRef<string | null>(null);
+  const activeUserIdRef = useRef<string | null>(getActiveUserId());
 
   useEffect(() => {
     let supabase: ReturnType<typeof getSupabase>;
@@ -73,10 +74,19 @@ function AuthQuerySync({ children }: { children: ReactNode }) {
         resetAppState(queryClient, null);
         lastAal = null;
         void checkPWAUpdateNow({ force: true, applyIfSafe: true });
-      } else if (previousUserId !== newUserId) {
-        if (previousUserId && previousUserId !== newUserId) {
-          clearSessionNotifications(previousUserId);
-        }
+      } else if (previousUserId === null && newUserId !== null) {
+        // Transição de visitante (null) -> usuário autenticado (userA):
+        // Purga apenas caches anônimos/sem escopo do novo usuário, sem abortar queries
+        // de boot já iniciadas para `newUserId`.
+        queryClient.removeQueries({
+          predicate: (query) => !query.queryKey.includes(newUserId),
+        });
+        setActiveUserId(newUserId);
+        void checkPWAUpdateNow({ force: true, applyIfSafe: true });
+        lastAal = nextAal;
+      } else if (previousUserId !== null && previousUserId !== newUserId) {
+        // Troca direta entre contas distintas (userA -> userB): isolamento completo
+        clearSessionNotifications(previousUserId);
         resetAppState(queryClient, newUserId);
         void queryClient.invalidateQueries();
         void checkPWAUpdateNow({ force: true, applyIfSafe: true });

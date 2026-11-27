@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { computeEMVCRC16 } from "@/domain/notifications";
 import * as clipboardService from "@/services/clipboard";
-import { isNativePlatform } from "@/services/native";
+import { isNativePlatform } from "@/services/native/platform";
 import {
   DISMISSED_CLIPBOARD_HASHES_KEY,
   fnv1aHash,
@@ -29,8 +29,8 @@ vi.mock("@capacitor/app", () => ({
   },
 }));
 
-vi.mock("@/services/native", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/services/native")>();
+vi.mock("@/services/native/platform", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/services/native/platform")>();
   return {
     ...actual,
     isNativePlatform: vi.fn(() => false),

@@ -1,4 +1,3 @@
-import { ContentLoading } from "@/components/ui/content-loading";
 import { lazy, Suspense, useMemo } from "react";
 import { resolveEffectiveLimit } from "@/domain/budgets";
 import { useCorporateDividends } from "@/state/queries/use-corporate-dividends";
@@ -174,7 +173,7 @@ export function ReportsModalsHost({ weightsEnabled, state, data }: ReportsModals
   ]);
 
   return (
-    <Suspense fallback={<ContentLoading />}>
+    <Suspense fallback={null}>
       {state.financialReportOpen && dreReadiness.status === "blocked" && (
         <ReportInsufficientDataModal
           open={state.financialReportOpen}
@@ -185,7 +184,7 @@ export function ReportsModalsHost({ weightsEnabled, state, data }: ReportsModals
         />
       )}
       {state.financialReportOpen && dreReadiness.canGenerate && (
-        <Suspense fallback={<ContentLoading />}>
+        <Suspense fallback={null}>
           <FinancialCloseReportModal
             open={state.financialReportOpen}
             onOpenChange={state.setFinancialReportOpen}
@@ -225,7 +224,7 @@ export function ReportsModalsHost({ weightsEnabled, state, data }: ReportsModals
         />
       )}
       {state.tearSheetOpen && tearSheetReadiness.canGenerate && (
-        <Suspense fallback={<ContentLoading />}>
+        <Suspense fallback={null}>
           <WealthTearSheetModal
             open={state.tearSheetOpen}
             onOpenChange={state.setTearSheetOpen}

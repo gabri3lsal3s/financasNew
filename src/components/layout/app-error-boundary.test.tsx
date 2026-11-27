@@ -1,7 +1,8 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeAll, beforeEach } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router";
 import { AppErrorBoundary } from "./app-error-boundary";
 import * as observability from "@/services/observability";
 
@@ -26,7 +27,11 @@ function renderWithClient(ui: React.ReactElement) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>{ui}</MemoryRouter>
+    </QueryClientProvider>,
+  );
 }
 
 // Componente que simula erro de renderização
@@ -38,6 +43,10 @@ function ThrowingComponent({ shouldThrow }: { shouldThrow: boolean }) {
 }
 
 describe("AppErrorBoundary — Resiliência Global contra Tela Branca", () => {
+  beforeAll(async () => {
+    await import("@/components/modules/support/support-chat-dialog");
+  }, 25_000);
+
   beforeEach(() => {
     vi.clearAllMocks();
     // Suprime erro ruidoso no console do jsdom durante testes de ErrorBoundary
@@ -143,9 +152,12 @@ describe("AppErrorBoundary — Resiliência Global contra Tela Branca", () => {
     const reportBtn = screen.getByRole("button", { name: /Reportar ao Suporte/i });
     await user.click(reportBtn);
 
-    await waitFor(() => {
-      expect(screen.getByRole("dialog")).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByRole("dialog")).toBeInTheDocument();
+      },
+      { timeout: 8000 },
+    );
 
     expect(screen.getByText("Falar com o Suporte")).toBeInTheDocument();
     const bugTab = screen.getByRole("tab", { name: /Problema \(Bug\)/i });

@@ -3,6 +3,23 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { MovimentacoesTab } from "./movimentacoes-tab";
 
+vi.mock("@/state/queries/use-user-subscription", () => ({
+  useUserSubscription: () => ({
+    canWrite: true,
+    isReadOnly: false,
+    tier: "pro_annual",
+  }),
+}));
+vi.mock("@/state/queries/use-permission", () => ({
+  usePermission: () => ({
+    canWrite: true,
+    canRead: true,
+    isHidden: false,
+    isReadOnlyMode: false,
+    accessLevel: "write",
+  }),
+}));
+
 vi.mock("@/state", () => ({
   useUserSubscription: () => ({
     canWrite: true,

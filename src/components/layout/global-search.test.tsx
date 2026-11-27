@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { GlobalSearch } from "./global-search";
 import { setAppLocked } from "@/services/native";
 import type { SearchEntry } from "@/domain/search";
@@ -77,6 +77,10 @@ vi.mock("@/state/queries/use-search", () => ({
 }));
 
 describe("GlobalSearch (busca global ⌘K §3.9 & Fase 64)", () => {
+  beforeAll(async () => {
+    await import("./global-search-palette");
+  }, 25_000);
+
   afterEach(() => {
     setAppLocked(false);
   });

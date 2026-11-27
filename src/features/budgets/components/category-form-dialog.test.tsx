@@ -11,6 +11,24 @@ const deleteCategoryMock = vi.fn();
 
 let mockIsFamilyModeEnabled = true;
 
+vi.mock("@/state/queries/use-user-subscription", () => ({
+  useUserSubscription: () => ({ isPro: true, isTrial: false, plan: "pro", isReadOnly: false, canWrite: true }),
+  useBusinessMode: () => ({
+    isBusinessModeEnabled: false,
+    businessProfile: null,
+    toggleBusinessMode: vi.fn().mockResolvedValue(true),
+    updateBusinessProfile: vi.fn().mockResolvedValue(true),
+    isLoading: false,
+    isPending: false,
+  }),
+}));
+vi.mock("@/state/queries/use-permission", () => ({
+  usePermission: () => ({ isHidden: false, canRead: true, canWrite: true, isReadOnlyMode: false, accessLevel: "admin" }),
+}));
+vi.mock("@/state/queries/use-family-mode", () => ({
+  useFamilyMode: () => ({ isFamilyModeEnabled: mockIsFamilyModeEnabled }),
+}));
+
 vi.mock("@/state", () => ({
   useFamilyMode: () => ({ isFamilyModeEnabled: mockIsFamilyModeEnabled }),
   useMyFamily: () => ({ data: null, isLoading: false }),
@@ -19,6 +37,14 @@ vi.mock("@/state", () => ({
   useDeleteCategory: () => ({ mutateAsync: deleteCategoryMock, isPending: false }),
   usePermission: () => ({ isHidden: false, canRead: true, canWrite: true, isReadOnlyMode: false, accessLevel: "admin" }),
   useUserSubscription: () => ({ isPro: true, isTrial: false, plan: "pro", isReadOnly: false, canWrite: true }),
+  useBusinessMode: () => ({
+    isBusinessModeEnabled: false,
+    businessProfile: null,
+    toggleBusinessMode: vi.fn().mockResolvedValue(true),
+    updateBusinessProfile: vi.fn().mockResolvedValue(true),
+    isLoading: false,
+    isPending: false,
+  }),
 }));
 
 const sampleCategory: Category = {

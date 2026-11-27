@@ -22,7 +22,7 @@ vi.mock("@capacitor/core", async (importOriginal) => {
 
 import * as toastModule from "@/services/toast";
 import * as sensoryModule from "@/services/sensory";
-import * as rpcModule from "@/data/rpc";
+import * as rpcModule from "@/data/rpc/transactions";
 import * as categoriesModule from "@/data/repositories/categories";
 import * as creditCardsModule from "@/data/repositories/credit-cards";
 import * as merchantLearningModule from "@/services/merchant-learning";
@@ -48,7 +48,7 @@ vi.mock("@/data/repositories/categories", () => ({
   listCategories: vi.fn(),
 }));
 
-vi.mock("@/data/rpc", () => ({
+vi.mock("@/data/rpc/transactions", () => ({
   createExpenseWithDebt: vi.fn(),
   createIncomeInstallments: vi.fn(),
   deleteExpenseInstallments: vi.fn(),

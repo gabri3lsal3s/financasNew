@@ -135,7 +135,12 @@ export function OverviewDashboardContent({
             </div>
           ) : null}
 
-          <DashboardAlertsCarousel items={alertItems} maxItems={2} isLoading={!isAlertsReady} />
+          <DashboardAlertsCarousel
+            items={alertItems}
+            maxItems={2}
+            isLoading={!isAlertsReady}
+            presenceHintKey="home_alerts"
+          />
 
           {data.subscription.isReadOnly ? <ReadOnlyBanner /> : null}
 

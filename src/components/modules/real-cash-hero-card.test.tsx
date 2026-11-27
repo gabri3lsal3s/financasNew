@@ -13,6 +13,18 @@ vi.mock("react-router", async (importOriginal) => {
   };
 });
 
+vi.mock("@/state/queries/use-user-subscription", () => ({
+  useUserSubscription: () => ({
+    canWrite: true,
+    isReadOnly: false,
+    tier: "pro_annual",
+  }),
+}));
+
+vi.mock("@/state/queries/use-permission", () => ({
+  usePermission: () => "write",
+}));
+
 vi.mock("@/state", () => ({
   useUserSubscription: () => ({
     canWrite: true,

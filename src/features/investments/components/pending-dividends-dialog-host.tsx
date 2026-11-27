@@ -1,5 +1,4 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import { ContentLoading } from "@/components/ui/content-loading";
 import {
   subscribeDividendReviewModal,
   type DividendReviewModalFilter,
@@ -34,7 +33,7 @@ export function PendingDividendsDialogHost() {
   if (!open) return null;
 
   return (
-    <Suspense fallback={<ContentLoading />}>
+    <Suspense fallback={null}>
       <LazyPendingDividendsDialogHostContent
         open={open}
         onOpenChange={setOpen}

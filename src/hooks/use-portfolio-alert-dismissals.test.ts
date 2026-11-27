@@ -9,7 +9,7 @@ vi.mock("./use-auth", () => ({
   useAuth: () => ({ user: { id: "user-1" } }),
 }));
 
-vi.mock("@/state", () => ({
+vi.mock("@/state/queries/use-user-preferences", () => ({
   useUserPreferences: () => ({
     data: {
       custom_settings: {
@@ -18,6 +18,9 @@ vi.mock("@/state", () => ({
     },
     isLoading: false,
   }),
+}));
+
+vi.mock("@/state/mutations/use-preference-mutations", () => ({
   useUpdateCustomSettings: () => ({
     mutate: mockMutate,
   }),

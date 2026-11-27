@@ -6,7 +6,7 @@ import { RequireFeature } from "./require-feature";
 const mockUseUserAccess = vi.fn();
 const mockUseAuth = vi.fn();
 
-vi.mock("@/state", () => ({
+vi.mock("@/state/queries/use-user-access", () => ({
   useUserAccess: () => mockUseUserAccess(),
 }));
 

@@ -9,7 +9,7 @@ import type { AppMode, DbInsert, DbUpdate, UserCustomSettings, UserPreferences }
  * Preferências do usuário (§3.10 / §3.11).
  */
 
-function mapPreferences(row: UserPreferences): UserPreferences {
+export function mapPreferences(row: UserPreferences): UserPreferences {
   return {
     ...row,
     app_mode: row.app_mode ?? "investor",

@@ -3,8 +3,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useNotificationCenter } from "./use-notification-center";
 
 const useSmartAdvisorInsightsMock = vi.fn();
+const useUserTripsMock = vi.fn((opts?: unknown) => {
+  void opts;
+  return { data: [], isLoading: false };
+});
+const useMyFamilyMock = vi.fn((opts?: unknown) => {
+  void opts;
+  return { data: null, isLoading: false };
+});
 let advisorInsightsPrefMock: boolean | undefined = true;
 let remindersEnabledMock = true;
+let familyModeEnabledMock = true;
+let tripModeEnabledMock = true;
 
 vi.mock("@/features/overview/hooks", () => ({
   useSmartAdvisorInsights: (...args: unknown[]) => useSmartAdvisorInsightsMock(...args),
@@ -51,8 +61,10 @@ vi.mock("@/state", () => ({
   useBudgets: () => ({ data: [], isLoading: false }),
   useExpenses: () => ({ data: [], isLoading: false }),
   useCategories: () => ({ data: [], isLoading: false }),
-  useUserTrips: () => ({ data: [], isLoading: false }),
-  useMyFamily: () => ({ data: null, isLoading: false }),
+  useUserTrips: (opts?: unknown) => useUserTripsMock(opts),
+  useMyFamily: (opts?: unknown) => useMyFamilyMock(opts),
+  useFamilyMode: () => ({ isFamilyModeEnabled: familyModeEnabledMock }),
+  useTripMode: () => ({ isTripModeEnabled: tripModeEnabledMock }),
   useCorporateDividends: () => ({
     available: [],
     projected: [],
@@ -67,6 +79,8 @@ describe("useNotificationCenter (Fase 3 — Gate do SmartAdvisor)", () => {
     vi.clearAllMocks();
     advisorInsightsPrefMock = true;
     remindersEnabledMock = true;
+    familyModeEnabledMock = true;
+    tripModeEnabledMock = true;
     useSmartAdvisorInsightsMock.mockReturnValue({
       insights: [
         {
@@ -99,5 +113,15 @@ describe("useNotificationCenter (Fase 3 — Gate do SmartAdvisor)", () => {
     renderHook(() => useNotificationCenter({ today: "2026-08-15" }));
 
     expect(useSmartAdvisorInsightsMock).toHaveBeenCalledWith({ enabled: true });
+  });
+
+  it("não dispara useMyFamily nem useUserTrips quando os modos correspondentes estão desabilitados", () => {
+    familyModeEnabledMock = false;
+    tripModeEnabledMock = false;
+
+    renderHook(() => useNotificationCenter({ today: "2026-08-15" }));
+
+    expect(useMyFamilyMock).toHaveBeenCalledWith({ enabled: false });
+    expect(useUserTripsMock).toHaveBeenCalledWith({ enabled: false });
   });
 });

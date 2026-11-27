@@ -2,11 +2,11 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { usePendingSplitExpense, PENDING_SPLIT_STORAGE_KEY } from "./use-pending-split-expense";
 import * as authHook from "./use-auth";
-import * as stateModule from "@/state";
+import * as publicShareMutations from "@/state/mutations/use-public-share-mutations";
 import * as appLockModule from "@/services/native/app-lock";
 
 vi.mock("./use-auth");
-vi.mock("@/state");
+vi.mock("@/state/mutations/use-public-share-mutations");
 vi.mock("@/services/native/app-lock");
 vi.mock("@/services/sensory", () => ({ triggerSensory: vi.fn() }));
 vi.mock("@/services/toast", () => ({ pushToast: vi.fn() }));
@@ -18,12 +18,12 @@ describe("usePendingSplitExpense", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    vi.mocked(stateModule.useSaveSplitExpense).mockReturnValue({
+    vi.mocked(publicShareMutations.useSaveSplitExpense).mockReturnValue({
       mutateAsync: mockSaveMutateAsync,
-    } as unknown as ReturnType<typeof stateModule.useSaveSplitExpense>);
-    vi.mocked(stateModule.useSignalSplitPayment).mockReturnValue({
+    } as unknown as ReturnType<typeof publicShareMutations.useSaveSplitExpense>);
+    vi.mocked(publicShareMutations.useSignalSplitPayment).mockReturnValue({
       mutateAsync: mockSignalMutateAsync,
-    } as unknown as ReturnType<typeof stateModule.useSignalSplitPayment>);
+    } as unknown as ReturnType<typeof publicShareMutations.useSignalSplitPayment>);
     vi.mocked(appLockModule.isAppLocked).mockReturnValue(false);
     vi.mocked(appLockModule.subscribeAppLock).mockImplementation(() => {
       return () => {};

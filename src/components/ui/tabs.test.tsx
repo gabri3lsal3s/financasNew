@@ -182,6 +182,44 @@ describe("Tabs", () => {
     expect(screen.getByText("Conteúdo de rendas")).toBeInTheDocument();
   });
 
+  it("com keepMountedAfterFirstVisit=true, monta sob demanda e preserva abas já visitadas no DOM", () => {
+    const { rerender } = render(
+      <Tabs
+        value="gastos"
+        onValueChange={vi.fn()}
+        items={items}
+        keepMountedAfterFirstVisit
+      />,
+    );
+
+    expect(screen.getByText("Conteúdo de gastos")).toBeInTheDocument();
+    expect(screen.queryByText("Conteúdo de rendas")).not.toBeInTheDocument();
+
+    rerender(
+      <Tabs
+        value="rendas"
+        onValueChange={vi.fn()}
+        items={items}
+        keepMountedAfterFirstVisit
+      />,
+    );
+
+    expect(screen.getByText("Conteúdo de gastos")).toBeInTheDocument();
+    expect(screen.getByText("Conteúdo de rendas")).toBeInTheDocument();
+
+    rerender(
+      <Tabs
+        value="gastos"
+        onValueChange={vi.fn()}
+        items={items}
+        keepMountedAfterFirstVisit
+      />,
+    );
+
+    expect(screen.getByText("Conteúdo de gastos")).toBeInTheDocument();
+    expect(screen.getByText("Conteúdo de rendas")).toBeInTheDocument();
+  });
+
   it("renderiza badge opcional dentro do trigger da aba", () => {
     const itemsWithBadge = [
       {

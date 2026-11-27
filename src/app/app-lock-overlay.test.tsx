@@ -2,7 +2,10 @@ import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppLockOverlay } from "./app-lock-overlay";
-import * as nativeModule from "@/services/native";
+import * as appLockModule from "@/services/native/app-lock";
+import * as pinLockModule from "@/services/native/pin-lock";
+import * as platformModule from "@/services/native/platform";
+import * as biometricsModule from "@/services/native/biometrics";
 
 const mockSignOut = vi.fn();
 
@@ -18,7 +21,7 @@ describe("AppLockOverlay", () => {
     localStorage.clear();
     mockSignOut.mockReset();
     mockSignOut.mockResolvedValue(undefined);
-    nativeModule.setAppLocked(false);
+    appLockModule.setAppLocked(false);
   });
 
   it("não renderiza nada quando o app não estiver bloqueado", () => {
@@ -27,7 +30,7 @@ describe("AppLockOverlay", () => {
   });
 
   it("renderiza a tela de bloqueio com botão de biometria e desconexão de emergência", () => {
-    nativeModule.setAppLocked(true);
+    appLockModule.setAppLocked(true);
     render(<AppLockOverlay />);
 
     expect(screen.getByRole("alertdialog")).toBeInTheDocument();
@@ -43,10 +46,10 @@ describe("AppLockOverlay", () => {
   it("aciona unlockAppWithBiometrics ao clicar no botão de desbloqueio", async () => {
     const user = userEvent.setup();
     const unlockSpy = vi
-      .spyOn(nativeModule, "unlockAppWithBiometrics")
+      .spyOn(appLockModule, "unlockAppWithBiometrics")
       .mockResolvedValue(true);
 
-    nativeModule.setAppLocked(true);
+    appLockModule.setAppLocked(true);
     render(<AppLockOverlay />);
 
     const button = screen.getByRole("button", { name: /Desbloquear com Biometria/i });
@@ -57,7 +60,7 @@ describe("AppLockOverlay", () => {
 
   it("aciona signOut ao clicar no botão de desconexão de emergência", async () => {
     const user = userEvent.setup();
-    nativeModule.setAppLocked(true);
+    appLockModule.setAppLocked(true);
     render(<AppLockOverlay />);
 
     const emergencyButton = screen.getByRole("button", {
@@ -78,7 +81,7 @@ describe("AppLockOverlay", () => {
         }),
     );
 
-    nativeModule.setAppLocked(true);
+    appLockModule.setAppLocked(true);
     render(<AppLockOverlay />);
 
     const emergencyButton = screen.getByRole("button", {
@@ -100,9 +103,9 @@ describe("AppLockOverlay", () => {
   });
 
   it("renderiza o AppLockOverlay na Web/PWA quando a aba é minimizada/trocada por tempo superior à tolerância", () => {
-    nativeModule.setBiometricLockEnabled(true);
-    nativeModule.setAppLockGraceMinutes(1);
-    const cleanup = nativeModule.initAppLockListener();
+    appLockModule.setBiometricLockEnabled(true);
+    appLockModule.setAppLockGraceMinutes(1);
+    const cleanup = appLockModule.initAppLockListener();
 
     render(<AppLockOverlay />);
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
@@ -138,11 +141,11 @@ describe("AppLockOverlay", () => {
 
   it("quando configurado PIN na Web/PWA, exibe input de PIN e desbloqueia com sucesso", async () => {
     const user = userEvent.setup();
-    vi.spyOn(nativeModule, "isNativePlatform").mockReturnValue(false);
-    vi.spyOn(nativeModule, "isPinLockConfigured").mockReturnValue(true);
-    const unlockPinSpy = vi.spyOn(nativeModule, "unlockAppWithPin").mockResolvedValue(true);
+    vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(false);
+    vi.spyOn(pinLockModule, "isPinLockConfigured").mockReturnValue(true);
+    const unlockPinSpy = vi.spyOn(pinLockModule, "unlockAppWithPin").mockResolvedValue(true);
 
-    nativeModule.setAppLocked(true);
+    appLockModule.setAppLocked(true);
     render(<AppLockOverlay />);
 
     const pinInput = screen.getByLabelText(/PIN de Acesso/i);
@@ -157,11 +160,11 @@ describe("AppLockOverlay", () => {
 
   it("exibe mensagem de erro quando o PIN informado for incorreto", async () => {
     const user = userEvent.setup();
-    vi.spyOn(nativeModule, "isNativePlatform").mockReturnValue(false);
-    vi.spyOn(nativeModule, "isPinLockConfigured").mockReturnValue(true);
-    vi.spyOn(nativeModule, "unlockAppWithPin").mockResolvedValue(false);
+    vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(false);
+    vi.spyOn(pinLockModule, "isPinLockConfigured").mockReturnValue(true);
+    vi.spyOn(pinLockModule, "unlockAppWithPin").mockResolvedValue(false);
 
-    nativeModule.setAppLocked(true);
+    appLockModule.setAppLocked(true);
     render(<AppLockOverlay />);
 
     const pinInput = screen.getByLabelText(/PIN de Acesso/i);
@@ -173,8 +176,8 @@ describe("AppLockOverlay", () => {
   });
 
   it("não exibe o botão 'Usar PIN' quando nenhum PIN local estiver configurado", () => {
-    vi.spyOn(nativeModule, "isPinLockConfigured").mockReturnValue(false);
-    nativeModule.setAppLocked(true);
+    vi.spyOn(pinLockModule, "isPinLockConfigured").mockReturnValue(false);
+    appLockModule.setAppLocked(true);
 
     render(<AppLockOverlay />);
 
@@ -183,7 +186,7 @@ describe("AppLockOverlay", () => {
 
   it("aplica inert no #root, prende o foco com Tab/Shift+Tab e restaura foco ao desbloquear", async () => {
     const user = userEvent.setup();
-    vi.spyOn(nativeModule, "isPinLockConfigured").mockReturnValue(false);
+    vi.spyOn(pinLockModule, "isPinLockConfigured").mockReturnValue(false);
 
     const rootEl = document.createElement("div");
     rootEl.id = "root";
@@ -193,13 +196,13 @@ describe("AppLockOverlay", () => {
     document.body.appendChild(rootEl);
     bgButton.focus();
 
-    const unlockSpy = vi.spyOn(nativeModule, "unlockAppWithBiometrics").mockImplementation(async () => {
-      nativeModule.setAppLocked(false);
+    const unlockSpy = vi.spyOn(appLockModule, "unlockAppWithBiometrics").mockImplementation(async () => {
+      appLockModule.setAppLocked(false);
       return true;
     });
 
     act(() => {
-      nativeModule.setAppLocked(true);
+      appLockModule.setAppLocked(true);
     });
     render(<AppLockOverlay />);
 
@@ -227,15 +230,15 @@ describe("AppLockOverlay", () => {
   });
 
   it("oculta o botão 'Usar Biometria' na Web quando não há biometria disponível", async () => {
-    vi.spyOn(nativeModule, "isNativePlatform").mockReturnValue(false);
-    vi.spyOn(nativeModule, "isPinLockConfigured").mockReturnValue(true);
-    vi.spyOn(nativeModule, "checkBiometricsAvailability").mockResolvedValue({
+    vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(false);
+    vi.spyOn(pinLockModule, "isPinLockConfigured").mockReturnValue(true);
+    vi.spyOn(biometricsModule, "checkBiometricsAvailability").mockResolvedValue({
       isAvailable: false,
       biometryType: "none",
       deviceIsSecure: false,
     });
 
-    nativeModule.setAppLocked(true);
+    appLockModule.setAppLocked(true);
     render(<AppLockOverlay />);
 
     expect(screen.getByLabelText(/PIN de Acesso/i)).toBeInTheDocument();
@@ -246,14 +249,14 @@ describe("AppLockOverlay", () => {
   });
 
   it("exibe contagem regressiva do lockout de PIN e destaca CTA de saída após 10 falhas", () => {
-    vi.spyOn(nativeModule, "isNativePlatform").mockReturnValue(false);
-    vi.spyOn(nativeModule, "isPinLockConfigured").mockReturnValue(true);
-    vi.spyOn(nativeModule, "getPinLockoutState").mockReturnValue({
+    vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(false);
+    vi.spyOn(pinLockModule, "isPinLockConfigured").mockReturnValue(true);
+    vi.spyOn(pinLockModule, "getPinLockoutState").mockReturnValue({
       failedAttempts: 10,
       lockedUntilMs: Date.now() + 45_000,
     });
 
-    nativeModule.setAppLocked(true);
+    appLockModule.setAppLocked(true);
     render(<AppLockOverlay />);
 
     expect(screen.getByRole("alert")).toHaveTextContent(/Muitas tentativas incorretas\. Aguarde \d+s/);

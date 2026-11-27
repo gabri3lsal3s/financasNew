@@ -612,7 +612,7 @@ describe("PortfolioInsightsCarousel (Regra 19)", () => {
     expect(mockMutateAsync).not.toHaveBeenCalled();
   });
 
-  it("não renderiza slides parciais enquanto isDividendsLoading for true mesmo com gov.isLoading false", () => {
+  it("exibe slides já prontos enquanto isDividendsLoading for true se houver alertas ativos, e omite skeleton sem histórico prévio", () => {
     mockUseCorporateDividends.mockReturnValue({
       available: [],
       projected: [],
@@ -620,6 +620,23 @@ describe("PortfolioInsightsCarousel (Regra 19)", () => {
       totalProjectedAmount: 0,
       isLoading: true,
     });
+    mockUseAssetGovernanceInsights.mockReturnValue({
+      overdueReviewsCount: 0,
+      upcomingReviewsCount: 0,
+      unscoredAssetsCount: 0,
+      quarantinedCount: 0,
+      discountOpportunitiesCount: 0,
+      lowScoreRiskCount: 0,
+      overdueAssets: [],
+      upcomingReviewAssets: [],
+      unscoredAssets: [],
+      consolidatedReviewAlert: null,
+      isLoading: false,
+    });
+
+    const { container, rerender } = render(<PortfolioInsightsCarousel />);
+    expect(container.firstChild).toBeNull();
+
     mockUseAssetGovernanceInsights.mockReturnValue({
       overdueReviewsCount: 2,
       upcomingReviewsCount: 0,
@@ -649,17 +666,6 @@ describe("PortfolioInsightsCarousel (Regra 19)", () => {
       isLoading: false,
     });
 
-    const { container, rerender } = render(<PortfolioInsightsCarousel />);
-    expect(container.firstChild).toBeNull();
-    expect(screen.queryByText("Revisão de Teses Pendente")).not.toBeInTheDocument();
-
-    mockUseCorporateDividends.mockReturnValue({
-      available: [],
-      projected: [],
-      totalAvailableAmount: 0,
-      totalProjectedAmount: 0,
-      isLoading: false,
-    });
     rerender(<PortfolioInsightsCarousel />);
     expect(screen.getByText("Revisão de Teses Pendente")).toBeInTheDocument();
     expect(screen.getByText("2 ativos")).toBeInTheDocument();

@@ -64,17 +64,17 @@ export function useSubscriptionBoundaryTimer({
     }
   }, [trialEndsAt, currentPeriodEnd, enabled, queryClient]);
 
-  // Revalidação em retorno de visibilidade (ex: usuário pagou em outra aba/app e voltou ao Axir)
+  // Revalidação em retorno de visibilidade após ausência prolongada (>= 5 min) para assinaturas com vigência ativa
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || (!trialEndsAt && !currentPeriodEnd)) return;
 
     let lastCheck = Date.now();
+    const MIN_BACKGROUND_RECHECK_MS = 5 * 60_000;
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         const elapsed = Date.now() - lastCheck;
-        if (elapsed > 15_000) {
-          // Mais de 15 segundos em background
+        if (elapsed >= MIN_BACKGROUND_RECHECK_MS) {
           lastCheck = Date.now();
           void queryClient.invalidateQueries({ queryKey: USER_SUBSCRIPTION_KEY });
         }
@@ -85,5 +85,5 @@ export function useSubscriptionBoundaryTimer({
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [enabled, queryClient]);
+  }, [enabled, trialEndsAt, currentPeriodEnd, queryClient]);
 }

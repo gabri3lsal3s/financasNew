@@ -5,7 +5,10 @@ import type { UserPreferences } from "@/types";
 import { STALE_TIMES, STATIC_GC_TIME } from "@/state/cache-policy";
 import { getActiveUserId, subscribeActiveUserId } from "@/services/user-storage";
 
-export const userPreferencesKey = ["user-preferences"] as const;
+export const USER_PREFERENCES_KEY = ["user-preferences"] as const;
+export const userPreferencesKey = USER_PREFERENCES_KEY;
+export const userPreferencesQueryKey = (userId: string | null) =>
+  [...USER_PREFERENCES_KEY, userId] as const;
 
 /** Preferências do usuário logado (tema, lembretes, travas setoriais). */
 export function useUserPreferences(options?: { enabled?: boolean }) {
@@ -13,7 +16,7 @@ export function useUserPreferences(options?: { enabled?: boolean }) {
   useEffect(() => subscribeActiveUserId(setActiveUserId), []);
 
   return useQuery<UserPreferences | null>({
-    queryKey: userPreferencesKey,
+    queryKey: userPreferencesQueryKey(activeUserId),
     queryFn: () => getUserPreferences(),
     enabled: options?.enabled ?? Boolean(activeUserId),
     staleTime: STALE_TIMES.static,

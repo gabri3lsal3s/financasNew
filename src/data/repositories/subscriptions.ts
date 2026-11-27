@@ -6,6 +6,7 @@ import {
   adminSetUserModulePermission as adminSetUserModulePermissionRpc,
   adminSetUserSubscription as adminSetUserSubscriptionRpc,
   getMySubscription as getMySubscriptionRpc,
+  type RawMySubscriptionRpc,
 } from "@/data/rpc";
 import { AppError, classifyError } from "@/services/errors";
 import type {
@@ -38,58 +39,65 @@ export async function getPlans(): Promise<Plan[]> {
 }
 
 /**
+ * Converte o payload bruto da RPC `get_my_subscription` no contrato `SubscriptionStatus` da aplicação.
+ */
+export function mapRawSubscriptionToStatus(raw: RawMySubscriptionRpc | null): SubscriptionStatus | null {
+  if (!raw) return null;
+
+  const tier = raw.tier as SubscriptionTier;
+  const plan: SubscriptionPlan | null =
+    tier === "pro_monthly" ? "monthly" : tier === "pro_annual" ? "annual" : null;
+  const rawExtended = raw as {
+    billing_start_at?: string | null;
+    past_due_since?: string | null;
+    past_due_grace_mode?: string | null;
+    past_due_block_at?: string | null;
+    past_due_reminders_enabled?: boolean | null;
+  };
+
+  return {
+    tier,
+    status: raw.status ?? null,
+    billingPhase: raw.billing_phase ?? undefined,
+    startsAt: raw.starts_at ?? null,
+    billingStartAt: rawExtended.billing_start_at ?? null,
+    trialDaysRemaining: raw.trial_days_remaining,
+    trialEndsAt: raw.trial_ends_at,
+    trialConsumedAt: raw.trial_consumed_at ?? null,
+    hasUsedTrial: Boolean(raw.has_used_trial ?? (raw.trial_consumed_at || rawExtended.billing_start_at || raw.is_read_only)),
+    currentPeriodEnd: raw.current_period_end,
+    plan,
+    cancelAtPeriodEnd: raw.cancel_at_period_end,
+    isFullAccess: raw.is_full_access,
+    isTrial: raw.is_trial,
+    isPro: raw.is_pro,
+    isLifetime: raw.is_lifetime,
+    isReadOnly: raw.is_read_only,
+    canWrite: raw.can_write,
+    hasCardRegistered: Boolean(raw.has_card_registered || raw.asaas_subscription_id || raw.card_last4),
+    hasAutoRenew: Boolean(raw.has_auto_renew ?? (raw.asaas_subscription_id && !raw.cancel_at_period_end)),
+    cardLast4: raw.card_last4 ?? null,
+    cardBrand: raw.card_brand ?? null,
+    pendingPlanId: raw.pending_plan_id ?? null,
+    pendingPlanEffectiveAt: raw.pending_plan_effective_at ?? null,
+    scheduledPlanId: raw.scheduled_plan_id ?? null,
+    scheduledFirstChargeAt: raw.scheduled_first_charge_at ?? null,
+    asaasSyncStatus: raw.asaas_sync_status ?? null,
+    pastDueSince: rawExtended.past_due_since ?? null,
+    pastDueGraceMode: rawExtended.past_due_grace_mode === "auto" ? "auto" : "manual",
+    pastDueBlockAt: rawExtended.past_due_block_at ?? null,
+    pastDueRemindersEnabled: rawExtended.past_due_reminders_enabled ?? true,
+    moduleAccess: raw.module_permissions as Record<string, ModuleAccessLevel>,
+  };
+}
+
+/**
  * Consulta o status de assinatura agregado e permissões do usuário autenticado.
  */
 export async function getMySubscription(): Promise<SubscriptionStatus | null> {
   try {
     const raw = await getMySubscriptionRpc();
-    if (!raw) return null;
-
-    const tier = raw.tier as SubscriptionTier;
-    const plan: SubscriptionPlan | null =
-      tier === "pro_monthly" ? "monthly" : tier === "pro_annual" ? "annual" : null;
-    const rawExtended = raw as {
-      billing_start_at?: string | null;
-      past_due_since?: string | null;
-      past_due_grace_mode?: string | null;
-      past_due_block_at?: string | null;
-      past_due_reminders_enabled?: boolean | null;
-    };
-
-    return {
-      tier,
-      status: raw.status ?? null,
-      billingPhase: raw.billing_phase ?? undefined,
-      startsAt: raw.starts_at ?? null,
-      billingStartAt: rawExtended.billing_start_at ?? null,
-      trialDaysRemaining: raw.trial_days_remaining,
-      trialEndsAt: raw.trial_ends_at,
-      trialConsumedAt: raw.trial_consumed_at ?? null,
-      hasUsedTrial: Boolean(raw.has_used_trial ?? (raw.trial_consumed_at || rawExtended.billing_start_at || raw.is_read_only)),
-      currentPeriodEnd: raw.current_period_end,
-      plan,
-      cancelAtPeriodEnd: raw.cancel_at_period_end,
-      isFullAccess: raw.is_full_access,
-      isTrial: raw.is_trial,
-      isPro: raw.is_pro,
-      isLifetime: raw.is_lifetime,
-      isReadOnly: raw.is_read_only,
-      canWrite: raw.can_write,
-      hasCardRegistered: Boolean(raw.has_card_registered || raw.asaas_subscription_id || raw.card_last4),
-      hasAutoRenew: Boolean(raw.has_auto_renew ?? (raw.asaas_subscription_id && !raw.cancel_at_period_end)),
-      cardLast4: raw.card_last4 ?? null,
-      cardBrand: raw.card_brand ?? null,
-      pendingPlanId: raw.pending_plan_id ?? null,
-      pendingPlanEffectiveAt: raw.pending_plan_effective_at ?? null,
-      scheduledPlanId: raw.scheduled_plan_id ?? null,
-      scheduledFirstChargeAt: raw.scheduled_first_charge_at ?? null,
-      asaasSyncStatus: raw.asaas_sync_status ?? null,
-      pastDueSince: rawExtended.past_due_since ?? null,
-      pastDueGraceMode: rawExtended.past_due_grace_mode === "auto" ? "auto" : "manual",
-      pastDueBlockAt: rawExtended.past_due_block_at ?? null,
-      pastDueRemindersEnabled: rawExtended.past_due_reminders_enabled ?? true,
-      moduleAccess: raw.module_permissions as Record<string, ModuleAccessLevel>,
-    };
+    return mapRawSubscriptionToStatus(raw);
   } catch (error) {
     const classified = classifyError(error);
     throw new AppError(classified.kind, classified.message, error);

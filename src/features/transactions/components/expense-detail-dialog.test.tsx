@@ -90,7 +90,32 @@ const stateMocks = vi.hoisted(() => ({
   groupExpenses: undefined as unknown[] | undefined,
 }));
 
+vi.mock("@/state/queries/use-user-subscription", () => ({
+  useUserSubscription: () => ({
+    canWrite: true,
+    isReadOnly: false,
+    tier: "pro_annual",
+  }),
+}));
+vi.mock("@/state/queries/use-permission", () => ({
+  usePermission: () => ({
+    canWrite: true,
+    canRead: true,
+    isHidden: false,
+    isReadOnlyMode: false,
+    accessLevel: "write",
+  }),
+}));
+
 vi.mock("@/state", () => ({
+  useBusinessMode: () => ({ isBusinessModeEnabled: false, businessProfile: null, toggleBusinessMode: vi.fn().mockResolvedValue(true), updateBusinessProfile: vi.fn().mockResolvedValue(true), isLoading: false, isPending: false }),
+  useViewScope: () => ({ viewScope: "all" as const, effectiveViewScope: "all" as const, setViewScope: vi.fn(), isBusinessModeEnabled: false }),
+  useDeleteInternalTransferPair: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCorporateDividends: () => ({ available: [], projected: [], assetsNeedingCalibration: [], trackingStartDate: null, fxRate: 5.25, isLoading: false }),
+  useEnableWebPushSubscription: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
+  useDisableWebPushSubscription: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
+  useRegisterFcmToken: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
+  useDisableFcmToken: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
   useUserSubscription: () => ({
     canWrite: !stateMocks.isReadOnly,
     isReadOnly: stateMocks.isReadOnly,

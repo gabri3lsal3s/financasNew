@@ -5,8 +5,10 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { getSupabase } from "@/data/client";
 import { getMyFeatures, getMyProfile } from "@/data/repositories/access";
 import { getMySubscription } from "@/data/repositories/subscriptions";
-import { getActiveUserId, setActiveUserId, subscribeActiveUserId } from "@/services/user-storage";
+import { useAuth } from "@/hooks/use-auth";
+import { getActiveUserId, subscribeActiveUserId } from "@/services/user-storage";
 import { STALE_TIMES, STATIC_GC_TIME } from "@/state/cache-policy";
+import { isQueryPending } from "@/state/query-readiness";
 import type { Profile, SystemFeatureKey, UserRole, UserStatus } from "@/types";
 
 export const USER_ACCESS_KEY = ["user_access"] as const;
@@ -221,8 +223,8 @@ export interface UserAccessResult {
  */
 export function useUserAccess(targetUserId?: string): UserAccessResult {
   const queryClient = useQueryClient();
-
-  const [sessionUserId, setSessionUserId] = useState<string | null>(() => {
+  const { user: authUser } = useAuth();
+  const [storageUserId, setStorageUserId] = useState<string | null>(() => {
     return targetUserId ?? getActiveUserId() ?? null;
   });
 
@@ -230,60 +232,10 @@ export function useUserAccess(targetUserId?: string): UserAccessResult {
     if (targetUserId) {
       return;
     }
-
-    // Sincroniza com as alterações de usuário ativo no storage
-    const unsubscribeStorage = subscribeActiveUserId((uid) => {
-      setSessionUserId(uid);
-    });
-
-    let supabase: ReturnType<typeof getSupabase>;
-    try {
-      supabase = getSupabase();
-    } catch {
-      return unsubscribeStorage;
-    }
-
-    if (!supabase?.auth) return unsubscribeStorage;
-
-    let active = true;
-
-    // Resolução inicial em cold start
-    if (typeof supabase.auth.getSession === "function") {
-      void supabase.auth
-        .getSession()
-        .then(({ data }) => {
-          if (!active) return;
-          const uid = data?.session?.user?.id ?? null;
-          if (uid) {
-            setActiveUserId(uid);
-            setSessionUserId(uid);
-          }
-        })
-        .catch(() => {
-          // Fallback silencioso
-        });
-    }
-
-    // Monitoramento contínuo da sessão Supabase
-    let unsubscribeAuth: (() => void) | undefined;
-    if (typeof supabase.auth.onAuthStateChange === "function") {
-      const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-        if (!active) return;
-        const uid = session?.user?.id ?? null;
-        setActiveUserId(uid);
-        setSessionUserId(uid);
-      });
-      unsubscribeAuth = () => authListener?.subscription?.unsubscribe();
-    }
-
-    return () => {
-      active = false;
-      unsubscribeStorage();
-      unsubscribeAuth?.();
-    };
+    return subscribeActiveUserId(setStorageUserId);
   }, [targetUserId]);
 
-  const activeUserId = targetUserId ?? sessionUserId ?? getActiveUserId() ?? null;
+  const activeUserId = targetUserId ?? authUser?.id ?? storageUserId ?? getActiveUserId() ?? null;
   const isAuthResolved = Boolean(activeUserId);
 
   const profileQuery = useQuery({
@@ -309,7 +261,7 @@ export function useUserAccess(targetUserId?: string): UserAccessResult {
     queryFn: getMySubscription,
     enabled: isAuthResolved,
     staleTime: 30_000, // 30 segundos para reatividade de faturamento
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
     gcTime: STATIC_GC_TIME,
     retry: 1,
   });
@@ -328,10 +280,9 @@ export function useUserAccess(targetUserId?: string): UserAccessResult {
   const isSuperAdmin = role === "superadmin";
   const isAdmin = isSuperAdmin || role === "admin";
 
-  const isLoading =
-    isAuthResolved
-      ? profileQuery.isLoading || featuresQuery.isLoading || subscriptionQuery.isLoading
-      : false;
+  const isLoading = isAuthResolved
+    ? isQueryPending(profileQuery) || isQueryPending(featuresQuery) || isQueryPending(subscriptionQuery)
+    : false;
 
   const hasFeature = (featureKey: SystemFeatureKey | string): boolean => {
     // 1. SuperAdmin e Admin têm acesso irrestrito a todas as funcionalidades
@@ -342,8 +293,13 @@ export function useUserAccess(targetUserId?: string): UserAccessResult {
       return false;
     }
 
-    // 3. Fail-Closed durante inicialização ou ausência de autenticação
-    if (!isAuthResolved || isLoading) {
+    // 3. Fail-Closed durante inicialização, ausência de autenticação ou dados ainda não resolvidos
+    if (
+      !isAuthResolved ||
+      isLoading ||
+      featuresQuery.data === undefined ||
+      subscriptionQuery.data === undefined
+    ) {
       return false;
     }
 

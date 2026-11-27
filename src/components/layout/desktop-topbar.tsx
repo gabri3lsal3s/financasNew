@@ -45,7 +45,7 @@ export function DesktopTopbar({
     );
   return (
     <>
-      {subscription?.isReadOnly && (
+      {!subscription?.isLoading && subscription?.isReadOnly && (
         <button
           type="button"
           onClick={() => {

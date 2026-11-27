@@ -50,7 +50,45 @@ const categories = [
   { id: "i1", name: "Salário", icon: "salario", color: null, type: "income", is_reserved: false, is_active: true },
 ];
 
+vi.mock("@/state/queries/use-user-access", () => ({
+  useUserAccess: () => ({
+    role: "user",
+    status: "active",
+    isAdmin: false,
+    isSuperAdmin: false,
+    hasFeature: () => true,
+    isLoading: false,
+  }),
+}));
+vi.mock("@/state/queries/use-user-subscription", () => ({
+  useUserSubscription: () => ({
+    tier: "pro_annual" as const,
+    trialDaysRemaining: null,
+    trialEndsAt: null,
+    currentPeriodEnd: "2027-01-01",
+    plan: "annual" as const,
+    cancelAtPeriodEnd: false,
+    isPro: true,
+    isTrial: false,
+    isReadOnly: false,
+    isFullAccess: true,
+    canWrite: true,
+  }),
+}));
+vi.mock("@/state/queries/use-permission", () => ({
+  usePermission: () => ({
+    canWrite: true,
+    canRead: true,
+    isHidden: false,
+    isReadOnlyMode: false,
+    accessLevel: "admin",
+  }),
+}));
+
 vi.mock("@/state", () => ({
+  useFeedbackEntries: () => ({ data: [], isLoading: false, error: null }),
+  useConfirmUserDividendEvents: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useSavePocketCostMilestoneAtomic: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUserSubscription: () => ({
     tier: "pro_annual" as const,
     trialDaysRemaining: null,
@@ -137,6 +175,20 @@ vi.mock("@/state", () => ({
   useCreateCategory: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateCategory: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeleteCategory: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useBusinessMode: () => ({
+    isBusinessModeEnabled: false,
+    businessProfile: null,
+    toggleBusinessMode: vi.fn().mockResolvedValue(true),
+    updateBusinessProfile: vi.fn().mockResolvedValue(true),
+    isLoading: false,
+    isPending: false,
+  }),
+  useViewScope: () => ({
+    viewScope: "all" as const,
+    effectiveViewScope: "all" as const,
+    setViewScope: vi.fn(),
+    isBusinessModeEnabled: false,
+  }),
   useDebts: () => ({
     data: [
       { id: "d1", name: "Conta de luz", type: "payable", amount: 200, due_date: "2026-08-20", paid_at: null, expense_id: null },
@@ -571,11 +623,17 @@ describe("Auditoria de acessibilidade (axe) — telas P0", () => {
   });
 
   it("InvestmentsPage sem violações", async () => {
-    const { container } = render(<InvestmentsPage />);
+    const testQueryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { container } = render(
+      <QueryClientProvider client={testQueryClient}>
+        <InvestmentsPage />
+      </QueryClientProvider>,
+    );
     expect(await axe(container)).toHaveNoViolations();
   });
 
   it("InvestmentsPage — aba Proventos com extrato sem violações (F18)", async () => {
+    const testQueryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     portfolioDividendsMock.mockReturnValue([
       { id: "t1", user_id: "u1", asset_id: "a1", date: "2026-08-10", amount: 100, notes: "DIVIDENDO" },
       { id: "t2", user_id: "u1", asset_id: "a2", date: "2026-08-20", amount: 50.25, notes: "RENDIMENTO" },
@@ -585,7 +643,11 @@ describe("Auditoria de acessibilidade (axe) — telas P0", () => {
       { id: "a2", user_id: "u1", ticker: "MXRF11", asset_class: "FIIs", currency: "BRL" },
     ]);
     const user = userEvent.setup();
-    const { container } = render(<InvestmentsPage />);
+    const { container } = render(
+      <QueryClientProvider client={testQueryClient}>
+        <InvestmentsPage />
+      </QueryClientProvider>,
+    );
     await user.click(screen.getByRole("tab", { name: "Proventos" }));
     expect(await axe(container)).toHaveNoViolations();
   });

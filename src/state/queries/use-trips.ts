@@ -94,14 +94,14 @@ function useSafeQueryClient(): QueryClient {
   }
 }
 
-export function useUserTrips() {
+export function useUserTrips(options?: { enabled?: boolean }) {
   const { isDemoActive } = useDemoSession();
   const simulated = useSimulatedTrips();
   const queryClient = useSafeQueryClient();
   const real = useQuery<Trip[]>({
     queryKey: TRIP_QUERY_KEYS.lists(),
     queryFn: () => getUserTrips(),
-    enabled: !isDemoActive,
+    enabled: (options?.enabled ?? true) && !isDemoActive,
     staleTime: STALE_TIMES.transactional,
   }, queryClient);
   return isDemoActive ? simulated : real;

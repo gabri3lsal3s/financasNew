@@ -1,4 +1,4 @@
-import { createContext, createElement, useCallback, useContext, useMemo, type ReactNode } from "react";
+import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { todayISO } from "@/domain/debts/index";
 import { buildNotificationCenter } from "@/domain/notifications/hub/build-notification-center";
 import { detectClosedCardBills, detectConsolidatedBudgetOverrun, detectDividendNotificationAlerts, detectTripAndFamilyPendingAlerts, resolveNotificationCategoryPreferences, type BudgetOverrunAlert, type ClosedCardBillAlert, type DividendNotificationAlert, type TripFamilyAlert } from "@/domain/notifications/hub/event-detectors";
@@ -15,6 +15,7 @@ import {
   useCorporateDividends,
   useCreditCards,
   useExpenses,
+  useFamilyMode,
   useMyBroadcastNotifications,
   useMyFamily,
   useMyPublicShares,
@@ -22,6 +23,7 @@ import {
   useOnboardingCounts,
   useReminderStates,
   useReminders,
+  useTripMode,
   useUserAccess,
   useUserPreferences,
   useUserSubscription,
@@ -135,13 +137,32 @@ function useNotificationCenterCompute(
   const splitSharesQuery = useMyPublicShares("split");
   const subscriptionQuery = useUserSubscription();
 
-  const canDetectBillClosing =
-    categoryPreferences.billClosing && hasFeature("cards");
-  const canDetectBudgets =
-    categoryPreferences.budgetsAndPace && hasFeature("budgets");
-  const canDetectFamilyOrTrips = categoryPreferences.familyAndTrips;
+  const { isFamilyModeEnabled } = useFamilyMode();
+  const { isTripModeEnabled } = useTripMode();
+  const isImmediateContext =
+    Boolean(options?.today) ||
+    (typeof window !== "undefined" && window.location?.pathname?.startsWith("/lembretes"));
+  const [isIdleReady, setIsIdleReady] = useState(
+    () => isImmediateContext || typeof window === "undefined",
+  );
 
-  const canDetectDividends = hasFeature("investments");
+  useEffect(() => {
+    if (isIdleReady || typeof window === "undefined") return;
+    if (typeof window.requestIdleCallback === "function") {
+      const handle = window.requestIdleCallback(() => setIsIdleReady(true), { timeout: 1_500 });
+      return () => window.cancelIdleCallback(handle);
+    }
+    const timer = window.setTimeout(() => setIsIdleReady(true), 800);
+    return () => window.clearTimeout(timer);
+  }, [isIdleReady]);
+
+  const canDetectBillClosing =
+    isIdleReady && categoryPreferences.billClosing && hasFeature("cards");
+  const canDetectBudgets =
+    isIdleReady && categoryPreferences.budgetsAndPace && hasFeature("budgets");
+  const canDetectFamilyOrTrips = isIdleReady && categoryPreferences.familyAndTrips;
+
+  const canDetectDividends = isIdleReady && hasFeature("investments");
   const cardsQuery = useCreditCards({ enabled: canDetectBillClosing });
   const cardExpensesQuery = useAllCardExpenses({
     enabled: canDetectBillClosing,
@@ -149,13 +170,13 @@ function useNotificationCenterCompute(
   const cardPaymentsQuery = useAllCardPayments({
     enabled: canDetectBillClosing,
   });
-  const budgetsQuery = useBudgets();
+  const budgetsQuery = useBudgets({ enabled: canDetectBudgets });
   const expensesQuery = useExpenses(currentMonth, {
     enabled: canDetectBudgets,
   });
-  const expenseCategoriesQuery = useCategories("expense");
-  const tripsQuery = useUserTrips();
-  const familyQuery = useMyFamily({ enabled: canDetectFamilyOrTrips });
+  const expenseCategoriesQuery = useCategories("expense", { enabled: canDetectBudgets });
+  const tripsQuery = useUserTrips({ enabled: canDetectFamilyOrTrips && isTripModeEnabled });
+  const familyQuery = useMyFamily({ enabled: canDetectFamilyOrTrips && isFamilyModeEnabled });
   const corporateDividendsState = useCorporateDividends({ enabled: canDetectDividends });
 
   const reminderStates = useMemo(

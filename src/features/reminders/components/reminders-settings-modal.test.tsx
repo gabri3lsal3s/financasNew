@@ -11,6 +11,10 @@ let mockPostNotificationsGranted = true;
 let mockCloudDueEnabled = false;
 
 vi.mock("@/state", () => ({
+  useFamilyConsolidation: () => ({ data: null, isLoading: false, error: null }),
+  useSetBudgetLimit: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDisableFcmToken: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
+  useRecurrences: () => ({ data: [], isLoading: false, error: null }),
   useUserPreferences: vi.fn(() => ({
     data: {
       reminders_enabled: true,
@@ -33,6 +37,18 @@ vi.mock("@/state", () => ({
   })),
   useUserAccess: vi.fn(() => ({
     hasFeature: vi.fn(() => true),
+  })),
+  useEnableWebPushSubscription: vi.fn(() => ({
+    mutateAsync: vi.fn().mockResolvedValue(true),
+    isPending: false,
+  })),
+  useDisableWebPushSubscription: vi.fn(() => ({
+    mutateAsync: vi.fn().mockResolvedValue(true),
+    isPending: false,
+  })),
+  useRegisterFcmToken: vi.fn(() => ({
+    mutateAsync: vi.fn().mockResolvedValue(true),
+    isPending: false,
   })),
 }));
 

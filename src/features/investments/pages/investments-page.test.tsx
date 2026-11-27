@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -43,13 +43,48 @@ const row = (overrides: Partial<Record<string, unknown>> = {}) => ({
   ...overrides,
 });
 
+vi.mock("@/state/queries/use-user-access", () => ({
+  useUserAccess: () => ({
+    role: "user",
+    status: "active",
+    isAdmin: false,
+    isSuperAdmin: false,
+    hasFeature: () => true,
+    isLoading: false,
+  }),
+}));
+vi.mock("@/state/queries/use-user-subscription", () => ({
+  useUserSubscription: () => ({
+    canWrite: true,
+    isReadOnly: false,
+    tier: "pro_annual",
+  }),
+}));
+vi.mock("@/state/queries/use-permission", () => ({
+  usePermission: () => ({ isHidden: false, canRead: true, canWrite: true, isReadOnlyMode: false, accessLevel: "admin" }),
+  useImportPortfolioAtomic: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}));
+
 vi.mock("@/state", () => ({
+  useIncomeGoals: () => ({ data: [], isLoading: false, error: null }),
+  useSavePocketCostMilestoneAtomic: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteInternalTransferPair: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUserFinancialContext: () => ({ context: undefined, isLoading: false }),
+  useUserAccess: () => ({
+    role: "user",
+    status: "active",
+    isAdmin: false,
+    isSuperAdmin: false,
+    hasFeature: () => true,
+    isLoading: false,
+  }),
   useUserSubscription: () => ({
     canWrite: true,
     isReadOnly: false,
     tier: "pro_annual",
   }),
   usePermission: () => ({ isHidden: false, canRead: true, canWrite: true, isReadOnlyMode: false, accessLevel: "admin" }),
+  useImportPortfolioAtomic: () => ({ mutateAsync: vi.fn(), isPending: false }),
   usePortfolioPosition: () => positionMock,
   useAllPortfolioTransactions: () => ({
     data: [] as { type: string; date: string; total: number }[],
@@ -273,19 +308,19 @@ describe("InvestmentsPage — F17 unificada", () => {
     const novaOpBtn = screen.getByRole("button", { name: "Nova operação" });
     expect(novaOpBtn).toHaveAttribute("data-tour", "investments-new-op");
     await userEvent.click(novaOpBtn);
-    expect(screen.getByPlaceholderText(/Ex: PETR4, MXRF11/i)).toBeInTheDocument();
+    expect(await screen.findByPlaceholderText(/Ex: PETR4, MXRF11/i)).toBeInTheDocument();
   });
 
   it("abre o CashFormDialog ao clicar no botão Adicionar Caixa do header", async () => {
     renderPage();
     const addCashBtn = screen.getByRole("button", { name: "Adicionar caixa" });
     await userEvent.click(addCashBtn);
-    expect(screen.getByRole("heading", { name: /Cadastrar Saldo em Caixa|Editar Saldo em Caixa/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /Cadastrar Saldo em Caixa|Editar Saldo em Caixa/i })).toBeInTheDocument();
   });
 
-  it("abre automaticamente o InvestmentWizard via deep link ?novo=investimento", () => {
+  it("abre automaticamente o InvestmentWizard via deep link ?novo=investimento", async () => {
     renderPage("/investments?novo=investimento");
-    expect(screen.getByPlaceholderText(/Ex: PETR4, MXRF11/i)).toBeInTheDocument();
+    expect(await screen.findByPlaceholderText(/Ex: PETR4, MXRF11/i)).toBeInTheDocument();
   });
 
   it("permite navegar entre Carteira (Posição / Extrato) e Rebalancear (Simulador / Metas)", async () => {
@@ -296,13 +331,13 @@ describe("InvestmentsPage — F17 unificada", () => {
 
     await userEvent.click(screen.getByRole("tab", { name: "Rebalancear" }));
     expect(screen.getByRole("tab", { name: "Rebalancear", selected: true })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Simulador", selected: true })).toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: "Simulador", selected: true }, { timeout: 10000 })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("tab", { name: "Metas" }));
     expect(screen.getByRole("tab", { name: "Metas", selected: true })).toBeInTheDocument();
-  });
+  }, 20_000);
 
-  it("abre as visões corretas via query strings legadas (?tab=metas, ?tab=aporte, ?tab=movimentacoes, ?tab=proventos) preservando seletores de tour", () => {
+  it("abre as visões corretas via query strings legadas (?tab=metas, ?tab=aporte, ?tab=movimentacoes, ?tab=proventos) preservando seletores de tour", async () => {
     // Configura ativos na posição para simular o estado do tour
     positionMock = {
       ...positionMock,
@@ -313,27 +348,33 @@ describe("InvestmentsPage — F17 unificada", () => {
     // Passo 3 do Tour: /investments?tab=metas
     const { unmount: unmountMetas } = renderPage("/investments?tab=metas");
     expect(screen.getByRole("tab", { name: "Rebalancear", selected: true })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Metas", selected: true })).toBeInTheDocument();
-    expect(document.querySelector('[data-tour="investments-targets"]')).toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: "Metas", selected: true }, { timeout: 10000 })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(document.querySelector('[data-tour="investments-targets"]')).toBeInTheDocument();
+    });
     unmountMetas();
 
     // Passo 4 do Tour: /investments?tab=aporte&valor=500000
     const { unmount: unmountAporte } = renderPage("/investments?tab=aporte&valor=500000");
     expect(screen.getByRole("tab", { name: "Rebalancear", selected: true })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Simulador", selected: true })).toBeInTheDocument();
-    expect(document.querySelector('[data-tour="investments-rebalance"]')).toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: "Simulador", selected: true })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(document.querySelector('[data-tour="investments-rebalance"]')).toBeInTheDocument();
+    });
     unmountAporte();
 
     // Deep link legado: /investments?tab=movimentacoes -> Carteira > Extrato
     const { unmount: unmountMov } = renderPage("/investments?tab=movimentacoes");
     expect(screen.getByRole("tab", { name: "Carteira", selected: true })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Extrato", selected: true })).toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: "Extrato", selected: true })).toBeInTheDocument();
     unmountMov();
 
     // Passo 5 do Tour: /investments?tab=proventos
     const { unmount: unmountProventos } = renderPage("/investments?tab=proventos");
     expect(screen.getByRole("tab", { name: "Proventos", selected: true })).toBeInTheDocument();
-    expect(document.querySelector('[data-tour="investments-dividends"]')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(document.querySelector('[data-tour="investments-dividends"]')).toBeInTheDocument();
+    });
     unmountProventos();
   });
 

@@ -7,7 +7,6 @@ import {
   resolveReceiptTransaction,
 } from "./receipt-resolution";
 import type { MerchantLearningMemory, UniversalReceiptData } from "@/domain/notifications";
-import * as nativeService from "@/services/native";
 import { setActiveUserId } from "@/services/user-storage";
 import type { CreditCard } from "@/types/schema";
 
@@ -23,6 +22,23 @@ vi.mock("@/services/ai-assistant", async (importOriginal) => {
       mockExtractSingleReceiptWithAi(...args),
   };
 });
+
+vi.mock("@/services/native/receipt-extractor", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/services/native/receipt-extractor")>();
+  return {
+    ...actual,
+    MAX_RECEIPT_FILE_SIZE_BYTES: 15 * 1024 * 1024,
+    extractReceiptTextFromFile: (...args: unknown[]) => mockExtractReceiptTextFromFile(...args),
+  };
+});
+
+vi.mock("@/services/native/platform", () => ({
+  isNativePlatform: () => false,
+}));
+
+vi.mock("@/services/native/bank-listener", () => ({
+  processPixShare: (...args: unknown[]) => mockProcessPixShare(...args),
+}));
 
 vi.mock("@/services/native", () => ({
   MAX_RECEIPT_FILE_SIZE_BYTES: 15 * 1024 * 1024,
@@ -188,7 +204,7 @@ describe("receipt-resolution", () => {
   });
 
   it("resolveReceiptFromText aciona fallback legado via processPixShare quando universal retorna null", () => {
-    vi.spyOn(nativeService, "processPixShare").mockReturnValueOnce({
+    mockProcessPixShare.mockReturnValueOnce({
       id: "legacy-1",
       bankName: "Banco Teste",
       nature: "expense",

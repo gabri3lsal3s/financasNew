@@ -113,6 +113,47 @@ describe("useUserAccess hook", () => {
     expect(result.current.hasFeature("overview")).toBe(false);
   });
 
+  it("aplica default-deny em hasFeature enquanto subscriptionQuery ainda está pendente mesmo com profile resolvido", async () => {
+    vi.mocked(accessRepo.getMyProfile).mockResolvedValue(mockProfile);
+    vi.mocked(accessRepo.getMyFeatures).mockResolvedValue({
+      transactions: true,
+      overview: true,
+    });
+    vi.mocked(subscriptionsRepo.getMySubscription).mockImplementation(
+      () => new Promise(() => undefined),
+    );
+
+    const { result } = renderHook(() => useUserAccess("user-1"), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.profile).toEqual(mockProfile);
+    });
+
+    expect(result.current.isLoading).toBe(true);
+    expect(result.current.hasFeature("transactions")).toBe(false);
+    expect(result.current.hasFeature("overview")).toBe(false);
+  });
+
+  it("não registra listeners onAuthStateChange nem getSession duplicados ao montar múltiplas instâncias", () => {
+    vi.mocked(accessRepo.getMyProfile).mockResolvedValue(mockProfile);
+    vi.mocked(accessRepo.getMyFeatures).mockResolvedValue({ overview: true });
+    vi.mocked(subscriptionsRepo.getMySubscription).mockResolvedValue({
+      tier: "lifetime",
+      canWrite: true,
+      isFullAccess: true,
+      moduleAccess: {},
+    } as unknown as SubscriptionStatus);
+
+    const wrapper = createWrapper();
+    renderHook(() => useUserAccess(), { wrapper });
+    renderHook(() => useUserAccess(), { wrapper });
+    renderHook(() => useUserAccess(), { wrapper });
+
+    expect(vi.mocked(accessRepo.getMyProfile)).toHaveBeenCalledTimes(1);
+  });
+
   it("permite overview quando ao menos um módulo financeiro está ativo", async () => {
     vi.mocked(accessRepo.getMyProfile).mockResolvedValue(mockProfile);
     vi.mocked(accessRepo.getMyFeatures).mockResolvedValue({

@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { AppProviders } from "./providers";
 import * as clientModule from "@/data/client";
+import { getCachedIconTier, setCachedIconTier } from "@/services/native/app-icon";
+import { setActiveUserId } from "@/services/user-storage";
 
 describe("AppProviders & AuthQuerySync", () => {
   it("renderiza children dentro dos providers sem erros", () => {
@@ -129,8 +131,57 @@ describe("AppProviders & AuthQuerySync", () => {
     });
 
     queryClientInstance!.setQueryData(["credit_cards"], ["cartão da primeira conta"]);
+    setCachedIconTier("PRO");
     capturedCallback?.("SIGNED_IN", { user: { id: "user-other-456" } });
     expect(queryClientInstance!.getQueryData(["credit_cards"])).toBeUndefined();
+    expect(getCachedIconTier()).toBe("FREE");
+  });
+
+  it("não limpa cache nem aborta queries no cold start quando activeUserId já corresponde à sessão", async () => {
+    setActiveUserId("user-cold-1");
+    let capturedCallback: ((event: string, session: unknown) => void) | undefined;
+    let queryClientInstance: QueryClient | undefined;
+
+    function TestCaptureClient() {
+      queryClientInstance = useQueryClient();
+      return <div data-testid="cold-client">Cold</div>;
+    }
+
+    const mockSupabase = {
+      channel: vi.fn().mockReturnValue({
+        on: vi.fn().mockReturnThis(),
+        subscribe: vi.fn().mockReturnValue({ unsubscribe: vi.fn() }),
+      }),
+      removeChannel: vi.fn().mockResolvedValue(undefined),
+      auth: {
+        getSession: vi.fn().mockResolvedValue({ data: { session: null }, error: null }),
+        onAuthStateChange: vi.fn((cb: (event: string, session: unknown) => void) => {
+          capturedCallback = cb;
+          return { data: { subscription: { unsubscribe: vi.fn() } } };
+        }),
+      },
+    };
+
+    vi.spyOn(clientModule, "getSupabase").mockReturnValue(
+      mockSupabase as unknown as ReturnType<typeof clientModule.getSupabase>,
+    );
+
+    render(
+      <AppProviders>
+        <TestCaptureClient />
+      </AppProviders>,
+    );
+
+    queryClientInstance!.setQueryData(["user_access", "user-cold-1"], { id: "user-cold-1" });
+    const clearSpy = vi.spyOn(queryClientInstance!, "clear");
+
+    capturedCallback?.("INITIAL_SESSION", { user: { id: "user-cold-1" } });
+
+    expect(clearSpy).not.toHaveBeenCalled();
+    expect(queryClientInstance!.getQueryData(["user_access", "user-cold-1"])).toEqual({
+      id: "user-cold-1",
+    });
+    setActiveUserId(null);
   });
 
   it("hidrata bankAssistant e deviceNotifications a partir das preferências de nuvem", () => {

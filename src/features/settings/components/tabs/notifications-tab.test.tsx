@@ -53,6 +53,10 @@ vi.mock("@/state", () => ({
     role: "admin",
     hasFeature: () => mockHasFeature(),
   }),
+  useEnableWebPushSubscription: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
+  useDisableWebPushSubscription: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
+  useRegisterFcmToken: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
+  useDisableFcmToken: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
 }));
 
 vi.mock("@/services/native", async () => {

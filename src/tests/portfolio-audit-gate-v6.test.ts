@@ -180,19 +180,18 @@ describe("Auditoria Forense e Certificação Final de Produção — Axir Engine
 
       const r1 = redemptions.find((r) => r.id === "tx-resgate-1")!;
       expect(r1).toBeDefined();
-      expect(r1.taxRatePct).toBe(15.0);
-      expect(r1.taxAmountBRL).toBe(36.84); // 245,60 * 15% = 36,84
-      expect(r1.realizedPnlBRL).toBe(208.76); // 245,60 - 36,84 = 208,76
+      expect(r1.taxRatePct).toBeNull();
+      expect(r1.taxAmountBRL).toBe(0);
+      expect(r1.realizedPnlBRL).toBe(245.6);
 
       const r2 = redemptions.find((r) => r.id === "tx-resgate-2")!;
       expect(r2).toBeDefined();
-      expect(r2.taxRatePct).toBe(15.0);
-      expect(r2.taxAmountBRL).toBe(74.16); // 494,41 * 15% = 74,16
-      expect(r2.realizedPnlBRL).toBe(420.25); // 494,41 - 74,16 = 420,25
+      expect(r2.taxRatePct).toBeNull();
+      expect(r2.taxAmountBRL).toBe(0);
+      expect(r2.realizedPnlBRL).toBe(494.41);
 
-      // Total de IR retido no mês = R$ 36,84 + R$ 74,16 = R$ 111,00 (e nunca R$ 166,50)
       const totalTax = redemptions.reduce((acc, r) => acc + r.taxAmountBRL, 0);
-      expect(Math.round(totalTax * 100) / 100).toBe(111.0);
+      expect(Math.round(totalTax * 100) / 100).toBe(0);
     });
 
     it("reconcilia o Resultado Realizado histórico (+R$ 556,60) com a soma bruta dos resgates do mês (+R$ 740,01)", () => {

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -33,7 +33,35 @@ vi.mock("@/data/client", () => ({
   }),
 }));
 
+vi.mock("@/state/queries/use-user-access", () => ({
+  useUserAccess: () => ({
+    role: "user",
+    status: "active",
+    isAdmin: false,
+    isSuperAdmin: false,
+    hasFeature: () => true,
+    isLoading: false,
+  }),
+}));
+vi.mock("@/state/queries/use-user-subscription", () => ({
+  useUserSubscription: () => ({
+    isPro: true,
+    isTrial: false,
+    isReadOnly: false,
+    tier: "pro_annual",
+    canWrite: true,
+  }),
+}));
+
 vi.mock("@/state", () => ({
+  usePortfolioAssets: () => ({ data: [], isLoading: false, error: null }),
+  useSetDividendTracking: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteInternalTransferPair: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCorporateDividends: () => ({ available: [], projected: [], assetsNeedingCalibration: [], trackingStartDate: null, fxRate: 5.25, isLoading: false }),
+  useEnableWebPushSubscription: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
+  useDisableWebPushSubscription: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
+  useRegisterFcmToken: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
+  useDisableFcmToken: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
   useDevices: () => ({
     data: [],
     isLoading: false,
@@ -257,7 +285,7 @@ describe("SettingsPage (Centro de Configurações Otimizado)", () => {
     const user = userEvent.setup();
     renderSettings(["/configuracoes?tab=aparencia"]);
 
-    expect(screen.getByText("Modo de Experiência do Aplicativo")).toBeInTheDocument();
+    expect(await screen.findByText("Modo de Experiência do Aplicativo")).toBeInTheDocument();
     expect(screen.getByText("Dinâmico")).toBeInTheDocument();
     expect(screen.getByText("Foco")).toBeInTheDocument();
     expect(screen.getByText("Discreto")).toBeInTheDocument();
@@ -285,7 +313,7 @@ describe("SettingsPage (Centro de Configurações Otimizado)", () => {
     const notifTab = screen.getByRole("tab", { name: "Notificações" });
     await user.click(notifTab);
 
-    expect(screen.getByText("Lembretes & Notificações")).toBeInTheDocument();
+    expect(await screen.findByText("Lembretes & Notificações")).toBeInTheDocument();
     expect(screen.getByText("Antecedência para Faturas de Cartão")).toBeInTheDocument();
     expect(screen.getByText("Antecedência para Dívidas")).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: /Seletor de dias de antecedência para faturas/i })).toBeInTheDocument();
@@ -301,7 +329,7 @@ describe("SettingsPage (Centro de Configurações Otimizado)", () => {
     const user = userEvent.setup();
     renderSettings(["/configuracoes?tab=aparencia"]);
 
-    expect(screen.getByText("Interface & Composição")).toBeInTheDocument();
+    expect(await screen.findByText("Interface & Composição")).toBeInTheDocument();
     expect(screen.getByText("Atalhos Rápidos do Cabeçalho")).toBeInTheDocument();
     expect(screen.queryByText("Widgets Visíveis na Visão Geral")).not.toBeInTheDocument();
     expect(screen.queryByText("Banners Contextuais de Atenção")).not.toBeInTheDocument();
@@ -322,7 +350,7 @@ describe("SettingsPage (Centro de Configurações Otimizado)", () => {
     const securityTab = screen.getByRole("tab", { name: "Segurança & Privacidade" });
     await user.click(securityTab);
 
-    expect(screen.getByText("Bloqueio do Aplicativo & Privacidade")).toBeInTheDocument();
+    expect(await screen.findByText("Bloqueio do Aplicativo & Privacidade")).toBeInTheDocument();
     expect(screen.getByText("Sobre o Aplicativo")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Verificar atualizações/i })).toBeInTheDocument();
     expect(screen.queryByText("Conta & Sessão")).not.toBeInTheDocument();
@@ -335,7 +363,7 @@ describe("SettingsPage (Centro de Configurações Otimizado)", () => {
     const planTab = screen.getByRole("tab", { name: "Plano" });
     await user.click(planTab);
 
-    expect(screen.getByText("Plano Atual")).toBeInTheDocument();
+    expect(await screen.findByText("Plano Atual")).toBeInTheDocument();
     expect(screen.getByText("Comparativo de Planos")).toBeInTheDocument();
     expect(screen.getByText("Teste Pro Ativo")).toBeInTheDocument();
   });
@@ -344,7 +372,7 @@ describe("SettingsPage (Centro de Configurações Otimizado)", () => {
     const user = userEvent.setup();
     renderSettings(["/configuracoes?tab=aparencia"]);
 
-    const darkOption = screen.getByText("Escuro").closest("button");
+    const darkOption = (await screen.findByText("Escuro")).closest("button");
     expect(darkOption).not.toBeNull();
     await user.click(darkOption as HTMLButtonElement);
     expect(document.documentElement.dataset.theme).toBe("dark");
@@ -360,44 +388,44 @@ describe("SettingsPage (Centro de Configurações Otimizado)", () => {
     expect(screen.getByText("Dados Pessoais & Acesso")).toBeInTheDocument();
   });
 
-  it("ativa a aba Dados & Privacidade quando acessado via ?subtab=dados ou ?tab=seguranca", () => {
+  it("ativa a aba Dados & Privacidade quando acessado via ?subtab=dados ou ?tab=seguranca", async () => {
     renderSettings(["/configuracoes?subtab=dados"]);
-    expect(screen.getByText("Bloqueio do Aplicativo & Privacidade")).toBeInTheDocument();
+    expect(await screen.findByText("Bloqueio do Aplicativo & Privacidade")).toBeInTheDocument();
 
     cleanup();
 
     renderSettings(["/configuracoes?tab=seguranca"]);
-    expect(screen.getByText("Bloqueio do Aplicativo & Privacidade")).toBeInTheDocument();
+    expect(await screen.findByText("Bloqueio do Aplicativo & Privacidade")).toBeInTheDocument();
   });
 
-  it("ativa a aba Dados & Privacidade quando acessado via ?tab=devices ou ?tab=app", () => {
+  it("ativa a aba Dados & Privacidade quando acessado via ?tab=devices ou ?tab=app", async () => {
     renderSettings(["/configuracoes?tab=devices"]);
-    expect(screen.getByText("Sobre o Aplicativo")).toBeInTheDocument();
+    expect(await screen.findByText("Sobre o Aplicativo")).toBeInTheDocument();
 
     cleanup();
 
     renderSettings(["/configuracoes?tab=app"]);
-    expect(screen.getByText("Sobre o Aplicativo")).toBeInTheDocument();
+    expect(await screen.findByText("Sobre o Aplicativo")).toBeInTheDocument();
   });
 
-  it("ativa a aba de Aparência quando acessado via ?tab=aparencia ou ?tab=widgets", () => {
+  it("ativa a aba de Aparência quando acessado via ?tab=aparencia ou ?tab=widgets", async () => {
     renderSettings(["/configuracoes?tab=aparencia"]);
-    expect(screen.getByText("Modo de Experiência do Aplicativo")).toBeInTheDocument();
+    expect(await screen.findByText("Modo de Experiência do Aplicativo")).toBeInTheDocument();
 
     cleanup();
 
     renderSettings(["/configuracoes?tab=widgets"]);
-    expect(screen.getByText("Interface & Composição")).toBeInTheDocument();
+    expect(await screen.findByText("Interface & Composição")).toBeInTheDocument();
   });
 
-  it("ativa a aba de Notificações quando acessado via ?tab=lembretes ou ?tab=notificacoes", () => {
+  it("ativa a aba de Notificações quando acessado via ?tab=lembretes ou ?tab=notificacoes", async () => {
     renderSettings(["/configuracoes?tab=lembretes"]);
-    expect(screen.getByText("Lembretes & Notificações")).toBeInTheDocument();
+    expect(await screen.findByText("Lembretes & Notificações")).toBeInTheDocument();
 
     cleanup();
 
     renderSettings(["/configuracoes?tab=notificacoes"]);
-    expect(screen.getByText("Lembretes & Notificações")).toBeInTheDocument();
+    expect(await screen.findByText("Lembretes & Notificações")).toBeInTheDocument();
   });
 
   it("não renderiza o card fixo redundante de suporte no rodapé (Opção B)", () => {
@@ -407,37 +435,43 @@ describe("SettingsPage (Centro de Configurações Otimizado)", () => {
     expect(supportFooterCard).not.toBeInTheDocument();
   });
 
-  it("renderiza os seletores semânticos do tour em suas respectivas abas", () => {
+  it("renderiza os seletores semânticos do tour em suas respectivas abas", async () => {
     // Aba Aparência
     renderSettings(["/configuracoes?tab=appearance"]);
-    expect(document.querySelector('[data-tour="settings-experience-presets"]')).toBeInTheDocument();
-    expect(document.querySelector('[data-tour="settings-visual-identity"]')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(document.querySelector('[data-tour="settings-experience-presets"]')).toBeInTheDocument();
+      expect(document.querySelector('[data-tour="settings-visual-identity"]')).toBeInTheDocument();
+    });
 
     cleanup();
 
     // Aba Notificações
     renderSettings(["/configuracoes?tab=notifications"]);
-    expect(document.querySelector('[data-tour="settings-notifications-card"]')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(document.querySelector('[data-tour="settings-notifications-card"]')).toBeInTheDocument();
+    });
 
     cleanup();
 
     // Aba Dados & Privacidade (Biometria durante tour APK)
     startDemo("app_native_apk");
     renderSettings(["/configuracoes?tab=security"]);
-    expect(document.querySelector('[data-tour="settings-app-lock"]')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(document.querySelector('[data-tour="settings-app-lock"]')).toBeInTheDocument();
+    });
     resetDemoSession();
   });
 
-  it("renderiza a aba de Suporte & Chamados via deep-link ?tab=suporte sem abrir modal invasivo", () => {
+  it("renderiza a aba de Suporte & Chamados via deep-link ?tab=suporte sem abrir modal invasivo", async () => {
     renderSettings(["/configuracoes?tab=suporte"]);
     expect(screen.getByRole("tab", { name: "Suporte & Ajuda" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByText("Central de Suporte & Chamados")).toBeInTheDocument();
+    expect(await screen.findByText("Central de Suporte & Chamados")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Falar com o Suporte" })).not.toBeInTheDocument();
   });
 
-  it("abre automaticamente o diálogo de Suporte via deep-link ?modal=suporte", () => {
+  it("abre automaticamente o diálogo de Suporte via deep-link ?modal=suporte", async () => {
     renderSettings(["/configuracoes?modal=suporte"]);
-    expect(screen.getByRole("heading", { name: "Falar com o Suporte" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Falar com o Suporte" })).toBeInTheDocument();
     expect(screen.getByText(/Envie sua dúvida, sugestão ou relate um problema/i)).toBeInTheDocument();
   });
 });

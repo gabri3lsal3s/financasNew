@@ -1,5 +1,4 @@
 import { lazy, Suspense, useMemo } from "react";
-import { ContentLoading } from "@/components/ui/content-loading";
 import { ReportInsufficientDataModal } from "@/components/modules/reports";
 import { evaluateCarteiraMensalReadiness } from "@/domain/reports";
 import { formatMonthYear } from "@/lib/date";
@@ -62,7 +61,7 @@ export function ResumoModalsHost({ ctrl }: ResumoModalsHostProps) {
   return (
     <>
       {!ctrl.onOpenWizard && ctrl.isWizardOpen ? (
-        <Suspense fallback={<ContentLoading />}>
+        <Suspense fallback={null}>
           <InvestmentWizard
             open={ctrl.isWizardOpen}
             onOpenChange={ctrl.handleWizardOpenChange}
@@ -74,41 +73,45 @@ export function ResumoModalsHost({ ctrl }: ResumoModalsHostProps) {
         </Suspense>
       ) : null}
 
-      <AssetDetailSheet
-        open={ctrl.activeDetailAsset !== null}
-        onOpenChange={(open) => {
-          if (!open) {
+      {ctrl.activeDetailAsset ? (
+        <AssetDetailSheet
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) {
+              ctrl.setDetailAsset(null);
+              ctrl.setDismissedHighlight(true);
+            }
+          }}
+          asset={ctrl.activeDetailAsset}
+          onAction={(action, asset) => {
             ctrl.setDetailAsset(null);
             ctrl.setDismissedHighlight(true);
-          }
-        }}
-        asset={ctrl.activeDetailAsset}
-        onAction={(action, asset) => {
-          ctrl.setDetailAsset(null);
-          ctrl.setDismissedHighlight(true);
-          const txType: PortfolioTransactionType =
-            action === "sell" || action === "dividend" || action === "split" ? action : "buy";
-          ctrl.setQuickTxAsset(asset);
-          ctrl.setQuickTxType(txType);
-        }}
-        onOpenWizard={(asset, qty, totalCents) => {
-          ctrl.setDetailAsset(null);
-          ctrl.setDismissedHighlight(true);
-          ctrl.handleOpenWizard(asset, "buy", {
-            initialQuantity: qty ?? null,
-            initialTotalCents: totalCents ?? null,
-          });
-        }}
-      />
+            const txType: PortfolioTransactionType =
+              action === "sell" || action === "dividend" || action === "split" ? action : "buy";
+            ctrl.setQuickTxAsset(asset);
+            ctrl.setQuickTxType(txType);
+          }}
+          onOpenWizard={(asset, qty, totalCents) => {
+            ctrl.setDetailAsset(null);
+            ctrl.setDismissedHighlight(true);
+            ctrl.handleOpenWizard(asset, "buy", {
+              initialQuantity: qty ?? null,
+              initialTotalCents: totalCents ?? null,
+            });
+          }}
+        />
+      ) : null}
 
-      <QuickTransactionSheet
-        open={ctrl.quickTxAsset !== null}
-        onOpenChange={(open) => {
-          if (!open) ctrl.setQuickTxAsset(null);
-        }}
-        asset={ctrl.quickTxAsset}
-        initialType={ctrl.quickTxType}
-      />
+      {ctrl.quickTxAsset ? (
+        <QuickTransactionSheet
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) ctrl.setQuickTxAsset(null);
+          }}
+          asset={ctrl.quickTxAsset}
+          initialType={ctrl.quickTxType}
+        />
+      ) : null}
 
       {ctrl.assetEditing ? (
         <AssetEditDialog
@@ -125,7 +128,7 @@ export function ResumoModalsHost({ ctrl }: ResumoModalsHostProps) {
       />
 
       {!ctrl.onOpenCash && ctrl.activeCashDialogOpen ? (
-        <Suspense fallback={<ContentLoading />}>
+        <Suspense fallback={null}>
           <CashFormDialog
             open={ctrl.activeCashDialogOpen}
             onOpenChange={(open) => {

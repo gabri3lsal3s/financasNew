@@ -136,7 +136,7 @@ describe("Teste de Validação Manual: Navegação Bidirecional Mobile (375x667 
       }
 
       // Garante que o card mobile limita altura em 42vh
-      expect(aside?.className).toContain("max-h-[42vh]");
+      expect(aside?.className).toContain("max-h-[42dvh]");
 
       if (stepIdx < selectors.length - 1) {
         const nextBtn = screen.getByRole("button", { name: /Próximo/i });

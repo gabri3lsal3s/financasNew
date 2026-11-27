@@ -10,7 +10,8 @@ import { resetAppState } from "@/services/auth-cleanup";
 import { clearNativeBankMonitoring } from "@/services/native/bank-listener";
 import { clearDeviceSessionSync, getOrCreateDeviceId } from "@/services/native/device-info";
 import { cancelDailyReminder, clearAllDueNotifications } from "@/services/native/local-notifications";
-import { unregisterNativeFcmPush, unsubscribeBrowserWebPush } from "@/services/push";
+import { unregisterNativeFcmPush } from "@/services/push/fcm-push";
+import { unsubscribeBrowserWebPush } from "@/services/push/web-push";
 
 vi.mock("@/services/auth-cleanup", () => ({
   resetAppState: vi.fn(),
@@ -39,11 +40,14 @@ vi.mock("@/services/native/local-notifications", () => ({
   cancelDailyReminder: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("@/services/push", () => ({
+vi.mock("@/services/push/web-push", () => ({
   unsubscribeBrowserWebPush: vi.fn().mockResolvedValue({
     unsubscribed: true,
     endpoint: "https://push.example/endpoint-1",
   }),
+}));
+
+vi.mock("@/services/push/fcm-push", () => ({
   unregisterNativeFcmPush: vi.fn().mockResolvedValue({
     unregistered: true,
     token: "fcm-token-1",

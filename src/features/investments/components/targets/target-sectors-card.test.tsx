@@ -144,7 +144,7 @@ describe("TargetSectorsCard — Isolamento Estrito de Setores e Zero Duplicaçã
     // Renda Urbana deve ter EXATAMENTE 4 ativos
     expect(screen.getByText("4 ativo(s)")).toBeInTheDocument();
 
-    // 2 ativos de Papel e CRI em 11 ativos totais (R$ 2.000 de R$ 11.000) = 18.2% da classe (e NUNCA 56.6%)
-    expect(screen.getByText("18.2%")).toBeInTheDocument();
+    // 2 ativos de Papel e CRI em 11 ativos totais (R$ 2.000 de R$ 11.000) = 18,2% da classe (e NUNCA 56,6%)
+    expect(screen.getByText("18,2%")).toBeInTheDocument();
   });
 });

@@ -56,6 +56,35 @@ describe("useFamilyMode Hook — Governança do Modo Familiar", () => {
     });
   });
 
+  it("retorna isFamilyModeEnabled como false enquanto as preferências ainda estão pendentes (zero flash)", async () => {
+    let resolvePrefs!: (value: UserPreferences) => void;
+    vi.mocked(userPrefsRepo.getUserPreferences).mockImplementationOnce(
+      () =>
+        new Promise<UserPreferences>((resolve) => {
+          resolvePrefs = resolve;
+        }),
+    );
+
+    const { result } = renderHook(() => useFamilyMode(), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.current.isLoading).toBe(true);
+    expect(result.current.isFamilyModeEnabled).toBe(false);
+
+    await act(async () => {
+      resolvePrefs({
+        ...mockPreferencesBase,
+        custom_settings: { familyModeEnabled: false },
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(result.current.isFamilyModeEnabled).toBe(false);
+  });
+
   it("retorna isFamilyModeEnabled como true por padrão para novos usuários quando indefinido", async () => {
     vi.mocked(userPrefsRepo.getUserPreferences).mockResolvedValueOnce({
       ...mockPreferencesBase,

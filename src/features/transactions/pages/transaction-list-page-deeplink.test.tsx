@@ -11,6 +11,17 @@ vi.mock("react-router", () => ({
   useNavigate: () => vi.fn(),
 }));
 
+vi.mock("@/state/queries/use-user-subscription", () => ({
+  useUserSubscription: () => ({
+    canWrite: true,
+    isReadOnly: false,
+    tier: "pro_annual",
+  }),
+}));
+vi.mock("@/state/queries/use-permission", () => ({
+  usePermission: () => ({ isHidden: false, canRead: true, canWrite: true, isReadOnlyMode: false, accessLevel: "admin" }),
+}));
+
 vi.mock("@/state", () => ({
   useUserSubscription: () => ({
     canWrite: true,
@@ -58,6 +69,8 @@ vi.mock("@/state", () => ({
   useMyPublicShares: () => ({ data: [], isLoading: false }),
   useUpdatePublicShare: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDebts: () => ({ data: [], isLoading: false }),
+  useBusinessMode: () => ({ isBusinessModeEnabled: false, businessProfile: null, toggleBusinessMode: vi.fn(), updateBusinessProfile: vi.fn(), isLoading: false, isPending: false }),
+  useViewScope: () => ({ viewScope: "all" as const, effectiveViewScope: "all" as const, setViewScope: vi.fn(), isBusinessModeEnabled: false }),
   useUpdateDebt: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSettleIntegratedReceivable: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useExpensesByInstallmentGroup: () => ({ data: undefined, isLoading: false }),

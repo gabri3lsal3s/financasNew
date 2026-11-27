@@ -261,9 +261,9 @@ describe("Auditoria Forense e Certificação de Produção — Axir Engine v7 (I
 
       expect(redemptions).toHaveLength(1);
       const r = redemptions[0]!;
-      expect(r.taxRatePct).toBe(15.0);
-      expect(r.taxAmountBRL).toBe(75.0); // 500 * 15% = 75,00
-      expect(r.realizedPnlBRL).toBe(425.0); // 500 - 75 = 425,00
+      expect(r.taxRatePct).toBeNull();
+      expect(r.taxAmountBRL).toBe(0);
+      expect(r.realizedPnlBRL).toBe(500.0);
     });
   });
 

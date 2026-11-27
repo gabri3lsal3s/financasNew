@@ -26,8 +26,12 @@ import {
 } from "../components/details";
 
 export function TripDetailsPage() {
-  const navigate = useNavigate();
   const { id: tripId } = useParams<{ id: string }>();
+  return <TripDetailsPageContent key={tripId ?? "unknown"} tripId={tripId} />;
+}
+
+function TripDetailsPageContent({ tripId }: { tripId: string | undefined }) {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { isTripModeEnabled, toggleTripMode, isPending: isTogglingTripMode } = useTripMode();
   const { data, isLoading } = useTripDetails(tripId);

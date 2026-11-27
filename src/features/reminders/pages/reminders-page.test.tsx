@@ -35,7 +35,51 @@ vi.mock("@/features/cards/components/payment-dialog", () => ({
     open ? <div data-testid="payment-dialog">Modal Pagar Fatura: {competenceMonth}</div> : null,
 }));
 
+vi.mock("@/state/queries/use-user-subscription", () => ({
+  useUserSubscription: () => ({ isPro: true, isTrial: false, plan: "pro", isReadOnly: false, canWrite: true }),
+}));
+vi.mock("@/state/queries/use-permission", () => ({
+  usePermission: () => ({ isHidden: false, canRead: true, canWrite: true, isReadOnlyMode: false, accessLevel: "admin" }),
+}));
+
 vi.mock("@/state", () => ({
+  useFamilyConsolidation: () => ({ data: null, isLoading: false, error: null }),
+  useSetBudgetLimit: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useEnableWebPushSubscription: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
+  useDisableWebPushSubscription: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
+  useRegisterFcmToken: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
+  useDisableFcmToken: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
+  useRealCashBalance: () => ({ cashBalance: { currentBalanceCents: 0 }, safeToSpend: { safeToSpendCents: 0 }, isLoading: false, error: null, refetch: vi.fn() }),
+  useEmergencyFundComposition: () => ({ composition: { totalReserveCents: 0, cashInAccountsCents: 0, portfolioReserveCents: 0, breakdown: [], warnings: [], targetMonths: 6, targetMonthsProgressPercent: 0, targetMonthsCents: 0 }, config: { includeCheckingAccounts: true }, isLoading: false }),
+  usePortfolioPosition: () => ({ rows: [], totalBRL: 0, cashBRL: 0, monthlySeries: [], monthlyContributionCents: 0, isLoading: false, error: null, refetch: vi.fn() }),
+  useFeedbackEntries: () => ({ data: [], isLoading: false, error: null }),
+  useDismissBroadcastNotification: () => ({ mutate: vi.fn(), isPending: false }),
+  useAllDebts: () => ({ data: [], isLoading: false, error: null }),
+  useAllBudgets: () => ({ data: [], isLoading: false, error: null }),
+  useOnboardingCounts: () => ({ data: null, isLoading: false }),
+  useMySupportTickets: () => ({ data: [], isLoading: false }),
+  useMyBroadcastNotifications: () => ({ data: [], isLoading: false }),
+  useMyPublicShares: () => ({ data: [], isLoading: false }),
+  useCategories: () => ({ data: [], isLoading: false, error: null }),
+  useBudgets: () => ({ data: [], isLoading: false, error: null }),
+  useExpenses: () => ({ data: [], isLoading: false, error: null }),
+  useIncomes: () => ({ data: [], isLoading: false, error: null }),
+  useCorporateDividends: () => ({ data: [], isLoading: false, error: null }),
+  useUserTrips: () => ({ data: [], isLoading: false, error: null }),
+  useMyFamily: () => ({ data: null, isLoading: false, error: null }),
+  useMarkBroadcastAsRead: () => ({ mutate: vi.fn(), isPending: false }),
+  useFeedback: () => ({ data: {}, isLoading: false, error: null }),
+  useSetFeedback: () => ({ mutateAsync: vi.fn(), mutate: vi.fn() }),
+  useCreateIncome: () => ({ mutateAsync: vi.fn() }),
+  useDeleteIncome: () => ({ mutateAsync: vi.fn() }),
+  useCreateExpense: () => ({ mutateAsync: vi.fn() }),
+  useDeleteExpense: () => ({ mutateAsync: vi.fn() }),
+  useRecurrences: () => ({ data: [], isLoading: false, error: null }),
+  usePortfolioAssets: () => ({ data: [], isLoading: false, error: null }),
+  useFamilyMode: () => ({ isFamilyModeEnabled: false, toggleFamilyMode: vi.fn() }),
+  useTripMode: () => ({ isTripModeEnabled: false, setTripModeEnabled: vi.fn(), toggleTripMode: vi.fn() }),
+  useViewScope: () => ({ viewScope: "all", effectiveViewScope: "all", setViewScope: vi.fn(), isBusinessModeEnabled: false }),
+  useBusinessMode: () => ({ isBusinessModeEnabled: false, businessProfile: null, toggleBusinessMode: vi.fn(), updateBusinessProfile: vi.fn(), isLoading: false, isPending: false }),
   usePermission: () => ({ isHidden: false, canRead: true, canWrite: true, isReadOnlyMode: false, accessLevel: "admin" }),
   useCreditCards: () => ({
     data: [

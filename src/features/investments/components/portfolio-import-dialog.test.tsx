@@ -6,6 +6,7 @@ import { PortfolioImportDialog } from "./portfolio-import-dialog";
 const mockCreateAsset = vi.fn().mockResolvedValue({ id: "new-asset-1", ticker: "PETR4", asset_class: "Ações", currency: "BRL" });
 const mockUpdateAsset = vi.fn().mockResolvedValue({ id: "existing-1", ticker: "VALE3", asset_class: "Ações", currency: "BRL" });
 const mockCreateBatch = vi.fn().mockResolvedValue([]);
+const mockImportAtomic = vi.fn().mockResolvedValue({ success: true });
 
 vi.mock("@/state", () => ({
   usePortfolioAssets: () => ({
@@ -22,6 +23,10 @@ vi.mock("@/state", () => ({
   }),
   useCreatePortfolioTransactionsBatch: () => ({
     mutateAsync: mockCreateBatch,
+    isPending: false,
+  }),
+  useImportPortfolioAtomic: () => ({
+    mutateAsync: mockImportAtomic,
     isPending: false,
   }),
 }));
@@ -115,21 +120,23 @@ describe("PortfolioImportDialog", () => {
     await user.click(screen.getByRole("button", { name: /Confirmar importação \(1\)/i }));
 
     await waitFor(() => {
-      expect(mockCreateAsset).toHaveBeenCalledWith(
+      expect(mockImportAtomic).toHaveBeenCalledWith(
         expect.objectContaining({
-          ticker: "PETR4",
-          quantity: 100,
-          average_price: 38.5,
+          assetsToCreate: expect.arrayContaining([
+            expect.objectContaining({
+              ticker: "PETR4",
+              quantity: 100,
+              average_price: 38.5,
+            }),
+          ]),
+          transactions: expect.arrayContaining([
+            expect.objectContaining({
+              type: "buy",
+              quantity: 100,
+              price: 38.5,
+            }),
+          ]),
         }),
-      );
-      expect(mockCreateBatch).toHaveBeenCalledWith(
-        expect.arrayContaining([
-          expect.objectContaining({
-            type: "buy",
-            quantity: 100,
-            price: 38.5,
-          }),
-        ]),
       );
     });
   });
@@ -175,8 +182,7 @@ describe("PortfolioImportDialog", () => {
   });
 
   it("consolida múltiplas compras do mesmo ticker calculando o preço médio ponderado total ao criar o ativo", async () => {
-    mockCreateAsset.mockClear();
-    mockCreateBatch.mockClear();
+    mockImportAtomic.mockClear();
     const user = userEvent.setup();
 
     render(<PortfolioImportDialog open={true} onOpenChange={vi.fn()} />);
@@ -199,18 +205,20 @@ describe("PortfolioImportDialog", () => {
     await user.click(screen.getByRole("button", { name: /Confirmar importação \(2\)/i }));
 
     await waitFor(() => {
-      expect(mockCreateAsset).toHaveBeenCalledWith(
+      expect(mockImportAtomic).toHaveBeenCalledWith(
         expect.objectContaining({
-          ticker: "BBAS3",
-          quantity: 200,
-          average_price: 25,
+          assetsToCreate: expect.arrayContaining([
+            expect.objectContaining({
+              ticker: "BBAS3",
+              quantity: 200,
+              average_price: 25,
+            }),
+          ]),
+          transactions: expect.arrayContaining([
+            expect.objectContaining({ type: "buy", quantity: 100, price: 20 }),
+            expect.objectContaining({ type: "buy", quantity: 100, price: 30 }),
+          ]),
         }),
-      );
-      expect(mockCreateBatch).toHaveBeenCalledWith(
-        expect.arrayContaining([
-          expect.objectContaining({ type: "buy", quantity: 100, price: 20 }),
-          expect.objectContaining({ type: "buy", quantity: 100, price: 30 }),
-        ]),
       );
     });
   });

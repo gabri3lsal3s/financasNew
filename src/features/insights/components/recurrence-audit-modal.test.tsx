@@ -41,6 +41,14 @@ vi.mock("@/state", () => ({
     isLoading: false,
     isPending: false,
   }),
+  useBusinessMode: () => ({
+    isBusinessModeEnabled: false,
+    businessProfile: null,
+    toggleBusinessMode: vi.fn().mockResolvedValue(true),
+    updateBusinessProfile: vi.fn().mockResolvedValue(true),
+    isLoading: false,
+    isPending: false,
+  }),
   useMyFamily: () => ({
     data: null,
     isLoading: false,
@@ -54,6 +62,7 @@ vi.mock("@/state", () => ({
   useApplySplitSettlement: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateSplitComprehensive: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeleteLinkedSplit: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteInternalTransferPair: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 const baseOccurrence: RecurrenceOccurrence = {

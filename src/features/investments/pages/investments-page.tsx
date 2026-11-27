@@ -7,8 +7,11 @@ import { Button, Tabs } from "@/components/ui";
 import { useMarketQuotesSwr } from "@/state";
 import { PortfolioInsightsCarousel } from "../components";
 import { useInvestmentsPageController } from "../components/resumo/use-investments-page-controller";
-const InvestmentWizard = lazy(() => import("../wizard/investment-wizard").then((module) => ({ default: module.InvestmentWizard })));
-const CashFormDialog = lazy(() => import("../components/cash-form-dialog").then((module) => ({ default: module.CashFormDialog })));
+const loadInvestmentWizard = () => import("../wizard/investment-wizard");
+const loadCashFormDialog = () => import("../components/cash-form-dialog");
+
+const InvestmentWizard = lazy(() => loadInvestmentWizard().then((module) => ({ default: module.InvestmentWizard })));
+const CashFormDialog = lazy(() => loadCashFormDialog().then((module) => ({ default: module.CashFormDialog })));
 const MovimentacoesTab = lazy(() => import("./movimentacoes-tab").then((module) => ({ default: module.MovimentacoesTab })));
 const ProventosTab = lazy(() => import("./proventos-tab").then((module) => ({ default: module.ProventosTab })));
 const RebalanceTab = lazy(() => import("./rebalance-tab").then((module) => ({ default: module.RebalanceTab })));
@@ -36,6 +39,8 @@ export function InvestmentsPage() {
               variant="outline"
               size="sm"
               aria-label="Adicionar caixa"
+              onMouseEnter={() => void loadCashFormDialog()}
+              onFocus={() => void loadCashFormDialog()}
               onClick={controller.handleOpenCash}
             >
               <Wallet aria-hidden="true" />
@@ -46,6 +51,8 @@ export function InvestmentsPage() {
               size="sm"
               aria-label="Nova operação"
               data-tour="investments-new-op"
+              onMouseEnter={() => void loadInvestmentWizard()}
+              onFocus={() => void loadInvestmentWizard()}
               onClick={() => controller.handleOpenWizard(null, "select")}
             >
               <Plus aria-hidden="true" />
@@ -70,6 +77,7 @@ export function InvestmentsPage() {
         value={controller.activeTab}
         onValueChange={controller.handleTabChange}
         swipeable
+        keepMountedAfterFirstVisit
         items={[
           {
             value: "carteira",
@@ -82,6 +90,7 @@ export function InvestmentsPage() {
                   onValueChange={controller.handleCarteiraViewChange}
                   variant="pills"
                   fullWidth
+                  keepMountedAfterFirstVisit
                   ariaLabel="Sub-abas da carteira"
                   items={[
                     {
@@ -132,7 +141,7 @@ export function InvestmentsPage() {
         ]}
       />
 
-      {controller.isWizardOpen && <Suspense fallback={<ContentLoading />}>
+      {controller.isWizardOpen && <Suspense fallback={null}>
       <InvestmentWizard
         open={controller.isWizardOpen}
         onOpenChange={controller.handleWizardOpenChange}
@@ -144,7 +153,7 @@ export function InvestmentsPage() {
       </Suspense>}
 
       {controller.cashDialogOpen && (
-        <Suspense fallback={<ContentLoading />}>
+        <Suspense fallback={null}>
           <CashFormDialog
             open={controller.cashDialogOpen}
             onOpenChange={controller.setCashDialogOpen}

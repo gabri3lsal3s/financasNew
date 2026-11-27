@@ -251,7 +251,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       expect(aside).not.toBeNull();
       expect(aside?.getAttribute("data-placement")).toBe("top");
       expect(aside?.className).toContain("top-[max(env(safe-area-inset-top,0px),16px)]");
-      expect(aside?.className).toContain("max-h-[42vh]");
+      expect(aside?.className).toContain("max-h-[42dvh]");
     });
 
     it("ancora o popover na BASE quando o elemento alvo está na parte superior da tela (<= 45% viewport)", () => {
@@ -284,7 +284,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       expect(aside).not.toBeNull();
       expect(aside?.getAttribute("data-placement")).toBe("bottom");
       expect(aside?.className).toContain("bottom-[calc(5rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))]");
-      expect(aside?.className).toContain("max-h-[42vh]");
+      expect(aside?.className).toContain("max-h-[42dvh]");
     });
   });
 
@@ -991,7 +991,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       expect(aside).not.toBeNull();
       expect(aside?.getAttribute("data-placement")).toBe("top");
       expect(aside?.className).toContain("top-[max(env(safe-area-inset-top,0px),16px)]");
-      expect(aside?.className).toContain("max-h-[42vh]");
+      expect(aside?.className).toContain("max-h-[42dvh]");
     });
 
     it("cenário iPhone 12/13/14 (390x844): anti-colisão posiciona na base para alvo superior sem encobrimento", () => {
@@ -1026,7 +1026,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       expect(aside).not.toBeNull();
       expect(aside?.getAttribute("data-placement")).toBe("bottom");
       expect(aside?.className).toContain("bottom-[calc(5rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))]");
-      expect(aside?.className).toContain("max-h-[42vh]");
+      expect(aside?.className).toContain("max-h-[42dvh]");
     });
 
     it("cenário Samsung Galaxy S20 / Android (360x800): anti-colisão posiciona no topo para alvo inferior (> 45% viewport)", () => {
@@ -1061,7 +1061,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       expect(aside).not.toBeNull();
       expect(aside?.getAttribute("data-placement")).toBe("top");
       expect(aside?.className).toContain("top-[max(env(safe-area-inset-top,0px),16px)]");
-      expect(aside?.className).toContain("max-h-[42vh]");
+      expect(aside?.className).toContain("max-h-[42dvh]");
     });
 
     it("cenário Google Pixel 7 (412x915): ancora deterministicamente na base quando alvo está no limiar de 45%", () => {
@@ -1357,7 +1357,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
           expect(aside).toBeInTheDocument();
 
           // Contêiner com espaçamento lateral seguro (inset-x-3 = 12px de cada lado) e cantos rounded-2xl
-          expect(aside?.className).toContain("fixed inset-x-3 rounded-2xl p-4 max-h-[42vh]");
+          expect(aside?.className).toContain("fixed inset-x-3 rounded-2xl p-4 max-h-[42dvh]");
           expect(aside?.className).toContain("bg-surface");
           expect(aside?.className).toContain("border-border/80");
 

@@ -8,7 +8,7 @@
 // Lê do .env (gitignored): SUPABASE_FUNCTION_URL (ref do projeto),
 // SUPABASE_SERVICE_ROLE_KEY (Authorization do cron) e QUOTES_CRON_SCHEDULE.
 import { execSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -16,7 +16,8 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** Carrega as variáveis de um arquivo .env simples (sem lib). */
 function loadEnv(file) {
-  const env = {};
+  const env = { ...process.env };
+  if (!existsSync(file)) return env;
   for (const line of readFileSync(file, "utf8").split("\n")) {
     const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
     if (!match) continue;

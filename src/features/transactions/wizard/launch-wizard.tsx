@@ -87,7 +87,7 @@ export function LaunchWizard({
   const { session, user } = useAuth();
   const { profile, hasFeature, isLoading: isAccessLoading } = useUserAccess();
   const aiExtractionEnabled =
-    typeof hasFeature === "function" ? (isAccessLoading ? true : hasFeature("ai_extraction")) : true;
+    typeof hasFeature === "function" ? (isAccessLoading ? false : hasFeature("ai_extraction")) : true;
   const currentUserId = user?.id ?? session?.user?.id ?? profile?.id;
   const userFullName =
     profile?.name ??

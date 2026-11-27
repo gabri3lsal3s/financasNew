@@ -14,6 +14,19 @@ const mockCategories = [
   { id: "i2", name: "Faturamento PJ", icon: "briefcase", color: "#FF9800", type: "income", is_reserved: false, scope: "business", is_family: false },
 ];
 
+vi.mock("@/state/queries/use-user-subscription", () => ({
+  useUserSubscription: () => ({ isPro: true, isTrial: false, plan: "pro", isReadOnly: false, canWrite: true }),
+}));
+vi.mock("@/state/queries/use-permission", () => ({
+  usePermission: () => ({ isHidden: false, canRead: true, canWrite: true, isReadOnlyMode: false, accessLevel: "admin" }),
+}));
+vi.mock("@/state/queries/use-family-mode", () => ({
+  useFamilyMode: () => ({ isFamilyModeEnabled: true }),
+}));
+vi.mock("@/state/queries/use-business-mode", () => ({
+  useBusinessMode: () => ({ isBusinessModeEnabled: true, businessProfile: null, toggleBusinessMode: vi.fn(), updateBusinessProfile: vi.fn(), isLoading: false, isPending: false }),
+}));
+
 vi.mock("@/state", () => ({
   usePermission: () => ({ isHidden: false, canRead: true, canWrite: true, isReadOnlyMode: false, accessLevel: "admin" }),
   useUserSubscription: () => ({ isPro: true, isTrial: false, plan: "pro", isReadOnly: false, canWrite: true }),
@@ -41,6 +54,7 @@ vi.mock("@/state", () => ({
   useDeleteCategory: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useInstallCategoryKit: () => ({ mutateAsync: vi.fn(), isPending: false, isError: false }),
   useFamilyMode: () => ({ isFamilyModeEnabled: true }),
+  useBusinessMode: () => ({ isBusinessModeEnabled: true, businessProfile: null, toggleBusinessMode: vi.fn(), updateBusinessProfile: vi.fn(), isLoading: false, isPending: false }),
   useSafeBusinessMode: () => ({ isBusinessModeEnabled: true }),
   useMyFamily: () => ({ data: null }),
 }));

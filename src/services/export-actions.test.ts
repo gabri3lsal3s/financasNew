@@ -8,7 +8,8 @@ vi.mock("@capacitor/clipboard", () => ({
   },
 }));
 
-import * as nativeModule from "@/services/native";
+import * as nativePlatform from "@/services/native/platform";
+import * as nativeExport from "@/services/native/native-export";
 import * as toastModule from "@/services/toast";
 import { downloadBlob, downloadCsv, downloadJson, sanitizeFilename, shareText } from "./export-actions";
 
@@ -60,8 +61,8 @@ describe("services/export-actions — shareText", () => {
   });
 
   it("usa Share Sheet nativo no Android e cai para Capacitor Clipboard se falhar", async () => {
-    vi.spyOn(nativeModule, "isNativePlatform").mockReturnValue(true);
-    const nativeShareSpy = vi.spyOn(nativeModule, "shareNativeText").mockResolvedValue(true);
+    vi.spyOn(nativePlatform, "isNativePlatform").mockReturnValue(true);
+    const nativeShareSpy = vi.spyOn(nativeExport, "shareNativeText").mockResolvedValue(true);
     expect(await shareText("Racha", "Link Pix")).toBe("shared");
     expect(nativeShareSpy).toHaveBeenCalledWith("Racha", "Link Pix");
 
@@ -101,7 +102,7 @@ describe("services/export-actions — downloadBlob/CSV/JSON (Web vs Android Nati
 
   it("dispara download clássico via ObjectURL + anchor na Web/PWA", async () => {
     vi.useFakeTimers();
-    vi.spyOn(nativeModule, "isNativePlatform").mockReturnValue(false);
+    vi.spyOn(nativePlatform, "isNativePlatform").mockReturnValue(false);
     const createUrlSpy = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:axir-test");
     const revokeUrlSpy = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
     const clickSpy = vi.fn();
@@ -124,9 +125,9 @@ describe("services/export-actions — downloadBlob/CSV/JSON (Web vs Android Nati
   });
 
   it("roteia downloadJson e downloadCsv para exportNativeFile no Android com feedback toast", async () => {
-    vi.spyOn(nativeModule, "isNativePlatform").mockReturnValue(true);
-    vi.spyOn(nativeModule, "blobToBase64").mockResolvedValue("eyJhIjoxfQ==");
-    const exportSpy = vi.spyOn(nativeModule, "exportNativeFile").mockResolvedValue({
+    vi.spyOn(nativePlatform, "isNativePlatform").mockReturnValue(true);
+    vi.spyOn(nativeExport, "blobToBase64").mockResolvedValue("eyJhIjoxfQ==");
+    const exportSpy = vi.spyOn(nativeExport, "exportNativeFile").mockResolvedValue({
       success: true,
       fileName: "backup.json",
       savedToDownloads: true,
@@ -151,9 +152,9 @@ describe("services/export-actions — downloadBlob/CSV/JSON (Web vs Android Nati
   });
 
   it("retorna false e exibe toast de erro quando exportNativeFile falha", async () => {
-    vi.spyOn(nativeModule, "isNativePlatform").mockReturnValue(true);
-    vi.spyOn(nativeModule, "blobToBase64").mockResolvedValue("ZGF0YQ==");
-    vi.spyOn(nativeModule, "exportNativeFile").mockResolvedValue({
+    vi.spyOn(nativePlatform, "isNativePlatform").mockReturnValue(true);
+    vi.spyOn(nativeExport, "blobToBase64").mockResolvedValue("ZGF0YQ==");
+    vi.spyOn(nativeExport, "exportNativeFile").mockResolvedValue({
       success: false,
       error: "Espaço insuficiente.",
     });

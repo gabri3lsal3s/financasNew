@@ -16,7 +16,11 @@ import {
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
-import { userPreferencesKey } from "@/state/queries/use-user-preferences";
+import {
+  USER_PREFERENCES_KEY,
+  userPreferencesQueryKey,
+} from "@/state/queries/use-user-preferences";
+import { getActiveUserId } from "@/services/user-storage";
 import type {
   DbInsert,
   DbUpdate,
@@ -146,7 +150,9 @@ export function useSetDividendTracking() {
       }),
     onSuccess: (result, variables) => {
       if (result.tracking_start_date !== undefined) {
-        queryClient.setQueryData<UserPreferences | null>(userPreferencesKey, (prev) => {
+        queryClient.setQueryData<UserPreferences | null>(
+          userPreferencesQueryKey(getActiveUserId()),
+          (prev) => {
           if (!prev) return prev;
           const prevCustom = prev.custom_settings ?? {};
           const prevDivAuto = prevCustom.dividendAutomation ?? {};
@@ -198,7 +204,7 @@ export function useSetDividendTracking() {
         );
       }
 
-      void queryClient.invalidateQueries({ queryKey: userPreferencesKey });
+      void queryClient.invalidateQueries({ queryKey: USER_PREFERENCES_KEY });
       void invalidatePortfolioSuite(queryClient);
 
       if (!variables.silent) {

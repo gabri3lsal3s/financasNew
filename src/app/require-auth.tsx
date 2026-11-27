@@ -11,7 +11,9 @@ import { useRoutePrefetch } from "@/hooks/use-route-prefetch";
 import { usePendingSplitExpense } from "@/hooks/use-pending-split-expense";
 import { usePendingSimulation } from "@/hooks/use-pending-simulation";
 import { useRegisterFcmToken } from "@/state";
+import { useSessionBootstrap } from "@/state/queries/use-session-bootstrap";
 import { useUserAccess } from "@/state/queries/use-user-access";
+import { isQueryPending } from "@/state/query-readiness";
 import { getPendingRouteAfterUnlock, isAppLocked, setPendingRouteAfterUnlock, subscribeAppLock } from "@/services/native/app-lock";
 import { initDeepLinkListener } from "@/services/native/deep-links";
 import { initNotificationActionListener, isRemotePushEnabled } from "@/services/native/local-notifications";
@@ -145,6 +147,8 @@ function NativeIntegrationsHandler() {
  */
 export function RequireAuth({ children }: { children?: ReactNode }) {
   const { session, loading: authLoading, configError, mfaRequired, mfaVerified, mfaError } = useAuth();
+  const hasUser = Boolean(session?.user);
+  const bootstrapQuery = useSessionBootstrap(session?.user?.id);
   const userAccess = useUserAccess(session?.user?.id);
   const location = useLocation();
   usePendingSplitExpense();
@@ -153,11 +157,11 @@ export function RequireAuth({ children }: { children?: ReactNode }) {
   const idleSession = useIdleSessionTimeout();
   useDeviceSessionSync();
 
-  const hasUser = Boolean(session?.user);
-  const isAccessPending = hasUser && !userAccess.profile && !userAccess.error;
-  const isDataLoading = authLoading || (hasUser && (userAccess.isLoading || isAccessPending));
+  const isBootstrapPending =
+    hasUser && isQueryPending(bootstrapQuery, hasUser) && !bootstrapQuery.error && !userAccess.error;
+  const isDataLoading = authLoading || isBootstrapPending || (hasUser && userAccess.isLoading);
 
-  const { isShowing: isTransitioning, isClosing } = useMinimumLoading(isDataLoading, 650);
+  const { isShowing: isTransitioning, isClosing } = useMinimumLoading(isDataLoading, 200);
 
   if (!authLoading && session?.user && mfaError) {
     return (

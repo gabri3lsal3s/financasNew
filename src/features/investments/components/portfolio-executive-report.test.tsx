@@ -29,6 +29,14 @@ vi.mock("@/state", () => ({
     data: [],
     isLoading: false,
   }),
+  useCorporateDividends: () => ({
+    available: [],
+    projected: [],
+    assetsNeedingCalibration: [],
+    trackingStartDate: null,
+    fxRate: 5.25,
+    isLoading: false,
+  }),
 }));
 
 vi.mock("./monthly-closing-editor", () => ({

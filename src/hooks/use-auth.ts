@@ -289,6 +289,11 @@ function initGlobalAuth(): void {
     return;
   }
 
+  if (!supabase?.auth || typeof supabase.auth.getSession !== "function") {
+    updateGlobalAuthState({ loading: false });
+    return;
+  }
+
   if (isGlobalAuthInitialized) return;
   isGlobalAuthInitialized = true;
 

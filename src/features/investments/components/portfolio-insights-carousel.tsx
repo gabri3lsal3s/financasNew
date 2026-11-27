@@ -5,6 +5,7 @@ import { todaySaoPauloISO } from "@/domain/portfolio";
 import { computePortfolioCarouselDrift } from "@/domain/portfolio/insights-carousel-drift";
 import { evaluatePortfolioStructuralRisk } from "@/domain/portfolio/portfolio-risk-policy";
 import { FALLBACK_USD_RATE } from "@/domain/portfolio/valuation";
+import { useCarouselPresenceHint } from "@/hooks/use-carousel-presence-hint";
 import { usePortfolioAlertDismissals } from "@/hooks/use-portfolio-alert-dismissals";
 import { openDividendReviewModal } from "@/services/dividend-review-modal";
 import { formatPercent } from "@/services/masks/percent";
@@ -235,21 +236,55 @@ export function PortfolioInsightsCarousel({ className }: PortfolioInsightsCarous
   ];
 
   const activeItems = items.filter(Boolean);
-  const isCarouselLoading =
-    isDividendsLoading ||
+  const isPortfolioEmpty = Boolean(
+    assetsQuery?.isSuccess && (assetsQuery?.data?.length ?? 0) === 0,
+  );
+  const isCoreLoading =
     gov.isLoading ||
     Boolean(position?.isLoading) ||
     isQueryPending(assetsQuery) ||
     isQueryPending(classTargetsQuery) ||
     isDismissalsLoading;
+  const isCarouselLoading =
+    !isPortfolioEmpty && (isCoreLoading || (isDividendsLoading && activeItems.length === 0));
+  const [wasReadyOnMount] = useState(() => !isCarouselLoading);
+  const { shouldShowSkeleton } = useCarouselPresenceHint("portfolio_insights", {
+    isLoading: isCarouselLoading,
+    hasItems: activeItems.length > 0,
+  });
 
-  if (isCarouselLoading || activeItems.length === 0) {
+  if (isCarouselLoading) {
+    if (!shouldShowSkeleton) {
+      return null;
+    }
+    return (
+      <div
+        role="status"
+        aria-busy="true"
+        aria-label="Carregando insights da carteira"
+        className="w-full min-h-[104px] sm:min-h-[84px] rounded-2xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs animate-pulse flex items-center gap-3.5"
+      >
+        <div className="size-9 shrink-0 rounded-xl bg-muted" />
+        <div className="flex-1 space-y-2 min-w-0">
+          <div className="h-3.5 w-40 max-w-full rounded bg-muted" />
+          <div className="h-3 w-72 max-w-full rounded bg-muted/70" />
+        </div>
+      </div>
+    );
+  }
+
+  if (activeItems.length === 0) {
     return null;
   }
 
   return (
     <>
-      <DashboardAlertsCarousel items={items} maxItems={5} className={className} />
+      <DashboardAlertsCarousel
+        items={items}
+        maxItems={5}
+        className={className}
+        animateOnMount={!wasReadyOnMount}
+      />
 
       <AssetScoreEvaluationDialog
         open={Boolean(currentEvaluatedAsset)}

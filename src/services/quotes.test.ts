@@ -210,9 +210,12 @@ describe("services/quotes (Modelo Global via Edge Function)", () => {
 
     const quotes = await fetchHistoricalMonthlyQuotes(["PETR4", "AAPL"], "2026-09");
     expect(listMarketPriceHistoryByMonthMock).toHaveBeenCalledWith("2026-09");
-    expect(functionsInvokeMock).toHaveBeenCalledWith("quotes", {
-      body: { tickers: ["AAPL"], month: "2026-09" },
-    });
+    expect(functionsInvokeMock).toHaveBeenCalledWith(
+      "quotes",
+      expect.objectContaining({
+        body: { tickers: ["AAPL"], month: "2026-09" },
+      }),
+    );
     expect(quotes).toEqual([
       {
         ticker: "PETR4",

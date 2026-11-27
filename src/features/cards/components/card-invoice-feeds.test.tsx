@@ -69,8 +69,8 @@ describe("Card Invoice Feeds", () => {
     expect(screen.getByText("Sem despesas nesta fatura")).toBeInTheDocument();
 
     const user = userEvent.setup();
-    const importBtn = screen.getByRole("button", { name: /Importar/i });
-    await user.click(importBtn);
+    const [importBtn] = screen.getAllByRole("button", { name: /Importar/i });
+    await user.click(importBtn!);
     expect(onOpenImport).toHaveBeenCalled();
   });
 

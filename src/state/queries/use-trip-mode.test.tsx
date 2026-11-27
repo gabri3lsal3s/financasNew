@@ -56,6 +56,35 @@ describe("useTripMode Hook — Governança do Modo Viagem", () => {
     });
   });
 
+  it("retorna isTripModeEnabled como false enquanto as preferências ainda estão pendentes (zero flash)", async () => {
+    let resolvePrefs!: (value: UserPreferences) => void;
+    vi.mocked(userPrefsRepo.getUserPreferences).mockImplementationOnce(
+      () =>
+        new Promise<UserPreferences>((resolve) => {
+          resolvePrefs = resolve;
+        }),
+    );
+
+    const { result } = renderHook(() => useTripMode(), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.current.isLoading).toBe(true);
+    expect(result.current.isTripModeEnabled).toBe(false);
+
+    await act(async () => {
+      resolvePrefs({
+        ...mockPreferencesBase,
+        custom_settings: { tripModeEnabled: false },
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(result.current.isTripModeEnabled).toBe(false);
+  });
+
   it("retorna isTripModeEnabled como true por padrão quando indefinido", async () => {
     vi.mocked(userPrefsRepo.getUserPreferences).mockResolvedValueOnce({
       ...mockPreferencesBase,

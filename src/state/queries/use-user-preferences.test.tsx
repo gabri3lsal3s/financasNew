@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useUserPreferences, userPreferencesKey } from "./use-user-preferences";
+import { useUserPreferences, userPreferencesQueryKey } from "./use-user-preferences";
 import * as userPrefsRepo from "@/data/repositories/user-preferences";
 import { STALE_TIMES, STATIC_GC_TIME } from "@/state/cache-policy";
 import { setActiveUserId } from "@/services/user-storage";
@@ -57,7 +57,7 @@ describe("useUserPreferences Hook — Calibração de Cache (Tarefa 1.2)", () =>
     expect(result.current.data).toEqual(mockPreferences);
     expect(userPrefsRepo.getUserPreferences).toHaveBeenCalledTimes(1);
 
-    const query = queryClient.getQueryCache().find({ queryKey: userPreferencesKey });
+    const query = queryClient.getQueryCache().find({ queryKey: userPreferencesQueryKey("user-1") });
     expect(query).toBeDefined();
     const observers = (query as unknown as { observers: Array<{ options: { staleTime?: number; gcTime?: number } }> }).observers;
     expect(observers[0]?.options.staleTime).toBe(STALE_TIMES.static);

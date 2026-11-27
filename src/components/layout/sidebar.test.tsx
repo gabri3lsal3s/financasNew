@@ -33,7 +33,86 @@ const { mockState, mockSub } = vi.hoisted(() => ({
 let mockFamilyData: { family?: { id: string; name: string } } | null = null;
 let mockIsFamilyModeEnabled = false;
 
+vi.mock("@/state/queries/use-user-subscription", () => ({
+  useUserSubscription: () => mockSub.current,
+}));
+vi.mock("@/state/queries/use-user-access", () => ({
+  useUserAccess: () => ({
+    role: "user",
+    status: "active",
+    isAdmin: false,
+    isSuperAdmin: false,
+    hasFeature: () => true,
+    isLoading: false,
+  }),
+}));
+vi.mock("@/state/queries/use-family-mode", () => ({
+  useFamilyMode: () => ({
+    isFamilyModeEnabled: mockIsFamilyModeEnabled,
+    isLoading: false,
+    toggleFamilyMode: vi.fn(),
+  }),
+}));
+vi.mock("@/state/queries/use-trip-mode", () => ({
+  useTripMode: () => ({
+    isTripModeEnabled: false,
+    isLoading: false,
+    toggleTripMode: vi.fn(),
+  }),
+}));
+vi.mock("@/state/queries/use-business-mode", () => ({
+  useBusinessMode: () => ({
+    isBusinessModeEnabled: false,
+    businessProfile: null,
+    toggleBusinessMode: vi.fn().mockResolvedValue(true),
+    updateBusinessProfile: vi.fn().mockResolvedValue(true),
+    isLoading: false,
+    isPending: false,
+  }),
+}));
+
 vi.mock("@/state", () => ({
+  useIncomeGoals: () => ({ data: [], isLoading: false, error: null }),
+  usePortfolioContributions: () => ({ data: [], isLoading: false, error: null }),
+  useAllPortfolioTransactions: () => ({ data: [], isLoading: false, error: null }),
+  usePortfolioSnapshots: () => ({ data: [], isLoading: false, error: null }),
+  usePortfolioDividends: () => ({ data: [], isLoading: false, error: null }),
+  useSavePocketCostMilestoneAtomic: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteInternalTransferPair: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUserFinancialContext: () => ({ context: undefined, isLoading: false }),
+  useFamilyConsolidation: () => ({ data: null, isLoading: false, error: null }),
+  useSetBudgetLimit: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useEnableWebPushSubscription: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
+  useDisableWebPushSubscription: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
+  useRegisterFcmToken: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
+  useDisableFcmToken: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
+  useUpdateReminderPreferences: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
+  useRealCashBalance: () => ({ cashBalance: { currentBalanceCents: 0 }, safeToSpend: { safeToSpendCents: 0 }, isLoading: false, error: null, refetch: vi.fn() }),
+  useEmergencyFundComposition: () => ({ composition: { totalReserveCents: 0, cashInAccountsCents: 0, portfolioReserveCents: 0, breakdown: [], warnings: [], targetMonths: 6, targetMonthsProgressPercent: 0, targetMonthsCents: 0 }, config: { includeCheckingAccounts: true }, isLoading: false }),
+  usePortfolioPosition: () => ({ rows: [], totalBRL: 0, cashBRL: 0, monthlySeries: [], monthlyContributionCents: 0, isLoading: false, error: null, refetch: vi.fn() }),
+  useFeedbackEntries: () => ({ data: [], isLoading: false, error: null }),
+  useDismissBroadcastNotification: () => ({ mutate: vi.fn(), isPending: false }),
+  useAllDebts: () => ({ data: [], isLoading: false, error: null }),
+  useAllBudgets: () => ({ data: [], isLoading: false, error: null }),
+  useAllCardExpenses: () => ({ data: [], isLoading: false, error: null }),
+  useAllCardPayments: () => ({ data: [], isLoading: false, error: null }),
+  useBudgets: () => ({ data: [], isLoading: false, error: null }),
+  useCategories: () => ({ data: [], isLoading: false, error: null }),
+  useCorporateDividends: () => ({ data: [], isLoading: false, error: null }),
+  useCreditCards: () => ({ data: [], isLoading: false, error: null }),
+  useExpenses: () => ({ data: [], isLoading: false, error: null }),
+  useIncomes: () => ({ data: [], isLoading: false, error: null }),
+  useDebts: () => ({ data: [], isLoading: false, error: null }),
+  useFeedback: () => ({ data: {}, isLoading: false, error: null }),
+  useSetFeedback: () => ({ mutateAsync: vi.fn(), mutate: vi.fn() }),
+  useCreateIncome: () => ({ mutateAsync: vi.fn() }),
+  useDeleteIncome: () => ({ mutateAsync: vi.fn() }),
+  useCreateExpense: () => ({ mutateAsync: vi.fn() }),
+  useDeleteExpense: () => ({ mutateAsync: vi.fn() }),
+  useUpdateCustomSettings: () => ({ mutate: vi.fn(), mutateAsync: vi.fn() }),
+  useRecurrences: () => ({ data: [], isLoading: false, error: null }),
+  useUserTrips: () => ({ data: [], isLoading: false, error: null }),
+  usePortfolioAssets: () => ({ data: [], isLoading: false, error: null }),
   useReminders: () => ({
     totalCount: 0,
     urgentCount: 0,
@@ -83,6 +162,18 @@ vi.mock("@/state", () => ({
     level: "write",
   }),
   useUserSubscription: () => mockSub.current,
+  useReminderStates: () => ({ data: [], isLoading: false }),
+  useOnboardingCounts: () => ({ data: null, isLoading: false }),
+  useMySupportTickets: () => ({ data: [], isLoading: false }),
+  useMyBroadcastNotifications: () => ({ data: [], isLoading: false }),
+  useMyPublicShares: () => ({ data: [], isLoading: false }),
+  useSetReminderState: () => ({ mutate: vi.fn(), isPending: false }),
+  useMarkAllRemindersAsRead: () => ({ mutate: vi.fn(), isPending: false }),
+  useMarkBroadcastAsRead: () => ({ mutate: vi.fn(), isPending: false }),
+  useUserPreferences: () => ({
+    data: { custom_settings: {} },
+    isLoading: false,
+  }),
   useAppMode: () => ({
     appMode: mockState.appMode,
     isInvestorMode: mockState.appMode === "investor",

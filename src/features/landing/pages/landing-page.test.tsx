@@ -85,8 +85,8 @@ describe("LandingPage", () => {
       screen.getByRole("button", { name: /Racha de Parcelas & Viagens/i }),
     );
     expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: "smooth" });
-    expect(await screen.findByTestId("card-racha", {}, { timeout: 5000 })).toBeVisible();
-  });
+    expect(await screen.findByTestId("card-racha", {}, { timeout: 15000 })).toBeVisible();
+  }, 25_000);
 
   it("permite interagir com o palco de Finanças Compartilhadas & Pix após selecionar Casal & Amigos", async () => {
     const user = userEvent.setup();

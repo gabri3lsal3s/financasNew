@@ -4,7 +4,6 @@ import {
   ROUTE_CHECK_THROTTLE_MS,
   applyPendingPWAUpdateIfSafe,
   checkPWAUpdateNow,
-  getPWAUpdateAvailable,
   isCredentialRoute,
 } from "@/app/pwa";
 import { appRoutes, publicLegalRoutes, publicToolsRoutes } from "@/app/routes";
@@ -298,11 +297,6 @@ function PWAUpdateRouteSync() {
       if (!applyPendingPWAUpdateIfSafe()) {
         void checkPWAUpdateNow({ force: true, applyIfSafe: true });
       }
-      return;
-    }
-
-    if (getPWAUpdateAvailable()) {
-      applyPendingPWAUpdateIfSafe();
       return;
     }
 

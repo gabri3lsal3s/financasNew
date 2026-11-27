@@ -134,6 +134,15 @@ let expensesMock = {
 };
 
 vi.mock("@/state", () => ({
+  useUpdateReminderPreferences: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
+  useFeedbackEntries: () => ({ data: [], isLoading: false, error: null }),
+  useBusinessMode: () => ({ isBusinessModeEnabled: false, businessProfile: null, toggleBusinessMode: vi.fn().mockResolvedValue(true), updateBusinessProfile: vi.fn().mockResolvedValue(true), isLoading: false, isPending: false }),
+  useViewScope: () => ({ viewScope: "all" as const, effectiveViewScope: "all" as const, setViewScope: vi.fn(), isBusinessModeEnabled: false }),
+  useDeleteInternalTransferPair: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useEnableWebPushSubscription: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
+  useDisableWebPushSubscription: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
+  useRegisterFcmToken: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
+  useDisableFcmToken: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
   useMarketQuotesSwr: () => ({
     isSyncing: false,
     lastSyncAt: null,

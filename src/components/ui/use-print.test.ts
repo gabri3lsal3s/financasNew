@@ -1,13 +1,14 @@
 import { renderHook, act } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import * as nativeModule from "@/services/native";
+import * as nativePlatform from "@/services/native/platform";
+import * as nativeExport from "@/services/native/native-export";
 import * as toastModule from "@/services/toast";
 import { usePrint } from "./use-print";
 
 describe("usePrint (F22)", () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.spyOn(nativeModule, "isNativePlatform").mockReturnValue(false);
+    vi.spyOn(nativePlatform, "isNativePlatform").mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -63,9 +64,9 @@ describe("usePrint (F22)", () => {
   });
 
   it("mantém printing true até printCurrentWebView concluir no Android nativo e restaura título", async () => {
-    vi.spyOn(nativeModule, "isNativePlatform").mockReturnValue(true);
+    vi.spyOn(nativePlatform, "isNativePlatform").mockReturnValue(true);
     let resolveNative!: (value: { success: boolean; error?: string }) => void;
-    const printNativeSpy = vi.spyOn(nativeModule, "printCurrentWebView").mockImplementation(
+    const printNativeSpy = vi.spyOn(nativeExport, "printCurrentWebView").mockImplementation(
       () =>
         new Promise<{ success: boolean; error?: string }>((resolve) => {
           resolveNative = resolve;
@@ -104,8 +105,8 @@ describe("usePrint (F22)", () => {
   });
 
   it("exibe toast destrutivo se printCurrentWebView falhar no Android", async () => {
-    vi.spyOn(nativeModule, "isNativePlatform").mockReturnValue(true);
-    vi.spyOn(nativeModule, "printCurrentWebView").mockResolvedValue({
+    vi.spyOn(nativePlatform, "isNativePlatform").mockReturnValue(true);
+    vi.spyOn(nativeExport, "printCurrentWebView").mockResolvedValue({
       success: false,
       error: "PrintManager indisponível.",
     });

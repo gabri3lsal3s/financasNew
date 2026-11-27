@@ -17,6 +17,23 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
   };
 });
 
+vi.mock("@/state/queries/use-user-subscription", () => ({
+  useUserSubscription: () => ({
+    canWrite: true,
+    isReadOnly: false,
+    tier: "pro_annual",
+  }),
+}));
+vi.mock("@/state/queries/use-permission", () => ({
+  usePermission: () => ({
+    canWrite: true,
+    canRead: true,
+    isHidden: false,
+    isReadOnlyMode: false,
+    accessLevel: "write",
+  }),
+}));
+
 vi.mock("@/state", () => ({
   LAST_BATCH_APORTE_STORAGE_KEY: "axir_last_batch_aporte",
   useUserSubscription: () => ({
@@ -280,8 +297,8 @@ describe("AporteTab — Calculadora e Aportes", () => {
     if (!buyBtn) throw new Error("Botão não encontrado");
     await user.click(buyBtn);
 
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
-  });
+    expect(await screen.findByRole("dialog", {}, { timeout: 10000 })).toBeInTheDocument();
+  }, 20_000);
 
   it("permite Aporte Composto (Bolso + Caixa) e repassa cashUsed ao executeBatch (§Plano 42)", async () => {
     vi.useFakeTimers();

@@ -33,6 +33,14 @@ vi.mock("@/state", () => ({
   useDeleteCard: () => ({ mutateAsync: deleteCardMock, isPending: false }),
   useUserPreferences: () => mockPreferences,
   useUpdateCustomSettings: () => ({ mutateAsync: updateCustomSettingsMock, isPending: false }),
+  useBusinessMode: () => ({
+    isBusinessModeEnabled: false,
+    businessProfile: null,
+    toggleBusinessMode: vi.fn().mockResolvedValue(true),
+    updateBusinessProfile: vi.fn().mockResolvedValue(true),
+    isLoading: false,
+    isPending: false,
+  }),
 }));
 
 const existingCard: CreditCard = {

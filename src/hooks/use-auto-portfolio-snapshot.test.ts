@@ -1,13 +1,15 @@
 import { renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { useAutoPortfolioSnapshot } from "./use-auto-portfolio-snapshot";
-import * as stateModule from "@/state";
+import * as portfolioQueries from "@/state/queries/use-portfolio";
+import * as portfolioPositionQueries from "@/state/queries/use-portfolio-position";
+import * as portfolioSnapshotMutations from "@/state/mutations/use-portfolio-snapshots-mutations";
 
 describe("useAutoPortfolioSnapshot (§F50)", () => {
   it("dispara upsertPortfolioSnapshot quando há patrimônio e o mês atual não possui snapshot", () => {
     const mutateMock = vi.fn();
 
-    vi.spyOn(stateModule, "usePortfolioPosition").mockReturnValue({
+    vi.spyOn(portfolioPositionQueries, "usePortfolioPosition").mockReturnValue({
       rows: [],
       totalBRL: 45000,
       totalCostBRL: 40000,
@@ -34,44 +36,44 @@ describe("useAutoPortfolioSnapshot (§F50)", () => {
       isLoading: false,
       error: null,
       refetch: vi.fn(),
-    } as unknown as ReturnType<typeof stateModule.usePortfolioPosition>);
+    } as unknown as ReturnType<typeof portfolioPositionQueries.usePortfolioPosition>);
 
-    vi.spyOn(stateModule, "usePortfolioSnapshots").mockReturnValue({
+    vi.spyOn(portfolioQueries, "usePortfolioSnapshots").mockReturnValue({
       data: [{ id: "s1", user_id: "u1", month: "2026-07", total_value: 40000, total_cost: 38000 }],
       isLoading: false,
       isError: false,
       error: null,
       refetch: vi.fn(),
-    } as unknown as ReturnType<typeof stateModule.usePortfolioSnapshots>);
+    } as unknown as ReturnType<typeof portfolioQueries.usePortfolioSnapshots>);
 
-    vi.spyOn(stateModule, "useUpsertPortfolioSnapshot").mockReturnValue({
+    vi.spyOn(portfolioSnapshotMutations, "useUpsertPortfolioSnapshot").mockReturnValue({
       mutate: mutateMock,
       isPending: false,
-    } as unknown as ReturnType<typeof stateModule.useUpsertPortfolioSnapshot>);
+    } as unknown as ReturnType<typeof portfolioSnapshotMutations.useUpsertPortfolioSnapshot>);
 
-    vi.spyOn(stateModule, "usePortfolioAssets").mockReturnValue({
+    vi.spyOn(portfolioQueries, "usePortfolioAssets").mockReturnValue({
       data: [],
       isLoading: false,
       isError: false,
       error: null,
       refetch: vi.fn(),
-    } as unknown as ReturnType<typeof stateModule.usePortfolioAssets>);
+    } as unknown as ReturnType<typeof portfolioQueries.usePortfolioAssets>);
 
-    vi.spyOn(stateModule, "useAllPortfolioTransactions").mockReturnValue({
+    vi.spyOn(portfolioQueries, "useAllPortfolioTransactions").mockReturnValue({
       data: [],
       isLoading: false,
       isError: false,
       error: null,
       refetch: vi.fn(),
-    } as unknown as ReturnType<typeof stateModule.useAllPortfolioTransactions>);
+    } as unknown as ReturnType<typeof portfolioQueries.useAllPortfolioTransactions>);
 
-    vi.spyOn(stateModule, "usePortfolioDividends").mockReturnValue({
+    vi.spyOn(portfolioQueries, "usePortfolioDividends").mockReturnValue({
       data: [],
       isLoading: false,
       isError: false,
       error: null,
       refetch: vi.fn(),
-    } as unknown as ReturnType<typeof stateModule.usePortfolioDividends>);
+    } as unknown as ReturnType<typeof portfolioQueries.usePortfolioDividends>);
 
     renderHook(() => useAutoPortfolioSnapshot());
 
@@ -88,7 +90,7 @@ describe("useAutoPortfolioSnapshot (§F50)", () => {
     const mutateMock = vi.fn();
     const currentMonthStr = new Date().toISOString().slice(0, 7);
 
-    vi.spyOn(stateModule, "usePortfolioPosition").mockReturnValue({
+    vi.spyOn(portfolioPositionQueries, "usePortfolioPosition").mockReturnValue({
       rows: [],
       totalBRL: 45000,
       totalCostBRL: 40000,
@@ -115,44 +117,44 @@ describe("useAutoPortfolioSnapshot (§F50)", () => {
       isLoading: false,
       error: null,
       refetch: vi.fn(),
-    } as unknown as ReturnType<typeof stateModule.usePortfolioPosition>);
+    } as unknown as ReturnType<typeof portfolioPositionQueries.usePortfolioPosition>);
 
-    vi.spyOn(stateModule, "usePortfolioSnapshots").mockReturnValue({
+    vi.spyOn(portfolioQueries, "usePortfolioSnapshots").mockReturnValue({
       data: [{ id: "s1", user_id: "u1", month: currentMonthStr, total_value: 45000, total_cost: 40000 }],
       isLoading: false,
       isError: false,
       error: null,
       refetch: vi.fn(),
-    } as unknown as ReturnType<typeof stateModule.usePortfolioSnapshots>);
+    } as unknown as ReturnType<typeof portfolioQueries.usePortfolioSnapshots>);
 
-    vi.spyOn(stateModule, "useUpsertPortfolioSnapshot").mockReturnValue({
+    vi.spyOn(portfolioSnapshotMutations, "useUpsertPortfolioSnapshot").mockReturnValue({
       mutate: mutateMock,
       isPending: false,
-    } as unknown as ReturnType<typeof stateModule.useUpsertPortfolioSnapshot>);
+    } as unknown as ReturnType<typeof portfolioSnapshotMutations.useUpsertPortfolioSnapshot>);
 
-    vi.spyOn(stateModule, "usePortfolioAssets").mockReturnValue({
+    vi.spyOn(portfolioQueries, "usePortfolioAssets").mockReturnValue({
       data: [],
       isLoading: false,
       isError: false,
       error: null,
       refetch: vi.fn(),
-    } as unknown as ReturnType<typeof stateModule.usePortfolioAssets>);
+    } as unknown as ReturnType<typeof portfolioQueries.usePortfolioAssets>);
 
-    vi.spyOn(stateModule, "useAllPortfolioTransactions").mockReturnValue({
+    vi.spyOn(portfolioQueries, "useAllPortfolioTransactions").mockReturnValue({
       data: [],
       isLoading: false,
       isError: false,
       error: null,
       refetch: vi.fn(),
-    } as unknown as ReturnType<typeof stateModule.useAllPortfolioTransactions>);
+    } as unknown as ReturnType<typeof portfolioQueries.useAllPortfolioTransactions>);
 
-    vi.spyOn(stateModule, "usePortfolioDividends").mockReturnValue({
+    vi.spyOn(portfolioQueries, "usePortfolioDividends").mockReturnValue({
       data: [],
       isLoading: false,
       isError: false,
       error: null,
       refetch: vi.fn(),
-    } as unknown as ReturnType<typeof stateModule.usePortfolioDividends>);
+    } as unknown as ReturnType<typeof portfolioQueries.usePortfolioDividends>);
 
     renderHook(() => useAutoPortfolioSnapshot());
 
@@ -163,7 +165,7 @@ describe("useAutoPortfolioSnapshot (§F50)", () => {
     const mutateMock = vi.fn();
     const currentMonthStr = new Date().toISOString().slice(0, 7);
 
-    vi.spyOn(stateModule, "usePortfolioPosition").mockReturnValue({
+    vi.spyOn(portfolioPositionQueries, "usePortfolioPosition").mockReturnValue({
       rows: [],
       totalBRL: 55000,
       totalCostBRL: 45000,
@@ -190,10 +192,10 @@ describe("useAutoPortfolioSnapshot (§F50)", () => {
       isLoading: false,
       error: null,
       refetch: vi.fn(),
-    } as unknown as ReturnType<typeof stateModule.usePortfolioPosition>);
+    } as unknown as ReturnType<typeof portfolioPositionQueries.usePortfolioPosition>);
 
     // Snapshot existente gravado no início do mês com valor defasado
-    vi.spyOn(stateModule, "usePortfolioSnapshots").mockReturnValue({
+    vi.spyOn(portfolioQueries, "usePortfolioSnapshots").mockReturnValue({
       data: [
         {
           id: "s1",
@@ -208,36 +210,36 @@ describe("useAutoPortfolioSnapshot (§F50)", () => {
       isError: false,
       error: null,
       refetch: vi.fn(),
-    } as unknown as ReturnType<typeof stateModule.usePortfolioSnapshots>);
+    } as unknown as ReturnType<typeof portfolioQueries.usePortfolioSnapshots>);
 
-    vi.spyOn(stateModule, "useUpsertPortfolioSnapshot").mockReturnValue({
+    vi.spyOn(portfolioSnapshotMutations, "useUpsertPortfolioSnapshot").mockReturnValue({
       mutate: mutateMock,
       isPending: false,
-    } as unknown as ReturnType<typeof stateModule.useUpsertPortfolioSnapshot>);
+    } as unknown as ReturnType<typeof portfolioSnapshotMutations.useUpsertPortfolioSnapshot>);
 
-    vi.spyOn(stateModule, "usePortfolioAssets").mockReturnValue({
+    vi.spyOn(portfolioQueries, "usePortfolioAssets").mockReturnValue({
       data: [],
       isLoading: false,
       isError: false,
       error: null,
       refetch: vi.fn(),
-    } as unknown as ReturnType<typeof stateModule.usePortfolioAssets>);
+    } as unknown as ReturnType<typeof portfolioQueries.usePortfolioAssets>);
 
-    vi.spyOn(stateModule, "useAllPortfolioTransactions").mockReturnValue({
+    vi.spyOn(portfolioQueries, "useAllPortfolioTransactions").mockReturnValue({
       data: [],
       isLoading: false,
       isError: false,
       error: null,
       refetch: vi.fn(),
-    } as unknown as ReturnType<typeof stateModule.useAllPortfolioTransactions>);
+    } as unknown as ReturnType<typeof portfolioQueries.useAllPortfolioTransactions>);
 
-    vi.spyOn(stateModule, "usePortfolioDividends").mockReturnValue({
+    vi.spyOn(portfolioQueries, "usePortfolioDividends").mockReturnValue({
       data: [],
       isLoading: false,
       isError: false,
       error: null,
       refetch: vi.fn(),
-    } as unknown as ReturnType<typeof stateModule.usePortfolioDividends>);
+    } as unknown as ReturnType<typeof portfolioQueries.usePortfolioDividends>);
 
     renderHook(() => useAutoPortfolioSnapshot());
 
@@ -254,7 +256,7 @@ describe("useAutoPortfolioSnapshot (§F50)", () => {
     const mutateMock = vi.fn();
     const currentMonthStr = new Date().toISOString().slice(0, 7);
 
-    vi.spyOn(stateModule, "usePortfolioPosition").mockReturnValue({
+    vi.spyOn(portfolioPositionQueries, "usePortfolioPosition").mockReturnValue({
       rows: [],
       totalBRL: 55000,
       totalCostBRL: 45000,
@@ -281,10 +283,10 @@ describe("useAutoPortfolioSnapshot (§F50)", () => {
       isLoading: false,
       error: null,
       refetch: vi.fn(),
-    } as unknown as ReturnType<typeof stateModule.usePortfolioPosition>);
+    } as unknown as ReturnType<typeof portfolioPositionQueries.usePortfolioPosition>);
 
     // Snapshot existente já formalmente fechado
-    vi.spyOn(stateModule, "usePortfolioSnapshots").mockReturnValue({
+    vi.spyOn(portfolioQueries, "usePortfolioSnapshots").mockReturnValue({
       data: [
         {
           id: "s1",
@@ -299,36 +301,36 @@ describe("useAutoPortfolioSnapshot (§F50)", () => {
       isError: false,
       error: null,
       refetch: vi.fn(),
-    } as unknown as ReturnType<typeof stateModule.usePortfolioSnapshots>);
+    } as unknown as ReturnType<typeof portfolioQueries.usePortfolioSnapshots>);
 
-    vi.spyOn(stateModule, "useUpsertPortfolioSnapshot").mockReturnValue({
+    vi.spyOn(portfolioSnapshotMutations, "useUpsertPortfolioSnapshot").mockReturnValue({
       mutate: mutateMock,
       isPending: false,
-    } as unknown as ReturnType<typeof stateModule.useUpsertPortfolioSnapshot>);
+    } as unknown as ReturnType<typeof portfolioSnapshotMutations.useUpsertPortfolioSnapshot>);
 
-    vi.spyOn(stateModule, "usePortfolioAssets").mockReturnValue({
+    vi.spyOn(portfolioQueries, "usePortfolioAssets").mockReturnValue({
       data: [],
       isLoading: false,
       isError: false,
       error: null,
       refetch: vi.fn(),
-    } as unknown as ReturnType<typeof stateModule.usePortfolioAssets>);
+    } as unknown as ReturnType<typeof portfolioQueries.usePortfolioAssets>);
 
-    vi.spyOn(stateModule, "useAllPortfolioTransactions").mockReturnValue({
+    vi.spyOn(portfolioQueries, "useAllPortfolioTransactions").mockReturnValue({
       data: [],
       isLoading: false,
       isError: false,
       error: null,
       refetch: vi.fn(),
-    } as unknown as ReturnType<typeof stateModule.useAllPortfolioTransactions>);
+    } as unknown as ReturnType<typeof portfolioQueries.useAllPortfolioTransactions>);
 
-    vi.spyOn(stateModule, "usePortfolioDividends").mockReturnValue({
+    vi.spyOn(portfolioQueries, "usePortfolioDividends").mockReturnValue({
       data: [],
       isLoading: false,
       isError: false,
       error: null,
       refetch: vi.fn(),
-    } as unknown as ReturnType<typeof stateModule.usePortfolioDividends>);
+    } as unknown as ReturnType<typeof portfolioQueries.usePortfolioDividends>);
 
     renderHook(() => useAutoPortfolioSnapshot());
 
@@ -340,7 +342,7 @@ describe("useAutoPortfolioSnapshot (§F50)", () => {
     const currentMonthStr = new Date().toISOString().slice(0, 7);
 
     // Mês atual já possui snapshot
-    vi.spyOn(stateModule, "usePortfolioPosition").mockReturnValue({
+    vi.spyOn(portfolioPositionQueries, "usePortfolioPosition").mockReturnValue({
       rows: [],
       totalBRL: 50000,
       totalCostBRL: 42000,
@@ -367,23 +369,23 @@ describe("useAutoPortfolioSnapshot (§F50)", () => {
       isLoading: false,
       error: null,
       refetch: vi.fn(),
-    } as unknown as ReturnType<typeof stateModule.usePortfolioPosition>);
+    } as unknown as ReturnType<typeof portfolioPositionQueries.usePortfolioPosition>);
 
-    vi.spyOn(stateModule, "usePortfolioSnapshots").mockReturnValue({
+    vi.spyOn(portfolioQueries, "usePortfolioSnapshots").mockReturnValue({
       data: [{ id: "s1", user_id: "u1", month: currentMonthStr, total_value: 50000, total_cost: 45000 }],
       isLoading: false,
       isError: false,
       error: null,
       refetch: vi.fn(),
-    } as unknown as ReturnType<typeof stateModule.usePortfolioSnapshots>);
+    } as unknown as ReturnType<typeof portfolioQueries.usePortfolioSnapshots>);
 
-    vi.spyOn(stateModule, "useUpsertPortfolioSnapshot").mockReturnValue({
+    vi.spyOn(portfolioSnapshotMutations, "useUpsertPortfolioSnapshot").mockReturnValue({
       mutate: mutateMock,
       isPending: false,
-    } as unknown as ReturnType<typeof stateModule.useUpsertPortfolioSnapshot>);
+    } as unknown as ReturnType<typeof portfolioSnapshotMutations.useUpsertPortfolioSnapshot>);
 
     // Ativo de ações + ativo de caixa
-    vi.spyOn(stateModule, "usePortfolioAssets").mockReturnValue({
+    vi.spyOn(portfolioQueries, "usePortfolioAssets").mockReturnValue({
       data: [
         {
           id: "ast-petr4",
@@ -408,10 +410,10 @@ describe("useAutoPortfolioSnapshot (§F50)", () => {
       isError: false,
       error: null,
       refetch: vi.fn(),
-    } as unknown as ReturnType<typeof stateModule.usePortfolioAssets>);
+    } as unknown as ReturnType<typeof portfolioQueries.usePortfolioAssets>);
 
     // Transação em mês retroativo ("2026-03")
-    vi.spyOn(stateModule, "useAllPortfolioTransactions").mockReturnValue({
+    vi.spyOn(portfolioQueries, "useAllPortfolioTransactions").mockReturnValue({
       data: [
         {
           id: "tx-1",
@@ -428,15 +430,15 @@ describe("useAutoPortfolioSnapshot (§F50)", () => {
       isError: false,
       error: null,
       refetch: vi.fn(),
-    } as unknown as ReturnType<typeof stateModule.useAllPortfolioTransactions>);
+    } as unknown as ReturnType<typeof portfolioQueries.useAllPortfolioTransactions>);
 
-    vi.spyOn(stateModule, "usePortfolioDividends").mockReturnValue({
+    vi.spyOn(portfolioQueries, "usePortfolioDividends").mockReturnValue({
       data: [],
       isLoading: false,
       isError: false,
       error: null,
       refetch: vi.fn(),
-    } as unknown as ReturnType<typeof stateModule.usePortfolioDividends>);
+    } as unknown as ReturnType<typeof portfolioQueries.usePortfolioDividends>);
 
     renderHook(() => useAutoPortfolioSnapshot());
 
@@ -447,17 +449,17 @@ describe("useAutoPortfolioSnapshot (§F50)", () => {
   describe("Quality Gate 2 (QG2) — Integridade de Persistência e Desacoplamento Concorrente", () => {
     it("múltiplas telas chamando usePortfolioPosition simultaneamente NÃO gravam snapshots nem disparam mutações", () => {
       const mutateMock = vi.fn();
-      vi.spyOn(stateModule, "useUpsertPortfolioSnapshot").mockReturnValue({
+      vi.spyOn(portfolioSnapshotMutations, "useUpsertPortfolioSnapshot").mockReturnValue({
         mutate: mutateMock,
         isPending: false,
-      } as unknown as ReturnType<typeof stateModule.useUpsertPortfolioSnapshot>);
+      } as unknown as ReturnType<typeof portfolioSnapshotMutations.useUpsertPortfolioSnapshot>);
 
       // Simula montagem de 5 telas/abas simultâneas chamando usePortfolioPosition
-      renderHook(() => stateModule.usePortfolioPosition());
-      renderHook(() => stateModule.usePortfolioPosition());
-      renderHook(() => stateModule.usePortfolioPosition());
-      renderHook(() => stateModule.usePortfolioPosition());
-      renderHook(() => stateModule.usePortfolioPosition());
+      renderHook(() => portfolioPositionQueries.usePortfolioPosition());
+      renderHook(() => portfolioPositionQueries.usePortfolioPosition());
+      renderHook(() => portfolioPositionQueries.usePortfolioPosition());
+      renderHook(() => portfolioPositionQueries.usePortfolioPosition());
+      renderHook(() => portfolioPositionQueries.usePortfolioPosition());
 
       // usePortfolioPosition agora é estritamente uma query pura sem efeitos colaterais de escrita
       expect(mutateMock).not.toHaveBeenCalled();
@@ -466,7 +468,7 @@ describe("useAutoPortfolioSnapshot (§F50)", () => {
     it("apenas useAutoPortfolioSnapshot centraliza a gravação e previne regravações concorrentes", () => {
       const mutateMock = vi.fn();
 
-      vi.spyOn(stateModule, "usePortfolioPosition").mockReturnValue({
+      vi.spyOn(portfolioPositionQueries, "usePortfolioPosition").mockReturnValue({
         rows: [],
         totalBRL: 80000,
         totalCostBRL: 70000,
@@ -493,44 +495,44 @@ describe("useAutoPortfolioSnapshot (§F50)", () => {
         isLoading: false,
         error: null,
         refetch: vi.fn(),
-      } as unknown as ReturnType<typeof stateModule.usePortfolioPosition>);
+      } as unknown as ReturnType<typeof portfolioPositionQueries.usePortfolioPosition>);
 
-      vi.spyOn(stateModule, "usePortfolioSnapshots").mockReturnValue({
+      vi.spyOn(portfolioQueries, "usePortfolioSnapshots").mockReturnValue({
         data: [],
         isLoading: false,
         isError: false,
         error: null,
         refetch: vi.fn(),
-      } as unknown as ReturnType<typeof stateModule.usePortfolioSnapshots>);
+      } as unknown as ReturnType<typeof portfolioQueries.usePortfolioSnapshots>);
 
-      vi.spyOn(stateModule, "useUpsertPortfolioSnapshot").mockReturnValue({
+      vi.spyOn(portfolioSnapshotMutations, "useUpsertPortfolioSnapshot").mockReturnValue({
         mutate: mutateMock,
         isPending: false,
-      } as unknown as ReturnType<typeof stateModule.useUpsertPortfolioSnapshot>);
+      } as unknown as ReturnType<typeof portfolioSnapshotMutations.useUpsertPortfolioSnapshot>);
 
-      vi.spyOn(stateModule, "usePortfolioAssets").mockReturnValue({
+      vi.spyOn(portfolioQueries, "usePortfolioAssets").mockReturnValue({
         data: [],
         isLoading: false,
         isError: false,
         error: null,
         refetch: vi.fn(),
-      } as unknown as ReturnType<typeof stateModule.usePortfolioAssets>);
+      } as unknown as ReturnType<typeof portfolioQueries.usePortfolioAssets>);
 
-      vi.spyOn(stateModule, "useAllPortfolioTransactions").mockReturnValue({
+      vi.spyOn(portfolioQueries, "useAllPortfolioTransactions").mockReturnValue({
         data: [],
         isLoading: false,
         isError: false,
         error: null,
         refetch: vi.fn(),
-      } as unknown as ReturnType<typeof stateModule.useAllPortfolioTransactions>);
+      } as unknown as ReturnType<typeof portfolioQueries.useAllPortfolioTransactions>);
 
-      vi.spyOn(stateModule, "usePortfolioDividends").mockReturnValue({
+      vi.spyOn(portfolioQueries, "usePortfolioDividends").mockReturnValue({
         data: [],
         isLoading: false,
         isError: false,
         error: null,
         refetch: vi.fn(),
-      } as unknown as ReturnType<typeof stateModule.usePortfolioDividends>);
+      } as unknown as ReturnType<typeof portfolioQueries.usePortfolioDividends>);
 
       const { rerender } = renderHook(() => useAutoPortfolioSnapshot());
 

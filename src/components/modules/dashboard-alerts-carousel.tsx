@@ -1,5 +1,6 @@
 import { useMemo, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useCarouselPresenceHint } from "@/hooks/use-carousel-presence-hint";
 import { cn } from "@/lib/utils";
 import { useAlertsCarousel } from "./overview/use-alerts-carousel";
 
@@ -15,6 +16,10 @@ export interface DashboardAlertsCarouselProps {
   autoplayIntervalMs?: number;
   maxItems?: number;
   isLoading?: boolean;
+  /** Controla animação de entrada na montagem (desativar em revisitas com cache quente). */
+  animateOnMount?: boolean;
+  /** Chave opcional de hint por usuário para reservar altura apenas se havia cards antes. */
+  presenceHintKey?: string;
 }
 
 /**
@@ -26,6 +31,8 @@ export function DashboardAlertsCarousel({
   autoplayIntervalMs = 8000,
   maxItems,
   isLoading = false,
+  animateOnMount = true,
+  presenceHintKey,
 }: DashboardAlertsCarouselProps) {
   const validItems = useMemo(() => {
     const sorted = items
@@ -44,8 +51,30 @@ export function DashboardAlertsCarousel({
   }, [validItems, total]);
 
   const carousel = useAlertsCarousel(total, autoplayIntervalMs, itemsKey);
+  const { shouldShowSkeleton } = useCarouselPresenceHint(presenceHintKey ?? "default_alerts", {
+    isLoading,
+    hasItems: total > 0,
+  });
 
-  if (isLoading || total === 0) return null;
+  if (isLoading) {
+    if (!presenceHintKey || !shouldShowSkeleton) return null;
+    return (
+      <div
+        role="status"
+        aria-busy="true"
+        aria-label="Carregando alertas"
+        className="w-full min-h-[104px] sm:min-h-[84px] rounded-2xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs animate-pulse flex items-center gap-3.5"
+      >
+        <div className="size-9 shrink-0 rounded-xl bg-muted" />
+        <div className="flex-1 space-y-2 min-w-0">
+          <div className="h-3.5 w-40 max-w-full rounded bg-muted" />
+          <div className="h-3 w-72 max-w-full rounded bg-muted/70" />
+        </div>
+      </div>
+    );
+  }
+
+  if (total === 0) return null;
 
   const firstItem = validItems[0];
   if (total === 1 && firstItem) {
@@ -53,7 +82,11 @@ export function DashboardAlertsCarousel({
       <section
         aria-label="Alertas e avisos contextuais"
         aria-roledescription="carousel"
-        className={cn("flex flex-col gap-2 w-full min-w-0 relative group animate-fade-slide-in", className)}
+        className={cn(
+          "flex flex-col gap-2 w-full min-w-0 relative group",
+          animateOnMount && "animate-fade-slide-in",
+          className,
+        )}
       >
         <div className="w-full min-w-0 py-0.5">
           <div className="w-full px-1 sm:px-1.5">{firstItem.content}</div>
@@ -69,7 +102,11 @@ export function DashboardAlertsCarousel({
     <section
       aria-label="Alertas e avisos contextuais"
       aria-roledescription="carousel"
-      className={cn("flex flex-col gap-2 w-full min-w-0 relative group animate-fade-slide-in", className)}
+      className={cn(
+        "flex flex-col gap-2 w-full min-w-0 relative group",
+        animateOnMount && "animate-fade-slide-in",
+        className,
+      )}
       onMouseEnter={() => carousel.setIsPaused(true)}
       onMouseLeave={() => carousel.setIsPaused(false)}
       onFocus={() => carousel.setIsPaused(true)}

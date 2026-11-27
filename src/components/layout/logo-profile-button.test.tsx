@@ -46,7 +46,7 @@ const mockSubscription = {
   isFullAccess: true,
 };
 
-vi.mock("@/state", () => ({
+vi.mock("@/state/queries/use-user-subscription", () => ({
   useUserSubscription: () => mockSubscription,
 }));
 

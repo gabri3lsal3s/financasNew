@@ -5,7 +5,11 @@ import {
   updateAppMode,
   type ReminderPreferencesInput,
 } from "@/data/repositories/user-preferences";
-import { userPreferencesKey } from "@/state/queries/use-user-preferences";
+import {
+  USER_PREFERENCES_KEY,
+  userPreferencesQueryKey,
+} from "@/state/queries/use-user-preferences";
+import { getActiveUserId } from "@/services/user-storage";
 import { mergePersistedAdvisorDismissals } from "@/domain/insights/smart-advisor-rules";
 import { getErrorMessage } from "@/services/errors";
 import { pushToast } from "@/services/toast";
@@ -16,7 +20,7 @@ export function useUpdateReminderPreferences() {
   return useMutation({
     mutationFn: (input: ReminderPreferencesInput) => updateReminderPreferences(input),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: userPreferencesKey });
+      void queryClient.invalidateQueries({ queryKey: USER_PREFERENCES_KEY });
       pushToast({
         title: "Preferências salvas",
         description: "Suas preferências de notificações e lembretes foram atualizadas.",
@@ -38,10 +42,11 @@ export function useUpdateCustomSettings() {
   return useMutation({
     mutationFn: (input: Partial<UserCustomSettings>) => updateCustomSettings(input),
     onMutate: async (patch) => {
-      await queryClient.cancelQueries({ queryKey: userPreferencesKey });
-      const previous = queryClient.getQueryData<UserPreferences | null>(userPreferencesKey);
+      const targetKey = userPreferencesQueryKey(getActiveUserId());
+      await queryClient.cancelQueries({ queryKey: USER_PREFERENCES_KEY });
+      const previous = queryClient.getQueryData<UserPreferences | null>(targetKey);
       if (previous) {
-        queryClient.setQueryData<UserPreferences | null>(userPreferencesKey, (old) => {
+        queryClient.setQueryData<UserPreferences | null>(targetKey, (old) => {
           if (!old) return old;
           return {
             ...old,
@@ -131,11 +136,11 @@ export function useUpdateCustomSettings() {
           };
         });
       }
-      return { previous };
+      return { previous, targetKey };
     },
     onError: (error, _variables, context) => {
       if (context?.previous !== undefined) {
-        queryClient.setQueryData(userPreferencesKey, context.previous);
+        queryClient.setQueryData(context.targetKey, context.previous);
       }
       pushToast({
         title: "Não foi possível salvar as configurações na nuvem",
@@ -144,7 +149,7 @@ export function useUpdateCustomSettings() {
       });
     },
     onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: userPreferencesKey });
+      void queryClient.invalidateQueries({ queryKey: USER_PREFERENCES_KEY });
     },
   });
 }
@@ -154,10 +159,11 @@ export function useUpdateAppMode() {
   return useMutation({
     mutationFn: (nextMode: AppMode) => updateAppMode(nextMode),
     onMutate: async (nextMode: AppMode) => {
-      await queryClient.cancelQueries({ queryKey: userPreferencesKey });
-      const previous = queryClient.getQueryData<UserPreferences | null>(userPreferencesKey);
+      const targetKey = userPreferencesQueryKey(getActiveUserId());
+      await queryClient.cancelQueries({ queryKey: USER_PREFERENCES_KEY });
+      const previous = queryClient.getQueryData<UserPreferences | null>(targetKey);
       if (previous) {
-        queryClient.setQueryData<UserPreferences | null>(userPreferencesKey, (old) => {
+        queryClient.setQueryData<UserPreferences | null>(targetKey, (old) => {
           if (!old) return old;
           return {
             ...old,
@@ -165,7 +171,7 @@ export function useUpdateAppMode() {
           };
         });
       }
-      return { previous };
+      return { previous, targetKey };
     },
     onSuccess: (_data, nextMode) => {
       if (nextMode === "investor") {
@@ -184,7 +190,7 @@ export function useUpdateAppMode() {
     },
     onError: (error, _variables, context) => {
       if (context?.previous !== undefined) {
-        queryClient.setQueryData(userPreferencesKey, context.previous);
+        queryClient.setQueryData(context.targetKey, context.previous);
       }
       pushToast({
         title: "Não foi possível alterar o modo de visualização",
@@ -193,7 +199,7 @@ export function useUpdateAppMode() {
       });
     },
     onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: userPreferencesKey });
+      void queryClient.invalidateQueries({ queryKey: USER_PREFERENCES_KEY });
     },
   });
 }

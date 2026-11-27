@@ -6,7 +6,7 @@ import * as platformModule from "./platform";
 import * as prefsModule from "./bank-assistant-preferences";
 import * as categoriesRepo from "@/data/repositories/categories";
 import * as creditCardsRepo from "@/data/repositories/credit-cards";
-import * as rpcData from "@/data/rpc";
+import * as rpcData from "@/data/rpc/transactions";
 import * as storeModule from "./suggestions-store";
 import {
   ACTION_EDIT,

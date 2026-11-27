@@ -105,6 +105,31 @@ const {
   };
 });
 
+vi.mock("@/state/queries/use-user-subscription", () => ({
+  useUserSubscription: () => ({
+    canWrite: true,
+    isReadOnly: false,
+    tier: "pro_annual",
+  }),
+  useUserAccess: () => ({
+    role: "user",
+    status: "active",
+    isAdmin: false,
+    isSuperAdmin: false,
+    hasFeature: () => true,
+    isLoading: false,
+  }),
+}));
+vi.mock("@/state/queries/use-permission", () => ({
+  usePermission: () => ({
+    canWrite: true,
+    canRead: true,
+    isHidden: false,
+    isReadOnlyMode: false,
+    accessLevel: "write",
+  }),
+}));
+
 vi.mock("@/state", () => ({
   startDemo: mockStartDemo,
   setStepIndex: mockSetStepIndex,
@@ -112,6 +137,14 @@ vi.mock("@/state", () => ({
     canWrite: true,
     isReadOnly: false,
     tier: "pro_annual",
+  }),
+  useUserAccess: () => ({
+    role: "user",
+    status: "active",
+    isAdmin: false,
+    isSuperAdmin: false,
+    hasFeature: () => true,
+    isLoading: false,
   }),
   usePermission: () => ({
     canWrite: true,
@@ -132,6 +165,14 @@ vi.mock("@/state", () => ({
     ],
     isLoading: false,
     error: null,
+  }),
+  useCorporateDividends: () => ({
+    available: [],
+    projected: [],
+    assetsNeedingCalibration: [],
+    trackingStartDate: null,
+    fxRate: 5.25,
+    isLoading: false,
   }),
   useDeletePortfolioAsset: () => ({
     mutateAsync: mockDeleteAsset,
@@ -154,6 +195,10 @@ vi.mock("@/state", () => ({
     isPending: false,
   }),
   useUpdatePortfolioAsset: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useSavePocketCostMilestoneAtomic: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
@@ -317,7 +362,7 @@ describe("ResumoTab", () => {
     await user.click(editBtn);
 
     // Diálogo de edição do caixa
-    expect(screen.getByRole("heading", { name: /Editar Saldo em Caixa/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /Editar Saldo em Caixa/i })).toBeInTheDocument();
   });
 
 

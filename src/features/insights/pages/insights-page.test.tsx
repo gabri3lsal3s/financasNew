@@ -32,6 +32,22 @@ const fixture = vi.hoisted(() => ({
 }));
 
 vi.mock("@/state", () => ({
+  usePortfolioContributions: () => ({ data: [], isLoading: false, error: null }),
+  useAllPortfolioTransactions: () => ({ data: [], isLoading: false, error: null }),
+  usePortfolioSnapshots: () => ({ data: [], isLoading: false, error: null }),
+  usePortfolioDividends: () => ({ data: [], isLoading: false, error: null }),
+  useUserAccess: () => ({ role: "user", status: "active", isAdmin: false, isSuperAdmin: false, hasFeature: () => true, isLoading: false }),
+  useViewScope: () => ({ viewScope: "all" as const, effectiveViewScope: "all" as const, setViewScope: vi.fn(), isBusinessModeEnabled: false }),
+  useBusinessMode: () => ({ isBusinessModeEnabled: false, businessProfile: null, toggleBusinessMode: vi.fn(), updateBusinessProfile: vi.fn(), isLoading: false, isPending: false }),
+  useSavePocketCostMilestoneAtomic: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteInternalTransferPair: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUserFinancialContext: () => ({ context: undefined, isLoading: false }),
+  useSetBudgetLimit: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useEnableWebPushSubscription: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
+  useDisableWebPushSubscription: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
+  useRegisterFcmToken: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
+  useDisableFcmToken: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
+  useUpdateReminderPreferences: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
   useExpenses: (month: string) => ({
     data: fixture.monthlyExpenses(month),
     isLoading: false,
@@ -69,8 +85,14 @@ vi.mock("@/state", () => ({
     isLoading: false,
     error: null,
   }),
+  useFeedbackEntries: () => ({
+    data: [],
+    isLoading: false,
+    error: null,
+  }),
   useSetFeedback: () => ({ mutate: setFeedbackMock }),
   useCreateRecurrence: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useRecurrences: () => ({ data: [], isLoading: false, error: null }),
   useUserPreferences: () => ({ data: { custom_settings: {} }, isLoading: false, error: null }),
   useUpdateCustomSettings: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
   usePortfolioPosition: () => ({

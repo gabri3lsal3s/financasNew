@@ -109,15 +109,12 @@ describe("QuickAporteCard — Atalho de Aporte Rápido na Home (Fase 5 — Taref
     expect(triggerSensoryMock).toHaveBeenCalledWith("action");
   });
 
-  it("navega para /investments?tab=aporte sem parâmetro de valor se o valor for zerado", async () => {
-    const user = userEvent.setup();
+  it("desabilita o botão de simular se o valor do aporte for zerado", () => {
     render(<QuickAporteCard />);
 
     const submitButton = screen.getByRole("button", { name: /Calcular Rebalanceamento/i });
-    await user.click(submitButton);
-
-    expect(navigateMock).toHaveBeenCalledWith("/investments?tab=aporte");
-    expect(triggerSensoryMock).toHaveBeenCalledWith("action");
+    expect(submitButton).toBeDisabled();
+    expect(navigateMock).not.toHaveBeenCalled();
   });
 
   it("exibe botão discreto Priorizar reserva em vez de sugestão em ativos quando a reserva está incompleta", () => {
