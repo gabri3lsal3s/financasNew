@@ -57,6 +57,7 @@ function DashboardAlertsCarouselInner({
   const carousel = useAlertsCarousel(itemIds, autoplayIntervalMs);
 
   const trackRef = useRef<HTMLDivElement | null>(null);
+  const hadFocusInTrackRef = useRef(false);
   const prevActiveIdRef = useRef<string | null>(carousel.activeId);
 
   // Retorna foco ao próximo slide ativo se o item anterior foi removido enquanto o foco estava nele
@@ -68,17 +69,29 @@ function DashboardAlertsCarouselInner({
       carousel.activeId &&
       prevId !== carousel.activeId &&
       typeof document !== "undefined" &&
-      trackRef.current &&
-      document.activeElement &&
-      trackRef.current.contains(document.activeElement)
+      trackRef.current
     ) {
-      const activeSlide = trackRef.current.querySelector<HTMLElement>(
-        `[data-carousel-slide-id="${carousel.activeId}"]`,
-      );
-      const focusable = activeSlide?.querySelector<HTMLElement>(
-        "button:not([disabled]), a[href], [tabindex]:not([tabindex='-1'])",
-      );
-      focusable?.focus();
+      const currentActive = document.activeElement;
+      const focusLostToBody =
+        currentActive === document.body || currentActive === null;
+      const focusStillInTrack =
+        currentActive !== null && trackRef.current.contains(currentActive);
+
+      if (
+        (hadFocusInTrackRef.current && focusLostToBody) ||
+        focusStillInTrack
+      ) {
+        const slides = trackRef.current.querySelectorAll<HTMLElement>(
+          "[data-carousel-slide-id]",
+        );
+        const activeSlide = Array.from(slides).find(
+          (el) => el.getAttribute("data-carousel-slide-id") === carousel.activeId,
+        );
+        const focusable = activeSlide?.querySelector<HTMLElement>(
+          "button:not([disabled]), a[href], [tabindex]:not([tabindex='-1'])",
+        );
+        focusable?.focus();
+      }
     }
   }, [carousel.activeId]);
 
@@ -121,9 +134,36 @@ function DashboardAlertsCarouselInner({
           animateOnMount && "animate-fade-slide-in",
           className,
         )}
+        onMouseEnter={() => carousel.setHoverPaused(true)}
+        onMouseLeave={() => carousel.setHoverPaused(false)}
+        onFocus={() => carousel.setFocusPaused(true)}
+        onBlur={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+            carousel.setFocusPaused(false);
+          }
+        }}
+        onTouchStart={carousel.handleTouchStart}
+        onTouchEnd={carousel.handleTouchEnd}
+        onTouchCancel={carousel.handleTouchCancel}
       >
-        <div className="w-full min-w-0 py-0.5">
-          <div className="w-full px-1 sm:px-1.5">{firstItem.content}</div>
+        <div
+          ref={trackRef}
+          className="w-full min-w-0 py-0.5"
+          onFocusCapture={() => {
+            hadFocusInTrackRef.current = true;
+          }}
+          onBlurCapture={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+              hadFocusInTrackRef.current = false;
+            }
+          }}
+        >
+          <div
+            data-carousel-slide-id={firstItem.id}
+            className="w-full px-1 sm:px-1.5"
+          >
+            {firstItem.content}
+          </div>
         </div>
       </section>
     );
@@ -220,7 +260,18 @@ function DashboardAlertsCarouselInner({
         </div>
       </div>
 
-      <div ref={trackRef} className="w-full min-w-0 overflow-hidden py-0.5">
+      <div
+        ref={trackRef}
+        className="w-full min-w-0 overflow-hidden py-0.5"
+        onFocusCapture={() => {
+          hadFocusInTrackRef.current = true;
+        }}
+        onBlurCapture={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+            hadFocusInTrackRef.current = false;
+          }
+        }}
+      >
         <div
           className={cn(
             "flex w-full will-change-transform items-stretch",

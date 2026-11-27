@@ -80,4 +80,59 @@ describe("AlertCarouselCard", () => {
 
     expect(onSelectPreset).toHaveBeenCalledWith("6m");
   });
+
+  it("abre CalculationMemoryModal com priority=p0 (acessível no mobile) e pausa autoplay via CarouselPauseContext", async () => {
+    const { MemoryRouter } = await import("react-router");
+    const { CarouselPauseProvider, useCarouselPauseContext } = await import(
+      "./carousel-pause-context"
+    );
+    const { buildGoalProgressBreakdown } = await import(
+      "@/domain/calculation-memory/builders/overview-carousel-breakdown"
+    );
+
+    function PauseObserver() {
+      const { isPaused } = useCarouselPauseContext();
+      return <span data-testid="pause-state">{isPaused ? "paused" : "running"}</span>;
+    }
+
+    const breakdown = buildGoalProgressBreakdown({
+      shareId: "g1",
+      goalTitle: "Reserva",
+      asOf: "2026-11-27",
+      deadline: "2026-12-31",
+      targetCents: 100_000,
+      currentCents: 60_000,
+      source: "Conta",
+      remainingCents: 40_000,
+      remainingDays: 34,
+      requiredDailyCents: 1_176,
+      stage: "regular",
+    });
+
+    render(
+      <MemoryRouter>
+        <CarouselPauseProvider>
+          <PauseObserver />
+          <AlertCarouselCard
+            id="overview.cash_gap"
+            tone="critical"
+            icon={<AlertTriangle className="size-4.5" />}
+            title="Furo de Caixa Previsto"
+            description="Sobra negativa prevista."
+            calculationBreakdown={breakdown}
+          />
+        </CarouselPauseProvider>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId("pause-state")).toHaveTextContent("running");
+
+    const triggerBtn = screen.getByRole("button", {
+      name: /Memória de cálculo: Furo de Caixa Previsto/i,
+    });
+    expect(triggerBtn.className).not.toContain("hidden");
+
+    fireEvent.click(triggerBtn);
+    expect(screen.getByTestId("pause-state")).toHaveTextContent("paused");
+  });
 });

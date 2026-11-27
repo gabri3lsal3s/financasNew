@@ -134,6 +134,7 @@ export function AlertCarouselCard({
               <CalculationMemoryModal
                 breakdown={calculationBreakdown}
                 label={calculationMemoryLabel ?? `Memória de cálculo: ${title}`}
+                priority="p0"
                 open={memoryOpen}
                 onOpenChange={setMemoryOpen}
               />
@@ -152,54 +153,52 @@ export function AlertCarouselCard({
         </div>
       </div>
 
-      {hasActions || isDismissible ? (
+      {hasActions ? (
         <div className="flex shrink-0 items-center gap-2 self-stretch sm:self-center mt-auto sm:mt-0">
-          {hasActions ? (
-            <div
-              className={cn(
-                "w-full sm:w-auto",
-                hasTwoActions
-                  ? "grid grid-cols-2 gap-2 sm:flex sm:items-center"
-                  : "flex items-center",
-              )}
-            >
-              {secondaryAction ? (
-                <Button
-                  type="button"
-                  variant={secondaryAction.variant ?? "ghost"}
-                  size="sm"
-                  disabled={secondaryAction.disabled || secondaryAction.loading}
-                  onClick={secondaryAction.onClick}
-                  className={cn(
-                    "h-8 text-xs font-medium justify-center",
-                    !hasTwoActions && "w-full sm:w-auto",
-                  )}
-                >
-                  {secondaryAction.icon}
-                  <span>{secondaryAction.label}</span>
-                </Button>
-              ) : null}
-              {primaryAction ? (
-                <Button
-                  type="button"
-                  variant={
-                    primaryAction.variant ??
-                    (tone === "critical" ? "destructive" : "outline")
-                  }
-                  size="sm"
-                  disabled={primaryAction.disabled || primaryAction.loading}
-                  onClick={primaryAction.onClick}
-                  className={cn(
-                    "h-8 text-xs font-medium justify-center",
-                    !hasTwoActions && "w-full sm:w-auto",
-                  )}
-                >
-                  {primaryAction.icon}
-                  <span>{primaryAction.label}</span>
-                </Button>
-              ) : null}
-            </div>
-          ) : null}
+          <div
+            className={cn(
+              "w-full sm:w-auto",
+              hasTwoActions
+                ? "grid grid-cols-2 gap-2 sm:flex sm:items-center"
+                : "flex items-center",
+            )}
+          >
+            {secondaryAction ? (
+              <Button
+                type="button"
+                variant={secondaryAction.variant ?? "ghost"}
+                size="sm"
+                disabled={secondaryAction.disabled || secondaryAction.loading}
+                onClick={secondaryAction.onClick}
+                className={cn(
+                  "h-8 text-xs font-medium justify-center",
+                  !hasTwoActions && "w-full sm:w-auto",
+                )}
+              >
+                {secondaryAction.icon}
+                <span>{secondaryAction.label}</span>
+              </Button>
+            ) : null}
+            {primaryAction ? (
+              <Button
+                type="button"
+                variant={
+                  primaryAction.variant ??
+                  (tone === "critical" ? "destructive" : "outline")
+                }
+                size="sm"
+                disabled={primaryAction.disabled || primaryAction.loading}
+                onClick={primaryAction.onClick}
+                className={cn(
+                  "h-8 text-xs font-medium justify-center",
+                  !hasTwoActions && "w-full sm:w-auto",
+                )}
+              >
+                {primaryAction.icon}
+                <span>{primaryAction.label}</span>
+              </Button>
+            ) : null}
+          </div>
 
           {isDismissible && dismissPolicy ? (
             <div className="absolute top-3 right-3 sm:static">
@@ -211,6 +210,15 @@ export function AlertCarouselCard({
               />
             </div>
           ) : null}
+        </div>
+      ) : isDismissible && dismissPolicy ? (
+        <div className="absolute top-3 right-3 sm:static sm:self-center shrink-0">
+          <CarouselDismissPopover
+            allowedPresets={dismissPolicy.allowedPresets}
+            onSelectPreset={dismissPolicy.onSelectPreset}
+            label={dismissPolicy.label ?? `Dispensar ${title}`}
+            nowMs={dismissPolicy.nowMs}
+          />
         </div>
       ) : null}
     </div>

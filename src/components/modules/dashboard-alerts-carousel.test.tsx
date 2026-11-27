@@ -315,4 +315,73 @@ describe("DashboardAlertsCarousel", () => {
     });
     expect(screen.getByText("2 de 2")).toBeInTheDocument();
   });
+
+  it("retorna o foco ao próximo slide ativo ao remover slide focado (3 -> 2 e 2 -> 1)", () => {
+    const itemA: DashboardAlertItem = {
+      id: "slide-a",
+      priority: 1,
+      content: <button type="button">Ação Slide A</button>,
+    };
+    const itemB: DashboardAlertItem = {
+      id: "slide-b",
+      priority: 2,
+      content: <button type="button">Ação Slide B</button>,
+    };
+    const itemC: DashboardAlertItem = {
+      id: "slide-c",
+      priority: 3,
+      content: <button type="button">Ação Slide C</button>,
+    };
+
+    const { rerender } = render(
+      <DashboardAlertsCarousel items={[itemA, itemB, itemC]} />,
+    );
+
+    const btnA = screen.getByRole("button", { name: "Ação Slide A" });
+    btnA.focus();
+    expect(document.activeElement).toBe(btnA);
+
+    // 3 -> 2: remove slide-a, foco deve ir para Ação Slide B
+    rerender(<DashboardAlertsCarousel items={[itemB, itemC]} />);
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Ação Slide B" }),
+    );
+
+    // 2 -> 1: remove slide-b, foco deve ir para Ação Slide C no bloco single-item
+    rerender(<DashboardAlertsCarousel items={[itemC]} />);
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Ação Slide C" }),
+    );
+  });
+
+  it("respeita prefers-reduced-motion pausando o autoplay", () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query === "(prefers-reduced-motion: reduce)",
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    try {
+      render(
+        <DashboardAlertsCarousel
+          items={[mockItemCritical, mockItemDeficit]}
+          autoplayIntervalMs={5000}
+        />,
+      );
+
+      act(() => {
+        vi.advanceTimersByTime(15000);
+      });
+
+      expect(screen.getByText("1 de 2")).toBeInTheDocument();
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
+  });
 });

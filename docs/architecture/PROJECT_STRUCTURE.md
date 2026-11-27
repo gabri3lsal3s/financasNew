@@ -193,7 +193,7 @@
     │   │   │                      #   floating-calculator, calculator-keypad (F9),
     │   │   │                      #   credit-card-3d + credit-card-wallet + credit-card-gradient (F13),
     │   │   │                      #   delta-hint (F14), highlight-row, projection-line, pace-alert-banner,
-    │   │   │                      #   dashboard-alerts-carousel (carrossel inteligente de alertas do dashboard),
+    │   │   │                      #   dashboard-alerts-carousel + alert-carousel-card + carousel-pause-context (carrossel unificado de alertas),
     │   │   │                      #   dashboard-pix-clipboard-card (card dinâmico de sugestão de Pix com valor detectado no clipboard),
     │   │   │                      #   smart-advisor-card (assistente proativo de insights com confirmação de renda em 1 toque),
     │   │   │                      #   quick-aporte-card (bloco de aporte rápido direcionado na Home com rebalanceamento em lote),

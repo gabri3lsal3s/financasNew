@@ -38,31 +38,31 @@ export function useAlertsCarousel(
 
   // Sincroniza locks locais no CarouselPauseContext sem que um feche o do outro
   useEffect(() => {
-    if (hoverLocked && !releaseHoverRef.current) {
+    if (total > 0 && hoverLocked && !releaseHoverRef.current) {
       releaseHoverRef.current = acquireLock("hover");
-    } else if (!hoverLocked && releaseHoverRef.current) {
+    } else if ((!hoverLocked || total === 0) && releaseHoverRef.current) {
       releaseHoverRef.current();
       releaseHoverRef.current = null;
     }
-  }, [hoverLocked, acquireLock]);
+  }, [total, hoverLocked, acquireLock]);
 
   useEffect(() => {
-    if (focusLocked && !releaseFocusRef.current) {
+    if (total > 0 && focusLocked && !releaseFocusRef.current) {
       releaseFocusRef.current = acquireLock("focus");
-    } else if (!focusLocked && releaseFocusRef.current) {
+    } else if ((!focusLocked || total === 0) && releaseFocusRef.current) {
       releaseFocusRef.current();
       releaseFocusRef.current = null;
     }
-  }, [focusLocked, acquireLock]);
+  }, [total, focusLocked, acquireLock]);
 
   useEffect(() => {
-    if (touchLocked && !releaseTouchRef.current) {
+    if (total > 0 && touchLocked && !releaseTouchRef.current) {
       releaseTouchRef.current = acquireLock("touch");
-    } else if (!touchLocked && releaseTouchRef.current) {
+    } else if ((!touchLocked || total === 0) && releaseTouchRef.current) {
       releaseTouchRef.current();
       releaseTouchRef.current = null;
     }
-  }, [touchLocked, acquireLock]);
+  }, [total, touchLocked, acquireLock]);
 
   useEffect(() => {
     return () => {
@@ -80,6 +80,7 @@ export function useAlertsCarousel(
       : matchedIndex !== -1
         ? matchedIndex
         : Math.min(Math.max(0, fallbackIndex), total - 1);
+  const resolvedActiveId = total > 0 ? (itemIds[activeIndex] ?? null) : null;
 
   const advanceNext = useCallback(() => {
     if (total <= 1) return;
@@ -157,7 +158,7 @@ export function useAlertsCarousel(
   return {
     activeIndex,
     logicalIndex: activeIndex,
-    activeId,
+    activeId: resolvedActiveId,
     isTransitioning: !reducedMotion,
     isPaused,
     manualPaused,
