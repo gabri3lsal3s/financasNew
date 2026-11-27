@@ -387,8 +387,7 @@ Deno?.serve?.(async (req: Request) => {
         throw asaasPixErr;
       }
 
-      const qrCode = await getAsaasPixQrCode(payment.id);
-
+      // Vincula provider_payment_id ANTES de buscar o QR Code para evitar cobranças PIX duplicadas em caso de retry
       const { error: intentUpdateErr } = await supabase
         .from("billing_intents")
         .update({
@@ -401,6 +400,8 @@ Deno?.serve?.(async (req: Request) => {
         console.error("[asaas-checkout] Falha ao vincular provider_payment_id na intent acumulativa:", intentUpdateErr);
         return safeErrorResponse(req, 500, "Falha ao concluir registro do pagamento PIX.");
       }
+
+      const qrCode = await getAsaasPixQrCode(payment.id);
 
       return jsonResponse(req, {
         ok: true,

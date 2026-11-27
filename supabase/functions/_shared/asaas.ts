@@ -514,18 +514,34 @@ export async function createAsaasPixCharge(params: {
 }
 
 /**
- * Consulta o QR Code dinâmico (base64) e Copia e Cola de um pagamento PIX.
+ * Consulta o QR Code dinâmico (base64) e Copia e Cola de um pagamento PIX,
+ * com retentativa curta para absorver latência de provisionamento do QR Code no Asaas.
  */
 export async function getAsaasPixQrCode(paymentId: string): Promise<{
   encodedImage: string;
   payload: string;
   expirationDate: string;
 }> {
-  return asaasFetch<{
-    encodedImage: string;
-    payload: string;
-    expirationDate: string;
-  }>(`/payments/${paymentId}/pixQrCode`);
+  const delaysMs = [0, 400, 900];
+  let lastError: unknown;
+
+  for (let i = 0; i < delaysMs.length; i++) {
+    const delay = delaysMs[i]!;
+    if (delay > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+    try {
+      return await asaasFetch<{
+        encodedImage: string;
+        payload: string;
+        expirationDate: string;
+      }>(`/payments/${paymentId}/pixQrCode`);
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  throw lastError;
 }
 
 /**

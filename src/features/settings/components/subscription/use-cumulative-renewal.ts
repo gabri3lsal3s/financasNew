@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { addCivilMonths, calculateCumulativePrice } from "@/domain/subscription";
+import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import { INVOICES_KEY, USER_SUBSCRIPTION_KEY, useCumulativeCheckoutMutation } from "@/state";
@@ -79,8 +80,13 @@ export function useCumulativeRenewal(currentPeriodEnd: string | null) {
         });
         setPixModalOpen(true);
       }
-    } catch {
-      // Erro notificado pela mutation
+    } catch (err) {
+      triggerSensory("error");
+      pushToast({
+        title: "Não foi possível gerar o Pix",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
     }
   };
 
