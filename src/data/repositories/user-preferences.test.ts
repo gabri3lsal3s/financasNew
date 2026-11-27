@@ -9,7 +9,9 @@ import {
 interface Builder {
   select: ReturnType<typeof vi.fn>;
   eq: ReturnType<typeof vi.fn>;
+  is: ReturnType<typeof vi.fn>;
   update: ReturnType<typeof vi.fn>;
+  insert: ReturnType<typeof vi.fn>;
   upsert: ReturnType<typeof vi.fn>;
   maybeSingle: ReturnType<typeof vi.fn>;
   then: (onFulfilled: (value: unknown) => unknown) => Promise<unknown>;
@@ -17,32 +19,78 @@ interface Builder {
 
 let lastError: unknown = null;
 let lastUpdateInput: unknown = null;
-let lastUpsertInput: unknown = null;
-let lastUpsertOptions: unknown = null;
+let lastInsertInput: unknown = null;
 let customSettingsState: Record<string, unknown> = {};
+let casFiltersLog: Array<{ op: string; col: string; val: unknown }> = [];
+let updateSelectHandler: (() => unknown) | null = null;
+let insertSelectHandler: (() => unknown) | null = null;
 
 function makeBuilder(result: unknown): Builder {
   const builder = {
     select: vi.fn(),
     eq: vi.fn(),
+    is: vi.fn(),
     update: vi.fn(),
+    insert: vi.fn(),
     upsert: vi.fn(),
     maybeSingle: vi.fn(),
     then: (onFulfilled: (value: unknown) => unknown) => Promise.resolve(result).then(onFulfilled),
   } as Builder;
   builder.select.mockReturnValue(builder);
   builder.eq.mockReturnValue(builder);
+  builder.is.mockReturnValue(builder);
   builder.update.mockImplementation((input: unknown) => {
     lastUpdateInput = input;
+    const chain: Record<string, unknown> = {};
+    chain.eq = vi.fn((col: string, val: unknown) => {
+      casFiltersLog.push({ op: "eq", col, val });
+      return chain;
+    });
+    chain.is = vi.fn((col: string, val: unknown) => {
+      casFiltersLog.push({ op: "is", col, val });
+      return chain;
+    });
+    chain.select = vi.fn(() => {
+      if (updateSelectHandler) {
+        return {
+          then: (cb: (v: unknown) => unknown) => Promise.resolve(updateSelectHandler!()).then(cb),
+        };
+      }
+      if (input && typeof input === "object" && "custom_settings" in input) {
+        customSettingsState = {
+          ...((input as { custom_settings?: Record<string, unknown> }).custom_settings ?? {}),
+        };
+      }
+      return {
+        then: (cb: (v: unknown) => unknown) =>
+          Promise.resolve({ data: lastError ? null : [{ user_id: "u1" }], error: lastError }).then(cb),
+      };
+    });
+    chain.then = (cb: (v: unknown) => unknown) => Promise.resolve({ error: lastError }).then(cb);
+    return chain;
+  });
+  builder.insert.mockImplementation((input: unknown) => {
+    lastInsertInput = input;
     return {
-      eq: vi.fn().mockReturnValue({
-        then: (cb: (v: unknown) => unknown) => Promise.resolve({ error: lastError }).then(cb),
+      select: vi.fn(() => {
+        if (insertSelectHandler) {
+          return {
+            then: (cb: (v: unknown) => unknown) => Promise.resolve(insertSelectHandler!()).then(cb),
+          };
+        }
+        if (input && typeof input === "object" && "custom_settings" in input) {
+          customSettingsState = {
+            ...((input as { custom_settings?: Record<string, unknown> }).custom_settings ?? {}),
+          };
+        }
+        return {
+          then: (cb: (v: unknown) => unknown) =>
+            Promise.resolve({ data: lastError ? null : [{ user_id: "u1" }], error: lastError }).then(cb),
+        };
       }),
     };
   });
-  builder.upsert.mockImplementation((input: unknown, options: unknown) => {
-    lastUpsertInput = input;
-    lastUpsertOptions = options;
+  builder.upsert.mockImplementation((input: unknown) => {
     if (input && typeof input === "object" && "custom_settings" in input) {
       customSettingsState = {
         ...((input as { custom_settings?: Record<string, unknown> }).custom_settings ?? {}),
@@ -72,9 +120,11 @@ describe("user-preferences repository", () => {
   beforeEach(() => {
     lastError = null;
     lastUpdateInput = null;
-    lastUpsertInput = null;
-    lastUpsertOptions = null;
+    lastInsertInput = null;
     customSettingsState = {};
+    casFiltersLog = [];
+    updateSelectHandler = null;
+    insertSelectHandler = null;
   });
 
   it("getUserPreferences devolve dados mapeados", async () => {
@@ -135,7 +185,7 @@ describe("user-preferences repository", () => {
     });
   });
 
-  it("updateCustomSettings realiza upsert de custom_settings JSONB e serializa gravações concorrentes", async () => {
+  it("updateCustomSettings realiza CAS otimista de custom_settings JSONB e serializa gravações concorrentes", async () => {
     builder = makeBuilder({
       data: {
         user_id: "u1",
@@ -162,23 +212,96 @@ describe("user-preferences repository", () => {
       updateCustomSettings({ soundEnabled: true }),
     ]);
 
-    expect(lastUpsertOptions).toEqual({ onConflict: "user_id" });
-    expect(lastUpsertInput).toEqual({
-      user_id: "u1",
-      custom_settings: {
-        density: "compact",
-        soundEnabled: true,
-        dashboardWidgets: {},
-        headerButtons: {},
-        bankAssistant: {},
-        merchantLearning: {},
-        cardDigitsMapping: {},
-        bankCardMapping: {},
-        deviceNotifications: { dismissedPermissionAlerts: {} },
-        emergencyFundConfig: undefined,
-        splitPreferences: undefined,
-      },
+    expect(casFiltersLog).toContainEqual({
+      op: "is",
+      col: "custom_settings->>_settingsRev",
+      val: null,
     });
+    expect(casFiltersLog).toContainEqual({
+      op: "eq",
+      col: "custom_settings->>_settingsRev",
+      val: "1",
+    });
+    expect(customSettingsState).toMatchObject({
+      density: "compact",
+      soundEnabled: true,
+      _settingsRev: 2,
+    });
+  });
+
+  it("updateCustomSettings faz retry em conflito CAS e preserva alteração concorrente de outro cliente", async () => {
+    let readCount = 0;
+    customSettingsState = { _settingsRev: 1, density: "comfortable" };
+    builder = makeBuilder({ error: null });
+    builder.maybeSingle.mockImplementation(() => {
+      readCount += 1;
+      if (readCount === 2) {
+        // Outro aparelho gravou _settingsRev: 2 com outro campo antes do retry
+        customSettingsState = {
+          _settingsRev: 2,
+          density: "comfortable",
+          hapticEnabled: false,
+        };
+      }
+      return {
+        then: (cb: (v: unknown) => unknown) =>
+          Promise.resolve({
+            data: { user_id: "u1", custom_settings: customSettingsState },
+            error: null,
+          }).then(cb),
+      };
+    });
+
+    let updateAttempt = 0;
+    updateSelectHandler = () => {
+      updateAttempt += 1;
+      if (updateAttempt === 1) {
+        return { data: [], error: null }; // 0 linhas: conflito CAS
+      }
+      customSettingsState = {
+        ...((lastUpdateInput as { custom_settings: Record<string, unknown> }).custom_settings),
+      };
+      return { data: [{ user_id: "u1" }], error: null };
+    };
+
+    await updateCustomSettings({ soundEnabled: true });
+    expect(updateAttempt).toBe(2);
+    expect(customSettingsState).toMatchObject({
+      _settingsRev: 3,
+      hapticEnabled: false,
+      soundEnabled: true,
+    });
+  });
+
+  it("updateCustomSettings recupera conflito 23505 no insert inicial e limita tentativas em conflito persistente", async () => {
+    let readCount = 0;
+    builder = makeBuilder({ error: null });
+    builder.maybeSingle.mockImplementation(() => {
+      readCount += 1;
+      if (readCount === 1) {
+        return {
+          then: (cb: (v: unknown) => unknown) => Promise.resolve({ data: null, error: null }).then(cb),
+        };
+      }
+      return {
+        then: (cb: (v: unknown) => unknown) =>
+          Promise.resolve({
+            data: { user_id: "u1", custom_settings: { _settingsRev: 1, density: "comfortable" } },
+            error: null,
+          }).then(cb),
+      };
+    });
+
+    insertSelectHandler = () => ({ data: null, error: { code: "23505", message: "duplicate" } });
+    updateSelectHandler = () => ({ data: [{ user_id: "u1" }], error: null });
+
+    await updateCustomSettings({ soundEnabled: true });
+    expect(lastInsertInput).toBeTruthy();
+
+    // Conflito persistente em todas as 3 tentativas dispara erro explícito
+    readCount = 1;
+    updateSelectHandler = () => ({ data: [], error: null });
+    await expect(updateCustomSettings({ soundEnabled: false })).rejects.toThrow(/outro dispositivo/i);
   });
 
   it("updateCustomSettings preserva e mescla advisorDecayMeta e suporta revogação em advisorDismissals", async () => {

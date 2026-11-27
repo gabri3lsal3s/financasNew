@@ -429,8 +429,25 @@ export type UserCustomSettings = {
   hasDismissedAndroidProBanner?: boolean;
   portfolioRiskPolicy?: PortfolioRiskPolicySettings;
   portfolioAlertDismissals?: PortfolioAlertDismissalsMap;
+  carouselDismissals?: CarouselDismissalsMap;
+  /** Revisão monotônica para escrita concorrente otimista (CAS) de custom_settings. */
+  _settingsRev?: number;
   dividendAutomation?: DividendAutomationPreferences;
 };
+
+export type CarouselDismissPreset = "7d" | "1m" | "6m";
+
+export type CarouselDismissalStage = "completed" | "open";
+
+export type CarouselDismissalRecord = {
+  preset: CarouselDismissPreset;
+  dismissedAt: number;
+  dismissedUntil: number;
+  revokedAt?: number;
+  stage?: CarouselDismissalStage;
+};
+
+export type CarouselDismissalsMap = Record<string, CarouselDismissalRecord>;
 
 export type DividendAutomationPreferences = {
   /** Modo padrão de efetivação quando chega a data de pagamento: "manual_confirm" (padrão seguro) ou "auto". */

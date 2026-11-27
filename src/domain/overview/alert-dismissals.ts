@@ -59,40 +59,35 @@ export function shouldShowGoalAlert(
     return true;
   }
 
-  // 1. Mudança de Alvo (redefinição manual de valor da meta)
-  if (checkpoint.targetCents !== current.targetCents) {
-    return true;
-  }
-
-  // 2. Mudança de Status da Meta (reativação, pausa, etc.)
-  if (checkpoint.status !== current.status) {
-    return true;
-  }
-
-  // 3. Conquista de 100% batido (marco de celebração - fura o cooldown)
+  // 1. Conquista de 100% batido (única transição extraordinária que reabre antes do prazo)
   if (current.stage === "completed" && checkpoint.stage !== "completed") {
     return true;
   }
 
-  // 4. Entrada na Reta Final (transição de regular para >= 80% - fura o cooldown)
-  if (
-    current.stage === "final_stretch" &&
-    checkpoint.stage !== "final_stretch" &&
-    checkpoint.stage !== "completed"
-  ) {
-    return true;
-  }
-
-  // Avaliação temporal do Cooldown (padrão 30 dias corridos ou dismissedUntil explícito)
+  // 2. Avaliação temporal do Cooldown explícito (respeitado integralmente antes de variações)
   const now = options?.nowIso ? new Date(options.nowIso) : new Date();
   const nowMs = now.getTime();
 
   if (checkpoint.dismissedUntil !== undefined) {
     if (nowMs < checkpoint.dismissedUntil) {
-      // Dentro da janela de 7 ou 30 dias: permanece dispensado
+      // Dentro da janela explícita: permanece dispensado
       return false;
     }
-    // Cooldown expirou: reexibe o alerta
+    return true;
+  }
+
+  // Fallback legado (checkpoints antigos sem dismissedUntil):
+  if (checkpoint.targetCents !== current.targetCents) {
+    return true;
+  }
+  if (checkpoint.status !== current.status) {
+    return true;
+  }
+  if (
+    current.stage === "final_stretch" &&
+    checkpoint.stage !== "final_stretch" &&
+    checkpoint.stage !== "completed"
+  ) {
     return true;
   }
 
@@ -104,10 +99,8 @@ export function shouldShowGoalAlert(
     const elapsedMs = now.getTime() - dismissedDate.getTime();
     const cooldownMs = cooldownDays * 24 * 60 * 60 * 1000;
     if (elapsedMs < cooldownMs) {
-      // Dentro do período de cooldown: permanece dispensado mesmo com oscilações diárias
       return false;
     }
-    // Cooldown expirou: reexibe o alerta como check-in de progresso
     return true;
   }
 
@@ -155,25 +148,24 @@ export function shouldShowPaceAlert(
     return true;
   }
 
-  // 1. Entrada em déficit projetado (surplus < 0 quando antes era superávit/nulo - fura o cooldown)
+  // 1. Avaliação temporal de Cooldown explícito (respeitado integralmente antes de variações)
+  const nowMs = options?.nowMs ?? Date.now();
+  if (checkpoint.dismissedUntil !== undefined) {
+    if (nowMs < checkpoint.dismissedUntil) {
+      // Dentro da janela explícita: permanece silenciado mesmo se oscilar centavos ou virar o mês
+      return false;
+    }
+    return true;
+  }
+
+  // Fallback legado (caso venha checkpoint antigo sem dismissedUntil):
+  // 2. Entrada em déficit projetado
   const prevWasDeficit = checkpoint.surplusCents !== null && checkpoint.surplusCents < 0;
   const currentIsDeficit = current.surplusCents !== null && current.surplusCents < 0;
   if (!prevWasDeficit && currentIsDeficit) {
     return true;
   }
 
-  // 2. Avaliação temporal de Cooldown explícito (7 dias ou 30 dias escolhidos pelo usuário)
-  const nowMs = options?.nowMs ?? Date.now();
-  if (checkpoint.dismissedUntil !== undefined) {
-    if (nowMs < checkpoint.dismissedUntil) {
-      // Dentro da janela de 7 ou 30 dias: permanece silenciado mesmo se virar o mês!
-      return false;
-    }
-    // Expirou o cooldown de 7 ou 30 dias: reavalia
-    return true;
-  }
-
-  // Fallback legado (caso venha checkpoint antigo sem dismissedUntil):
   // 3. Virada de mês
   if (checkpoint.month !== current.month) {
     return true;

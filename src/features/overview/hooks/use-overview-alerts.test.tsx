@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as nativeModule from "@/services/native";
+import { resetCarouselDismissalsStore } from "@/hooks/use-carousel-dismissals";
 import { useDashboardAlertDismissals, useOverviewPermissionsBanner } from "./use-overview-alerts";
 
 const mockMutate = vi.fn();
@@ -18,6 +18,32 @@ let mockBankPrefs = {
   monitoredBanks: ["Nubank"],
 };
 const mockDismissedAlerts: Record<string, boolean> = {};
+
+vi.mock("@/services/user-storage", () => ({
+  getActiveUserId: () => "user-1",
+  getUserStorageKey: (base: string, uid?: string | null) => `${base}:${uid ?? "anon"}`,
+  subscribeActiveUserId: () => () => {},
+}));
+
+vi.mock("@/services/toast", () => ({
+  pushToast: vi.fn(),
+}));
+
+vi.mock("@/state/queries/use-user-preferences", () => ({
+  useUserPreferences: () => ({
+    data: { custom_settings: mockCustomSettings },
+    isLoading: false,
+    isPending: false,
+    status: "success",
+  }),
+}));
+
+vi.mock("@/state/mutations/use-preference-mutations", () => ({
+  useUpdateCustomSettings: () => ({
+    mutate: mockMutate,
+    isPending: false,
+  }),
+}));
 
 vi.mock("@/state", () => ({
   useUserPreferences: () => ({
@@ -48,6 +74,8 @@ vi.mock("@/services/native", () => ({
 describe("useOverviewPermissionsBanner", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
+    resetCarouselDismissalsStore();
     delete mockDismissedAlerts.pushDue;
     delete mockDismissedAlerts.passiveBankListener;
     mockCustomSettings = {};
@@ -76,19 +104,19 @@ describe("useOverviewPermissionsBanner", () => {
     expect(result.current.permissionBannerType).toBe("push_due");
   });
 
-  it("dispensa passiveBankListener e pushDue de forma independente", () => {
-    // Somente bank listener faltando (due/daily desligados)
+  it("dispensa bank_listener e push_due de forma granular e adiar uma capacidade mantém a outra disponível", () => {
+    // Ambas as permissões ausentes simultaneamente (listener + POST)
     mockCustomSettings = {
       deviceNotifications: {
         dueNotificationsEnabled: false,
-        dailyReminderEnabled: false,
+        dailyReminderEnabled: true,
       },
     };
 
     const navigateMock = vi.fn();
     const { result } = renderHook(() => useOverviewPermissionsBanner(navigateMock));
     expect(result.current.shouldShowPermissionsBanner).toBe(true);
-    expect(result.current.permissionBannerType).toBe("bank_listener");
+    expect(result.current.permissionBannerType).toBe("both");
 
     act(() => {
       result.current.handlePermissionsBannerAction();
@@ -96,35 +124,22 @@ describe("useOverviewPermissionsBanner", () => {
     expect(navigateMock).toHaveBeenCalledWith("/configuracoes?tab=notifications");
     expect(mockPermissionsStatus.requestNotificationListener).not.toHaveBeenCalled();
 
+    // Adiar sem especificar capacidade quando ambas faltam adia apenas bank_listener via carouselDismissals
     act(() => {
-      result.current.handlePermissionsBannerDismiss();
+      result.current.handlePermissionsBannerDismiss("7d");
     });
 
-    expect(nativeModule.setDismissedPermissionAlert).toHaveBeenCalledWith(
-      "passiveBankListener",
-      true,
-    );
-    expect(nativeModule.setDismissedPermissionAlert).not.toHaveBeenCalledWith(
-      "pushDue",
-      true,
-    );
-    expect(mockMutate).toHaveBeenCalledWith({
-      deviceNotifications: expect.objectContaining({
-        dismissedPermissionAlerts: { passiveBankListener: true },
+    expect(mockMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        carouselDismissals: expect.objectContaining({
+          "device.permissions.bank_listener": expect.objectContaining({ preset: "7d" }),
+        }),
       }),
-    });
-
-    // Agora usuário ativa dailyReminderEnabled no celular: o alerta push_due deve aparecer normalmente!
-    mockCustomSettings = {
-      deviceNotifications: {
-        dueNotificationsEnabled: false,
-        dailyReminderEnabled: true,
-        dismissedPermissionAlerts: { passiveBankListener: true },
-      },
-    };
-    const { result: nextResult } = renderHook(() => useOverviewPermissionsBanner(vi.fn()));
-    expect(nextResult.current.shouldShowPermissionsBanner).toBe(true);
-    expect(nextResult.current.permissionBannerType).toBe("push_due");
+      expect.anything(),
+    );
+    // push_due permanece disponível após adiar bank_listener
+    expect(result.current.shouldShowPermissionsBanner).toBe(true);
+    expect(result.current.permissionBannerType).toBe("push_due");
   });
 
   it("não exibe banner de assistente bancário quando nenhum banco foi selecionado mesmo com captura ativa", () => {

@@ -9,7 +9,6 @@
 
 import { isOccurrenceIgnored, type FeedbackMap } from "./feedback";
 import {
-  isFamilyUnderDecay,
   resolveInsightThemeFamily,
 } from "./attention-budget";
 import type { UserFinancialContext } from "./financial-context";
@@ -1323,11 +1322,9 @@ export function filterAndRankAllAdvisorInsights(
     if (decayByFamily) {
       const family = resolveInsightThemeFamily(insight.themeKey);
       const familyRecord = decayByFamily[family];
-      if (insight.priority === 1) {
-        if (familyRecord?.muted === true) {
-          return false;
-        }
-      } else if (isFamilyUnderDecay(familyRecord, nowMs)) {
+      // Apenas o mute explícito da família silencia outros temas;
+      // advanceSmartDecay não prolonga nem sobrescreve a dispensa explícita por themeKey.
+      if (familyRecord?.muted === true) {
         return false;
       }
     }

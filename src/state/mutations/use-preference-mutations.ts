@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
+  mergeCustomSettings,
   updateReminderPreferences,
   updateCustomSettings,
   updateAppMode,
@@ -10,7 +11,6 @@ import {
   userPreferencesQueryKey,
 } from "@/state/queries/use-user-preferences";
 import { getActiveUserId } from "@/services/user-storage";
-import { mergePersistedAdvisorDismissals } from "@/domain/insights/smart-advisor-rules";
 import { getErrorMessage } from "@/services/errors";
 import { pushToast } from "@/services/toast";
 import type { AppMode, UserCustomSettings, UserPreferences } from "@/types";
@@ -42,104 +42,40 @@ export function useUpdateCustomSettings() {
   return useMutation({
     mutationFn: (input: Partial<UserCustomSettings>) => updateCustomSettings(input),
     onMutate: async (patch) => {
-      const targetKey = userPreferencesQueryKey(getActiveUserId());
-      await queryClient.cancelQueries({ queryKey: USER_PREFERENCES_KEY });
-      const previous = queryClient.getQueryData<UserPreferences | null>(targetKey);
+      const uid = getActiveUserId();
+      const targetKey = userPreferencesQueryKey(uid);
+      if (!uid) {
+        return { uid: null, previous: undefined, targetKey };
+      }
+      await queryClient.cancelQueries({ queryKey: targetKey });
+      const previous = queryClient.getQueryData<UserPreferences | null | undefined>(targetKey);
       if (previous) {
         queryClient.setQueryData<UserPreferences | null>(targetKey, (old) => {
           if (!old) return old;
           return {
             ...old,
-            custom_settings: {
-              ...(old.custom_settings ?? {}),
-              ...patch,
-              dashboardWidgets: {
-                ...(old.custom_settings?.dashboardWidgets ?? {}),
-                ...(patch.dashboardWidgets ?? {}),
-              },
-              headerButtons: {
-                ...(old.custom_settings?.headerButtons ?? {}),
-                ...(patch.headerButtons ?? {}),
-              },
-              bankAssistant: {
-                ...(old.custom_settings?.bankAssistant ?? {}),
-                ...(patch.bankAssistant ?? {}),
-              },
-              deviceNotifications: {
-                ...(old.custom_settings?.deviceNotifications ?? {}),
-                ...(patch.deviceNotifications ?? {}),
-                quietHours:
-                  patch.deviceNotifications?.quietHours !== undefined ||
-                  old.custom_settings?.deviceNotifications?.quietHours !== undefined
-                    ? {
-                        ...(old.custom_settings?.deviceNotifications?.quietHours ?? {}),
-                        ...(patch.deviceNotifications?.quietHours ?? {}),
-                      }
-                    : undefined,
-                dismissedPermissionAlerts: {
-                  ...(old.custom_settings?.deviceNotifications?.dismissedPermissionAlerts ?? {}),
-                  ...(patch.deviceNotifications?.dismissedPermissionAlerts ?? {}),
-                },
-              },
-              notificationCategories:
-                patch.notificationCategories !== undefined ||
-                old.custom_settings?.notificationCategories !== undefined
-                  ? {
-                      ...(old.custom_settings?.notificationCategories ?? {}),
-                      ...(patch.notificationCategories ?? {}),
-                    }
-                  : undefined,
-              emergencyFundConfig: patch.emergencyFundConfig !== undefined
-                ? {
-                    ...(old.custom_settings?.emergencyFundConfig ?? {}),
-                    ...patch.emergencyFundConfig,
-                  }
-                : old.custom_settings?.emergencyFundConfig,
-              dashboardAlertDismissals: patch.dashboardAlertDismissals !== undefined
-                ? {
-                    ...(old.custom_settings?.dashboardAlertDismissals ?? {}),
-                    ...patch.dashboardAlertDismissals,
-                    goals: {
-                      ...(old.custom_settings?.dashboardAlertDismissals?.goals ?? {}),
-                      ...(patch.dashboardAlertDismissals?.goals ?? {}),
-                    },
-                    cards: {
-                      ...(old.custom_settings?.dashboardAlertDismissals?.cards ?? {}),
-                      ...(patch.dashboardAlertDismissals?.cards ?? {}),
-                    },
-                  }
-                : old.custom_settings?.dashboardAlertDismissals,
-              portfolioAlertDismissals: patch.portfolioAlertDismissals !== undefined
-                ? {
-                    ...(old.custom_settings?.portfolioAlertDismissals ?? {}),
-                    ...patch.portfolioAlertDismissals,
-                  }
-                : old.custom_settings?.portfolioAlertDismissals,
-              dividendAutomation: patch.dividendAutomation !== undefined
-                ? {
-                    ...(old.custom_settings?.dividendAutomation ?? {}),
-                    ...patch.dividendAutomation,
-                  }
-                : old.custom_settings?.dividendAutomation,
-              advisorDismissals: mergePersistedAdvisorDismissals(
-                old.custom_settings?.advisorDismissals,
-                patch.advisorDismissals,
-              ),
-              advisorDecayMeta:
-                patch.advisorDecayMeta !== undefined
-                  ? {
-                      ...(old.custom_settings?.advisorDecayMeta ?? {}),
-                      ...patch.advisorDecayMeta,
-                    }
-                  : old.custom_settings?.advisorDecayMeta,
-            },
+            custom_settings: mergeCustomSettings(old.custom_settings, patch),
           };
         });
+      } else if (previous === null) {
+        // Perfil conhecido como ausente no banco: sintetiza preferências padrão sem fabricar consentimentos
+        queryClient.setQueryData<UserPreferences | null>(targetKey, () => ({
+          user_id: uid,
+          theme: "system",
+          app_mode: "investor",
+          reminders_enabled: false,
+          reminder_days_before_debt: 3,
+          reminder_days_before_bill: 3,
+          report_weights_enabled: false,
+          max_sector_acoes: null,
+          max_sector_fiis: null,
+          custom_settings: mergeCustomSettings({}, patch),
+        }));
       }
-      return { previous, targetKey };
+      return { uid, previous, targetKey };
     },
     onError: (error, _variables, context) => {
-      if (context?.previous !== undefined) {
+      if (context?.uid && getActiveUserId() === context.uid && context.previous !== undefined) {
         queryClient.setQueryData(context.targetKey, context.previous);
       }
       pushToast({
@@ -148,8 +84,10 @@ export function useUpdateCustomSettings() {
         variant: "destructive",
       });
     },
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: USER_PREFERENCES_KEY });
+    onSettled: (_data, _error, _variables, context) => {
+      if (context?.uid && getActiveUserId() === context.uid) {
+        void queryClient.invalidateQueries({ queryKey: context.targetKey });
+      }
     },
   });
 }

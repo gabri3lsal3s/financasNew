@@ -5,8 +5,10 @@ import { usePortfolioAlertDismissals } from "./use-portfolio-alert-dismissals";
 const mockMutate = vi.fn();
 let mockCloudDismissals: Record<string, { dismissedUntil: number; fingerprint?: string }> | undefined;
 
-vi.mock("./use-auth", () => ({
-  useAuth: () => ({ user: { id: "user-1" } }),
+vi.mock("@/services/user-storage", () => ({
+  getActiveUserId: () => "user-1",
+  getUserStorageKey: (base: string, uid?: string | null) => `${base}:${uid ?? "anon"}`,
+  subscribeActiveUserId: () => () => {},
 }));
 
 vi.mock("@/state/queries/use-user-preferences", () => ({

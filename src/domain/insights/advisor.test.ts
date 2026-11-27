@@ -1246,7 +1246,8 @@ describe("filterAndRankAdvisorInsights", () => {
       expect(e3.record.dismissCount).toBe(3);
       expect(e3.record.dismissedUntil).toBe(t0 + 40 * dayMs + 90 * dayMs);
 
-      const filtered = filterAndRankAllAdvisorInsights(
+      // Sem mute explícito, o histórico de contagem do Smart Decay não bloqueia nem sobrescreve a dispensa por themeKey
+      const withoutMute = filterAndRankAllAdvisorInsights(
         [
           {
             id: "habit:cafe",
@@ -1263,7 +1264,27 @@ describe("filterAndRankAdvisorInsights", () => {
           nowMs: t0 + 45 * dayMs,
         },
       );
-      expect(filtered).toHaveLength(0);
+      expect(withoutMute).toHaveLength(1);
+
+      // Com mute explícito (muted: true), a família inteira é silenciada
+      const withMute = filterAndRankAllAdvisorInsights(
+        [
+          {
+            id: "habit:cafe",
+            themeKey: "habit:cafe",
+            priority: 3,
+            category: "savings",
+            title: "Hábito frequente",
+            description: "...",
+            iconName: "trending-down",
+          },
+        ],
+        {
+          decayByFamily: { habit: { ...e3.record, muted: true } },
+          nowMs: t0 + 45 * dayMs,
+        },
+      );
+      expect(withMute).toHaveLength(0);
     });
 
     it("Cenário 4: celebra economia real (>= 15% abaixo da mediana no dia >= 15) e proventos cobrindo custos fixos (máx 1 celebração)", () => {
@@ -1504,8 +1525,8 @@ describe("filterAndRankAdvisorInsights", () => {
       const nowMs = Date.UTC(2026, 10, 10, 12, 0, 0);
       const dayMs = 86_400_000;
 
-      // Cooldown temporário (não mutado) na família savings_cut:
-      // suprime insight regular P3 (savings:spotify), mas mantém P1 crítico (dup:netflix) ativo!
+      // Cooldown automático de família (muted: false) não bloqueia insights;
+      // apenas muted: true ou dispensa própria (themeKey) suprimem.
       const withTempCooldown = filterAndRankAllAdvisorInsights(
         [insightSavings, insightCrit],
         {
@@ -1520,7 +1541,10 @@ describe("filterAndRankAdvisorInsights", () => {
           nowMs,
         },
       );
-      expect(withTempCooldown.map((i) => i.themeKey)).toEqual(["dup:netflix"]);
+      expect(withTempCooldown.map((i) => i.themeKey)).toEqual([
+        "dup:netflix",
+        "savings:vampire",
+      ]);
 
       // Quando o usuário silencia definitivamente a família (muted: true), P1 também sai
       const withMutedFamily = filterAndRankAllAdvisorInsights([insightCrit], {

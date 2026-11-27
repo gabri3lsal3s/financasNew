@@ -9,7 +9,7 @@
 | Fase | Escopo | Status | Gate |
 |---|---|---|---|
 | 0 | Entrega das alterações pendentes do usuário (fora dos carrosséis) | Em validação (Preview) | `npm run verify` |
-| 1 | Persistência compatível da dispensa | Aguardando confirmação | testes focais + `npm run verify` |
+| 1 | Persistência compatível da dispensa | Concluída | testes focais + `npm run verify` |
 | 2A | Precisão matemática dos motores e destinos | Aguardando | idem |
 | 2B | Builders de memória de cálculo | Aguardando | idem |
 | 3 | Componentes únicos e acessibilidade | Aguardando | idem |
@@ -205,16 +205,16 @@ Cada fase roda em branch de trabalho. Primeiro fixar as expectativas que disting
 
 - [x] Usuário aprovou D-2 (presets `7d / 1m / 6m`) e confirmou o início da implementação.
 - [ ] Fase 0 entregue e `main` atualizada, ou usuário dispensou explicitamente essa ordem.
-- [ ] Passo 0 da Fase 1 (D-3) concluído e registrado.
+- [x] Passo 0 da Fase 1 (D-3) concluído e registrado.
 
 ### Onda 1 · Fase 1 — Persistência compatível
 
-- [ ] Passo 0 (validação rápida de D-3): confirmar que PostgREST aceita `.update({ custom_settings: merged }).eq("user_id", uid).eq("custom_settings->>_settingsRev", prevRev).select("user_id")` (e `.is("custom_settings->>_settingsRev", null)` para linhas legadas) com RLS ativa — zero migração de banco. Se o filtro JSON path não for aceito em `update`, parar e pedir autorização para RPC/migração (§7).
-- [ ] Criar `src/domain/notifications/hub/{carousel-dismissal-policy,carousel-dismissals,carousel-dismissals.test}.ts`, `src/hooks/use-carousel-dismissals.ts` e `src/hooks/use-carousel-dismissals.test.tsx`. Estender `src/types/schema.ts`, `src/domain/notifications/hub/index.ts`, `src/state/mutations/use-preference-mutations.ts` e `src/data/repositories/user-preferences.ts` e seu teste. Criar `src/state/mutations/use-preference-mutations.test.tsx`. Validar datas/IDs de JSON com zod na borda, resolver aliases pela tabela do §3.
-- [ ] Adaptar `src/features/overview/hooks/{use-overview-alerts,use-overview-modals,use-smart-advisor-dismissals,use-smart-advisor-insights}.ts`, `src/hooks/use-portfolio-alert-dismissals.ts`, `src/domain/overview/alert-dismissals.ts` e `src/domain/insights/{advisor,attention-budget}.ts`. Preservar leitores antigos e chave não relacionada zeroGuilt.
-- [ ] Governança (única edição da Onda 1 em `AGENTS.md` §4.35): atualizar presets para `7d / 1m / 6m` (calendário civil local e exceções) e registrar a capacidade efetiva da Home (`homeMaxCards = 2`, ou `1` com P0, preservando teto normativo `5` e salvaguardas de push).
-- [ ] Aceite: reconstruir perfil antigo com cada formato, novo perfil null e cache undefined; 31/01 comum/bissexto, 31/08+6m, virada do mês, empate, Undo atrasado, troca de UID, concorrência entre clientes e rollback. Android sem listener + sem POST: adiar uma capacidade deixa a outra disponível. Não elevar mute/feedback a decisão de domínio por simples adiamento.
-- [ ] Rodar `npx vitest run src/domain/notifications/hub/carousel-dismissals.test.ts src/domain/overview/alert-dismissals.test.ts src/domain/insights/attention-budget.test.ts src/hooks/use-carousel-dismissals.test.tsx src/data/repositories/user-preferences.test.ts src/state/mutations/use-preference-mutations.test.tsx src/features/overview/hooks/use-overview-alerts.test.tsx src/hooks/use-portfolio-alert-dismissals.test.ts` e `npm run verify`.
+- [x] Passo 0 (validação rápida de D-3): confirmado em 27/11/2026 via `PATCH /rest/v1/user_preferences` que PostgREST aceita `.update({ custom_settings: merged }).eq("user_id", uid).eq("custom_settings->>_settingsRev", prevRev).select("user_id")` e `.is("custom_settings->>_settingsRev", null)` com RLS ativa (`200 []`) — zero migração de banco.
+- [x] Criar `src/domain/notifications/hub/{carousel-dismissal-policy,carousel-dismissals,carousel-dismissals.test}.ts`, `src/hooks/use-carousel-dismissals.ts` e `src/hooks/use-carousel-dismissals.test.tsx`. Estender `src/types/schema.ts`, `src/domain/notifications/hub/index.ts`, `src/state/mutations/use-preference-mutations.ts` e `src/data/repositories/user-preferences.ts` e seu teste. Criar `src/state/mutations/use-preference-mutations.test.tsx`. Validar datas/IDs de JSON com zod na borda, resolver aliases pela tabela do §3.
+- [x] Adaptar `src/features/overview/hooks/{use-overview-alerts,use-overview-modals,use-smart-advisor-dismissals,use-smart-advisor-insights}.ts`, `src/hooks/use-portfolio-alert-dismissals.ts`, `src/domain/overview/alert-dismissals.ts` e `src/domain/insights/{advisor,attention-budget}.ts`. Preservar leitores antigos e chave não relacionada zeroGuilt.
+- [x] Governança (única edição da Onda 1 em `AGENTS.md` §4.35): atualizar presets para `7d / 1m / 6m` (calendário civil local e exceções) e registrar a capacidade efetiva da Home (`homeMaxCards = 2`, ou `1` com P0, preservando teto normativo `5` e salvaguardas de push).
+- [x] Aceite: reconstruir perfil antigo com cada formato, novo perfil null e cache undefined; 31/01 comum/bissexto, 31/08+6m, virada do mês, empate, Undo atrasado, troca de UID, concorrência entre clientes e rollback. Android sem listener + sem POST: adiar uma capacidade deixa a outra disponível. Não elevar mute/feedback a decisão de domínio por simples adiamento.
+- [x] Rodar `npx vitest run src/domain/notifications/hub/carousel-dismissals.test.ts src/domain/overview/alert-dismissals.test.ts src/domain/insights/attention-budget.test.ts src/hooks/use-carousel-dismissals.test.tsx src/data/repositories/user-preferences.test.ts src/state/mutations/use-preference-mutations.test.tsx src/features/overview/hooks/use-overview-alerts.test.tsx src/hooks/use-portfolio-alert-dismissals.test.ts` e `npm run verify`.
 
 ### Fase 2A — Precisão matemática dos motores e dos destinos
 

@@ -6,7 +6,6 @@ import {
   type SmartAdvisorInsight,
 } from "@/domain/insights/advisor";
 import {
-  advanceSmartDecay,
   muteInsightFamily,
   resolveInsightThemeFamily,
 } from "@/domain/insights/attention-budget";
@@ -304,14 +303,6 @@ export function useSmartAdvisorCooldownController(params: {
         eligibleInsights.length <= 1 ||
         (keyToDismiss != null && eligibleInsights.length === 1 && eligibleInsights[0]?.themeKey === keyToDismiss);
       const effectiveDay = isLastRemaining ? params.todayISOStr : null;
-      const nextDecay = keyToDismiss
-        ? (() => {
-            const family = resolveInsightThemeFamily(keyToDismiss);
-            const evaluated = advanceSmartDecay(effectiveDecayMeta[family], params.nowMs);
-            return { ...effectiveDecayMeta, [family]: evaluated.record };
-          })()
-        : effectiveDecayMeta;
-      setLocalDecayMeta(nextDecay);
 
       if (localDismissals !== undefined || localLastDismissedDay !== undefined) {
         if (effectiveDay) setLocalLastDismissedDay(effectiveDay);
@@ -333,7 +324,6 @@ export function useSmartAdvisorCooldownController(params: {
         params.onPersistCloudDismissal({
           advisorDismissals: mergedCloud,
           advisorLastDismissedDay: effectiveDay ?? undefined,
-          advisorDecayMeta: nextDecay,
         });
       }
     },
@@ -384,8 +374,17 @@ export function useSmartAdvisorDismissals() {
       );
       delete next[themeKey];
       replaceSmartAdvisorDismissals(next);
+      memoryLastDismissedDay = null;
+      if (typeof window !== "undefined" && window.localStorage) {
+        try {
+          window.localStorage.removeItem(getScopedLastDismissedDayKey());
+        } catch {
+          // Ignora erro
+        }
+      }
       updateCustomSettingsMutation?.mutate({
         advisorDismissals: { ...next, [themeKey]: 0 },
+        advisorLastDismissedDay: null,
       });
     },
     [cloudDismissals, updateCustomSettingsMutation],

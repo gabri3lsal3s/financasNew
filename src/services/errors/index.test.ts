@@ -19,6 +19,12 @@ describe("getErrorMessage — gateway de erros (ESPECIFICAÇÃO §1.7)", () => {
     expect(getErrorMessage({ status: 422 })).toContain("E-mail ainda não confirmado");
   });
 
+  it("classifica falha de envio de e-mail de confirmação do Supabase Auth em pt-BR", () => {
+    const classified = classifyError({ status: 500, message: "Error sending confirmation email" });
+    expect(classified.kind).toBe("email-send-failed");
+    expect(classified.message).toContain("Não foi possível enviar o e-mail de confirmação");
+  });
+
   it("classifica credenciais inválidas", () => {
     expect(classifyError({ code: "invalid_credentials" }).kind).toBe("invalid-credentials");
     expect(getErrorMessage({ message: "Invalid login credentials" })).toContain("E-mail ou senha incorretos");

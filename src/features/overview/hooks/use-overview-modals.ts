@@ -153,6 +153,7 @@ export function useOverviewModals({
               targetCents,
               percentage,
               stage,
+              status: typeof pld.status === "string" ? pld.status : undefined,
             },
             days,
           ),
