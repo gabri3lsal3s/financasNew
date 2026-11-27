@@ -499,4 +499,62 @@ describe("Webhook Asaas — Lógica de Decisão e Idempotência", () => {
     });
     expect(unscheduledTrial.action).toBe("ignore_unrelated_payment");
   });
+
+  it("sinaliza para revisão manual (flag_canceled_intent_paid) quando pagamento PIX chega para intent cancelada ou expirada", () => {
+    const canceledCumulativeDecision = decideWebhookAction({
+      eventType: "PAYMENT_RECEIVED",
+      payment: {
+        id: "pay_pix_canceled_1",
+        billingType: "PIX",
+        value: 37.98,
+      },
+      currentSub: {
+        ...baseTrialSub,
+        tier: "pro_monthly",
+        status: "active",
+      },
+      intent: {
+        id: "intent-canceled-1",
+        user_id: baseTrialSub.user_id,
+        kind: "cumulative_renewal",
+        months_count: 2,
+        amount_cents: 3798,
+        status: "canceled",
+      },
+    });
+    expect(canceledCumulativeDecision).toEqual({
+      action: "flag_canceled_intent_paid",
+      intentId: "intent-canceled-1",
+      intentKind: "cumulative_renewal",
+      intentStatus: "canceled",
+    });
+
+    const expiredAnnualDecision = decideWebhookAction({
+      eventType: "PAYMENT_CONFIRMED",
+      payment: {
+        id: "pay_pix_expired_2",
+        billingType: "PIX",
+        value: 143.88,
+      },
+      currentSub: {
+        ...baseTrialSub,
+        tier: "pro_monthly",
+        status: "active",
+      },
+      intent: {
+        id: "intent-expired-2",
+        user_id: baseTrialSub.user_id,
+        kind: "plan_change",
+        plan_id: "pro_annual",
+        amount_cents: 14388,
+        status: "expired",
+      },
+    });
+    expect(expiredAnnualDecision).toEqual({
+      action: "flag_canceled_intent_paid",
+      intentId: "intent-expired-2",
+      intentKind: "plan_change",
+      intentStatus: "expired",
+    });
+  });
 });

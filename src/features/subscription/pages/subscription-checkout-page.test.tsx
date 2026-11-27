@@ -45,11 +45,17 @@ const userSubscriptionMock = vi.fn<() => Record<string, unknown>>(() => ({
   currentPeriodEnd: null,
 }));
 
+const cancelPixMock = vi.fn().mockResolvedValue({ ok: true, canceledCount: 1, message: "Cancelado" });
+
 vi.mock("@/state", () => ({
   useUserSubscription: () => userSubscriptionMock(),
   useBillingContact: () => ({ data: null, isLoading: false }),
   useCheckoutMutation: () => ({
     mutateAsync: mutateAsyncMock,
+    isPending: false,
+  }),
+  useCancelPendingPixMutation: () => ({
+    mutateAsync: cancelPixMock,
     isPending: false,
   }),
   USER_SUBSCRIPTION_KEY: ["user-subscription"],
@@ -411,6 +417,30 @@ describe("SubscriptionCheckoutPage Component", () => {
 
     expect(screen.getByText("Total cobrado hoje")).toBeInTheDocument();
     expect(screen.getByText(/Nenhuma cobrança será feita hoje/i)).toBeInTheDocument();
+  });
+
+  it("permite cancelar o PIX pendente gerado e limpa o painel do QR Code", async () => {
+    const user = userEvent.setup();
+    mutateAsyncMock.mockResolvedValueOnce({
+      ok: true,
+      method: "pix",
+      provider: "asaas",
+      paymentId: "pay_pix_btn_1",
+      qrCodeBase64: "abc",
+      copyPasteKey: "000201PIX",
+      expirationDate: "2026-11-27T18:00:00Z",
+    });
+
+    renderCheckout("/assinatura?plano=pro-anual&metodo=pix");
+
+    await user.type(screen.getByPlaceholderText("000.000.000-00"), "52998224725");
+    await user.click(screen.getByRole("button", { name: /Gerar QR Code PIX/i }));
+
+    const cancelButton = await screen.findByRole("button", { name: /Cancelar cobrança Pix/i });
+    await user.click(cancelButton);
+
+    expect(cancelPixMock).toHaveBeenCalledWith({ paymentId: "pay_pix_btn_1" });
+    expect(screen.queryByRole("button", { name: /Cancelar cobrança Pix/i })).not.toBeInTheDocument();
   });
 });
 

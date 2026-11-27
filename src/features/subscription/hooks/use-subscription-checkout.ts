@@ -16,7 +16,7 @@ import {
 } from "@/services/masks";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
-import { useBillingContact, useCheckoutMutation, useUserSubscription } from "@/state";
+import { useBillingContact, useCancelPendingPixMutation, useCheckoutMutation, useUserSubscription } from "@/state";
 import type { SubscriptionPlan } from "@/types";
 import { buildCheckoutReturnPath, submitCheckoutOrder } from "../utils/checkout-submit";
 import {
@@ -34,6 +34,7 @@ export function useSubscriptionCheckout() {
   const { session, loading: authLoading } = useAuth();
   const subscription = useUserSubscription();
   const checkoutMutation = useCheckoutMutation();
+  const cancelPixMutation = useCancelPendingPixMutation();
   const billingContactQuery = useBillingContact(Boolean(session));
 
   const plan: SubscriptionPlan = resolvePlanFromQuery(searchParams.get("plano"));
@@ -127,14 +128,41 @@ export function useSubscriptionCheckout() {
     else navigate("/planos");
   };
 
+  const cancelPendingPixBestEffort = (paymentId: string | undefined) => {
+    if (!paymentId || !session) return;
+    void cancelPixMutation.mutateAsync({ paymentId, silent: true }).catch(() => undefined);
+  };
+
   const handleSelectMethod = (nextMethod: CheckoutPaymentMethod) => {
     if (nextMethod === "pix") {
       clearSensitiveCardState();
     } else {
+      cancelPendingPixBestEffort(pixFlow.pixResult?.paymentId);
       pixFlow.setPixResult(null);
     }
     setMethod(nextMethod);
     setErrorMessage(null);
+  };
+
+  const handleSwitchToCard = () => {
+    cancelPendingPixBestEffort(pixFlow.pixResult?.paymentId);
+    pixFlow.setPixResult(null);
+    setMethod("credit_card");
+    setErrorMessage(null);
+  };
+
+  const handleCancelPix = async () => {
+    const paymentId = pixFlow.pixResult?.paymentId;
+    if (!paymentId) {
+      pixFlow.setPixResult(null);
+      return;
+    }
+    try {
+      await cancelPixMutation.mutateAsync({ paymentId });
+      pixFlow.setPixResult(null);
+    } catch {
+      // Toast destrutivo já tratado no hook de mutação
+    }
   };
 
   const handleSelectPlan = (targetPlan: SubscriptionPlan) => {
@@ -146,6 +174,7 @@ export function useSubscriptionCheckout() {
       setMethod("credit_card");
     }
     navigate(`?${newParams.toString()}`, { replace: true });
+    cancelPendingPixBestEffort(pixFlow.pixResult?.paymentId);
     pixFlow.setPixResult(null);
     setErrorMessage(null);
   };
@@ -246,7 +275,10 @@ export function useSubscriptionCheckout() {
     activeMethod,
     setMethod,
     handleSelectMethod,
+    handleSwitchToCard,
+    handleCancelPix,
     isPending,
+    isCancelingPix: cancelPixMutation.isPending,
     errorMessage,
     setErrorMessage,
     authMode,

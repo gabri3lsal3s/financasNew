@@ -5,14 +5,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { USER_SUBSCRIPTION_KEY } from "@/state/queries/use-user-access";
 import { INVOICES_KEY } from "@/state/queries/use-invoices";
 import {
+  useCancelPendingPixMutation,
   useCheckoutMutation,
   useUpdateSubscriptionCardMutation,
 } from "./use-billing-mutations";
 
 const createCheckoutSessionMock = vi.fn();
+const cancelPendingPixMock = vi.fn();
 const updateSubscriptionCreditCardMock = vi.fn();
 
 vi.mock("@/data/repositories/billing", () => ({
+  cancelPendingPix: (...args: unknown[]) => cancelPendingPixMock(...args),
   cancelSubscription: vi.fn(),
   createCheckoutSession: (...args: unknown[]) => createCheckoutSessionMock(...args),
   createCumulativeCheckoutSession: vi.fn(),
@@ -93,5 +96,29 @@ describe("state/mutations/use-billing-mutations (A-10 & D-09)", () => {
     expect(payload.ccv).toBe("");
     expect(payload.holderName).toBe("");
     expect(queryClient.getMutationCache().getAll()).toHaveLength(0);
+  });
+
+  it("useCancelPendingPixMutation chama cancelPendingPix e invalida USER_SUBSCRIPTION_KEY e INVOICES_KEY", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { mutations: { retry: false } },
+    });
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    cancelPendingPixMock.mockResolvedValueOnce({
+      ok: true,
+      canceledCount: 1,
+      message: "Cobrança Pix cancelada com sucesso.",
+    });
+
+    const { result } = renderHook(() => useCancelPendingPixMutation(), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync({ paymentId: "pay_pix_123" });
+    });
+
+    expect(cancelPendingPixMock).toHaveBeenCalledWith("pay_pix_123");
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: USER_SUBSCRIPTION_KEY });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: INVOICES_KEY });
   });
 });

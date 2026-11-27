@@ -61,6 +61,21 @@ function formatAsaasBillingType(billingType: string): string {
   return "Cobrança";
 }
 
+function formatInvoiceDate(rawDate: string | null | undefined): string {
+  const trimmed = (rawDate ?? "").trim();
+  if (!trimmed) return "—";
+  const parsed = /^\d{4}-\d{2}-\d{2}$/.test(trimmed)
+    ? new Date(`${trimmed}T12:00:00-03:00`)
+    : new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) return trimmed;
+  return parsed.toLocaleDateString("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 export function InvoiceHistoryCard({ subscription }: InvoiceHistoryCardProps) {
   const { data: invoices, isLoading } = useInvoices(subscription.isPro);
   const isPastDue = subscription.status === "past_due";
@@ -150,17 +165,21 @@ export function InvoiceHistoryCard({ subscription }: InvoiceHistoryCardProps) {
                       rawReceiptUrl && /^https:\/\//i.test(rawReceiptUrl.trim())
                         ? rawReceiptUrl.trim()
                         : null;
-                    const dateFormatted =
-                      inv.paymentDate || inv.dateCreated
-                        ? new Date(inv.paymentDate || inv.dateCreated).toLocaleDateString("pt-BR", {
-                            timeZone: "America/Sao_Paulo",
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                          })
-                        : inv.dueDate;
+                    const dateFormatted = formatInvoiceDate(
+                      inv.paymentDate || inv.dateCreated || inv.dueDate,
+                    );
 
                     const statusInfo = formatAsaasInvoiceStatus(inv.status);
+                    const normalizedStatus = (inv.status || "").toUpperCase();
+                    const isSettledInvoice = [
+                      "RECEIVED",
+                      "CONFIRMED",
+                      "RECEIVED_IN_CASH",
+                    ].includes(normalizedStatus);
+                    const linkLabel = isSettledInvoice ? "Recibo" : "Abrir fatura";
+                    const linkTitle = isSettledInvoice
+                      ? "Abrir recibo em nova aba"
+                      : "Abrir fatura em nova aba";
 
                     return (
                       <div
@@ -191,14 +210,14 @@ export function InvoiceHistoryCard({ subscription }: InvoiceHistoryCardProps) {
                               href={receiptUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              title="Abrir recibo em nova aba"
+                              title={linkTitle}
                               className={cn(
                                 buttonVariants({ variant: "outline", size: "sm" }),
                                 "gap-1.5",
                               )}
                             >
                               <ExternalLink className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                              <span>Recibo</span>
+                              <span>{linkLabel}</span>
                             </a>
                           ) : null}
                         </div>

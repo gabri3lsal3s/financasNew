@@ -4,12 +4,14 @@ import { addCivilMonths, calculateCumulativePrice } from "@/domain/subscription"
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
-import { INVOICES_KEY, USER_SUBSCRIPTION_KEY, useCumulativeCheckoutMutation } from "@/state";
+import { INVOICES_KEY, USER_SUBSCRIPTION_KEY, useCancelPendingPixMutation, useCumulativeCheckoutMutation } from "@/state";
 
 export interface PixRenewalData {
+  paymentId: string;
   qrCodeBase64: string;
   copyPasteKey: string;
   expirationDate: string;
+  reused?: boolean;
 }
 
 /**
@@ -56,6 +58,7 @@ export function useCumulativeRenewal(currentPeriodEnd: string | null) {
   const hasConfirmedRef = useRef(false);
   const queryClient = useQueryClient();
   const checkoutMutation = useCumulativeCheckoutMutation();
+  const cancelPixMutation = useCancelPendingPixMutation();
 
   const pricing = useMemo(() => calculateCumulativePrice(selectedMonths), [selectedMonths]);
 
@@ -94,9 +97,11 @@ export function useCumulativeRenewal(currentPeriodEnd: string | null) {
         setBaselinePeriodEnd(currentPeriodEnd);
         hasConfirmedRef.current = false;
         setPixData({
+          paymentId: result.paymentId,
           qrCodeBase64: result.qrCodeBase64 ?? "",
           copyPasteKey: result.copyPasteKey,
           expirationDate: result.expirationDate,
+          reused: result.reused,
         });
         setPixModalOpen(true);
       }
@@ -107,6 +112,21 @@ export function useCumulativeRenewal(currentPeriodEnd: string | null) {
         description: getErrorMessage(err),
         variant: "destructive",
       });
+    }
+  };
+
+  const handleCancelPix = async () => {
+    if (!effectivePixData?.paymentId) {
+      setPixModalOpen(false);
+      return;
+    }
+    try {
+      await cancelPixMutation.mutateAsync({ paymentId: effectivePixData.paymentId });
+      setPixModalOpen(false);
+      setPixData(null);
+      setBaselinePeriodEnd(null);
+    } catch {
+      // Toast destrutivo e feedback sensorial já disparados pelo hook de mutação
     }
   };
 
@@ -171,8 +191,10 @@ export function useCumulativeRenewal(currentPeriodEnd: string | null) {
     pricing,
     newPeriodEndFormatted,
     isPending: checkoutMutation.isPending,
+    isCancelingPix: cancelPixMutation.isPending,
     handleSelectMonths,
     handleGeneratePix,
+    handleCancelPix,
     handleCopyPix,
   };
 }

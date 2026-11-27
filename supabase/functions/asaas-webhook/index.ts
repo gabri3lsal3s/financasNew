@@ -14,6 +14,10 @@ import {
   sanitizePaymentLog,
   updateAsaasSubscriptionNextDueDate,
 } from "../_shared/asaas.ts";
+import {
+  cleanupPendingPixBestEffort,
+  type PixIntentsSupabaseClient,
+} from "../_shared/pix-intents.ts";
 import { sendTransactionalEmail } from "../_shared/resend.ts";
 import {
   renderProActivationEmail,
@@ -305,6 +309,63 @@ Deno?.serve?.(async (req: Request) => {
 
     const nowIso = new Date().toISOString();
 
+    if (decision.action === "flag_canceled_intent_paid") {
+      await supabase.from("audit_events").insert({
+        user_id: userSub.user_id,
+        entity_type: "user_subscription",
+        entity_id: userSub.id,
+        action: "canceled_intent_payment_received",
+        payload: {
+          payment_id: paymentId,
+          intent_id: decision.intentId,
+          intent_kind: decision.intentKind,
+          intent_status: decision.intentStatus,
+          value: payment?.value ?? null,
+        },
+      });
+
+      try {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("name, email")
+          .eq("id", userSub.user_id)
+          .maybeSingle();
+
+        const safeEmail = escapeTelegramHtml(
+          profile?.email ? maskEmailForLog(String(profile.email)) : "—",
+        );
+        const safeValue = escapeTelegramHtml(
+          String(payment?.value?.toFixed?.(2) ?? payment?.value ?? "0.00"),
+        );
+
+        const text = [
+          `<b>[AXIR] ALERTA CRÍTICO: PAGAMENTO RECEBIDO EM PIX CANCELADO/EXPIRADO</b>`,
+          `<b>Usuário:</b> <code>${escapeTelegramHtml(userSub.user_id)}</code> (${safeEmail})`,
+          `<b>ID Pagamento:</b> <code>${escapeTelegramHtml(paymentId || "—")}</code>`,
+          `<b>Intent ID:</b> <code>${escapeTelegramHtml(decision.intentId)}</code>`,
+          `<b>Tipo/Status anterior:</b> ${escapeTelegramHtml(decision.intentKind)} / ${escapeTelegramHtml(decision.intentStatus)}`,
+          `<b>Valor Pago:</b> R$ ${safeValue}`,
+          `<b>Ação:</b> Não aplicado automaticamente. Avaliar aplicação manual ou estorno no painel Asaas.`,
+        ].join("\n");
+
+        await sendAdminTelegramAlert(text);
+      } catch (tgErr) {
+        console.warn(
+          "[asaas-webhook] Falha ao notificar Telegram sobre pagamento em intent cancelada:",
+          sanitizePaymentLog(tgErr),
+        );
+      }
+
+      await markWebhookProcessed();
+
+      return json({
+        received: true,
+        event: eventType,
+        status: "flagged_for_review",
+        intentId: decision.intentId,
+      });
+    }
+
     // =========================================================================
     // CASO A: APLICAR RENOVAÇÃO ACUMULATIVA (2 A 11 MESES VIA PIX)
     // =========================================================================
@@ -479,6 +540,14 @@ Deno?.serve?.(async (req: Request) => {
         console.warn("[asaas-webhook] Aviso ao notificar antecipação acumulativa:", sanitizePaymentLog(notifyErr));
       }
 
+      await cleanupPendingPixBestEffort({
+        supabase: supabase as unknown as PixIntentsSupabaseClient,
+        userId: userSub.user_id,
+        excludeIntentId: intent?.id,
+        cancelReason: "superseded_by_paid_webhook",
+        logPrefix: "[asaas-webhook]",
+      });
+
       await markWebhookProcessed();
 
       return json({
@@ -641,6 +710,14 @@ Deno?.serve?.(async (req: Request) => {
       } catch (notifyErr) {
         console.warn("[asaas-webhook] Aviso ao notificar ativação Pro:", sanitizePaymentLog(notifyErr));
       }
+
+      await cleanupPendingPixBestEffort({
+        supabase: supabase as unknown as PixIntentsSupabaseClient,
+        userId: userSub.user_id,
+        excludeIntentId: intent?.id,
+        cancelReason: "superseded_by_paid_webhook",
+        logPrefix: "[asaas-webhook]",
+      });
 
       return json({ received: true, event: eventType, tier: decision.targetTier, status: "active" });
     }

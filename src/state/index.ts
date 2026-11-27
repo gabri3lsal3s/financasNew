@@ -434,6 +434,7 @@ export {
   useUpdateSubscriptionCardMutation,
   useSchedulePlanChangeMutation,
   useCancelScheduledPlanChangeMutation,
+  useCancelPendingPixMutation,
   useCumulativeCheckoutMutation,
   useCheckoutMutation,
   type PixCheckoutResult,

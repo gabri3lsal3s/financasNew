@@ -188,9 +188,13 @@ export function CumulativeRenewalCard({
         selectedMonths={renewal.selectedMonths}
         copiedKey={renewal.copiedKey}
         pixData={renewal.pixData}
+        isCanceling={renewal.isCancelingPix}
         onClose={() => renewal.setPixModalOpen(false)}
         onCopyPix={() => {
           void renewal.handleCopyPix();
+        }}
+        onCancelPix={() => {
+          void renewal.handleCancelPix();
         }}
       />
     </>

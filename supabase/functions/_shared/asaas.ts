@@ -687,17 +687,21 @@ export async function ensurePreviousSubscriptionCanceled(subscriptionId?: string
 /**
  * Regra pura para reaproveitamento de cobrança Pix pendente gerada há menos de 1 hora.
  */
+export const PIX_REUSE_WINDOW_MS = 60 * 60 * 1000;
+
 export function shouldReusePendingPixCharge(params: {
   paymentStatus: string;
   paymentValue: number;
   expectedValue: number;
   createdAtMillis: number;
   nowMillis?: number;
+  maxAgeMs?: number;
 }): boolean {
   const now = params.nowMillis ?? Date.now();
+  const maxAgeMs = params.maxAgeMs ?? PIX_REUSE_WINDOW_MS;
   const isPending = (params.paymentStatus || "").toUpperCase() === "PENDING";
   const isSameValue = Math.abs(params.paymentValue - params.expectedValue) < 0.01;
-  const isRecent = now - params.createdAtMillis < 60 * 60 * 1000 && now >= params.createdAtMillis;
+  const isRecent = now - params.createdAtMillis < maxAgeMs && now >= params.createdAtMillis;
   return isPending && isSameValue && isRecent;
 }
 
@@ -826,6 +830,7 @@ export interface AsaasPaymentListItem {
   transactionReceiptUrl?: string | null;
   invoiceNumber?: string | null;
   description?: string | null;
+  deleted?: boolean;
 }
 
 /**

@@ -1,4 +1,4 @@
-import { Check, Clock, Copy, QrCode, ShieldCheck } from "lucide-react";
+import { Check, Clock, Copy, Loader2, QrCode, ShieldCheck, Trash2 } from "lucide-react";
 import {
   Button,
   FormField,
@@ -13,13 +13,17 @@ export interface PixRenewalCheckoutModalProps {
   totalCents: number;
   selectedMonths: number;
   copiedKey: boolean;
+  isCanceling?: boolean;
   pixData: {
+    paymentId?: string;
     qrCodeBase64: string;
     copyPasteKey: string;
     expirationDate: string;
+    reused?: boolean;
   } | null;
   onClose: () => void;
   onCopyPix: () => void;
+  onCancelPix?: () => void;
 }
 
 export function PixRenewalCheckoutModal({
@@ -27,9 +31,11 @@ export function PixRenewalCheckoutModal({
   totalCents,
   selectedMonths,
   copiedKey,
+  isCanceling = false,
   pixData,
   onClose,
   onCopyPix,
+  onCancelPix,
 }: PixRenewalCheckoutModalProps) {
   return (
     <Modal
@@ -41,10 +47,32 @@ export function PixRenewalCheckoutModal({
       title="Pagamento Pix — Antecipação Pro"
       description={`Pague ${formatCentsAsCurrency(totalCents)} para estender seu plano por +${selectedMonths} meses.`}
       footer={
-        <ModalFooter borderless>
+        <ModalFooter
+          borderless
+          destructiveAction={
+            onCancelPix ? (
+              <Button
+                type="button"
+                variant="ghost"
+                sensoryIntent="destructive"
+                disabled={isCanceling}
+                onClick={onCancelPix}
+                className="gap-1.5 text-critical-strong hover:text-critical-strong hover:bg-critical/10"
+              >
+                {isCanceling ? (
+                  <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Trash2 className="size-3.5" aria-hidden="true" />
+                )}
+                <span>{isCanceling ? "Cancelando..." : "Cancelar Pix"}</span>
+              </Button>
+            ) : undefined
+          }
+        >
           <Button
             type="button"
             variant="outline"
+            disabled={isCanceling}
             onClick={onClose}
             className="w-full sm:w-auto"
           >
@@ -68,7 +96,7 @@ export function PixRenewalCheckoutModal({
 
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Clock className="size-3.5 text-warning-strong shrink-0" aria-hidden="true" />
-              <span>Válido por 30 minutos · Confirmação instantânea</span>
+              <span>Válido por 1 hora · Confirmação instantânea</span>
             </div>
           </div>
         ) : (

@@ -63,6 +63,7 @@ export interface PixCheckoutResult {
   qrCodeBase64: string;
   copyPasteKey: string;
   expirationDate: string;
+  reused?: boolean;
   needsEmailConfirmation?: boolean;
   email?: string;
 }
@@ -130,7 +131,7 @@ export interface NormalizedWebhookEvent {
 
 export interface BillingInvoiceItem {
   id: string;
-  dateCreated: string;
+  dateCreated?: string;
   value: number;
   netValue?: number;
   billingType: string;
@@ -143,6 +144,7 @@ export interface BillingInvoiceItem {
   transactionReceiptUrl?: string | null;
   invoiceNumber?: string | null;
   description?: string | null;
+  deleted?: boolean;
 }
 
 /**
@@ -175,6 +177,11 @@ export interface BillingProviderAdapter {
    * Consulta a lista cronológica de faturas e comprovantes fiscais do cliente.
    */
   listInvoices?(): Promise<BillingInvoiceItem[]>;
+
+  /**
+   * Cancela uma ou mais cobranças PIX pendentes do usuário no provedor.
+   */
+  cancelPendingPix?(paymentId?: string): Promise<{ ok: boolean; canceledCount: number; message: string }>;
 
   /**
    * Agenda a troca de plano para a próxima renovação (mensal <-> anual).

@@ -43,6 +43,10 @@ vi.mock("@/state", () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  useCancelPendingPixMutation: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({ ok: true, canceledCount: 1, message: "Cancelado" }),
+    isPending: false,
+  }),
   useCumulativeCheckoutMutation: () => ({
     mutateAsync: vi.fn(),
     isPending: false,

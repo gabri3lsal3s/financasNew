@@ -14,6 +14,11 @@ import {
   updateAsaasSubscriptionCreditCard,
   updateAsaasSubscriptionCycle,
 } from "../_shared/asaas.ts";
+import {
+  cleanupPendingPixBestEffort,
+  reconcileUserPendingPixIntents,
+  type PixIntentsSupabaseClient,
+} from "../_shared/pix-intents.ts";
 import { ASAAS_PLAN_CATALOG } from "../_shared/asaas-plans.ts";
 import {
   buildCorsHeaders,
@@ -213,6 +218,13 @@ Deno.serve(async (req: Request) => {
           return safeErrorResponse(req, 500, "Falha ao salvar alteração do plano agendado.");
         }
 
+        await cleanupPendingPixBestEffort({
+          supabase: supabase as unknown as PixIntentsSupabaseClient,
+          userId: user.id,
+          cancelReason: "scheduled_plan_change",
+          logPrefix: "[asaas-manage]",
+        });
+
         const formattedDate = formatBrtDisplayDate(trialChargeDate);
         return jsonResponse(req, {
           ok: true,
@@ -268,6 +280,13 @@ Deno.serve(async (req: Request) => {
           to_plan: targetMeta.planId,
           effective_at: userSub.current_period_end,
         },
+      });
+
+      await cleanupPendingPixBestEffort({
+        supabase: supabase as unknown as PixIntentsSupabaseClient,
+        userId: user.id,
+        cancelReason: "scheduled_plan_change",
+        logPrefix: "[asaas-manage]",
       });
 
       const formattedDate = formatBrtDisplayDate(userSub.current_period_end);
@@ -430,6 +449,13 @@ Deno.serve(async (req: Request) => {
           payload: { gateway: "asaas" },
         });
 
+        await cleanupPendingPixBestEffort({
+          supabase: supabase as unknown as PixIntentsSupabaseClient,
+          userId: user.id,
+          cancelReason: "trial_schedule_canceled",
+          logPrefix: "[asaas-manage]",
+        });
+
         const trialEndsFormatted = userSub.trial_ends_at
           ? formatBrtDisplayDate(userSub.trial_ends_at)
           : "o encerramento do seu teste";
@@ -557,6 +583,13 @@ Deno.serve(async (req: Request) => {
           console.warn("[asaas-manage] Aviso ao enviar e-mail de cancelamento CDC:", sanitizePaymentLog(emailErr));
         }
 
+        await cleanupPendingPixBestEffort({
+          supabase: supabase as unknown as PixIntentsSupabaseClient,
+          userId: user.id,
+          cancelReason: "subscription_canceled_cdc",
+          logPrefix: "[asaas-manage]",
+        });
+
         return jsonResponse(req, {
           ok: true,
           refunded: refundRequested,
@@ -627,6 +660,13 @@ Deno.serve(async (req: Request) => {
       } catch (emailErr) {
         console.warn("[asaas-manage] Aviso ao enviar e-mail de cancelamento ao fim do período:", sanitizePaymentLog(emailErr));
       }
+
+      await cleanupPendingPixBestEffort({
+        supabase: supabase as unknown as PixIntentsSupabaseClient,
+        userId: user.id,
+        cancelReason: "subscription_canceled_period_end",
+        logPrefix: "[asaas-manage]",
+      });
 
       return jsonResponse(req, {
         ok: true,
@@ -813,7 +853,72 @@ Deno.serve(async (req: Request) => {
     }
 
     // -------------------------------------------------------------------------
-    // AÇÃO 5: LISTAR FATURAS
+    // AÇÃO 5: CANCELAR COBRANÇA PIX PENDENTE
+    // -------------------------------------------------------------------------
+    if (action === "cancel-pending-pix") {
+      const paymentId =
+        typeof payload.paymentId === "string" && payload.paymentId.trim().length > 0
+          ? payload.paymentId.trim()
+          : undefined;
+
+      const reconcile = await reconcileUserPendingPixIntents({
+        supabase: supabase as unknown as PixIntentsSupabaseClient,
+        userId: user.id,
+        onlyPaymentId: paymentId,
+        failClosed: true,
+        cancelReason: "user_canceled",
+      });
+
+      if (reconcile.outcome === "already_paid") {
+        return jsonResponse(
+          req,
+          { error: "Este pagamento Pix já foi confirmado e não pode ser cancelado." },
+          409,
+        );
+      }
+
+      if (reconcile.outcome === "in_flight") {
+        return jsonResponse(
+          req,
+          { error: "Existe uma emissão de Pix em andamento. Aguarde alguns segundos e tente novamente." },
+          409,
+        );
+      }
+
+      if (reconcile.outcome === "cancel_failed") {
+        console.error(
+          "[asaas-manage] Falha ao cancelar cobrança Pix no gateway:",
+          sanitizePaymentLog(reconcile.error),
+        );
+        return safeErrorResponse(
+          req,
+          502,
+          "Não foi possível cancelar a cobrança Pix no gateway. Tente novamente.",
+        );
+      }
+
+      if (reconcile.canceledPaymentIds.length > 0) {
+        await supabase.from("audit_events").insert({
+          user_id: user.id,
+          entity_type: "user_subscription",
+          entity_id: userSub.id,
+          action: "pending_pix_canceled",
+          payload: { payment_ids: reconcile.canceledPaymentIds },
+        });
+      }
+
+      return jsonResponse(req, {
+        ok: true,
+        canceledCount: reconcile.canceledPaymentIds.length,
+        message:
+          reconcile.canceledPaymentIds.length > 0
+            ? "Cobrança Pix cancelada com sucesso."
+            : "Nenhuma cobrança Pix pendente encontrada.",
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // AÇÃO 6: LISTAR FATURAS
     // -------------------------------------------------------------------------
     if (action === "list-invoices") {
       if (!userSub.asaas_customer_id) {
@@ -821,7 +926,37 @@ Deno.serve(async (req: Request) => {
       }
 
       try {
-        const invoices = await listAsaasCustomerPayments(userSub.asaas_customer_id, 20);
+        const rawInvoices = await listAsaasCustomerPayments(userSub.asaas_customer_id, 20);
+        const { data: canceledPixIntents } = await supabase
+          .from("billing_intents")
+          .select("provider_payment_id")
+          .eq("user_id", user.id)
+          .eq("method", "pix")
+          .in("status", ["canceled", "expired"])
+          .not("provider_payment_id", "is", null)
+          .order("updated_at", { ascending: false })
+          .limit(50);
+
+        const canceledPixIds = new Set(
+          (canceledPixIntents ?? [])
+            .map((row) => row.provider_payment_id)
+            .filter((id): id is string => typeof id === "string" && id.length > 0),
+        );
+
+        const invoices = rawInvoices.filter((inv) => {
+          if (inv.deleted === true) return false;
+          const billingUpper = (inv.billingType || "").toUpperCase();
+          const statusUpper = (inv.status || "").toUpperCase();
+          if (
+            billingUpper === "PIX" &&
+            ["PENDING", "OVERDUE"].includes(statusUpper) &&
+            canceledPixIds.has(inv.id)
+          ) {
+            return false;
+          }
+          return true;
+        });
+
         return jsonResponse(req, { invoices });
       } catch (err: unknown) {
         console.warn("[asaas-manage] Falha ao listar faturas no Asaas:", sanitizePaymentLog(err));

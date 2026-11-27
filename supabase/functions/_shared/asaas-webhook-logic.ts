@@ -82,6 +82,12 @@ export type WebhookDecision =
       newPeriodEnd: string;
     }
   | {
+      action: "flag_canceled_intent_paid";
+      intentId: string;
+      intentKind: BillingIntentSnapshot["kind"];
+      intentStatus: string;
+    }
+  | {
       action: "refund_cumulative_renewal";
       intentId: string | null;
       monthsCount: number;
@@ -194,6 +200,15 @@ export function decideWebhookAction(params: {
       return {
         action: "ignore_duplicate",
         reason: "already_active",
+      };
+    }
+
+    if (intent && (intent.status === "canceled" || intent.status === "expired")) {
+      return {
+        action: "flag_canceled_intent_paid",
+        intentId: intent.id,
+        intentKind: intent.kind,
+        intentStatus: intent.status,
       };
     }
 

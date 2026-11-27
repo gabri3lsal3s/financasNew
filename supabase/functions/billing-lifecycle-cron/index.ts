@@ -1,6 +1,8 @@
 import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
   cancelAsaasSubscription,
+  deleteAsaasPayment,
+  getAsaasPayment,
   getAsaasSubscription,
   isAsaasAlreadyCanceledError,
   postponeAsaasSubscriptionAfterPrepayment,
@@ -203,6 +205,90 @@ Deno.serve(async (req: Request) => {
         const errMsg = err instanceof Error ? err.message : String(err);
         await recordResyncFailureAndAlert(supabaseAdmin, sub, errMsg);
         console.warn(`[billing-lifecycle-cron] Falha ao sincronizar sub ${sub.id}:`, sanitizePaymentLog(err));
+      }
+    }
+
+    // 2b. Higiene automática de cobranças PIX pendentes expiradas (evita status OVERDUE no Asaas)
+    let expiredPixIntents = 0;
+    const pixGraceCutoffIso = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    const legacyPixCutoffIso = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+
+    const { data: stalePixIntents, error: stalePixErr } = await supabaseAdmin
+      .from("billing_intents")
+      .select("id, user_id, provider_payment_id, metadata")
+      .eq("method", "pix")
+      .eq("status", "pending")
+      .or(`expires_at.lte.${pixGraceCutoffIso},and(expires_at.is.null,created_at.lte.${legacyPixCutoffIso})`)
+      .order("created_at", { ascending: true })
+      .limit(25);
+
+    if (stalePixErr) {
+      console.error("[billing-lifecycle-cron] Erro ao consultar intents PIX expiradas:", stalePixErr);
+    }
+
+    const cleanupNowIso = new Date().toISOString();
+    for (const intent of stalePixIntents || []) {
+      const expirePayload = {
+        status: "expired",
+        updated_at: cleanupNowIso,
+        metadata: {
+          ...((intent.metadata as Record<string, unknown> | null) || {}),
+          expired_by: "lifecycle_cron",
+          expired_at: cleanupNowIso,
+        },
+      };
+
+      if (!intent.provider_payment_id) {
+        const { error: markErr } = await supabaseAdmin
+          .from("billing_intents")
+          .update(expirePayload)
+          .eq("id", intent.id)
+          .eq("status", "pending");
+        if (!markErr) expiredPixIntents++;
+        continue;
+      }
+
+      try {
+        const payment = await getAsaasPayment(intent.provider_payment_id);
+        const statusUpper = (payment.status || "").toUpperCase();
+
+        if (["CONFIRMED", "RECEIVED", "RECEIVED_IN_CASH"].includes(statusUpper)) {
+          console.warn(
+            `[billing-lifecycle-cron] Intent PIX ${intent.id} já paga no Asaas (${payment.status}); ignorando expiração.`,
+          );
+          continue;
+        }
+
+        if (["PENDING", "OVERDUE"].includes(statusUpper)) {
+          try {
+            await deleteAsaasPayment(intent.provider_payment_id);
+          } catch (delErr: unknown) {
+            if (!isAsaasAlreadyCanceledError(delErr)) {
+              throw delErr;
+            }
+          }
+        }
+
+        const { error: markErr } = await supabaseAdmin
+          .from("billing_intents")
+          .update(expirePayload)
+          .eq("id", intent.id)
+          .eq("status", "pending");
+        if (!markErr) expiredPixIntents++;
+      } catch (err: unknown) {
+        if (isAsaasAlreadyCanceledError(err)) {
+          const { error: markErr } = await supabaseAdmin
+            .from("billing_intents")
+            .update(expirePayload)
+            .eq("id", intent.id)
+            .eq("status", "pending");
+          if (!markErr) expiredPixIntents++;
+        } else {
+          console.warn(
+            `[billing-lifecycle-cron] Falha ao expirar intent PIX ${intent.id}:`,
+            sanitizePaymentLog(err),
+          );
+        }
       }
     }
 
@@ -453,6 +539,7 @@ Deno.serve(async (req: Request) => {
       timestamp: new Date().toISOString(),
       reconciledSubscriptions: reconciledCount ?? 0,
       resyncedSubscriptions: resyncedCount,
+      expiredPixIntents,
       expiringTrialsNotified: remindersSent,
       expiredTrialsNotified: expiredNoticesSent,
       pastDueRemindersSent,

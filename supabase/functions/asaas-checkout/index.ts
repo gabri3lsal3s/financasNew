@@ -3,11 +3,11 @@ import {
   findOrCreateAsaasCustomer,
   createAsaasCreditCardSubscription,
   createAsaasPixCharge,
+  deleteAsaasPayment,
   getAsaasPixQrCode,
-  getAsaasPayment,
   getAsaasSubscriptionPayments,
   ensurePreviousSubscriptionCanceled,
-  shouldReusePendingPixCharge,
+  PIX_REUSE_WINDOW_MS,
   isValidCPF,
   isValidLuhn,
   isValidCardExpiry,
@@ -16,6 +16,11 @@ import {
   formatBrtIsoDate,
   formatBrtDisplayDate,
 } from "../_shared/asaas.ts";
+import {
+  cleanupPendingPixBestEffort,
+  reconcileUserPendingPixIntents,
+  type PixIntentsSupabaseClient,
+} from "../_shared/pix-intents.ts";
 import {
   ASAAS_PLAN_CATALOG,
   calculateCumulativePriceServer,
@@ -297,54 +302,70 @@ Deno?.serve?.(async (req: Request) => {
 
       const pricing = calculateCumulativePriceServer(monthsCount);
 
-      const { data: existingIntent } = await supabase
-        .from("billing_intents")
-        .select("id, provider_payment_id, created_at, amount_cents")
-        .eq("user_id", user.id)
-        .eq("kind", "cumulative_renewal")
-        .eq("months_count", monthsCount)
-        .eq("status", "pending")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const reconcile = await reconcileUserPendingPixIntents({
+        supabase: supabase as unknown as PixIntentsSupabaseClient,
+        userId: user.id,
+        desired: {
+          kind: "cumulative_renewal",
+          monthsCount,
+          expectedValue: pricing.totalReais,
+        },
+        failClosed: true,
+        cancelReason: "replaced_by_new_cumulative_pix",
+      });
 
-      if (existingIntent?.provider_payment_id) {
-        try {
-          const existingPayment = await getAsaasPayment(existingIntent.provider_payment_id);
-          const createdAtMillis = existingPayment.dateCreated
-            ? new Date(existingPayment.dateCreated).getTime()
-            : new Date(existingIntent.created_at).getTime();
+      if (reconcile.outcome === "in_flight") {
+        return jsonResponse(
+          req,
+          { error: "Já existe uma geração de Pix em andamento. Aguarde alguns segundos e tente novamente." },
+          409,
+        );
+      }
 
-          const canReuse = shouldReusePendingPixCharge({
-            paymentStatus: existingPayment.status,
-            paymentValue: existingPayment.value,
-            expectedValue: pricing.totalReais,
-            createdAtMillis,
-          });
+      if (reconcile.outcome === "already_paid") {
+        return jsonResponse(
+          req,
+          {
+            error:
+              "Identificamos um pagamento Pix já confirmado em processamento. Aguarde alguns segundos para a atualização automática da sua assinatura.",
+          },
+          409,
+        );
+      }
 
-          if (canReuse) {
-            const qrCode = await getAsaasPixQrCode(existingPayment.id);
-            return jsonResponse(req, {
-              ok: true,
-              method: "pix",
-              kind: "cumulative_months",
-              intentId: existingIntent.id,
-              paymentId: existingPayment.id,
-              months: monthsCount,
-              totalCents: pricing.totalCents,
-              discountPercentage: pricing.discountPercentage,
-              qrCodeBase64: qrCode.encodedImage,
-              copyPasteKey: qrCode.payload,
-              expirationDate: qrCode.expirationDate,
-              reused: true,
-            });
-          }
-        } catch (reuseErr) {
-          console.warn("[asaas-checkout] Falha ao consultar cobrança acumulativa anterior:", sanitizePaymentLog(reuseErr));
-        }
+      if (reconcile.outcome === "cancel_failed") {
+        console.error(
+          "[asaas-checkout] Falha ao cancelar cobrança Pix anterior:",
+          sanitizePaymentLog(reconcile.error),
+        );
+        return safeErrorResponse(
+          req,
+          502,
+          "Não foi possível cancelar a cobrança Pix anterior no gateway. Tente novamente em instantes.",
+        );
+      }
+
+      if (reconcile.outcome === "reused") {
+        const reusedPaymentId = reconcile.intent.provider_payment_id!;
+        const qrCode = await getAsaasPixQrCode(reusedPaymentId);
+        return jsonResponse(req, {
+          ok: true,
+          method: "pix",
+          kind: "cumulative_months",
+          intentId: reconcile.intent.id,
+          paymentId: reusedPaymentId,
+          months: monthsCount,
+          totalCents: pricing.totalCents,
+          discountPercentage: pricing.discountPercentage,
+          qrCodeBase64: qrCode.encodedImage,
+          copyPasteKey: qrCode.payload,
+          expirationDate: qrCode.expirationDate,
+          reused: true,
+        });
       }
 
       const intentId = crypto.randomUUID();
+      const expiresAtIso = new Date(Date.now() + PIX_REUSE_WINDOW_MS).toISOString();
       const { error: intentErr } = await supabase
         .from("billing_intents")
         .insert({
@@ -358,6 +379,7 @@ Deno?.serve?.(async (req: Request) => {
           status: "pending",
           provider: "asaas",
           external_reference: intentId,
+          expires_at: expiresAtIso,
           metadata: {
             months: monthsCount,
             discount_percentage: pricing.discountPercentage,
@@ -367,6 +389,13 @@ Deno?.serve?.(async (req: Request) => {
         });
 
       if (intentErr) {
+        if (intentErr.code === "23505") {
+          return jsonResponse(
+            req,
+            { error: "Já existe uma cobrança Pix sendo gerada. Aguarde alguns segundos e tente novamente." },
+            409,
+          );
+        }
         console.error("[asaas-checkout] Falha ao criar billing_intent acumulativa:", intentErr);
         return safeErrorResponse(req, 500, "Falha ao registrar intenção de cobrança.");
       }
@@ -397,6 +426,18 @@ Deno?.serve?.(async (req: Request) => {
         .eq("id", intentId);
 
       if (intentUpdateErr) {
+        try {
+          await deleteAsaasPayment(payment.id);
+        } catch (cleanupErr) {
+          console.warn(
+            "[asaas-checkout] Aviso ao remover cobrança PIX órfã após erro de persistência:",
+            sanitizePaymentLog(cleanupErr),
+          );
+        }
+        await supabase
+          .from("billing_intents")
+          .update({ status: "failed", updated_at: new Date().toISOString() })
+          .eq("id", intentId);
         console.error("[asaas-checkout] Falha ao vincular provider_payment_id na intent acumulativa:", intentUpdateErr);
         return safeErrorResponse(req, 500, "Falha ao concluir registro do pagamento PIX.");
       }
@@ -493,56 +534,98 @@ Deno?.serve?.(async (req: Request) => {
         );
       }
 
-      if (userSub.asaas_payment_id && userSub.status !== "active") {
-        try {
-          const existingPayment = await getAsaasPayment(userSub.asaas_payment_id);
-          const createdAtMillis = existingPayment.dateCreated
-            ? new Date(existingPayment.dateCreated).getTime()
-            : 0;
-
-          const canReuse = shouldReusePendingPixCharge({
-            paymentStatus: existingPayment.status,
-            paymentValue: existingPayment.value,
-            expectedValue: planMeta.value,
-            createdAtMillis,
-          });
-
-          if (canReuse) {
-            const qrCode = await getAsaasPixQrCode(existingPayment.id);
-            return jsonResponse(req, {
-              ok: true,
-              method: "pix",
-              paymentId: existingPayment.id,
-              qrCodeBase64: qrCode.encodedImage,
-              copyPasteKey: qrCode.payload,
-              expirationDate: qrCode.expirationDate,
-              reused: true,
-            });
-          }
-        } catch (err: unknown) {
-          console.warn("[asaas-checkout] Falha ao consultar cobrança Pix prévia, gerando nova:", sanitizePaymentLog(err));
-        }
-      }
-
       const isUpgradeFromMonthly =
         userSub.tier === "pro_monthly" && userSub.status === "active";
+      const isReactivationPix =
+        userSub.status === "canceled" || userSub.status === "read_only_expired";
+      const pixIntentKind: "plan_change" | "reactivation" | "subscription_start" =
+        isUpgradeFromMonthly
+          ? "plan_change"
+          : isReactivationPix
+            ? "reactivation"
+            : "subscription_start";
+
+      const reconcile = await reconcileUserPendingPixIntents({
+        supabase: supabase as unknown as PixIntentsSupabaseClient,
+        userId: user.id,
+        desired: {
+          kind: pixIntentKind,
+          expectedValue: planMeta.value,
+        },
+        failClosed: true,
+        cancelReason: "replaced_by_annual_pix",
+      });
+
+      if (reconcile.outcome === "in_flight") {
+        return jsonResponse(
+          req,
+          { error: "Já existe uma geração de Pix em andamento. Aguarde alguns segundos e tente novamente." },
+          409,
+        );
+      }
+
+      if (reconcile.outcome === "already_paid") {
+        return jsonResponse(
+          req,
+          {
+            error:
+              "Identificamos um pagamento Pix já confirmado em processamento. Aguarde alguns segundos para a liberação do seu plano.",
+          },
+          409,
+        );
+      }
+
+      if (reconcile.outcome === "cancel_failed") {
+        console.error(
+          "[asaas-checkout] Falha ao cancelar cobrança Pix anterior:",
+          sanitizePaymentLog(reconcile.error),
+        );
+        return safeErrorResponse(
+          req,
+          502,
+          "Não foi possível cancelar a cobrança Pix anterior no gateway. Tente novamente em instantes.",
+        );
+      }
+
+      if (reconcile.outcome === "reused") {
+        const reusedPaymentId = reconcile.intent.provider_payment_id!;
+        const qrCode = await getAsaasPixQrCode(reusedPaymentId);
+        return jsonResponse(req, {
+          ok: true,
+          method: "pix",
+          paymentId: reusedPaymentId,
+          qrCodeBase64: qrCode.encodedImage,
+          copyPasteKey: qrCode.payload,
+          expirationDate: qrCode.expirationDate,
+          reused: true,
+        });
+      }
 
       const intentId = crypto.randomUUID();
+      const expiresAtIso = new Date(Date.now() + PIX_REUSE_WINDOW_MS).toISOString();
       const { error: intentErr } = await supabase
         .from("billing_intents")
         .insert({
           id: intentId,
           user_id: user.id,
-          kind: isUpgradeFromMonthly ? "plan_change" : "subscription_start",
+          kind: pixIntentKind,
           plan_id: planMeta.planId,
           amount_cents: planMeta.valueCents,
           method: "pix",
           status: "pending",
           provider: "asaas",
           external_reference: intentId,
+          expires_at: expiresAtIso,
         });
 
       if (intentErr) {
+        if (intentErr.code === "23505") {
+          return jsonResponse(
+            req,
+            { error: "Já existe uma cobrança Pix sendo gerada. Aguarde alguns segundos e tente novamente." },
+            409,
+          );
+        }
         console.error("[asaas-checkout] Falha ao registrar billing_intent PIX:", intentErr);
         return safeErrorResponse(req, 500, "Falha ao registrar intenção de pagamento PIX.");
       }
@@ -563,22 +646,8 @@ Deno?.serve?.(async (req: Request) => {
         throw asaasPixErr;
       }
 
-      // [A-04 / W01] NÃO marcar trial_consumed_at nem limpar scheduled_plan_id na geração de PIX pendente.
-      // Persiste customer/payment antes de buscar o QR Code para evitar cobranças PIX duplicadas em retry.
-      const { error: subPixErr } = await supabase
-        .from("user_subscriptions")
-        .update({
-          asaas_customer_id: customer.id,
-          asaas_payment_id: payment.id,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("user_id", user.id);
-
-      if (subPixErr) {
-        console.error("[asaas-checkout] Falha ao atualizar user_subscriptions com payment_id PIX:", subPixErr);
-        return safeErrorResponse(req, 500, "Falha ao registrar pagamento PIX na assinatura.");
-      }
-
+      // [A-04 / W01] NÃO marcar trial_consumed_at, NÃO limpar scheduled_plan_id e NÃO sobrescrever
+      // user_subscriptions.asaas_payment_id com PIX pendente (a RPC de ativação grava atomicamente na liquidação).
       const { error: intentPixErr } = await supabase
         .from("billing_intents")
         .update({
@@ -588,6 +657,18 @@ Deno?.serve?.(async (req: Request) => {
         .eq("id", intentId);
 
       if (intentPixErr) {
+        try {
+          await deleteAsaasPayment(payment.id);
+        } catch (cleanupErr) {
+          console.warn(
+            "[asaas-checkout] Aviso ao remover cobrança PIX anual órfã após erro de persistência:",
+            sanitizePaymentLog(cleanupErr),
+          );
+        }
+        await supabase
+          .from("billing_intents")
+          .update({ status: "failed", updated_at: new Date().toISOString() })
+          .eq("id", intentId);
         console.error("[asaas-checkout] Falha ao vincular provider_payment_id PIX:", intentPixErr);
         return safeErrorResponse(req, 500, "Falha ao vincular cobrança PIX.");
       }
@@ -809,6 +890,13 @@ Deno?.serve?.(async (req: Request) => {
         console.warn("[asaas-checkout] Aviso ao disparar e-mail de cartão agendado:", sanitizePaymentLog(emailErr));
       }
 
+      await cleanupPendingPixBestEffort({
+        supabase: supabase as unknown as PixIntentsSupabaseClient,
+        userId: user.id,
+        cancelReason: "switched_to_credit_card",
+        logPrefix: "[asaas-checkout]",
+      });
+
       return jsonResponse(req, {
         ok: true,
         method: "credit_card",
@@ -856,6 +944,13 @@ Deno?.serve?.(async (req: Request) => {
           updated_at: nowIso,
         })
         .eq("id", intentId);
+
+      await cleanupPendingPixBestEffort({
+        supabase: supabase as unknown as PixIntentsSupabaseClient,
+        userId: user.id,
+        cancelReason: "switched_to_credit_card",
+        logPrefix: "[asaas-checkout]",
+      });
 
       return jsonResponse(req, {
         ok: true,
@@ -959,6 +1054,13 @@ Deno?.serve?.(async (req: Request) => {
         })
         .eq("id", intentId);
     }
+
+    await cleanupPendingPixBestEffort({
+      supabase: supabase as unknown as PixIntentsSupabaseClient,
+      userId: user.id,
+      cancelReason: "switched_to_credit_card",
+      logPrefix: "[asaas-checkout]",
+    });
 
     return jsonResponse(req, {
       ok: true,

@@ -29,6 +29,7 @@ const PixCheckoutSchema = z.object({
   qrCodeBase64: z.string().min(1),
   copyPasteKey: z.string().min(1),
   expirationDate: z.string().min(1),
+  reused: z.boolean().optional(),
   needsEmailConfirmation: z.boolean().optional(),
   email: z.string().optional(),
 });
@@ -64,13 +65,18 @@ const CheckoutSessionResultSchema = z.discriminatedUnion("method", [
 
 const BillingInvoiceItemSchema = z.object({
   id: z.string(),
+  dateCreated: z.string().optional(),
   status: z.string(),
   value: z.number(),
   dueDate: z.string(),
   paymentDate: z.string().nullable().optional(),
   invoiceUrl: z.string().nullable().optional(),
+  transactionReceiptUrl: z.string().nullable().optional(),
+  bankSlipUrl: z.string().nullable().optional(),
+  invoiceNumber: z.string().nullable().optional(),
   billingType: z.string(),
   description: z.string().nullable().optional(),
+  deleted: z.boolean().optional(),
 });
 
 const BillingInvoicesResponseSchema = z.object({
@@ -374,6 +380,30 @@ export const asaasBillingAdapter: BillingProviderAdapter = {
 
     return { ok: true, message: data.message || "Agendamento cancelado com sucesso." };
   },
+
+  async cancelPendingPix(paymentId?: string): Promise<{ ok: boolean; canceledCount: number; message: string }> {
+    const { data, error } = await getSupabase().functions.invoke("asaas-manage", {
+      body: {
+        action: "cancel-pending-pix",
+        ...(paymentId ? { paymentId } : {}),
+      },
+    });
+
+    if (error || !data || data.error) {
+      const errorMsg = await extractEdgeFunctionError(
+        data,
+        error,
+        "Falha ao cancelar cobrança Pix pendente.",
+      );
+      throw new AppError("network", errorMsg, error);
+    }
+
+    return {
+      ok: true,
+      canceledCount: Number(data.canceledCount ?? 0),
+      message: data.message || "Cobrança Pix cancelada com sucesso.",
+    };
+  },
 };
 
 // ============================================================================
@@ -479,4 +509,14 @@ export async function cancelScheduledPlanChange(): Promise<{ ok: boolean; messag
     return adapter.cancelScheduledPlanChange();
   }
   throw new AppError("validation", "Provedor atual não possui cancelamento de troca agendada.");
+}
+
+export async function cancelPendingPix(
+  paymentId?: string,
+): Promise<{ ok: boolean; canceledCount: number; message: string }> {
+  const adapter = getBillingAdapter();
+  if (adapter.cancelPendingPix) {
+    return adapter.cancelPendingPix(paymentId);
+  }
+  throw new AppError("validation", "Provedor atual não possui cancelamento de cobrança Pix.");
 }

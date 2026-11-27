@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import {
+  cancelPendingPix,
   cancelSubscription,
   createCheckoutSession,
   createCumulativeCheckoutSession,
@@ -177,6 +178,40 @@ export function useCancelScheduledPlanChangeMutation() {
   });
 }
 
+export function useCancelPendingPixMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    { ok: boolean; canceledCount: number; message: string },
+    Error,
+    { paymentId?: string; silent?: boolean } | void
+  >({
+    mutationFn: (vars) => cancelPendingPix(vars?.paymentId),
+    onSuccess: (data, vars) => {
+      void queryClient.invalidateQueries({ queryKey: USER_SUBSCRIPTION_KEY });
+      void queryClient.invalidateQueries({ queryKey: INVOICES_KEY });
+      if (!vars?.silent) {
+        triggerSensory("selection");
+        pushToast({
+          title: "Cobrança Pix cancelada",
+          description: data.message,
+          variant: "default",
+        });
+      }
+    },
+    onError: (error, vars) => {
+      if (!vars?.silent) {
+        triggerSensory("destructive");
+        pushToast({
+          title: "Não foi possível cancelar o Pix",
+          description: getErrorMessage(error),
+          variant: "destructive",
+        });
+      }
+    },
+  });
+}
+
 export function useCumulativeCheckoutMutation() {
   const queryClient = useQueryClient();
 
@@ -185,6 +220,9 @@ export function useCumulativeCheckoutMutation() {
     gcTime: 0,
     mutationFn: (params: CreateCumulativeCheckoutParams) => createCumulativeCheckoutSession(params),
     onSuccess: (data) => {
+      if (data.method === "pix") {
+        void queryClient.invalidateQueries({ queryKey: INVOICES_KEY });
+      }
       if ("status" in data && data.status === "active") {
         void queryClient.invalidateQueries({ queryKey: USER_SUBSCRIPTION_KEY });
         void queryClient.invalidateQueries({ queryKey: INVOICES_KEY });
@@ -204,6 +242,10 @@ export function useCheckoutMutation() {
     gcTime: 0,
     mutationFn: (params: CheckoutParams) => createCheckoutSession(params),
     onSuccess: (data) => {
+      if (data.method === "pix") {
+        void queryClient.invalidateQueries({ queryKey: INVOICES_KEY });
+      }
+
       const shouldInvalidate =
         ("status" in data &&
           (data.status === "active" ||

@@ -169,14 +169,17 @@ export function SubscriptionCheckoutPage() {
                   priceCents={c.planConfig.priceCents}
                   copiedPix={c.copiedPix}
                   isVerifyingManual={c.isVerifyingManual}
+                  isCancelingPix={c.isCancelingPix}
                   onCopyPix={() => {
                     void c.handleCopyPix();
                   }}
                   onManualVerify={c.handleManualVerify}
                   onSimulateConfirmation={c.handleSimulatePixConfirmation}
                   onSwitchToCard={() => {
-                    c.setPixResult(null);
-                    c.setMethod("credit_card");
+                    void c.handleSwitchToCard();
+                  }}
+                  onCancelPix={() => {
+                    void c.handleCancelPix();
                   }}
                   onBackToPlans={() => {
                     c.setPixResult(null);

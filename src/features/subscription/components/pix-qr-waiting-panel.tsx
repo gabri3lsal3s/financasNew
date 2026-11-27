@@ -1,5 +1,5 @@
 import { QrCodeCanvas } from "@/components/ui/qr-code-canvas";
-import { ArrowLeft, Check, Clock, Copy, CreditCard, Loader2, QrCode, Zap } from "lucide-react";
+import { ArrowLeft, Check, Clock, Copy, CreditCard, Loader2, QrCode, Trash2, Zap } from "lucide-react";
 import { Button, MoneyText } from "@/components/ui";
 import type { PixCheckoutResult } from "@/state";
 
@@ -8,10 +8,12 @@ export interface PixQrWaitingPanelProps {
   priceCents: number;
   copiedPix: boolean;
   isVerifyingManual?: boolean;
+  isCancelingPix?: boolean;
   onCopyPix: () => void;
   onManualVerify?: () => void;
   onSimulateConfirmation: () => void;
   onSwitchToCard: () => void;
+  onCancelPix?: () => void;
   onBackToPlans: () => void;
   onGoToDashboard: () => void;
 }
@@ -21,10 +23,12 @@ export function PixQrWaitingPanel({
   priceCents,
   copiedPix,
   isVerifyingManual = false,
+  isCancelingPix = false,
   onCopyPix,
   onManualVerify,
   onSimulateConfirmation,
   onSwitchToCard,
+  onCancelPix,
   onBackToPlans,
   onGoToDashboard,
 }: PixQrWaitingPanelProps) {
@@ -132,11 +136,31 @@ export function PixQrWaitingPanel({
           variant="ghost"
           size="sm"
           onClick={onSwitchToCard}
+          disabled={isCancelingPix}
           className="w-full gap-1.5 text-muted-foreground hover:text-foreground"
         >
           <CreditCard className="size-3.5" aria-hidden="true" />
           <span>Pagar com cartão de crédito em vez de PIX</span>
         </Button>
+
+        {onCancelPix ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            sensoryIntent="destructive"
+            disabled={isCancelingPix}
+            onClick={onCancelPix}
+            className="w-full gap-1.5 text-critical-strong hover:text-critical-strong hover:bg-critical/10"
+          >
+            {isCancelingPix ? (
+              <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+            ) : (
+              <Trash2 className="size-3.5" aria-hidden="true" />
+            )}
+            <span>{isCancelingPix ? "Cancelando Pix..." : "Cancelar cobrança Pix"}</span>
+          </Button>
+        ) : null}
 
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <Button
