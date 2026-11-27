@@ -1,5 +1,9 @@
 # ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.34.0 — Desempenho da landing pública**
+> - A raiz antecipa o módulo da landing para visitantes web. A barra de leitura e os skeletons usam transformações CSS, e o scroll spy reaproveita a primeira medição.
+> - O build emite um preload por fonte para Inter e Sora. A avaliação do ganho de LCP e a configuração do Web Analytics seguem o [plano Lighthouse](../PLANO_LIGHTHOUSE_FINAL.md).
+
 > **v3.33.0 (Plano Mestre de Correções — Ondas 1–4, Hardening de Segurança, Performance, Resiliência & UX)** (2026-11-26):
 > - **Onda 1 — Segurança, Faturamento & Precisão Financeira (`0163`–`0166`):** endurecimento de RLS, `restore_backup` e webhooks (`asaas-webhook`, `resend-webhook` registrado em `supabase/config.toml` e `deploy:functions`), correção de `apply_dividend_reconciliation_min_uuid`, colunas de ordem/resgate na carteira, corte de checkpoints históricos (`T1.9/C02`) e relatório de resgates com prazo indeterminado (`T1.8`).
 > - **Onda 2 — Performance, Carregamento & Dados:** desacoplamento do carregamento na Visão Geral (`use-overview-data.ts`), `NotificationCenterProvider` compartilhado, busca global lazy (`global-search-palette.tsx`), code splitting de diálogos pesados e chunk `vendor-qr`, preload de fontes (`Inter`/`Sora`) e remoção de 70 assets não utilizados, paginação de transações/proventos de carteira e seleção explícita de colunas.
