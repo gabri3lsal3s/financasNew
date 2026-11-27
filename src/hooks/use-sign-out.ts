@@ -65,13 +65,13 @@ export function useSignOut() {
       const supabase = getSupabase();
 
       if (scope === "others") {
-        await supabase.auth.signOut({ scope: "others" });
-        try {
-          await revokeOtherDevices(getOrCreateDeviceId());
-          void queryClient?.invalidateQueries({ queryKey: userDevicesKey });
-        } catch {
-          // Não bloqueia caso a sincronização da lista falhe pontualmente
+        const { error: signOutOthersError } = await supabase.auth.signOut({ scope: "others" });
+        if (signOutOthersError) {
+          throw signOutOthersError;
         }
+        // Só confirma revogação remota após registro efetivo no servidor
+        await revokeOtherDevices(getOrCreateDeviceId());
+        void queryClient?.invalidateQueries({ queryKey: userDevicesKey });
         return;
       }
 

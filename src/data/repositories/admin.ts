@@ -264,7 +264,7 @@ export async function adminRevokeUserSessions(userId: string): Promise<boolean> 
 export async function adminGenerateRecoveryLink(
   userId: string,
   email: string,
-): Promise<string> {
+): Promise<{ sentToVerifiedEmail: boolean }> {
   const supabase = getSupabase();
   const { data, error } = await supabase.functions.invoke("admin-super-action", {
     body: {
@@ -274,12 +274,12 @@ export async function adminGenerateRecoveryLink(
     },
   });
 
-  if (error || !data?.actionLink) {
-    const errorMsg = data?.error || error?.message || "Falha ao gerar link de recuperação.";
+  if (error || !data?.success) {
+    const errorMsg = data?.error || error?.message || "Falha ao enviar recuperação para o e-mail verificado.";
     throw new AppError("network", errorMsg);
   }
 
-  return data.actionLink as string;
+  return { sentToVerifiedEmail: Boolean(data.sentToVerifiedEmail ?? true) };
 }
 
 /**

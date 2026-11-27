@@ -102,33 +102,19 @@ describe("devices repository", () => {
       });
     });
 
-    it("usa fallback de tabela quando RPC falha", async () => {
-      vi.mocked(authSessionsRpc.registerDeviceSessionRpc).mockRejectedValueOnce(new Error("RPC missing"));
+    it("propaga erro quando a RPC recusa registro sem usar upsert direto inseguro", async () => {
+      vi.mocked(authSessionsRpc.registerDeviceSessionRpc).mockRejectedValueOnce(new Error("Sessão revogada não pode ser reativada."));
 
-      const mockResult = {
-        id: "rec-fallback",
-        user_id: "user-123",
-        device_id: "dev-abc",
-        device_name: "Chrome no Windows",
-        browser: "Google Chrome",
-        os: "Windows",
-        ip_address: null,
-        last_seen_at: "2026-11-11T10:00:00Z",
-        created_at: "2026-11-11T10:00:00Z",
-        is_revoked: false,
-      };
+      await expect(
+        registerDevice({
+          deviceId: "dev-abc",
+          deviceName: "Chrome no Windows",
+          browser: "Google Chrome",
+          os: "Windows",
+        }),
+      ).rejects.toThrow();
 
-      mockSingle.mockResolvedValueOnce({ data: mockResult, error: null });
-
-      const res = await registerDevice({
-        deviceId: "dev-abc",
-        deviceName: "Chrome no Windows",
-        browser: "Google Chrome",
-        os: "Windows",
-      });
-
-      expect(res).toEqual(mockResult);
-      expect(mockFrom).toHaveBeenCalledWith("user_devices");
+      expect(mockFrom).not.toHaveBeenCalled();
     });
   });
 

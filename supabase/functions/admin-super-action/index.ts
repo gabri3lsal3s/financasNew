@@ -159,26 +159,13 @@ Deno.serve(async (req: Request) => {
       });
 
       if (inviteError) {
-        // Se o usuário já existe no Auth, tentar gerar link de recovery (redefinição/ativação)
         if (
           inviteError.message?.toLowerCase().includes("already registered") ||
           inviteError.message?.toLowerCase().includes("already exists")
         ) {
-          const { data: recoveryData, error: recoveryError } =
-            await adminClient.auth.admin.generateLink({
-              type: "recovery",
-              email: cleanEmail,
-            });
-
-          if (recoveryError || !recoveryData?.user) {
-            return safeErrorResponse(req, 400, "Usuário já existe e não foi possível gerar link de acesso.");
-          }
-
-          targetUserId = recoveryData.user.id;
-          actionLink = recoveryData.properties?.action_link ?? null;
-        } else {
-          return safeErrorResponse(req, 400, `Erro ao provisionar usuário: ${inviteError.message}`);
+          return jsonResponse(req, { error: "Usuário já cadastrado. Utilize a recuperação por e-mail verificado." }, 409);
         }
+        return safeErrorResponse(req, 400, `Erro ao provisionar usuário: ${inviteError.message}`);
       } else if (inviteData?.user) {
         targetUserId = inviteData.user.id;
         actionLink = inviteData.properties?.action_link ?? null;
@@ -238,11 +225,26 @@ Deno.serve(async (req: Request) => {
         },
       });
 
+      let sentToVerifiedEmail = false;
+      if (actionLink) {
+        const emailDispatch = await sendTransactionalEmail({
+          to: cleanEmail,
+          subject: "Ative seu acesso ao Axir",
+          template: "admin_provision_invite",
+          html: `<p>Olá ${cleanName},</p><p>Sua conta no Axir foi criada. <a href="${actionLink}">Clique aqui para definir sua senha</a>.</p>`,
+          text: `Olá ${cleanName}, sua conta no Axir foi criada. Acesse para definir sua senha: ${actionLink}`,
+          userId: targetUserId,
+          idempotencyKey: `provision_invite_${targetUserId}_${Date.now()}`,
+        });
+        sentToVerifiedEmail = emailDispatch.success;
+      }
+
       return jsonResponse(req, {
         success: true,
         userId: targetUserId,
         email: cleanEmail,
-        actionLink,
+        actionLink: null,
+        sentToVerifiedEmail,
       });
     }
 
@@ -280,9 +282,24 @@ Deno.serve(async (req: Request) => {
         },
       });
 
+      const recoveryEmailRes = await sendTransactionalEmail({
+        to: cleanEmail,
+        subject: "Recuperação de acesso ao Axir",
+        template: "admin_recovery_verified_email",
+        html: `<p>Recebemos uma solicitação de recuperação de acesso para sua conta Axir.</p><p><a href="${recoveryData.properties.action_link}">Clique aqui para redefinir sua senha</a>.</p>`,
+        text: `Acesse o link para redefinir sua senha no Axir: ${recoveryData.properties.action_link}`,
+        userId: resolvedTargetId,
+        idempotencyKey: `admin_recovery_${resolvedTargetId}_${Date.now()}`,
+      });
+
+      if (!recoveryEmailRes.success) {
+        return safeErrorResponse(req, 502, recoveryEmailRes.error || "Falha ao enviar e-mail de recuperação ao endereço verificado.");
+      }
+
       return jsonResponse(req, {
         success: true,
-        actionLink: recoveryData.properties.action_link,
+        actionLink: null,
+        sentToVerifiedEmail: true,
       });
     }
 
@@ -295,25 +312,18 @@ Deno.serve(async (req: Request) => {
         return jsonResponse(req, { error: "ID de usuário é obrigatório." }, 400);
       }
 
-      const { error: signOutError } = await adminClient.auth.admin.signOut(targetUserId, "global");
-      if (signOutError) {
-        return safeErrorResponse(req, 400, `Falha ao encerrar sessões: ${signOutError.message}`);
+      const { data: revokeResult, error: revokeRpcError } = await userClient.rpc(
+        "admin_revoke_user_sessions",
+        { p_target_user_id: targetUserId },
+      );
+      if (revokeRpcError) {
+        return safeErrorResponse(req, 400, `Falha ao encerrar sessões: ${revokeRpcError.message}`);
       }
 
-      await adminClient.from("audit_events").insert({
-        user_id: callerUser.id,
-        entity_type: "profiles",
-        entity_id: targetUserId,
-        action: "ADMIN_REVOKE_SESSIONS",
-        payload: {
-          revoked_by: callerUser.id,
-          target_user_id: targetUserId,
-          scope: "global",
-          timestamp: new Date().toISOString(),
-        },
+      return jsonResponse(req, {
+        success: true,
+        ...(typeof revokeResult === "object" && revokeResult !== null ? revokeResult : {}),
       });
-
-      return jsonResponse(req, { success: true });
     }
 
     // -------------------------------------------------------------------------
@@ -669,7 +679,8 @@ Deno.serve(async (req: Request) => {
         })
         .eq("id", subRow.id);
 
-      const cronSecret = Deno.env.get("CRON_SECRET") || supabaseServiceKey;
+      const cronSecret = Deno.env.get("CRON_SECRET");
+      if (cronSecret) {
       try {
         await fetch(`${supabaseUrl}/functions/v1/push-dispatcher`, {
           method: "POST",
@@ -694,6 +705,7 @@ Deno.serve(async (req: Request) => {
         });
       } catch {
         // Falha de push não bloqueia o envio oficial por e-mail
+      }
       }
 
       await adminClient.from("audit_events").insert({

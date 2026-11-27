@@ -52,4 +52,30 @@ describe("data/client — getSupabase", () => {
     expect(client1).toBe(client2);
     expect(createClientMock).toHaveBeenCalledTimes(1);
   });
+
+  it("em modo computador compartilhado limpa tokens legados do localStorage e desativa persistSession", async () => {
+    window.localStorage.setItem("sb-example-auth-token", "legacy-token");
+    const { setSharedDeviceSession } = await import("@/services/session-policy");
+    setSharedDeviceSession(true);
+
+    const { getSupabase, resetSupabaseClient } = await import("./client");
+    resetSupabaseClient();
+    getSupabase();
+
+    expect(window.localStorage.getItem("sb-example-auth-token")).toBeNull();
+    expect(createClientMock).toHaveBeenLastCalledWith(
+      "https://example.supabase.co",
+      "mock-anon-key-12345",
+      {
+        auth: {
+          flowType: "pkce",
+          persistSession: false,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+        },
+      },
+    );
+
+    setSharedDeviceSession(false);
+  });
 });

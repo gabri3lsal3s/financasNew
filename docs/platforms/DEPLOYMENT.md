@@ -556,4 +556,78 @@ O projeto adota uma arquitetura de compilação dual rigorosa para conciliar a a
 
 > Para o guia operacional detalhado, respostas do formulário Data Safety e roteiro de submissão na Google Play, consulte [`docs/NATIVE_DISTRIBUTION_GUIDE.md`](./NATIVE_DISTRIBUTION_GUIDE.md) (§8).
 
+---
+
+## 8. CLOUDFLARE WORKER E DURABLE OBJECTS — CUSTÓDIA DE SESSÕES (T02)
+
+A partir da etapa T02 do [`PLANO_MESTRE_MULTICONTA_E_ISOLAMENTO_SESSOES.md`](../plans/PLANO_MESTRE_MULTICONTA_E_ISOLAMENTO_SESSOES.md), a borda da aplicação passa a contar com um **Cloudflare Worker** (`scripts/cloudflare/sessions/`) acoplado a **Durable Objects** para custódia de sessões e mediação das rotas `/api/sessions/v1/*` e `/api/data/v1/*`.
+
+### 8.1 Precedência de Rotas sobre Cloudflare Pages
+
+No Cloudflare, **Worker Routes** anexadas à zona DNS prevalecem sobre o fallback estático do **Cloudflare Pages** para os prefixos declarados:
+
+| Host | Rotas atendidas pelo Worker | Fallback estático (Pages) |
+|---|---|---|
+| `axir.com.br` / `www.axir.com.br` (Produção) | `axir.com.br/api/sessions/v1/*`, `axir.com.br/api/data/v1/*` | Demais rotas da SPA/PWA |
+| `preview.axir.com.br` (Prévia isolada) | `preview.axir.com.br/api/sessions/v1/*`, `preview.axir.com.br/api/data/v1/*` | Preview Deployment do Pages |
+| `admin.axir.com.br` (Origem administrativa) | `admin.axir.com.br/api/sessions/v1/*`, `admin.axir.com.br/api/data/v1/*` | Build administrativo dedicado |
+
+- **Regra crítica:** Nenhuma chamada `/api/sessions/v1/*` ou `/api/data/v1/*` deve cair no fallback `index.html` do Pages. O Worker responde sempre com `Cache-Control: no-store` e `Pragma: no-cache`, desabilita rotas `*.workers.dev` públicas e valida o cabeçalho `Host` e `Origin` contra a allowlist do ambiente.
+
+### 8.2 Bindings, Namespaces e Segredos por Ambiente
+
+Cada ambiente (`preview`, `production`, `admin`) possui configuração isolada em `scripts/cloudflare/sessions/wrangler.jsonc`:
+
+| Binding / Variável | Tipo | Descrição |
+|---|---|---|
+| `SESSION_COORDINATOR` | Durable Object (`SessionCoordinatorDO`) | Coordenação por instalação (SQLite-backed DO). Namespaces independentes por ambiente. |
+| `ENVIRONMENT` | `vars` | `"preview"`, `"production"` ou `"admin"` — impede aceitação cruzada de cookies/provas entre ambientes. |
+| `ALLOWED_HOSTS` | `vars` | Lista separada por vírgula dos hosts válidos do ambiente. |
+| `ALLOWED_ORIGINS` | `vars` | Lista separada por vírgula das origens aceitas para escrita/CSRF. |
+| `SESSION_COOKIE_NAME` | `vars` | `__Host-axir_session` (pessoal/prévia) ou `__Host-axir_admin_session` (admin). |
+| `SUPABASE_URL` | `vars` / `secret` | URL do projeto Supabase correspondente ao ambiente (prévia usa projeto isolado). |
+| `SUPABASE_ANON_KEY` | `secret` | Chave pública do projeto Supabase do ambiente (mantida no Worker). |
+| `SESSION_ENCRYPTION_KEY_CURRENT` | `secret` | Chave AES-GCM 256-bit (base64) corrente para cifragem de tokens no DO. |
+| `SESSION_ENCRYPTION_KEY_PREVIOUS` | `secret` *(opcional)* | Chave anterior aceita somente para leitura durante janela de rotação. |
+
+Provisionamento de segredos em prévia (sem gravar valores no repositório):
+
+```bash
+npx wrangler secret put SUPABASE_ANON_KEY --config scripts/cloudflare/sessions/wrangler.jsonc --env preview
+npx wrangler secret put SESSION_ENCRYPTION_KEY_CURRENT --config scripts/cloudflare/sessions/wrangler.jsonc --env preview
+```
+
+### 8.3 DNS e Origem Administrativa (`admin.axir.com.br`)
+
+1. Criar registro DNS proxied (laranja) para `admin.axir.com.br` apontando para o projeto Pages administrativo dedicado e para `preview.axir.com.br` apontando para a prévia.
+2. Anexar as Worker Routes específicas em cada zona/ambiente (`wrangler deploy --config scripts/cloudflare/sessions/wrangler.jsonc --env preview`).
+3. Em **Supabase → Authentication → URL Configuration**, manter `Redirect URLs` estritas para prévia e produção sem wildcards amplos.
+
+### 8.4 Comandos de Reprodução Local e Prévia
+
+```bash
+# 1. Executar suíte local do Worker + Durable Object com Miniflare
+npx vitest run scripts/cloudflare/sessions/worker.test.ts
+
+# 2. Subir Worker localmente com Wrangler (Miniflare integrado)
+npx wrangler dev --config scripts/cloudflare/sessions/wrangler.jsonc --env preview
+
+# 3. Deploy do Worker em prévia isolada
+npx wrangler deploy --config scripts/cloudflare/sessions/wrangler.jsonc --env preview
+```
+
+### 8.5 Consumo, Capacidade e Custos Estimados (Piloto)
+
+Considerando o piloto inicial (~100–500 usuários ativos diários, ~50–150 requisições autenticadas/usuário/dia, incluindo revalidação de sessão a cada 15s em aba visível):
+
+| Recurso Cloudflare | Estimativa Piloto (mensal) | Plano / Limite | Custo Estimado |
+|---|---|---|---|
+| **Workers Requests** | ~1,5M – 4M req/mês | Workers Paid (inclui 10M req/mês) | **$5,00/mês** (base do plano) |
+| **Durable Objects Requests** | ~0,5M – 1,5M req/mês (custódia/troca/revalidação) | Inclui 1M req/mês; $0,15 por milhão adicional | **$0,00 – $0,15/mês** |
+| **Durable Objects Duration & Storage** | < 100k GB-s e < 100 MB (estado mínimo cifrado por instalação) | Inclui 400k GB-s e 1 GB SQLite | **$0,00/mês** |
+| **Egress / Pages Assets** | Ilimitado no Cloudflare Pages | Free / Paid | **$0,00/mês** |
+
+- **Nota de otimização:** A consulta periódica de revogação (15s em aba visível) atinge o Durable Object apenas com leitura leve em memória/SQLite local do DO (~1–3 ms no edge), sem acionar o Postgres/Supabase a cada tick.
+
+
 

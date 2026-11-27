@@ -148,5 +148,13 @@ describe("getErrorMessage — gateway de erros (ESPECIFICAÇÃO §1.7)", () => {
   it("cai em mensagem genérica para erros desconhecidos", () => {
     expect(getErrorMessage(null)).toContain("Algo deu errado");
   });
+
+  it("traduz códigos estáveis do serviço de sessão (T03) para pt-BR", () => {
+    expect(classifyError({ code: "unauthorized" }).kind).toBe("session-expired");
+    expect(classifyError({ code: "context_stale" }).kind).toBe("context-stale");
+    expect(classifyError({ code: "step_up_required" }).kind).toBe("step-up-required");
+    expect(classifyError({ code: "limit_reached" }).kind).toBe("account-limit-reached");
+    expect(classifyError({ code: "service_unavailable" }).kind).toBe("service-unavailable");
+  });
 });
 

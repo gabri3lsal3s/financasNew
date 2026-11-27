@@ -18,6 +18,9 @@ export type ErrorKind =
   | "user_already_exists"
   | "invalid-credentials"
   | "session-expired"
+  | "context-stale"
+  | "step-up-required"
+  | "account-limit-reached"
   | "duplicate"
   | "foreign-key"
   | "network"
@@ -57,6 +60,9 @@ export const MESSAGES: Record<ErrorKind, string> = {
     "Este e-mail já está cadastrado no Axir. Faça login ou recupere sua senha se tiver esquecido.",
   "invalid-credentials": "E-mail ou senha incorretos.",
   "session-expired": "Sua sessão expirou. Entre novamente para continuar.",
+  "context-stale": "O contexto desta aba foi atualizado ou encerrado. Atualize a sessão para continuar.",
+  "step-up-required": "Confirmação de segurança necessária antes de continuar.",
+  "account-limit-reached": "Limite de 5 contas neste dispositivo atingido. Esqueça uma conta antes de adicionar outra.",
   duplicate: "Já existe um registro com esses dados.",
   "foreign-key": "Não é possível excluir este registro pois existem lançamentos vinculados a ele. Você pode desativá-lo para manter o histórico.",
   network: "Sem conexão com o servidor. Verifique sua internet e tente novamente.",
@@ -193,7 +199,16 @@ export function classifyError(error: unknown): ClassifiedError {
   if (code.includes("invalid_credentials") || /invalid login credentials|invalid credentials/i.test(message)) {
     return { kind: "invalid-credentials", message: MESSAGES["invalid-credentials"], raw: error };
   }
-  if (status === 401 || code === "pgrst301" || code.includes("jwt") || code.includes("session_expired") || /session expired/i.test(message)) {
+  if (code === "context_stale" || code === "context-stale") {
+    return { kind: "context-stale", message: MESSAGES["context-stale"], raw: error };
+  }
+  if (code === "step_up_required" || code === "step-up-required") {
+    return { kind: "step-up-required", message: MESSAGES["step-up-required"], raw: error };
+  }
+  if (code === "limit_reached" || code === "account-limit-reached") {
+    return { kind: "account-limit-reached", message: MESSAGES["account-limit-reached"], raw: error };
+  }
+  if (status === 401 || code === "unauthorized" || code === "pgrst301" || code.includes("jwt") || code.includes("session_expired") || /session expired/i.test(message)) {
     return { kind: "session-expired", message: MESSAGES["session-expired"], raw: error };
   }
   if (code === "23505" || code.includes("duplicate") || /duplicate key|unique constraint/i.test(message)) {
