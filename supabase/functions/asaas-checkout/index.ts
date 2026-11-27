@@ -220,6 +220,7 @@ Deno?.serve?.(async (req: Request) => {
     const customerEmail = profile.email || user.email || "";
 
     const customer = await findOrCreateAsaasCustomer({
+      userId: user.id,
       existingCustomerId: userSub?.asaas_customer_id,
       name: customerName,
       email: customerEmail,

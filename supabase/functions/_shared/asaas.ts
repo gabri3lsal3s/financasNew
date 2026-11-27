@@ -13,6 +13,7 @@ declare const Deno: {
 } | undefined;
 
 export interface AsaasCustomerInput {
+  userId?: string;
   name: string;
   email: string;
   cpfCnpj: string;
@@ -318,23 +319,49 @@ async function asaasFetch<T>(endpoint: string, options: RequestInit = {}): Promi
 }
 
 /**
- * Localiza ou cria um cliente no Asaas a partir do e-mail ou CPF.
+ * Localiza ou cria um cliente no Asaas isolado estritamente por `userId` (`externalReference`)
+ * e `email` do usuário autenticado — NUNCA reutiliza cliente de outro usuário apenas por CPF
+ * (prevenção contra vazamento de recibos/faturas entre contas / LGPD).
  * Garante sempre notificationDisabled: true (D-05).
  */
 export async function findOrCreateAsaasCustomer(
   input: AsaasCustomerInput & { existingCustomerId?: string | null },
 ): Promise<{ id: string }> {
-  // 0. Se já possuir customerId associado, verifica se ainda existe no Asaas
+  const cleanUserId = input.userId?.trim() || "";
+  const cleanEmail = (input.email || "").trim().toLowerCase();
+
+  const belongsToCurrentUser = (customer: {
+    id?: string;
+    deleted?: boolean;
+    externalReference?: string | null;
+    email?: string | null;
+  }): boolean => {
+    if (!customer.id || customer.deleted) return false;
+    const ref = (customer.externalReference || "").trim();
+    const custEmail = (customer.email || "").trim().toLowerCase();
+    if (cleanUserId && ref) {
+      return ref === cleanUserId;
+    }
+    if (cleanEmail && custEmail) {
+      return custEmail === cleanEmail;
+    }
+    return false;
+  };
+
+  // 0. Se já possuir customerId associado, valida que existe e pertence a ESTE usuário
   if (input.existingCustomerId && input.existingCustomerId.trim().length > 0) {
     try {
-      const existing = await asaasFetch<{ id: string; deleted?: boolean }>(
-        `/customers/${encodeURIComponent(input.existingCustomerId.trim())}`,
-      );
-      if (existing && existing.id && !existing.deleted) {
+      const existing = await asaasFetch<{
+        id: string;
+        deleted?: boolean;
+        externalReference?: string | null;
+        email?: string | null;
+      }>(`/customers/${encodeURIComponent(input.existingCustomerId.trim())}`);
+      if (existing && belongsToCurrentUser(existing)) {
         return { id: existing.id };
       }
     } catch {
-      // Se não encontrou pelo ID antigo, prossegue com busca por CPF/e-mail
+      // Se não encontrou pelo ID antigo, prossegue com busca isolada por userId/e-mail
     }
   }
 
@@ -343,27 +370,39 @@ export async function findOrCreateAsaasCustomer(
     throw new Error("CPF inválido ou não informado para cadastro do titular da assinatura.");
   }
 
-  // 1. Tenta buscar por CPF
-  if (cleanCpf) {
-    const searchByCpf = await asaasFetch<{ data: Array<{ id: string }> }>(
-      `/customers?cpfCnpj=${encodeURIComponent(cleanCpf)}`,
-    );
-    if (searchByCpf.data && searchByCpf.data.length > 0) {
-      return { id: searchByCpf.data[0]!.id };
+  // 1. Busca isolada por externalReference (userId do Axir)
+  if (cleanUserId) {
+    const searchByRef = await asaasFetch<{
+      data: Array<{
+        id: string;
+        deleted?: boolean;
+        externalReference?: string | null;
+        email?: string | null;
+      }>;
+    }>(`/customers?externalReference=${encodeURIComponent(cleanUserId)}`);
+    const matchedByRef = (searchByRef.data || []).find((c) => belongsToCurrentUser(c));
+    if (matchedByRef) {
+      return { id: matchedByRef.id };
     }
   }
 
-  // 2. Tenta buscar por e-mail
-  if (input.email) {
-    const searchByEmail = await asaasFetch<{ data: Array<{ id: string }> }>(
-      `/customers?email=${encodeURIComponent(input.email)}`,
-    );
-    if (searchByEmail.data && searchByEmail.data.length > 0) {
-      return { id: searchByEmail.data[0]!.id };
+  // 2. Fallback por e-mail exato (somente clientes sem externalReference de outro usuário)
+  if (cleanEmail) {
+    const searchByEmail = await asaasFetch<{
+      data: Array<{
+        id: string;
+        deleted?: boolean;
+        externalReference?: string | null;
+        email?: string | null;
+      }>;
+    }>(`/customers?email=${encodeURIComponent(cleanEmail)}`);
+    const matchedByEmail = (searchByEmail.data || []).find((c) => belongsToCurrentUser(c));
+    if (matchedByEmail) {
+      return { id: matchedByEmail.id };
     }
   }
 
-  // 3. Cria novo cliente (sempre com notificationDisabled: true por decisão D-05)
+  // 3. Cria novo cliente exclusivo para este usuário (sempre com notificationDisabled: true por decisão D-05)
   const created = await asaasFetch<{ id: string }>("/customers", {
     method: "POST",
     body: JSON.stringify({
@@ -371,6 +410,7 @@ export async function findOrCreateAsaasCustomer(
       email: input.email,
       cpfCnpj: cleanCpf,
       mobilePhone: input.phone?.replace(/\D/g, "") || undefined,
+      externalReference: cleanUserId || undefined,
       notificationDisabled: true,
     }),
   });

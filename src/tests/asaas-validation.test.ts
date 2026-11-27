@@ -219,5 +219,59 @@ describe("Validações Financeiras e Sanitização PCI — Asaas", () => {
       expect(mapAsaasCardErrorMessage("Transação bloqueada pelo antifraude.")).toContain("análise de segurança");
       expect(mapAsaasCardErrorMessage("Número do cartão inválido.")).toContain("número inválido");
     });
+
+    it("isola cliente Asaas por userId/externalReference sem reutilizar cliente de outro usuário por CPF", async () => {
+      const { findOrCreateAsaasCustomer } = await import("../../supabase/functions/_shared/asaas.ts");
+      const prevEnv = process.env.ASAAS_ENVIRONMENT;
+      const prevKey = process.env.ASAAS_API_KEY;
+      const prevFetch = globalThis.fetch;
+      process.env.ASAAS_ENVIRONMENT = "sandbox";
+      process.env.ASAAS_API_KEY = "$aact_hmlg_test_key";
+
+      const calls: string[] = [];
+      globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        calls.push(`${init?.method || "GET"} ${url}`);
+        if (url.includes("/customers/cus_other_user")) {
+          return new Response(
+            JSON.stringify({
+              id: "cus_other_user",
+              deleted: false,
+              email: "outro@exemplo.com",
+              externalReference: "user-other",
+            }),
+            { status: 200 },
+          );
+        }
+        if (url.includes("externalReference=user-nazare") || url.includes("email=nazare%40exemplo.com")) {
+          return new Response(JSON.stringify({ data: [] }), { status: 200 });
+        }
+        if ((init?.method || "GET") === "POST" && url.endsWith("/customers")) {
+          const parsedBody = JSON.parse(String(init?.body || "{}")) as Record<string, unknown>;
+          expect(parsedBody.externalReference).toBe("user-nazare");
+          expect(parsedBody.email).toBe("nazare@exemplo.com");
+          return new Response(JSON.stringify({ id: "cus_nazare_new" }), { status: 200 });
+        }
+        return new Response(JSON.stringify({ data: [] }), { status: 200 });
+      }) as typeof fetch;
+
+      try {
+        const res = await findOrCreateAsaasCustomer({
+          userId: "user-nazare",
+          existingCustomerId: "cus_other_user",
+          name: "Maria Nazare",
+          email: "nazare@exemplo.com",
+          cpfCnpj: "52998224725",
+        });
+        expect(res.id).toBe("cus_nazare_new");
+        expect(calls.some((c) => c.includes("cpfCnpj="))).toBe(false);
+      } finally {
+        globalThis.fetch = prevFetch;
+        if (prevEnv === undefined) delete process.env.ASAAS_ENVIRONMENT;
+        else process.env.ASAAS_ENVIRONMENT = prevEnv;
+        if (prevKey === undefined) delete process.env.ASAAS_API_KEY;
+        else process.env.ASAAS_API_KEY = prevKey;
+      }
+    });
   });
 });
