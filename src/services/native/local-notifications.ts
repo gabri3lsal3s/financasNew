@@ -1,4 +1,8 @@
 import { LocalNotifications } from "@capacitor/local-notifications";
+import {
+  getKnownRecipientVersion,
+  getOrCreatePushInstallationId,
+} from "@/data/repositories/push-subscriptions";
 import { setReminderState } from "@/data/repositories/reminder-states";
 import { addDaysISO, todayISO } from "@/domain/debts/index";
 import { DEMO_USER_ID } from "@/domain/demo-simulation/mock-finances";
@@ -434,11 +438,100 @@ export interface DispatchNotificationOptions {
   actionTypeId?: string;
   id?: number;
   scheduleAt?: Date;
+  userId?: string | null;
+  installationId?: string;
+  recipientVersion?: number;
+}
+
+const NEUTRAL_LOCAL_TITLE = "Axir";
+const NEUTRAL_LOCAL_BODY = "Você tem uma nova atualização na sua Central de Notificações.";
+
+const SENSITIVE_LOCAL_PATTERNS = [
+  /R\$\s*[\d.,]+/i,
+  /\$\s*[\d.,]+/,
+  /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i,
+  /\b\d{3}\.\d{3}\.\d{3}-\d{2}\b/,
+  /\b\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\b/,
+];
+
+function sanitizeNeutralNotificationText(raw: string | undefined, fallback: string): string {
+  const trimmed = (raw ?? "").trim();
+  if (!trimmed) return fallback;
+  for (const pattern of SENSITIVE_LOCAL_PATTERNS) {
+    if (pattern.test(trimmed)) {
+      return fallback;
+    }
+  }
+  return trimmed;
+}
+
+function sanitizeNotificationUrl(rawUrl: string | undefined): string | undefined {
+  if (typeof rawUrl !== "string") return undefined;
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return undefined;
+  if (trimmed.startsWith("//")) return "/lembretes";
+
+  try {
+    const base = typeof window !== "undefined" ? window.location.origin : "https://axir.local";
+    const parsed = new URL(trimmed, base);
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+      if (typeof window !== "undefined" && parsed.origin !== window.location.origin) {
+        return "/lembretes";
+      }
+    }
+    parsed.searchParams.delete("account");
+    parsed.searchParams.delete("switchAccount");
+    parsed.searchParams.delete("user_id");
+    parsed.searchParams.delete("userId");
+    parsed.searchParams.delete("token");
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return "/lembretes";
+  }
+}
+
+function isNotificationContextValid(
+  extra: Record<string, unknown> | undefined,
+  activeUserId?: string | null,
+): boolean {
+  if (!extra) return true;
+
+  const currentInstallationId = getOrCreatePushInstallationId();
+  if (
+    typeof extra.installationId === "string" &&
+    extra.installationId.trim().length > 0 &&
+    extra.installationId.trim() !== currentInstallationId
+  ) {
+    return false;
+  }
+
+  const notifUserId =
+    typeof extra.recipientUserId === "string" ? extra.recipientUserId.trim() : "";
+  if (notifUserId && activeUserId && notifUserId !== activeUserId) {
+    return false;
+  }
+
+  const rawVersion = extra.recipientVersion;
+  const parsedVersion =
+    typeof rawVersion === "number" && Number.isInteger(rawVersion) && rawVersion >= 1
+      ? rawVersion
+      : typeof rawVersion === "string" && /^\d+$/.test(rawVersion.trim())
+        ? Number(rawVersion.trim())
+        : null;
+
+  if (parsedVersion !== null) {
+    const knownVersion = getKnownRecipientVersion(notifUserId || activeUserId);
+    if (knownVersion !== null && parsedVersion < knownVersion) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 /**
  * Despacha uma notificação local (no Android nativo via Capacitor ou no PWA via Web Notification API / Service Worker).
- * Respeita a diretriz de zero emojis e consentimento do usuário.
+ * Respeita a diretriz de zero emojis, payload neutro (sem PII/valores) e isolamento por instalação.
  */
 export async function dispatchLocalOrWebNotification(
   options: DispatchNotificationOptions,
@@ -452,6 +545,14 @@ export async function dispatchLocalOrWebNotification(
     return false;
   }
 
+  const safeTitle = sanitizeNeutralNotificationText(options.title, NEUTRAL_LOCAL_TITLE);
+  const safeBody = sanitizeNeutralNotificationText(options.body, NEUTRAL_LOCAL_BODY);
+  const safeUrl = sanitizeNotificationUrl(options.url);
+  const installationId = options.installationId?.trim() || getOrCreatePushInstallationId();
+  const recipientUserId = options.userId?.trim() || undefined;
+  const recipientVersion =
+    options.recipientVersion ?? getKnownRecipientVersion(recipientUserId) ?? 1;
+
   if (isNativePlatform()) {
     try {
       await setupDueRemindersChannel();
@@ -462,16 +563,19 @@ export async function dispatchLocalOrWebNotification(
         notifications: [
           {
             id: notifId,
-            title: options.title,
-            body: options.body,
+            title: safeTitle,
+            body: safeBody,
             channelId: options.channelId ?? DUE_REMINDER_CHANNEL_ID,
             actionTypeId: options.actionTypeId,
             ...(options.scheduleAt
               ? { schedule: { at: options.scheduleAt, allowWhileIdle: true } }
               : {}),
             extra: {
-              url: options.url,
+              url: safeUrl,
               tag: options.tag,
+              installationId,
+              recipientVersion,
+              ...(recipientUserId ? { recipientUserId } : {}),
             },
           },
         ],
@@ -489,26 +593,31 @@ export async function dispatchLocalOrWebNotification(
       if ("serviceWorker" in navigator) {
         const registration = await navigator.serviceWorker.getRegistration();
         if (registration && "showNotification" in registration) {
-          await registration.showNotification(options.title, {
-            body: options.body,
+          await registration.showNotification(safeTitle, {
+            body: safeBody,
             icon: "/pwa/icons/icon-192.png",
             badge: "/pwa/icons/icon-192.png",
             tag: options.tag,
-            data: { url: options.url },
+            data: {
+              url: safeUrl,
+              installationId,
+              recipientVersion,
+              ...(recipientUserId ? { recipientUserId } : {}),
+            },
           });
           return true;
         }
       }
 
       // Fallback para Notification direta da janela
-      const notif = new Notification(options.title, {
-        body: options.body,
+      const notif = new Notification(safeTitle, {
+        body: safeBody,
         icon: "/pwa/icons/icon-192.png",
         tag: options.tag,
       });
 
-      if (options.url) {
-        const rawUrl = options.url.trim();
+      if (safeUrl) {
+        const rawUrl = safeUrl.trim();
         notif.onclick = () => {
           window.focus();
           if (rawUrl.startsWith("/") && !rawUrl.startsWith("//")) {
@@ -840,6 +949,7 @@ export async function syncDueReminderNotifications(
  */
 export function initNotificationActionListener(
   onNavigate: (routePath: string) => void,
+  options?: { activeUserId?: string | null },
 ): () => Promise<void> {
   if (!isNativePlatform() || isActionListenerActive) {
     return async () => {};
@@ -852,6 +962,10 @@ export function initNotificationActionListener(
       const actionId = notificationAction.actionId;
       const notification = notificationAction.notification;
       const extra = notification?.extra as Record<string, unknown> | undefined;
+
+      if (!isNotificationContextValid(extra, options?.activeUserId)) {
+        return;
+      }
 
       if (actionId === ACTION_QUICK_ADD) {
         if (extra?.suggestion) {
@@ -917,7 +1031,7 @@ export function initNotificationActionListener(
         if (itemKey && itemKey !== "summary" && !itemKey.startsWith("day:")) {
           onNavigate(`/lembretes?action=pay&key=${encodeURIComponent(itemKey)}`);
         } else if (extra?.url && typeof extra.url === "string") {
-          onNavigate(extra.url);
+          onNavigate(sanitizeNotificationUrl(extra.url) ?? "/lembretes");
         } else {
           onNavigate("/lembretes");
         }
@@ -995,7 +1109,7 @@ export function initNotificationActionListener(
           }
           onNavigate(`/?${params.toString()}`);
         } else if (extra?.url && typeof extra.url === "string") {
-          onNavigate(extra.url);
+          onNavigate(sanitizeNotificationUrl(extra.url) ?? "/lembretes");
         } else {
           onNavigate("/transacoes?novo=despesa");
         }
