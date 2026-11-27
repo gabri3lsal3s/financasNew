@@ -399,7 +399,7 @@ export async function unenrollMfaFactor(factorId: string): Promise<void> {
 export async function signInAdmin(
   email: string,
   password: string,
-): Promise<{ id: string; role: string }> {
+): Promise<{ id: string; role: string; mfaRequired: boolean }> {
   await signInWithEmail(email, password);
   const supabase = getSupabase();
   const { data: authData } = await supabase.auth.getUser();
@@ -431,7 +431,25 @@ export async function signInAdmin(
     throw new AppError("permission", "Conta de administrador inativa ou suspensa.");
   }
 
-  return { id: user.id, role: profile.role };
+  let mfaRequired: boolean;
+  try {
+    const [aalResult, factorsResult] = await Promise.all([
+      supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
+      supabase.auth.mfa.listFactors(),
+    ]);
+    const currentLevel = aalResult.data?.currentLevel;
+    const nextLevel = aalResult.data?.nextLevel;
+    const allFactors = (factorsResult.data?.all ?? []) as Array<{ status?: string }>;
+    const totpFactors = (factorsResult.data?.totp ?? []) as Array<{ status?: string }>;
+    const hasVerifiedFactor =
+      allFactors.some((f) => f.status === "verified") ||
+      totpFactors.some((f) => f.status === "verified");
+    mfaRequired = currentLevel !== "aal2" && (nextLevel === "aal2" || hasVerifiedFactor);
+  } catch {
+    mfaRequired = false;
+  }
+
+  return { id: user.id, role: profile.role, mfaRequired };
 }
 
 /**

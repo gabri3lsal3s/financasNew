@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { RequireAdminSession } from "./require-admin-session";
@@ -240,6 +240,80 @@ describe("RequireAdminSession Guard", () => {
 
     expect(await screen.findByText("Tela de Login Admin")).toBeInTheDocument();
     expect(screen.queryByText("Dashboard Admin Protegido")).not.toBeInTheDocument();
+  });
+
+  it("redireciona para /entrar?desafio=totp se a RPC retornar admin_aal2_required", async () => {
+    mockUseAuth.mockReturnValue({
+      session: { user: { id: "u-admin" } },
+      loading: false,
+      mfaRequired: false,
+      mfaVerified: false,
+    });
+    mockUseUserAccess.mockReturnValue({
+      isLoading: false,
+      isAdmin: true,
+    });
+    mockCheckAdminPortalGrant.mockResolvedValue({
+      granted: false,
+      portalScope: null,
+      expiresAt: null,
+      reason: "admin_aal2_required",
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/admin/dashboard"]}>
+        <Routes>
+          <Route element={<RequireAdminSession />}>
+            <Route path="/admin/dashboard" element={<div>Dashboard Admin Protegido</div>} />
+          </Route>
+          <Route path="/entrar" element={<div>Tela de Desafio TOTP</div>} />
+          <Route path="/admin/login" element={<div>Tela de Login Admin</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Tela de Desafio TOTP")).toBeInTheDocument();
+    expect(screen.queryByText("Dashboard Admin Protegido")).not.toBeInTheDocument();
+  });
+
+  it("encerra loading e redireciona para /admin/login se verifyAdminPortalGrant exceder o timeout", async () => {
+    vi.useFakeTimers();
+    try {
+      mockUseAuth.mockReturnValue({
+        session: { user: { id: "u-admin" } },
+        loading: false,
+        mfaRequired: false,
+        mfaVerified: true,
+      });
+      mockUseUserAccess.mockReturnValue({
+        isLoading: false,
+        isAdmin: true,
+      });
+      mockCheckAdminPortalGrant.mockImplementation(() => new Promise(() => {}));
+
+      render(
+        <MemoryRouter initialEntries={["/admin/dashboard"]}>
+          <Routes>
+            <Route element={<RequireAdminSession />}>
+              <Route path="/admin/dashboard" element={<div>Dashboard Admin Protegido</div>} />
+            </Route>
+            <Route path="/admin/login" element={<div>Tela de Login Admin</div>} />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      expect(screen.getByText(/Verificando credenciais de operador/i)).toBeInTheDocument();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000);
+        await Promise.resolve();
+      });
+
+      expect(screen.getByText("Tela de Login Admin")).toBeInTheDocument();
+      expect(screen.queryByText("Dashboard Admin Protegido")).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("redireciona para /entrar?desafio=totp se o admin possui MFA pendente de validação (AAL2)", () => {

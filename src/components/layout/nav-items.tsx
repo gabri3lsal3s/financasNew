@@ -9,7 +9,6 @@ import {
   House,
   PiggyBank,
   Settings,
-  ShieldCheck,
   Sparkles,
   Tags,
   Users,
@@ -51,7 +50,6 @@ export const navItems: NavItem[] = [
   { label: "Insights", shortLabel: "Insights", path: "/insights", icon: Sparkles, featureKey: "insights" },
   { label: "Lembretes", shortLabel: "Lembretes", path: "/lembretes", icon: Bell, featureKey: "reminders" },
   { label: "Configurações", shortLabel: "Ajustes", path: "/configuracoes", icon: Settings },
-  { label: "Administração", shortLabel: "Admin", path: "/admin", icon: ShieldCheck, adminOnly: true },
 ];
 
 /** Grupos semânticos para organização na Sidebar desktop e menu Mais no mobile. */
@@ -83,7 +81,6 @@ export const navGroups: NavGroup[] = [
     items: [
       { label: "Lembretes", shortLabel: "Lembretes", path: "/lembretes", icon: Bell, featureKey: "reminders" },
       { label: "Configurações", shortLabel: "Ajustes", path: "/configuracoes", icon: Settings },
-      { label: "Administração", shortLabel: "Admin", path: "/admin", icon: ShieldCheck, adminOnly: true },
     ],
   },
 ];

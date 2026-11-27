@@ -41,7 +41,10 @@ export function AdminLoginPage() {
     return () => clearInterval(timer);
   }, [lockoutRemaining]);
 
-  if (session?.user && isAdmin && !accessLoading) {
+  const portalDeniedReason =
+    (location.state as { portalDeniedReason?: string | null } | null)?.portalDeniedReason ?? null;
+
+  if (session?.user && isAdmin && !accessLoading && !portalDeniedReason) {
     const from =
       (location.state as { from?: { pathname?: string } })?.from?.pathname || "/admin/dashboard";
     if (mfaRequired && !mfaVerified) {
@@ -58,17 +61,31 @@ export function AdminLoginPage() {
     setLoading(true);
 
     try {
-      await signInAdmin(email.trim(), password);
+      const result = await signInAdmin(email.trim(), password);
       triggerSensory("success");
       setConsecutiveFailures(0);
+
+      const destination =
+        (location.state as { from?: { pathname?: string } })?.from?.pathname || "/admin/dashboard";
+
+      if (result?.mfaRequired) {
+        pushToast({
+          title: "Verificação em duas etapas",
+          description: "Confirme o código do autenticador para acessar o Console Administrativo.",
+          variant: "info",
+        });
+        navigate("/entrar?desafio=totp", {
+          replace: true,
+          state: { from: { pathname: destination } },
+        });
+        return;
+      }
+
       pushToast({
         title: "Sessão Administrativa Iniciada",
         description: "Bem-vindo ao Console de Governança do Axir.",
         variant: "success",
       });
-
-      const destination =
-        (location.state as { from?: { pathname?: string } })?.from?.pathname || "/admin/dashboard";
       navigate(destination, { replace: true });
     } catch (err) {
       triggerSensory("destructive");
@@ -118,6 +135,16 @@ export function AdminLoginPage() {
           {errorMessage && (
             <Alert variant="error">
               <span className="text-xs leading-relaxed">{errorMessage}</span>
+            </Alert>
+          )}
+
+          {!errorMessage && portalDeniedReason && (
+            <Alert variant="warning">
+              <span className="text-xs leading-relaxed">
+                {portalDeniedReason === "timeout" || portalDeniedReason === "rpc_error"
+                  ? "Não foi possível validar sua credencial de operador no momento. Faça login novamente ou tente em instantes."
+                  : "Sua sessão atual não possui concessão ativa para o portal administrativo. Entre com suas credenciais de operador para continuar."}
+              </span>
             </Alert>
           )}
 

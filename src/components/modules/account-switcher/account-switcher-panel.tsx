@@ -185,23 +185,26 @@ export function AccountSwitcherPanel({
     await onLogoutDevice?.();
   };
 
-  const renderAdminPortalFooter = () => (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-t border-border/80 pt-3">
-      <span className="text-xs text-muted-foreground">
-        Acesso restrito a operadores em endereço isolado.
-      </span>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        disabled={isBusy}
-        onClick={onOpenAdminPortal}
-      >
-        <Shield className="size-4 shrink-0" aria-hidden="true" />
-        <span>Portal administrativo</span>
-      </Button>
-    </div>
-  );
+  const renderAdminPortalFooter = () => {
+    if (!onOpenAdminPortal) return null;
+    return (
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-t border-border/80 pt-3">
+        <span className="text-xs text-muted-foreground">
+          Acesso restrito a operadores em endereço isolado.
+        </span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={isBusy}
+          onClick={onOpenAdminPortal}
+        >
+          <Shield className="size-4 shrink-0" aria-hidden="true" />
+          <span>Portal administrativo</span>
+        </Button>
+      </div>
+    );
+  };
 
   if (loading && visibleAccounts.length === 0) {
     return (

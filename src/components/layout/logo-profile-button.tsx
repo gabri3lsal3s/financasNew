@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useModalTransition } from "@/hooks/use-modal-transition";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { useAccountSwitcher } from "@/state/use-account-switcher";
+import { useUserAccess } from "@/state/queries/use-user-access";
 import { useUserSubscription } from "@/state/queries/use-user-subscription";
 import { AXIR_APP_NAME, AXIR_APP_VERSION } from "@/services/native/app-links";
 import { triggerSensory } from "@/services/sensory";
@@ -62,6 +63,7 @@ export function LogoProfileButton({
   const navigate = useNavigate();
   const { signOut } = useSignOut();
   const subscription = useUserSubscription();
+  const { isAdmin } = useUserAccess(user?.id);
   const accountSwitcher = useAccountSwitcher();
   const { listAccounts } = accountSwitcher;
 
@@ -234,12 +236,16 @@ export function LogoProfileButton({
           onAddAccount={() => navigateFromSwitcher("/login?mode=add")}
           onReauthAccount={() => navigateFromSwitcher("/login?mode=reauth")}
           onUnlock={() => navigateFromSwitcher("/login?mode=unlock")}
-          onOpenAdminPortal={() => {
-            setSwitcherOpen(false);
-            if (typeof window !== "undefined") {
-              window.location.assign("/admin");
-            }
-          }}
+          onOpenAdminPortal={
+            isAdmin
+              ? () => {
+                  setSwitcherOpen(false);
+                  if (typeof window !== "undefined") {
+                    window.location.assign("/admin");
+                  }
+                }
+              : undefined
+          }
           onLogout={async ({ remember }) => {
             const res = await accountSwitcher.logout({ remember });
             if (res.ok) {

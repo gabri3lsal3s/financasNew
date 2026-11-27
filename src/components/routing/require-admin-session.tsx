@@ -13,6 +13,8 @@ import { useUserAccess } from "@/state/queries/use-user-access";
  * Redireciona usuários desautenticados ou sem concessão para o portal exclusivo /admin/login.
  * Impõe política estrita de inatividade de 30 minutos com aviso prévio de 60 segundos.
  */
+const GRANT_CHECK_TIMEOUT_MS = 10_000;
+
 export function RequireAdminSession() {
   const { session, loading: authLoading, mfaRequired, mfaVerified, mfaError } = useAuth();
   const { isAdmin, isLoading: accessLoading } = useUserAccess(session?.user?.id);
@@ -23,7 +25,8 @@ export function RequireAdminSession() {
   const [grantState, setGrantState] = useState<{
     checkedForUserId: string | null;
     granted: boolean;
-  }>({ checkedForUserId: null, granted: false });
+    reason: string | null;
+  }>({ checkedForUserId: null, granted: false, reason: null });
 
   useEffect(() => {
     const userId = session?.user?.id ?? null;
@@ -32,20 +35,40 @@ export function RequireAdminSession() {
     }
 
     let cancelled = false;
-    verifyAdminPortalGrant()
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    const timeoutPromise = new Promise<{ granted: false; reason: string }>((resolve) => {
+      timeoutId = setTimeout(() => {
+        resolve({ granted: false, reason: "timeout" });
+      }, GRANT_CHECK_TIMEOUT_MS);
+    });
+
+    Promise.race([verifyAdminPortalGrant(), timeoutPromise])
       .then((res) => {
         if (!cancelled) {
-          setGrantState({ checkedForUserId: userId, granted: res.granted });
+          setGrantState({
+            checkedForUserId: userId,
+            granted: res.granted,
+            reason: res.reason ?? null,
+          });
         }
       })
       .catch(() => {
         if (!cancelled) {
-          setGrantState({ checkedForUserId: userId, granted: false });
+          setGrantState({ checkedForUserId: userId, granted: false, reason: "rpc_error" });
+        }
+      })
+      .finally(() => {
+        if (timeoutId !== null) {
+          clearTimeout(timeoutId);
         }
       });
 
     return () => {
       cancelled = true;
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+      }
     };
   }, [canCheckGrant, session?.user?.id]);
 
@@ -68,12 +91,18 @@ export function RequireAdminSession() {
     return <Navigate to="/admin/login" replace state={{ from: location }} />;
   }
 
-  if (mfaPending) {
+  if (mfaPending || grantState.reason === "admin_aal2_required") {
     return <Navigate to="/entrar?desafio=totp" replace state={{ from: location }} />;
   }
 
   if (!portalGranted) {
-    return <Navigate to="/admin/login" replace state={{ from: location }} />;
+    return (
+      <Navigate
+        to="/admin/login"
+        replace
+        state={{ from: location, portalDeniedReason: grantState.reason ?? "portal_grant_missing" }}
+      />
+    );
   }
 
   return (

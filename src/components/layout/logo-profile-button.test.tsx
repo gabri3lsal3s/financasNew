@@ -50,6 +50,11 @@ vi.mock("@/state/queries/use-user-subscription", () => ({
   useUserSubscription: () => mockSubscription,
 }));
 
+const mockUseUserAccess = vi.fn(() => ({ isAdmin: false }));
+vi.mock("@/state/queries/use-user-access", () => ({
+  useUserAccess: () => mockUseUserAccess(),
+}));
+
 describe("LogoProfileButton (mobile & desktop)", () => {
   beforeEach(() => {
     vi.clearAllMocks();

@@ -110,4 +110,30 @@ describe("AdminLoginPage Component", () => {
     expect(screen.queryByText("Dashboard Admin")).not.toBeInTheDocument();
     expect(screen.getByText("Tela de Desafio TOTP")).toBeInTheDocument();
   });
+
+  it("redireciona imediatamente para /entrar?desafio=totp após signInAdmin retornar mfaRequired: true", async () => {
+    const user = userEvent.setup();
+    mockSignInAdmin.mockResolvedValueOnce({
+      id: "admin-1",
+      role: "superadmin",
+      mfaRequired: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/admin/login"]}>
+        <Routes>
+          <Route path="/admin/login" element={<AdminLoginPage />} />
+          <Route path="/entrar" element={<div>Tela de Desafio TOTP</div>} />
+          <Route path="/admin/dashboard" element={<div>Dashboard Admin</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await user.type(screen.getByLabelText(/E-mail Administrativo/i), "admin@axir.com.br");
+    await user.type(screen.getByLabelText(/Senha de Acesso/i), "senha12345");
+    await user.click(screen.getByRole("button", { name: /Entrar no Console/i }));
+
+    expect(await screen.findByText("Tela de Desafio TOTP")).toBeInTheDocument();
+    expect(screen.queryByText("Dashboard Admin")).not.toBeInTheDocument();
+  });
 });
