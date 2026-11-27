@@ -85,15 +85,15 @@ export function CarouselDismissPopover({
         <Button
           type="button"
           variant="ghost"
-          size="icon"
+          size="sm"
           aria-label={label}
           title={label}
           className={cn(
-            "relative size-7 sm:size-8 shrink-0 text-muted-foreground hover:text-foreground cursor-pointer max-sm:after:absolute max-sm:after:-inset-2",
+            "relative size-8 !w-8 !min-w-8 p-0 shrink-0 text-muted-foreground hover:text-foreground cursor-pointer max-sm:after:absolute max-sm:after:-inset-1.5",
             className,
           )}
         >
-          <X className="size-3.5 sm:size-4" aria-hidden="true" />
+          <X className="size-4" aria-hidden="true" />
         </Button>
       </PopoverTrigger>
       <PopoverContent

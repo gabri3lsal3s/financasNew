@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
-import { ShieldCheck } from "lucide-react";
+import { Check, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router";
-import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
-import { CarouselDismissPopover } from "@/components/modules/carousel-dismiss-popover";
-import { useCarouselPauseLock } from "@/components/modules/carousel-pause-context-def";
+import {
+  AlertCarouselCard,
+  type AlertCarouselCardAction,
+  type AlertCarouselCardTone,
+} from "@/components/modules/alert-carousel-card";
 import { SmartAdvisorCardSkeleton } from "@/components/modules/smart-advisor-card-skeleton";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { buildSmartAdvisorBreakdown } from "@/domain/calculation-memory/builders/insights-breakdown";
 import type { SmartAdvisorCardContext, SmartAdvisorInsight } from "@/domain/insights/advisor";
 import { resolveInsightThemeFamily } from "@/domain/insights/attention-budget";
@@ -25,16 +25,8 @@ import { AdvisorCategoryIcon } from "./smart-advisor-category-icon";
 import {
   resolveSmartAdvisorActionRoute,
   resolveSmartAdvisorPresentation,
-  type SmartAdvisorPresentation,
 } from "./smart-advisor-routing";
 
-const CAROUSEL_ICON_TONES: Record<SmartAdvisorPresentation["badgeVariant"], string> = {
-  critical: "bg-critical/10 border-critical/20 text-critical-strong",
-  warning: "bg-warning/15 border-warning/20 text-warning-strong",
-  positive: "bg-positive/10 border-positive/20 text-positive-strong",
-  portfolio: "bg-portfolio/10 border-portfolio/20 text-portfolio",
-  muted: "bg-primary/10 border-primary/20 text-primary-strong",
-};
 
 const NOOP = () => {};
 
@@ -135,8 +127,6 @@ function SmartAdvisorCardView({
   const cardContext =
     controlledCardContext ?? activeInsight.cardContext ?? activeInsight.metadata?.cardContext;
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [memoryOpen, setMemoryOpen] = useState(false);
-  useCarouselPauseLock(Boolean(embeddedInCarousel && memoryOpen), "smart-advisor-memory");
 
   const breakdown = useMemo(() => {
     const now = new Date();
@@ -259,109 +249,115 @@ function SmartAdvisorCardView({
   };
 
   if (embeddedInCarousel) {
+    const tone: AlertCarouselCardTone =
+      presentation.badgeVariant === "muted" ? "info" : presentation.badgeVariant;
+    const isTxOneOffCalibration =
+      activeInsight.category === "calibration" &&
+      activeInsight.primaryAction?.kind === "mark_tx_one_off";
+    const isRecurrenceConfirmation =
+      activeInsight.category === "calibration" && !isTxOneOffCalibration;
+    const usesCustomFooter = Boolean(
+      isTxOneOffCalibration ||
+        isRecurrenceConfirmation ||
+        (canPauseFamily && onPauseFamily),
+    );
+
+    let primaryAction: AlertCarouselCardAction | undefined;
+    if (!usesCustomFooter && activeInsight.primaryAction) {
+      if (activeInsight.primaryAction.kind === "confirm_expense") {
+        primaryAction = {
+          label: activeInsight.primaryAction.label,
+          variant: "default",
+          disabled: isSubmitting,
+          icon: <Check className="size-3.5" aria-hidden="true" />,
+          onClick: handleConfirmExpenseAction,
+        };
+      } else if (
+        activeInsight.category === "income" &&
+        activeInsight.primaryAction.kind === "confirm_income"
+      ) {
+        primaryAction = {
+          label: activeInsight.primaryAction.label,
+          variant: "default",
+          disabled: isSubmitting,
+          icon: <Check className="size-3.5" aria-hidden="true" />,
+          onClick: handleConfirmIncomeAction,
+        };
+      } else {
+        primaryAction = {
+          label: activeInsight.primaryAction.label,
+          variant: "default",
+          disabled: isSubmitting,
+          trailingIcon: <ChevronRight className="size-3.5" aria-hidden="true" />,
+          onClick: handlePrimaryActionClick,
+        };
+      }
+    }
+
     return (
-      <div
+      <AlertCarouselCard
+        id={`advisor.${activeInsight.themeKey}`}
+        tone={tone}
         role="region"
-        aria-label="Assistente Proativo de Insights"
-        className={cn(
-          "relative group w-full h-full min-h-[104px] sm:min-h-[84px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs transition-all motion-reduce:transition-none",
-          className,
-        )}
-      >
-        <div
-          key={activeInsight.id}
-          data-testid="smart-advisor-content-body"
-          className="flex items-start sm:items-center gap-3 min-w-0 pr-9 sm:pr-0 flex-1 motion-safe:animate-in motion-safe:fade-in-50 motion-safe:duration-150 motion-reduce:animate-none motion-reduce:transition-none"
-        >
-          <span
-            className={cn(
-              "flex size-9 shrink-0 items-center justify-center rounded-xl border",
-              CAROUSEL_ICON_TONES[presentation.badgeVariant],
-            )}
-            aria-hidden="true"
-          >
-            <AdvisorCategoryIcon kind={presentation.iconKind} sizeClass="size-4.5" inheritColor />
-          </span>
-          <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-            <div className="flex items-center gap-2 min-w-0 flex-wrap">
-              <h3
-                className="text-sm font-semibold text-foreground tracking-tight line-clamp-2 break-words"
-                title={activeInsight.title}
-              >
-                {activeInsight.title}
-              </h3>
-              <Badge variant={presentation.badgeVariant} size="xs" className="shrink-0 font-medium">
-                {presentation.badgeLabel}
-              </Badge>
-              {breakdown ? (
-                <CalculationMemoryModal
-                  breakdown={breakdown}
-                  label={`Memória de cálculo de ${presentation.badgeLabel}`}
-                  priority="p0"
-                  open={memoryOpen}
-                  onOpenChange={setMemoryOpen}
-                />
-              ) : null}
-            </div>
-            <p
-              className="text-xs text-muted-foreground leading-relaxed line-clamp-2 break-words"
-              title={activeInsight.description}
-            >
-              {activeInsight.description}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0 self-stretch sm:self-center mt-auto sm:mt-0">
-          <SmartAdvisorCardFooter
-            insight={activeInsight}
-            cardContext={cardContext}
-            isSubmitting={isSubmitting}
-            hasExternalConfirmRecurrence={Boolean(onConfirmRecurrence)}
-            hasExternalConfirmIncome={Boolean(onConfirmIncome)}
-            hasExternalConfirmExpense={Boolean(onConfirmExpense)}
-            onConfirmRecurrence={handleConfirmRecurrenceAction}
-            onIgnoreRecurrence={(reason) => void handleIgnoreRecurrence(reason)}
-            onMarkTxOneOff={handleMarkTxOneOff}
-            onPauseFamily={handlePauseFamily}
-            canPauseFamily={canPauseFamily}
-            onConfirmIncome={handleConfirmIncomeAction}
-            onConfirmExpense={handleConfirmExpenseAction}
-            onActionClick={handlePrimaryActionClick}
-            onDismiss={() => handleDismiss()}
-            embeddedInCarousel
+        ariaLabel="Assistente Proativo de Insights"
+        className={className}
+        icon={
+          <AdvisorCategoryIcon
+            kind={presentation.iconKind}
+            sizeClass="size-4.5"
+            inheritColor
           />
-
-          {isTopSavingsEssential ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              aria-label="Manter como essencial"
-              title="Manter como essencial"
-              sensoryIntent={onMarkEssential ? "action" : false}
-              onClick={() => void handleMarkEssential()}
-              disabled={isSubmitting}
-              className="relative h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground shrink-0 gap-1 cursor-pointer max-sm:after:absolute max-sm:after:-inset-2"
-            >
-              <ShieldCheck className="size-3.5" aria-hidden="true" />
-              <span className="hidden sm:inline">Manter como essencial</span>
-              <span className="sr-only sm:hidden">Manter como essencial</span>
-            </Button>
-          ) : (
-            <div className="absolute top-3 right-3 sm:static">
-              <CarouselDismissPopover
-                allowedPresets={
-                  allowedPresets ??
-                  resolveCarouselCardPolicy(`advisor.${activeInsight.themeKey}`).allowedPresets
-                }
-                onSelectPreset={onSelectPreset}
-                onDismiss={(days) => handleDismiss(days)}
-                label="Dispensar sugestão"
-              />
-            </div>
-          )}
-        </div>
-      </div>
+        }
+        title={activeInsight.title}
+        badge={{
+          label: presentation.badgeLabel,
+          variant: presentation.badgeVariant,
+        }}
+        description={activeInsight.description}
+        calculationBreakdown={breakdown ?? undefined}
+        calculationMemoryLabel={`Memória de cálculo de ${presentation.badgeLabel}`}
+        primaryAction={primaryAction}
+        customActions={
+          usesCustomFooter ? (
+            <SmartAdvisorCardFooter
+              insight={activeInsight}
+              cardContext={cardContext}
+              isSubmitting={isSubmitting}
+              hasExternalConfirmRecurrence={Boolean(onConfirmRecurrence)}
+              hasExternalConfirmIncome={Boolean(onConfirmIncome)}
+              hasExternalConfirmExpense={Boolean(onConfirmExpense)}
+              onConfirmRecurrence={handleConfirmRecurrenceAction}
+              onIgnoreRecurrence={(reason) => void handleIgnoreRecurrence(reason)}
+              onMarkTxOneOff={handleMarkTxOneOff}
+              onPauseFamily={handlePauseFamily}
+              canPauseFamily={canPauseFamily}
+              onConfirmIncome={handleConfirmIncomeAction}
+              onConfirmExpense={handleConfirmExpenseAction}
+              onActionClick={handlePrimaryActionClick}
+              onDismiss={() => handleDismiss()}
+              embeddedInCarousel
+            />
+          ) : undefined
+        }
+        essentialAction={
+          isTopSavingsEssential
+            ? {
+                label: "Manter como essencial",
+                disabled: isSubmitting,
+                sensoryIntent: onMarkEssential ? "action" : false,
+                onClick: () => void handleMarkEssential(),
+              }
+            : undefined
+        }
+        dismissPolicy={{
+          allowedPresets:
+            allowedPresets ??
+            resolveCarouselCardPolicy(`advisor.${activeInsight.themeKey}`).allowedPresets,
+          onSelectPreset,
+          onDismiss: (days) => handleDismiss(days),
+          label: "Dispensar sugestão",
+        }}
+      />
     );
   }
 

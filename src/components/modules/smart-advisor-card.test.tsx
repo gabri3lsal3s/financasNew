@@ -765,5 +765,39 @@ describe("SmartAdvisorCard", () => {
       fireEvent.click(screen.getByRole("button", { name: /Dispensar por 7 dias/i }));
       expect(onDismiss).toHaveBeenCalledWith(criticalInsight.themeKey, 7);
     });
+
+    it("quando embeddedInCarousel={true}, exibe descrição integral sem line-clamp-2 e mantém ShieldCheck + X juntos", () => {
+      const onMarkEssential = vi.fn();
+      const savingsInsight: SmartAdvisorInsight = {
+        id: "savings:netflix",
+        themeKey: "savings:netflix",
+        priority: 2,
+        category: "savings",
+        title: "Assinatura recorrente de streaming",
+        description: "Descrição longa completa que não deve ser cortada com line-clamp-2 dentro do carrossel.",
+        iconName: "sparkles",
+        primaryAction: {
+          label: "Revisar assinatura",
+          kind: "cut_subscription",
+          payload: { key: "netflix", name: "Netflix" },
+        },
+      };
+
+      const { container } = render(
+        <SmartAdvisorCard
+          embeddedInCarousel
+          insight={savingsInsight}
+          onDismiss={vi.fn()}
+          onMarkEssential={onMarkEssential}
+        />,
+      );
+
+      const card = container.querySelector('[data-card-id="advisor.savings:netflix"]');
+      expect(card).not.toBeNull();
+      const desc = screen.getByText(savingsInsight.description);
+      expect(desc.className).not.toContain("line-clamp-2");
+      expect(screen.getByRole("button", { name: "Manter como essencial" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Dispensar sugestão" })).toBeInTheDocument();
+    });
   });
 });

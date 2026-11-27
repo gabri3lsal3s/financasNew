@@ -127,17 +127,19 @@ export function SmartAdvisorCardFooter({
               <span>{insight.primaryAction.label}</span>
               <ChevronRight className="size-3.5" aria-hidden="true" />
             </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              sensoryIntent="action"
-              onClick={onDismiss}
-              disabled={isSubmitting}
-              className="gap-1.5 text-xs h-8 text-muted-foreground hover:text-foreground cursor-pointer"
-            >
-              <X className="size-3.5" aria-hidden="true" />
-              <span>Dispensar</span>
-            </Button>
+            {!embeddedInCarousel ? (
+              <Button
+                size="sm"
+                variant="ghost"
+                sensoryIntent="action"
+                onClick={onDismiss}
+                disabled={isSubmitting}
+                className="gap-1.5 text-xs h-8 text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                <X className="size-3.5" aria-hidden="true" />
+                <span>Dispensar</span>
+              </Button>
+            ) : null}
           </>
         ) : insight.primaryAction?.kind === "confirm_expense" ? (
           <Button

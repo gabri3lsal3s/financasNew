@@ -240,5 +240,13 @@ export function resolveSmartAdvisorActionRoute(
     return `?${params.toString()}`;
   }
 
+  if (insight.themeKey === "celebration:dividends_cover_fixed") {
+    return "/investments?tab=dividends";
+  }
+
+  if (insight.category === "celebration") {
+    return "/transacoes";
+  }
+
   return null;
 }

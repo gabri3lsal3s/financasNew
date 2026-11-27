@@ -5,8 +5,8 @@ import { MoneyText } from "@/components/ui/money-text";
 import { AlertCarouselCard } from "./alert-carousel-card";
 
 describe("AlertCarouselCard", () => {
-  it("renderiza título sem truncate cego e aplica pr-9 sm:pr-0 quando dispensável", () => {
-    const { container } = render(
+  it("renderiza título sem truncate cego e posiciona utilitários na coluna dedicada", () => {
+    render(
       <AlertCarouselCard
         id="portfolio.drift"
         tone="warning"
@@ -34,7 +34,7 @@ describe("AlertCarouselCard", () => {
     expect(heading.className).toContain("break-words");
     expect(heading.className).not.toContain("truncate");
 
-    expect(container.querySelector(".pr-9")).not.toBeNull();
+    expect(screen.getByRole("button", { name: /Dispensar/i }).closest(".col-start-3")).not.toBeNull();
     expect(screen.getByText(/R\$\s*1\.500,00/)).toBeInTheDocument();
   });
 
@@ -155,5 +155,60 @@ describe("AlertCarouselCard", () => {
     fireEvent.click(screen.getByRole("button", { name: "Ver detalhes do aporte" }));
     expect(onPrimary).toHaveBeenCalledTimes(1);
     expect(onSecondary).toHaveBeenCalledTimes(1);
+  });
+
+  it("centraliza verticalmente no mobile quando !hasActions e ancora CTA na base quando hasActions", () => {
+    const { container: noActionsContainer } = render(
+      <AlertCarouselCard
+        id="advisor.celebration"
+        tone="positive"
+        icon={<AlertTriangle className="size-4.5" />}
+        title="Economia real no mês"
+        description="Descrição completa sem truncamento para equilibrar altura."
+      />,
+    );
+    const noActionsCard = noActionsContainer.querySelector('[data-card-id="advisor.celebration"]');
+    expect(noActionsCard?.className).toContain("content-center");
+    expect(noActionsCard?.className).not.toContain("grid-rows-[auto_1fr_auto]");
+
+    const { container: withActionsContainer } = render(
+      <AlertCarouselCard
+        id="advisor.budget"
+        tone="warning"
+        icon={<AlertTriangle className="size-4.5" />}
+        title="Orçamento próximo do limite"
+        description="Você atingiu 85% da meta."
+        primaryAction={{ label: "Revisar", onClick: vi.fn() }}
+      />,
+    );
+    const withActionsCard = withActionsContainer.querySelector('[data-card-id="advisor.budget"]');
+    expect(withActionsCard?.className).toContain("content-start");
+    expect(withActionsCard?.className).toContain("grid-rows-[auto_1fr_auto]");
+  });
+
+  it("renderiza essentialAction junto com dismissPolicy e suporta customActions", () => {
+    const onEssential = vi.fn();
+    const onDismiss = vi.fn();
+    render(
+      <AlertCarouselCard
+        id="advisor.savings.netflix"
+        tone="warning"
+        icon={<AlertTriangle className="size-4.5" />}
+        title="Assinatura recorrente"
+        description="Netflix mensal."
+        essentialAction={{ label: "Manter como essencial", onClick: onEssential }}
+        customActions={<button type="button">Ação customizada</button>}
+        dismissPolicy={{
+          allowedPresets: ["7d", "1m"],
+          onSelectPreset: onDismiss,
+          label: "Dispensar sugestão",
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Manter como essencial" }));
+    expect(onEssential).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Ação customizada" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Dispensar sugestão" })).toBeInTheDocument();
   });
 });
