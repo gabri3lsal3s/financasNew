@@ -127,6 +127,18 @@ export { QualifiedDismissPopover } from "./qualified-dismiss-popover";
 export type { QualifiedDismissPopoverProps } from "./qualified-dismiss-popover";
 export { CarouselDismissPopover } from "./carousel-dismiss-popover";
 export type { CarouselDismissPopoverProps } from "./carousel-dismiss-popover";
+export { AlertCarouselCard } from "./alert-carousel-card";
+export type {
+  AlertCarouselCardProps,
+  AlertCarouselCardAction,
+  AlertCarouselCardTone,
+} from "./alert-carousel-card";
+export {
+  CarouselPauseProvider,
+  useCarouselPauseContext,
+  useCarouselPauseLock,
+} from "./carousel-pause-context";
+export type { CarouselPauseContextValue } from "./carousel-pause-context";
 export { WelcomeFeatureModal } from "./welcome-feature-modal";
 export type { WelcomeFeatureModalProps } from "./welcome-feature-modal";
 export { WELCOME_MODAL_STORAGE_KEY, WELCOME_SLIDES } from "./welcome-feature-modal-data";

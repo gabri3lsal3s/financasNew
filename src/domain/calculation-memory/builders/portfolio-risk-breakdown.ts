@@ -150,14 +150,14 @@ export function buildPortfolioRiskBreakdown(e: RiskEvidence): CalculationBreakdo
         tone: "muted",
       },
       {
-        label: `Participação na Renda Fixa (Teto ${e.policy.maxPrivateIssuerInFixedIncomePct}%)`,
+        label: `Participação na Renda Fixa (Teto ${e.policy.maxPrivateIssuerInFixedIncomePct.toLocaleString("pt-BR")}%)`,
         operator: "=",
         rawValue: e.classPct,
         unit: "percent",
         tone: e.classPct > e.policy.maxPrivateIssuerInFixedIncomePct ? "negative" : "default",
       },
       {
-        label: `Participação Global (Teto ${e.policy.maxPrivateIssuerPct}%)`,
+        label: `Participação Global (Teto ${e.policy.maxPrivateIssuerPct.toLocaleString("pt-BR")}%)`,
         operator: "=",
         rawValue: e.globalPct,
         unit: "percent",

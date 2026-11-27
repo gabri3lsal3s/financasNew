@@ -12,7 +12,7 @@
 | 1 | Persistência compatível da dispensa | Concluída | testes focais + `npm run verify` |
 | 2A | Precisão matemática dos motores e destinos | Concluída | testes focais + `npm run verify` |
 | 2B | Builders de memória de cálculo | Concluída | testes focais + `npm run verify` |
-| 3 | Componentes únicos e acessibilidade | Aguardando | idem |
+| 3 | Componentes únicos e acessibilidade | Concluída | testes focais + `npm run verify` |
 | 4 | Migração integral e release da Onda 1 | Aguardando | `npm run verify:full` |
 | 5 | Avaliadores e projeção bidirecional (Onda 2) | Aguardando | `npm run verify` |
 | 6 | Central, ações contextuais e encerramento | Aguardando | `npm run verify:full` |
@@ -232,10 +232,10 @@ Cada fase roda em branch de trabalho. Primeiro fixar as expectativas que disting
 
 ### Fase 3 — Componentes únicos e acessibilidade
 
-- [ ] Criar `src/components/modules/{alert-carousel-card,carousel-pause-context}.tsx` e `alert-carousel-card.test.tsx` no mesmo diretório. Modificar `src/components/modules/{dashboard-alerts-carousel,carousel-dismiss-popover}.tsx`, seus testes, `src/components/modules/overview/use-alerts-carousel.ts` e `src/components/modules/index.ts`. Evoluir os arquivos existentes evita duplicar implementações sob novos nomes.
-- [ ] Conferir aderência da UI às regras já atualizadas em `AGENTS.md` §4.19 e §4.35 (Fase 1), garantindo presets `7d / 1m / 6m` com data de retorno e pause-lock ativo em overlays/portais.
-- [ ] Testar com timers dois locks sobrepostos, desmontagem, alterações de itens, swipe vertical/horizontal, zero/um slide, pausa manual, reduced motion, retorno de foco, bloqueio de tab nos inativos e apenas um diálogo por ação. Verificar §4.2 em viewport estreita, incluindo TalkBack/teclado, leitor de tela e Back/retorno de Configurações em build Capacitor antes de liberar.
-- [ ] Rodar `npx vitest run src/components/modules/dashboard-alerts-carousel.test.tsx src/components/modules/alert-carousel-card.test.tsx src/components/modules/carousel-dismiss-popover.test.tsx src/tests/accessibility-audit.test.tsx` e `npm run verify`.
+- [x] Criar `src/components/modules/{alert-carousel-card,carousel-pause-context}.tsx` e `alert-carousel-card.test.tsx` no mesmo diretório. Modificar `src/components/modules/{dashboard-alerts-carousel,carousel-dismiss-popover}.tsx`, seus testes, `src/components/modules/overview/use-alerts-carousel.ts` e `src/components/modules/index.ts`. Evoluir os arquivos existentes evita duplicar implementações sob novos nomes.
+- [x] Conferir aderência da UI às regras já atualizadas em `AGENTS.md` §4.19 e §4.35 (Fase 1), garantindo presets `7d / 1m / 6m` com data de retorno e pause-lock ativo em overlays/portais.
+- [x] Testar com timers dois locks sobrepostos, desmontagem, alterações de itens, swipe vertical/horizontal, zero/um slide, pausa manual, reduced motion, retorno de foco, bloqueio de tab nos inativos e apenas um diálogo por ação. Verificar §4.2 em viewport estreita, incluindo TalkBack/teclado, leitor de tela e Back/retorno de Configurações em build Capacitor antes de liberar.
+- [x] Rodar `npx vitest run src/components/modules/dashboard-alerts-carousel.test.tsx src/components/modules/alert-carousel-card.test.tsx src/components/modules/carousel-dismiss-popover.test.tsx src/tests/accessibility-audit.test.tsx` e `npm run verify`.
 
 ### Fase 4 — Migração integral e release independente
 

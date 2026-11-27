@@ -94,7 +94,7 @@ export function buildPortfolioCarouselBreakdown(e: PortfolioEvidence): Calculati
     return enrichBreakdown({
       id: "portfolio-drift",
       title: "Desvio de Alocação por Classe",
-      description: `Compara a alocação atual sobre o patrimônio investido contra as metas efetivas (tolerância de ±${e.tolerancePp} p.p.).`,
+      description: `Compara a alocação atual sobre o patrimônio investido contra as metas efetivas (tolerância de ±${e.tolerancePp.toLocaleString("pt-BR")} p.p.).`,
       formulaExpression: "Desvio (p.p.) = Atual (%) - Meta (%)",
       unit: "percent",
       steps,
@@ -207,7 +207,7 @@ export function buildPortfolioCarouselBreakdown(e: PortfolioEvidence): Calculati
   return enrichBreakdown({
     id: `portfolio-lowscore-${e.ticker}`,
     title: `Sobrepeso em Baixa Convicção: ${e.ticker}`,
-    description: `Ativo com nota <= ${e.scoreLimit} excedendo o limite de ${e.weightLimitPct}% do patrimônio total.`,
+    description: `Ativo com nota <= ${e.scoreLimit} excedendo o limite de ${e.weightLimitPct.toLocaleString("pt-BR")}% do patrimônio total.`,
     formulaExpression: "Exposição (%) = (Valor do Ativo / Patrimônio Total) × 100",
     unit: "percent",
     steps,
@@ -264,6 +264,11 @@ export function buildDividendCarouselBreakdown(e: DividendEvidence): Calculation
     tone: "positive",
   }));
 
+  const notes = [
+    ...(hasUsd ? [`Conversão USD/BRL aplicada pelo câmbio de referência (${e.fxRate.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}).`] : []),
+    ...(hasUndated ? ["Eventos sem data de pagamento confirmada não representam crédito já realizado em caixa."] : []),
+  ];
+
   const breakdown: CalculationBreakdown = {
     id: e.kind === "available" ? "portfolio-dividends-available" : "portfolio-dividends-monthly",
     title:
@@ -291,10 +296,7 @@ export function buildDividendCarouselBreakdown(e: DividendEvidence): Calculation
       excludedItems.length > 0
         ? excludedItems.map((ex) => `${ex.ticker}: ${ex.reason ?? "fora da competência/janela"}`)
         : undefined,
-    notes: [
-      ...(hasUsd ? [`Conversão USD/BRL aplicada pelo câmbio de referência (${e.fxRate.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}).`] : []),
-      ...(hasUndated ? ["Eventos sem data de pagamento confirmada não representam crédito já realizado em caixa."] : []),
-    ],
+    notes: notes.length > 0 ? notes : undefined,
   };
 
   return enrichBreakdown(breakdown);

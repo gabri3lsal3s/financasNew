@@ -1,14 +1,20 @@
 import { useCallback, useEffect, useRef, useState, type TouchEvent } from "react";
 import { useVisualCustomization } from "@/hooks/use-visual-customization";
 import { triggerSensory } from "@/services/sensory";
+import { useCarouselPauseContext } from "../carousel-pause-context";
 
 const SWIPE_THRESHOLD_PX = 40;
 export const ALERTS_CAROUSEL_TRANSITION_MS = 280;
 
 /**
- * Gerencia índice infinito com clones, swipe mobile, respeito a motion reduzido e autoplay.
+ * Gerencia seleção por ID estável, swipe horizontal sem interceptar scroll vertical,
+ * respeito a motion reduzido e autoplay coordenado com `CarouselPauseContext` (sem clones).
  */
-export function useAlertsCarousel(total: number, autoplayIntervalMs: number, itemsKey?: string) {
+export function useAlertsCarousel(
+  itemIds: readonly string[],
+  autoplayIntervalMs: number,
+) {
+  const total = itemIds.length;
   const { motionLevel } = useVisualCustomization();
   const osReducedMotion =
     typeof window !== "undefined" && typeof window.matchMedia === "function"
@@ -16,86 +22,78 @@ export function useAlertsCarousel(total: number, autoplayIntervalMs: number, ite
       : false;
   const reducedMotion = motionLevel === "reduced" || osReducedMotion;
 
-  const [physicalIndex, setPhysicalIndex] = useState(1);
-  const [isTransitioning, setIsTransitioning] = useState(!reducedMotion);
-  const [isPaused, setIsPaused] = useState(false);
-  const [prevTotal, setPrevTotal] = useState(total);
-  const [prevItemsKey, setPrevItemsKey] = useState(itemsKey);
-  const touchStartXRef = useRef<number | null>(null);
+  const { isPaused: contextPaused, manualPaused, toggleManualPause, acquireLock } =
+    useCarouselPauseContext();
 
-  if (itemsKey !== undefined && prevItemsKey !== itemsKey) {
-    const prevIds = prevItemsKey ? prevItemsKey.split(",") : [];
-    const prevActiveId = prevIds[(physicalIndex - 1 + prevTotal) % Math.max(1, prevTotal)];
-    const newIds = itemsKey ? itemsKey.split(",") : [];
-    const matchedIndex = prevActiveId ? newIds.indexOf(prevActiveId) : -1;
+  const [activeId, setActiveId] = useState<string | null>(() => itemIds[0] ?? null);
+  const [fallbackIndex, setFallbackIndex] = useState(0);
+  const [hoverLocked, setHoverLocked] = useState(false);
+  const [focusLocked, setFocusLocked] = useState(false);
+  const [touchLocked, setTouchLocked] = useState(false);
 
-    setPrevItemsKey(itemsKey);
-    setPrevTotal(total);
-    setIsTransitioning(false);
+  const releaseHoverRef = useRef<(() => void) | null>(null);
+  const releaseFocusRef = useRef<(() => void) | null>(null);
+  const releaseTouchRef = useRef<(() => void) | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
-    if (matchedIndex !== -1) {
-      setPhysicalIndex(matchedIndex + 1);
-    } else {
-      setPhysicalIndex(Math.min(Math.max(1, physicalIndex), Math.max(1, total)));
+  // Sincroniza locks locais no CarouselPauseContext sem que um feche o do outro
+  useEffect(() => {
+    if (hoverLocked && !releaseHoverRef.current) {
+      releaseHoverRef.current = acquireLock("hover");
+    } else if (!hoverLocked && releaseHoverRef.current) {
+      releaseHoverRef.current();
+      releaseHoverRef.current = null;
     }
-  } else if (prevTotal !== total) {
-    setPrevTotal(total);
-    setIsTransitioning(false);
-    setPhysicalIndex((prev) => Math.min(Math.max(1, prev), Math.max(1, total)));
-  }
-
-  const logicalIndex = total > 0 ? (physicalIndex - 1 + total) % total : 0;
+  }, [hoverLocked, acquireLock]);
 
   useEffect(() => {
-    if (!isTransitioning && !reducedMotion) {
-      const raf = requestAnimationFrame(() => setIsTransitioning(true));
-      return () => cancelAnimationFrame(raf);
+    if (focusLocked && !releaseFocusRef.current) {
+      releaseFocusRef.current = acquireLock("focus");
+    } else if (!focusLocked && releaseFocusRef.current) {
+      releaseFocusRef.current();
+      releaseFocusRef.current = null;
     }
-  }, [isTransitioning, reducedMotion]);
-
-  const snapToBounds = useCallback(() => {
-    setPhysicalIndex((prev) => {
-      if (prev >= total + 1) {
-        setIsTransitioning(false);
-        return 1;
-      }
-      if (prev <= 0) {
-        setIsTransitioning(false);
-        return total;
-      }
-      return prev;
-    });
-  }, [total]);
+  }, [focusLocked, acquireLock]);
 
   useEffect(() => {
-    if (physicalIndex >= total + 1 || physicalIndex <= 0) {
-      const delay = reducedMotion ? 0 : ALERTS_CAROUSEL_TRANSITION_MS + 50;
-      const timer = setTimeout(snapToBounds, delay);
-      return () => clearTimeout(timer);
+    if (touchLocked && !releaseTouchRef.current) {
+      releaseTouchRef.current = acquireLock("touch");
+    } else if (!touchLocked && releaseTouchRef.current) {
+      releaseTouchRef.current();
+      releaseTouchRef.current = null;
     }
-  }, [physicalIndex, total, snapToBounds, reducedMotion]);
+  }, [touchLocked, acquireLock]);
+
+  useEffect(() => {
+    return () => {
+      releaseHoverRef.current?.();
+      releaseFocusRef.current?.();
+      releaseTouchRef.current?.();
+    };
+  }, []);
+
+  // Resolve índice ativo por ID estável; se removido, escolhe vizinho seguro
+  const matchedIndex = activeId ? itemIds.indexOf(activeId) : -1;
+  const activeIndex =
+    total === 0
+      ? 0
+      : matchedIndex !== -1
+        ? matchedIndex
+        : Math.min(Math.max(0, fallbackIndex), total - 1);
 
   const advanceNext = useCallback(() => {
-    setPhysicalIndex((prev) => {
-      if (prev >= total + 1) {
-        if (!reducedMotion) setIsTransitioning(true);
-        return 2;
-      }
-      if (!reducedMotion) setIsTransitioning(true);
-      return prev + 1;
-    });
-  }, [total, reducedMotion]);
+    if (total <= 1) return;
+    const nextIdx = (activeIndex + 1) % total;
+    setFallbackIndex(nextIdx);
+    setActiveId(itemIds[nextIdx] ?? null);
+  }, [total, activeIndex, itemIds]);
 
   const advancePrev = useCallback(() => {
-    setPhysicalIndex((prev) => {
-      if (prev <= 0) {
-        if (!reducedMotion) setIsTransitioning(true);
-        return Math.max(1, total - 1);
-      }
-      if (!reducedMotion) setIsTransitioning(true);
-      return prev - 1;
-    });
-  }, [total, reducedMotion]);
+    if (total <= 1) return;
+    const prevIdx = (activeIndex - 1 + total) % total;
+    setFallbackIndex(prevIdx);
+    setActiveId(itemIds[prevIdx] ?? null);
+  }, [total, activeIndex, itemIds]);
 
   const nextSlide = useCallback(() => {
     triggerSensory("selection");
@@ -108,49 +106,69 @@ export function useAlertsCarousel(total: number, autoplayIntervalMs: number, ite
   }, [advancePrev]);
 
   const goToSlide = useCallback(
-    (targetLogicalIndex: number) => {
+    (targetIndex: number) => {
+      if (total <= 0) return;
+      const safeIdx = Math.min(Math.max(0, targetIndex), total - 1);
       triggerSensory("selection");
-      if (!reducedMotion) setIsTransitioning(true);
-      setPhysicalIndex(targetLogicalIndex + 1);
+      setFallbackIndex(safeIdx);
+      setActiveId(itemIds[safeIdx] ?? null);
     },
-    [reducedMotion],
+    [total, itemIds],
   );
 
+  const isPaused = contextPaused || hoverLocked || focusLocked || touchLocked;
+
+  // Autoplay respeita pausa manual, locks de overlay e prefers-reduced-motion
   useEffect(() => {
-    if (total <= 1 || isPaused) return;
+    if (total <= 1 || isPaused || reducedMotion) return;
     const timer = setInterval(advanceNext, autoplayIntervalMs);
     return () => clearInterval(timer);
-  }, [total, isPaused, autoplayIntervalMs, advanceNext]);
+  }, [total, isPaused, reducedMotion, autoplayIntervalMs, advanceNext]);
 
   const handleTouchStart = (e: TouchEvent) => {
-    setIsPaused(true);
+    setTouchLocked(true);
     const touch = e.touches[0];
-    if (touch) touchStartXRef.current = touch.clientX;
+    if (touch) {
+      touchStartRef.current = { x: touch.clientX, y: touch.clientY ?? 0 };
+    }
   };
 
   const handleTouchEnd = (e: TouchEvent) => {
-    setIsPaused(false);
-    if (touchStartXRef.current === null) return;
+    setTouchLocked(false);
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+    if (!start) return;
     const touch = e.changedTouches[0];
     if (!touch) return;
-    const diffX = touchStartXRef.current - touch.clientX;
-    if (Math.abs(diffX) >= SWIPE_THRESHOLD_PX) {
+    const diffX = start.x - touch.clientX;
+    const diffY = start.y - (touch.clientY ?? 0);
+    // Apenas swipe predominantemente horizontal (>= 40px), sem interceptar scroll vertical
+    if (Math.abs(diffX) >= SWIPE_THRESHOLD_PX && Math.abs(diffX) > Math.abs(diffY)) {
       if (diffX > 0) nextSlide();
       else prevSlide();
     }
-    touchStartXRef.current = null;
+  };
+
+  const handleTouchCancel = () => {
+    setTouchLocked(false);
+    touchStartRef.current = null;
   };
 
   return {
-    physicalIndex,
-    logicalIndex,
-    isTransitioning: !reducedMotion && isTransitioning,
-    setIsPaused,
-    snapToBounds,
+    activeIndex,
+    logicalIndex: activeIndex,
+    activeId,
+    isTransitioning: !reducedMotion,
+    isPaused,
+    manualPaused,
+    toggleManualPause,
+    setHoverPaused: setHoverLocked,
+    setFocusPaused: setFocusLocked,
     nextSlide,
     prevSlide,
     goToSlide,
     handleTouchStart,
     handleTouchEnd,
+    handleTouchCancel,
   };
 }

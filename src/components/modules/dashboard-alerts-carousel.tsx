@@ -1,7 +1,8 @@
-import { useMemo, type ReactNode } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useMemo, useRef, type KeyboardEvent, type ReactNode } from "react";
+import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 import { useCarouselPresenceHint } from "@/hooks/use-carousel-presence-hint";
 import { cn } from "@/lib/utils";
+import { CarouselPauseProvider } from "./carousel-pause-context";
 import { useAlertsCarousel } from "./overview/use-alerts-carousel";
 
 export interface DashboardAlertItem {
@@ -23,9 +24,19 @@ export interface DashboardAlertsCarouselProps {
 }
 
 /**
- * Carrossel infinito e priorizado de alertas contextuais da Home.
+ * Carrossel priorizado de alertas contextuais da Home e de Investimentos.
+ * Renderiza 1 nó por card (sem clones no DOM), seleciona por ID estável e coordena
+ * locks de pausa entre overlays/modais via `CarouselPauseProvider`.
  */
-export function DashboardAlertsCarousel({
+export function DashboardAlertsCarousel(props: DashboardAlertsCarouselProps) {
+  return (
+    <CarouselPauseProvider>
+      <DashboardAlertsCarouselInner {...props} />
+    </CarouselPauseProvider>
+  );
+}
+
+function DashboardAlertsCarouselInner({
   items,
   className,
   autoplayIntervalMs = 8000,
@@ -42,19 +53,42 @@ export function DashboardAlertsCarousel({
   }, [items, maxItems]);
 
   const total = validItems.length;
-  const itemsKey = useMemo(() => validItems.map((i) => i.id).join(","), [validItems]);
-  const extendedItems = useMemo(() => {
-    if (total <= 1) return validItems;
-    const firstClone = { ...validItems[0]!, id: `${validItems[0]!.id}-clone-end` };
-    const lastClone = { ...validItems[total - 1]!, id: `${validItems[total - 1]!.id}-clone-start` };
-    return [lastClone, ...validItems, firstClone];
-  }, [validItems, total]);
+  const itemIds = useMemo(() => validItems.map((i) => i.id), [validItems]);
+  const carousel = useAlertsCarousel(itemIds, autoplayIntervalMs);
 
-  const carousel = useAlertsCarousel(total, autoplayIntervalMs, itemsKey);
-  const { shouldShowSkeleton } = useCarouselPresenceHint(presenceHintKey ?? "default_alerts", {
-    isLoading,
-    hasItems: total > 0,
-  });
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  const prevActiveIdRef = useRef<string | null>(carousel.activeId);
+
+  // Retorna foco ao próximo slide ativo se o item anterior foi removido enquanto o foco estava nele
+  useEffect(() => {
+    const prevId = prevActiveIdRef.current;
+    prevActiveIdRef.current = carousel.activeId;
+    if (
+      prevId &&
+      carousel.activeId &&
+      prevId !== carousel.activeId &&
+      typeof document !== "undefined" &&
+      trackRef.current &&
+      document.activeElement &&
+      trackRef.current.contains(document.activeElement)
+    ) {
+      const activeSlide = trackRef.current.querySelector<HTMLElement>(
+        `[data-carousel-slide-id="${carousel.activeId}"]`,
+      );
+      const focusable = activeSlide?.querySelector<HTMLElement>(
+        "button:not([disabled]), a[href], [tabindex]:not([tabindex='-1'])",
+      );
+      focusable?.focus();
+    }
+  }, [carousel.activeId]);
+
+  const { shouldShowSkeleton } = useCarouselPresenceHint(
+    presenceHintKey ?? "default_alerts",
+    {
+      isLoading,
+      hasItems: total > 0,
+    },
+  );
 
   if (isLoading) {
     if (!presenceHintKey || !shouldShowSkeleton) return null;
@@ -95,8 +129,15 @@ export function DashboardAlertsCarousel({
     );
   }
 
-  const maxExtendedIndex = Math.max(extendedItems.length - 1, 0);
-  const safePhysicalIndex = Math.min(Math.max(carousel.physicalIndex, 0), maxExtendedIndex);
+  const handleKeyDown = (e: KeyboardEvent<HTMLElement>) => {
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      carousel.nextSlide();
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      carousel.prevSlide();
+    }
+  };
 
   return (
     <section
@@ -107,12 +148,18 @@ export function DashboardAlertsCarousel({
         animateOnMount && "animate-fade-slide-in",
         className,
       )}
-      onMouseEnter={() => carousel.setIsPaused(true)}
-      onMouseLeave={() => carousel.setIsPaused(false)}
-      onFocus={() => carousel.setIsPaused(true)}
-      onBlur={() => carousel.setIsPaused(false)}
+      onMouseEnter={() => carousel.setHoverPaused(true)}
+      onMouseLeave={() => carousel.setHoverPaused(false)}
+      onFocus={() => carousel.setFocusPaused(true)}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+          carousel.setFocusPaused(false);
+        }
+      }}
       onTouchStart={carousel.handleTouchStart}
       onTouchEnd={carousel.handleTouchEnd}
+      onTouchCancel={carousel.handleTouchCancel}
+      onKeyDown={handleKeyDown}
     >
       <div className="flex items-center justify-between px-1 text-xs">
         <div
@@ -142,6 +189,20 @@ export function DashboardAlertsCarousel({
         <div className="flex items-center gap-1">
           <button
             type="button"
+            onClick={carousel.toggleManualPause}
+            aria-label={carousel.manualPaused ? "Retomar rotação automática" : "Pausar rotação automática"}
+            aria-pressed={carousel.manualPaused}
+            title={carousel.manualPaused ? "Retomar rotação" : "Pausar rotação"}
+            className="relative flex size-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-surface-hover/80 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring max-sm:after:absolute max-sm:after:-inset-2"
+          >
+            {carousel.manualPaused ? (
+              <Play className="size-3" aria-hidden="true" />
+            ) : (
+              <Pause className="size-3" aria-hidden="true" />
+            )}
+          </button>
+          <button
+            type="button"
             onClick={carousel.prevSlide}
             aria-label="Alerta anterior"
             className="relative flex size-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-surface-hover/80 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring max-sm:after:absolute max-sm:after:-inset-2"
@@ -159,23 +220,23 @@ export function DashboardAlertsCarousel({
         </div>
       </div>
 
-      <div className="w-full min-w-0 overflow-hidden py-0.5">
+      <div ref={trackRef} className="w-full min-w-0 overflow-hidden py-0.5">
         <div
-          onTransitionEnd={carousel.snapToBounds}
           className={cn(
             "flex w-full will-change-transform items-stretch",
             carousel.isTransitioning
               ? "transition-transform duration-[280ms] ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none motion-reduce:duration-0"
               : "transition-none",
           )}
-          style={{ transform: `translateX(-${safePhysicalIndex * 100}%)` }}
+          style={{ transform: `translateX(-${carousel.activeIndex * 100}%)` }}
         >
-          {extendedItems.map((item, idx) => (
+          {validItems.map((item, idx) => (
             <div
               key={item.id}
+              data-carousel-slide-id={item.id}
               className="w-full min-w-full shrink-0 flex items-stretch px-1 sm:px-1.5"
-              aria-hidden={idx !== safePhysicalIndex}
-              inert={idx !== safePhysicalIndex ? true : undefined}
+              aria-hidden={idx !== carousel.activeIndex}
+              inert={idx !== carousel.activeIndex ? true : undefined}
             >
               {item.content}
             </div>
