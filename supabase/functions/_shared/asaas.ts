@@ -751,6 +751,52 @@ export async function updateAsaasSubscriptionCreditCard(
 }
 
 /**
+ * Liquida uma cobrança em aberto (ex.: OVERDUE) usando cartão de crédito no Asaas.
+ */
+export async function payAsaasPaymentWithCreditCard(
+  paymentId: string,
+  params: {
+    creditCard: AsaasCreditCardInput;
+    holderInfo: AsaasHolderInfoInput;
+    remoteIp?: string;
+  },
+): Promise<{ id: string; status: string }> {
+  const cleanPostalCode = (params.holderInfo.postalCode || "").replace(/\D/g, "");
+  const cleanAddressNumber = (params.holderInfo.addressNumber || "").trim();
+  const cleanPhone = (params.holderInfo.phone || "").replace(/\D/g, "");
+
+  const payload = {
+    creditCard: {
+      holderName: params.creditCard.holderName,
+      number: params.creditCard.number.replace(/\D/g, ""),
+      expiryMonth: params.creditCard.expiryMonth.padStart(2, "0"),
+      expiryYear:
+        params.creditCard.expiryYear.length === 2
+          ? `20${params.creditCard.expiryYear}`
+          : params.creditCard.expiryYear,
+      ccv: params.creditCard.ccv,
+    },
+    creditCardHolderInfo: {
+      name: params.holderInfo.name,
+      email: params.holderInfo.email,
+      cpfCnpj: params.holderInfo.cpfCnpj.replace(/\D/g, ""),
+      postalCode: cleanPostalCode || undefined,
+      addressNumber: cleanAddressNumber || undefined,
+      phone: cleanPhone || undefined,
+    },
+    remoteIp: params.remoteIp || "127.0.0.1",
+  };
+
+  return asaasFetch<{ id: string; status: string }>(
+    `/payments/${encodeURIComponent(paymentId)}/payWithCreditCard`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+/**
  * Realiza o estorno/reembolso integral ou parcial de uma cobrança no Asaas (Pix ou Cartão).
  */
 export async function refundAsaasPayment(

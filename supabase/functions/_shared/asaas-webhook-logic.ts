@@ -259,7 +259,9 @@ export function decideWebhookAction(params: {
     if (
       intent?.kind === "cumulative_renewal" ||
       billingTypeUpper === "PIX" ||
-      (currentSub.status !== "active" && currentSub.status !== "past_due")
+      (currentSub.status !== "active" &&
+        currentSub.status !== "past_due" &&
+        currentSub.status !== "trialing")
     ) {
       return {
         action: "ignore_unrelated_payment",

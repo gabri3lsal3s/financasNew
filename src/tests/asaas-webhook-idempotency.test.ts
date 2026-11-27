@@ -468,4 +468,35 @@ describe("Webhook Asaas — Lógica de Decisão e Idempotência", () => {
       reason: "refund_for_non_current_payment",
     });
   });
+
+  it("transiciona assinatura trialing agendada para past_due quando 1ª cobrança após trial falha (PAYMENT_OVERDUE)", () => {
+    const trialingScheduledSub: UserSubscriptionSnapshot = {
+      ...baseTrialSub,
+      status: "trialing",
+      tier: "trial",
+      asaas_subscription_id: "sub_trial_sched_1",
+    };
+
+    const matched = decideWebhookAction({
+      eventType: "PAYMENT_OVERDUE",
+      payment: {
+        id: "pay_first_failed",
+        billingType: "CREDIT_CARD",
+        subscription: "sub_trial_sched_1",
+      },
+      currentSub: trialingScheduledSub,
+    });
+    expect(matched.action).toBe("mark_past_due");
+
+    const unscheduledTrial = decideWebhookAction({
+      eventType: "PAYMENT_OVERDUE",
+      payment: {
+        id: "pay_other",
+        billingType: "CREDIT_CARD",
+        subscription: "sub_trial_sched_1",
+      },
+      currentSub: { ...baseTrialSub, status: "trialing", asaas_subscription_id: null },
+    });
+    expect(unscheduledTrial.action).toBe("ignore_unrelated_payment");
+  });
 });

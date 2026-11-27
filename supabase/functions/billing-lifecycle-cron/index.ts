@@ -1,6 +1,8 @@
 import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
+  cancelAsaasSubscription,
   getAsaasSubscription,
+  isAsaasAlreadyCanceledError,
   postponeAsaasSubscriptionAfterPrepayment,
   sanitizePaymentLog,
 } from "../_shared/asaas.ts";
@@ -122,7 +124,7 @@ Deno.serve(async (req: Request) => {
     let resyncedCount = 0;
     const { data: pendingSubscriptions } = await supabaseAdmin
       .from("user_subscriptions")
-      .select("id, user_id, asaas_subscription_id, current_period_end, status, tier")
+      .select("id, user_id, asaas_subscription_id, current_period_end, status, tier, payment_method")
       .eq("asaas_sync_status", "pending_resync")
       .not("asaas_subscription_id", "is", null)
       .order("updated_at", { ascending: true })
@@ -131,6 +133,29 @@ Deno.serve(async (req: Request) => {
     for (const sub of pendingSubscriptions || []) {
       if (!sub.asaas_subscription_id) continue;
       try {
+        // Caso PIX Anual cuja assinatura recorrente mensal anterior falhou ao cancelar no webhook
+        if (sub.payment_method === "pix" && sub.tier === "pro_annual") {
+          try {
+            await cancelAsaasSubscription(sub.asaas_subscription_id);
+          } catch (cancelErr: unknown) {
+            if (!isAsaasAlreadyCanceledError(cancelErr)) {
+              throw cancelErr;
+            }
+          }
+
+          await supabaseAdmin
+            .from("user_subscriptions")
+            .update({
+              asaas_subscription_id: null,
+              card_last4: null,
+              asaas_sync_status: "synced",
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", sub.id);
+          resyncedCount++;
+          continue;
+        }
+
         let postponeOk = true;
         if (sub.current_period_end && new Date(sub.current_period_end) > new Date()) {
           const postponeRes = await postponeAsaasSubscriptionAfterPrepayment(

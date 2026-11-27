@@ -563,9 +563,8 @@ Deno?.serve?.(async (req: Request) => {
         throw asaasPixErr;
       }
 
-      const qrCode = await getAsaasPixQrCode(payment.id);
-
-      // [A-04 / W01] NÃO marcar trial_consumed_at nem limpar scheduled_plan_id na geração de PIX pendente
+      // [A-04 / W01] NÃO marcar trial_consumed_at nem limpar scheduled_plan_id na geração de PIX pendente.
+      // Persiste customer/payment antes de buscar o QR Code para evitar cobranças PIX duplicadas em retry.
       const { error: subPixErr } = await supabase
         .from("user_subscriptions")
         .update({
@@ -592,6 +591,8 @@ Deno?.serve?.(async (req: Request) => {
         console.error("[asaas-checkout] Falha ao vincular provider_payment_id PIX:", intentPixErr);
         return safeErrorResponse(req, 500, "Falha ao vincular cobrança PIX.");
       }
+
+      const qrCode = await getAsaasPixQrCode(payment.id);
 
       return jsonResponse(req, {
         ok: true,
@@ -826,11 +827,12 @@ Deno?.serve?.(async (req: Request) => {
       }
 
       const nowIso = now.toISOString();
+      const isSameActivePlan = userSub.tier === planMeta.planId;
       const { error: planSchedErr } = await supabase
         .from("user_subscriptions")
         .update({
-          pending_plan_id: planMeta.planId,
-          pending_plan_effective_at: activePeriodEnd.toISOString(),
+          pending_plan_id: isSameActivePlan ? null : planMeta.planId,
+          pending_plan_effective_at: isSameActivePlan ? null : activePeriodEnd.toISOString(),
           cancel_at_period_end: false,
           payment_method: "credit_card",
           card_last4: cardLast4,

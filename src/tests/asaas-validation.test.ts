@@ -273,5 +273,67 @@ describe("Validações Financeiras e Sanitização PCI — Asaas", () => {
         else process.env.ASAAS_API_KEY = prevKey;
       }
     });
+
+    it("liquida cobrança vencida em payAsaasPaymentWithCreditCard sanitizando campos de cartão e titular", async () => {
+      const { payAsaasPaymentWithCreditCard } = await import("../../supabase/functions/_shared/asaas.ts");
+      const prevEnv = process.env.ASAAS_ENVIRONMENT;
+      const prevKey = process.env.ASAAS_API_KEY;
+      const prevFetch = globalThis.fetch;
+      process.env.ASAAS_ENVIRONMENT = "sandbox";
+      process.env.ASAAS_API_KEY = "$aact_hmlg_test_key";
+
+      let capturedUrl = "";
+      let capturedBody: Record<string, unknown> = {};
+      globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+        capturedUrl = String(input);
+        capturedBody = JSON.parse(String(init?.body || "{}")) as Record<string, unknown>;
+        return new Response(JSON.stringify({ id: "pay_overdue_1", status: "CONFIRMED" }), { status: 200 });
+      }) as typeof fetch;
+
+      try {
+        const res = await payAsaasPaymentWithCreditCard("pay_overdue_1", {
+          creditCard: {
+            holderName: "MARIA NAZARE",
+            number: "4111 2222 3333 4444",
+            expiryMonth: "5",
+            expiryYear: "29",
+            ccv: "123",
+          },
+          holderInfo: {
+            name: "Maria Nazare",
+            email: "nazare@exemplo.com",
+            cpfCnpj: "529.982.247-25",
+            postalCode: "01310-100",
+            addressNumber: "100",
+            phone: "(11) 98765-4321",
+          },
+          remoteIp: "177.10.20.30",
+        });
+
+        expect(res.status).toBe("CONFIRMED");
+        expect(capturedUrl).toContain("/payments/pay_overdue_1/payWithCreditCard");
+        expect(capturedBody.creditCard).toEqual({
+          holderName: "MARIA NAZARE",
+          number: "4111222233334444",
+          expiryMonth: "05",
+          expiryYear: "2029",
+          ccv: "123",
+        });
+        expect(capturedBody.creditCardHolderInfo).toEqual({
+          name: "Maria Nazare",
+          email: "nazare@exemplo.com",
+          cpfCnpj: "52998224725",
+          postalCode: "01310100",
+          addressNumber: "100",
+          phone: "11987654321",
+        });
+      } finally {
+        globalThis.fetch = prevFetch;
+        if (prevEnv === undefined) delete process.env.ASAAS_ENVIRONMENT;
+        else process.env.ASAAS_ENVIRONMENT = prevEnv;
+        if (prevKey === undefined) delete process.env.ASAAS_API_KEY;
+        else process.env.ASAAS_API_KEY = prevKey;
+      }
+    });
   });
 });

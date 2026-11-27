@@ -8,7 +8,6 @@ import {
 } from "../_shared/telegram.ts";
 import {
   cancelAsaasSubscription,
-  ensurePreviousSubscriptionCanceled,
   formatBrtDisplayDate,
   isAsaasAlreadyCanceledError,
   postponeAsaasSubscriptionAfterPrepayment,
@@ -258,6 +257,14 @@ Deno?.serve?.(async (req: Request) => {
       }
     }
 
+    const markWebhookProcessed = async () => {
+      if (!webhookLogId) return;
+      await supabase
+        .from("billing_webhook_logs")
+        .update({ processed_at: new Date().toISOString() })
+        .eq("id", webhookLogId);
+    };
+
     const decision = decideWebhookAction({
       eventType,
       payment,
@@ -472,6 +479,8 @@ Deno?.serve?.(async (req: Request) => {
         console.warn("[asaas-webhook] Aviso ao notificar antecipação acumulativa:", sanitizePaymentLog(notifyErr));
       }
 
+      await markWebhookProcessed();
+
       return json({
         received: true,
         event: eventType,
@@ -494,6 +503,7 @@ Deno?.serve?.(async (req: Request) => {
       // W01: Ao ativar pagamento avulso/PIX ou nova assinatura diferente da recorrência prévia no Asaas,
       // cancela a recorrência anterior. Nunca cancela quando o pagamento pertence à mesma assinatura (troca de ciclo in-place).
       let syncStatus = "synced";
+      let previousSubCanceled = false;
       const shouldCancelPreviousSub =
         Boolean(userSub.asaas_subscription_id) &&
         userSub.asaas_subscription_id !== subscriptionId &&
@@ -501,13 +511,26 @@ Deno?.serve?.(async (req: Request) => {
 
       if (shouldCancelPreviousSub && userSub.asaas_subscription_id) {
         try {
-          await ensurePreviousSubscriptionCanceled(userSub.asaas_subscription_id);
+          await cancelAsaasSubscription(userSub.asaas_subscription_id);
+          previousSubCanceled = true;
         } catch (cancelErr) {
-          syncStatus = "pending_resync";
-          console.warn(
-            "[asaas-webhook] Falha ao cancelar assinatura anterior no Asaas:",
-            sanitizePaymentLog(cancelErr),
-          );
+          if (isAsaasAlreadyCanceledError(cancelErr)) {
+            previousSubCanceled = true;
+          } else {
+            syncStatus = "pending_resync";
+            console.warn(
+              "[asaas-webhook] Falha ao cancelar assinatura anterior no Asaas:",
+              sanitizePaymentLog(cancelErr),
+            );
+            await sendAdminTelegramAlert(
+              [
+                `<b>[AXIR] FALHA AO CANCELAR ASSINATURA ANTERIOR NO ASAAS</b>`,
+                `<b>Usuário:</b> <code>${escapeTelegramHtml(userSub.user_id)}</code>`,
+                `<b>Sub antiga:</b> <code>${escapeTelegramHtml(userSub.asaas_subscription_id)}</code>`,
+                `<b>Ação:</b> Marcada como <code>pending_resync</code> para retentativa automática.`,
+              ].join("\n"),
+            );
+          }
         }
       }
 
@@ -524,11 +547,12 @@ Deno?.serve?.(async (req: Request) => {
           p_current_period_end: decision.currentPeriodEnd,
           p_asaas_customer_id: customerId || null,
           p_asaas_subscription_id: subscriptionId || null,
-          p_clear_asaas_subscription: !subscriptionId && shouldCancelPreviousSub,
+          p_clear_asaas_subscription: !subscriptionId && shouldCancelPreviousSub && previousSubCanceled,
           p_asaas_sync_status: syncStatus,
           p_set_billing_start_at: isFirstPaidCharge || isReactivation,
           p_billing_start_at: nowIso,
           p_trial_consumed_at: userSub.trial_consumed_at || nowIso,
+          p_payment_method: payment?.billingType === "PIX" ? "pix" : "credit_card",
           p_intent_id: intent?.id ?? null,
           p_metadata: {
             event_type: eventType,
@@ -554,12 +578,7 @@ Deno?.serve?.(async (req: Request) => {
         });
       }
 
-      if (webhookLogId) {
-        await supabase
-          .from("billing_webhook_logs")
-          .update({ processed_at: nowIso })
-          .eq("id", webhookLogId);
-      }
+      await markWebhookProcessed();
 
       await supabase.from("audit_events").insert({
         user_id: userSub.user_id,
@@ -630,12 +649,13 @@ Deno?.serve?.(async (req: Request) => {
     // CASO C: INADIMPLÊNCIA (PAYMENT_OVERDUE DA ASSINATURA ATIVA)
     // =========================================================================
     if (decision.action === "mark_past_due") {
+      const graceMode = userSub.billing_start_at ? "manual" : "auto";
       const { error: pastDueErr } = await supabase
         .from("user_subscriptions")
         .update({
           status: "past_due",
           past_due_since: nowIso,
-          past_due_grace_mode: "manual",
+          past_due_grace_mode: graceMode,
           past_due_block_at: null,
           past_due_reminders_enabled: true,
           past_due_last_reminded_at: nowIso,
@@ -654,7 +674,7 @@ Deno?.serve?.(async (req: Request) => {
         entity_type: "user_subscription",
         entity_id: userSub.id,
         action: "marked_past_due",
-        payload: { payment_id: paymentId, subscription_id: subscriptionId, grace_mode: "manual" },
+        payload: { payment_id: paymentId, subscription_id: subscriptionId, grace_mode: graceMode },
       });
 
       try {
@@ -672,11 +692,15 @@ Deno?.serve?.(async (req: Request) => {
         const safePlan = escapeTelegramHtml(
           userSub.tier === "pro_annual" ? "Plano Pro Anual" : "Plano Pro Mensal",
         );
+        const graceLabel =
+          graceMode === "manual"
+            ? "Tolerância manual ativa (sem bloqueio automático)"
+            : "Carência automática de 3 dias (falha na 1ª cobrança do trial)";
         const tgText = [
           `<b>[AXIR] ASSINATURA EM ATRASO (PAST DUE)</b>`,
           `<b>Cliente:</b> ${safeName} (${safeEmail})`,
           `<b>Plano:</b> ${safePlan}`,
-          `<b>Status:</b> Tolerância manual ativa (sem bloqueio automático)`,
+          `<b>Status:</b> ${graceLabel}`,
           `<b>Gerenciar:</b> ${escapeTelegramHtml(appUrl)}/admin/faturamento`,
         ].join("\n");
         await sendAdminTelegramAlert(tgText);
@@ -701,6 +725,8 @@ Deno?.serve?.(async (req: Request) => {
       } catch (emailErr) {
         console.warn("[asaas-webhook] Aviso ao notificar inadimplência:", sanitizePaymentLog(emailErr));
       }
+
+      await markWebhookProcessed();
 
       return json({ received: true, event: eventType, status: "past_due" });
     }
@@ -744,6 +770,7 @@ Deno?.serve?.(async (req: Request) => {
           },
         });
       }
+      await markWebhookProcessed();
       return json({
         received: true,
         event: eventType,
@@ -775,6 +802,8 @@ Deno?.serve?.(async (req: Request) => {
         payload: { subscription_id: subscriptionId },
       });
 
+      await markWebhookProcessed();
+
       return json({ received: true, event: eventType, status: "canceled_at_period_end" });
     }
 
@@ -800,6 +829,8 @@ Deno?.serve?.(async (req: Request) => {
           next_due_date: decision.nextDueDate ?? null,
         },
       });
+
+      await markWebhookProcessed();
 
       return json({ received: true, event: eventType, action: "subscription_updated" });
     }
@@ -865,6 +896,8 @@ Deno?.serve?.(async (req: Request) => {
         },
       });
 
+      await markWebhookProcessed();
+
       return json({
         received: true,
         event: eventType,
@@ -917,6 +950,8 @@ Deno?.serve?.(async (req: Request) => {
         action: "marked_refunded",
         payload: { payment_id: paymentId },
       });
+
+      await markWebhookProcessed();
 
       return json({ received: true, event: eventType, status: "refunded" });
     }
@@ -1000,6 +1035,8 @@ Deno?.serve?.(async (req: Request) => {
         console.warn("[asaas-webhook] Falha ao notificar Telegram sobre chargeback:", sanitizePaymentLog(tgErr));
       }
 
+      await markWebhookProcessed();
+
       return json({ received: true, event: eventType, status: "chargeback_blocked" });
     }
 
@@ -1036,6 +1073,8 @@ Deno?.serve?.(async (req: Request) => {
         console.warn("[asaas-webhook] Falha ao notificar disputa de chargeback:", sanitizePaymentLog(tgErr));
       }
 
+      await markWebhookProcessed();
+
       return json({ received: true, event: eventType, action: actionName });
     }
 
@@ -1062,6 +1101,8 @@ Deno?.serve?.(async (req: Request) => {
       } catch (tgErr) {
         console.warn("[asaas-webhook] Falha ao notificar estorno parcial:", sanitizePaymentLog(tgErr));
       }
+
+      await markWebhookProcessed();
 
       return json({ received: true, event: eventType, action: "payment_partially_refunded" });
     }

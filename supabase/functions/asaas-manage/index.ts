@@ -2,11 +2,13 @@ import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
   cancelAsaasSubscription,
   formatBrtDisplayDate,
+  getAsaasSubscriptionPayments,
   isAsaasAlreadyCanceledError,
   isValidCardExpiry,
   isValidLuhn,
   listAsaasCustomerPayments,
   mapAsaasCardErrorMessage,
+  payAsaasPaymentWithCreditCard,
   refundAsaasPayment,
   sanitizePaymentLog,
   updateAsaasSubscriptionCreditCard,
@@ -756,6 +758,38 @@ Deno.serve(async (req: Request) => {
         }
       }
 
+      let overduePaid = false;
+      let paidOverduePaymentId: string | null = null;
+      if (userSub.status === "past_due") {
+        const overduePayments = await getAsaasSubscriptionPayments(
+          userSub.asaas_subscription_id,
+          "OVERDUE",
+        );
+        const overduePayment = overduePayments[0];
+        if (overduePayment) {
+          await payAsaasPaymentWithCreditCard(overduePayment.id, {
+            creditCard: {
+              holderName: card.holderName,
+              number: card.number,
+              expiryMonth: card.expiryMonth,
+              expiryYear: card.expiryYear,
+              ccv: card.ccv,
+            },
+            holderInfo: {
+              name: customerName,
+              email: customerEmail,
+              cpfCnpj: customerCpf,
+              postalCode: customerPostalCode,
+              addressNumber: customerAddressNumber || "S/N",
+              phone: customerPhone,
+            },
+            remoteIp: asaasRemoteIp,
+          });
+          overduePaid = true;
+          paidOverduePaymentId = overduePayment.id;
+        }
+      }
+
       await supabase.from("audit_events").insert({
         user_id: user.id,
         entity_type: "user_subscription",
@@ -765,10 +799,17 @@ Deno.serve(async (req: Request) => {
           gateway: "asaas",
           subscription_id: userSub.asaas_subscription_id,
           card_last4: cardLast4,
+          overdue_payment_id: paidOverduePaymentId,
         },
       });
 
-      return jsonResponse(req, { ok: true, message: "Cartão atualizado com sucesso." });
+      return jsonResponse(req, {
+        ok: true,
+        overduePaid,
+        message: overduePaid
+          ? "Cartão atualizado e pagamento em atraso regularizado com sucesso."
+          : "Cartão atualizado com sucesso.",
+      });
     }
 
     // -------------------------------------------------------------------------
@@ -795,11 +836,17 @@ Deno.serve(async (req: Request) => {
     return jsonResponse(req, { error: "Ação não suportada" }, 400);
   } catch (err: unknown) {
     const rawMsg = err instanceof Error ? err.message : String(err);
-    console.error("[asaas-manage] Falha ao gerenciar assinatura:", sanitizePaymentLog(rawMsg));
+    const errStatus = (err as { status?: number })?.status;
+    const sanitizedMsg = sanitizePaymentLog(rawMsg);
+    console.error("[asaas-manage] Falha ao gerenciar assinatura:", sanitizedMsg);
 
     const friendlyError = mapAsaasCardErrorMessage(rawMsg);
     if (friendlyError) {
       return jsonResponse(req, { error: friendlyError }, 400);
+    }
+
+    if ((errStatus === 400 || errStatus === 422) && sanitizedMsg.trim().length > 0) {
+      return jsonResponse(req, { error: sanitizedMsg }, 400);
     }
 
     return safeErrorResponse(req, 500, "Falha ao gerenciar assinatura. Tente novamente.");
