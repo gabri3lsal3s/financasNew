@@ -73,8 +73,8 @@ export interface DirectCreditCardResult {
   provider: BillingProviderName;
   subscriptionId?: string;
   paymentId?: string;
-  tier: SubscriptionTier;
-  status: "active" | "trialing" | "pending" | "incomplete";
+  tier?: SubscriptionTier;
+  status?: "active" | "trialing" | "pending" | "incomplete";
   phase?: "trial_scheduled" | "immediate";
   firstChargeAt?: string;
   needsEmailConfirmation?: boolean;

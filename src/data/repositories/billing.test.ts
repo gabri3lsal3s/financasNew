@@ -164,6 +164,31 @@ describe("Billing Repository (Asaas Adapter)", () => {
     ).rejects.toThrow("Por favor, confirme seu endereço de e-mail antes de contratar uma assinatura.");
   });
 
+  it("aceita resposta trial_scheduled do asaas-checkout sem tier e status", async () => {
+    mockInvoke.mockResolvedValueOnce({
+      data: {
+        ok: true,
+        method: "credit_card",
+        phase: "trial_scheduled",
+        subscriptionId: "sub_trial_123",
+        firstChargeAt: "2026-12-27T00:00:00.000Z",
+        email: "teste@exemplo.com",
+        cardLast4: "4242",
+      },
+      error: null,
+    });
+
+    const res = await createCheckoutSession({
+      plan: "monthly",
+      method: "credit_card",
+      customer: { name: "Gabriel", email: "teste@exemplo.com", cpf: "12345678909" },
+    });
+
+    expect(res.ok).toBe(true);
+    expect(res.method).toBe("credit_card");
+    expect((res as { phase?: string }).phase).toBe("trial_scheduled");
+  });
+
   it("chama asaas-manage com action cancel-plan-change", async () => {
     mockInvoke.mockResolvedValueOnce({
       data: { ok: true, message: "Agendamento cancelado com sucesso." },
@@ -200,6 +225,31 @@ describe("Billing Repository (Asaas Adapter)", () => {
         method: "pix",
       }),
     ).rejects.toThrow("Por favor, confirme seu endereço de e-mail antes de contratar uma assinatura.");
+  });
+
+  it("aceita resposta trial_scheduled do asaas-checkout sem tier e status", async () => {
+    mockInvoke.mockResolvedValueOnce({
+      data: {
+        ok: true,
+        method: "credit_card",
+        phase: "trial_scheduled",
+        subscriptionId: "sub_trial_123",
+        firstChargeAt: "2026-12-27T00:00:00.000Z",
+        email: "teste@exemplo.com",
+        cardLast4: "4242",
+      },
+      error: null,
+    });
+
+    const res = await createCheckoutSession({
+      plan: "monthly",
+      method: "credit_card",
+      customer: { name: "Gabriel", email: "teste@exemplo.com", cpf: "12345678909" },
+    });
+
+    expect(res.ok).toBe(true);
+    expect(res.method).toBe("credit_card");
+    expect((res as { phase?: string }).phase).toBe("trial_scheduled");
   });
 
   it("chama asaas-manage com action cancel", async () => {
