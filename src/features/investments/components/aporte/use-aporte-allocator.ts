@@ -54,6 +54,7 @@ export function useAporteAllocator(onGoToPosition?: () => void) {
     () =>
       buildAporteSimulationViewModel({
         totalPurchasingCents,
+        cashUsedBRL: effectiveCashSelectedCents / 100,
         positionRows: position.rows,
         rawAssets: assetsQuery.data ?? [],
         rawClassTargets: classTargetsQuery.data ?? [],
@@ -61,7 +62,7 @@ export function useAporteAllocator(onGoToPosition?: () => void) {
         strategy,
         ceilingSensitivity,
       }),
-    [totalPurchasingCents, position.rows, assetsQuery.data, classTargetsQuery.data, sectorTargetsQuery.data, strategy, ceilingSensitivity],
+    [totalPurchasingCents, effectiveCashSelectedCents, position.rows, assetsQuery.data, classTargetsQuery.data, sectorTargetsQuery.data, strategy, ceilingSensitivity],
   );
 
   const handleOpenWizardForAsset = useCallback(

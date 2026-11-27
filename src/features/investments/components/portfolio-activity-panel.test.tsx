@@ -298,11 +298,11 @@ describe("PortfolioActivityPanel", () => {
     expect(screen.getByText("Aporte Inteligente")).toBeInTheDocument();
   });
 
-  it("renderiza os controles de seleção por Classe e Setor", () => {
+  it("não renderiza os controles removidos de seleção por Classe e Setor", () => {
     render(<PortfolioActivityPanel defaultMonth="2026-08" />);
 
-    expect(screen.getByLabelText(/Filtrar por classe de ativo/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Filtrar por setor de investimento/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Filtrar por classe de ativo/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Filtrar por setor de investimento/i)).not.toBeInTheDocument();
   });
 });
 

@@ -9,7 +9,6 @@
 
 import { isOccurrenceIgnored, type FeedbackMap } from "./feedback";
 import {
-  isFamilyUnderDecay,
   resolveInsightThemeFamily,
 } from "./attention-budget";
 import type { UserFinancialContext } from "./financial-context";
@@ -110,8 +109,10 @@ export interface SmartAdvisorInsight {
   /** Metadados contextuais adicionais. */
   metadata?: {
     valueCents?: number;
+    previousValueCents?: number;
     expectedDate?: string;
     annualSavingsCents?: number;
+    isProvenRecurring?: boolean;
     profile?: "fixed" | "frequent_client";
     duplicateCount?: number;
     percentIncrease?: number;
@@ -886,6 +887,7 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
         metadata: {
           percentIncrease: occ.priceAdjustment.percentIncrease,
           valueCents: occ.priceAdjustment.newCents,
+          previousValueCents: occ.priceAdjustment.oldCents,
           cardId: occ.cardId ?? undefined,
           cardName: occ.cardName ?? undefined,
           cardContext,
@@ -897,7 +899,11 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
       (occ.tier === "can_cut" || occ.budgetImpact?.isVampire)
     ) {
       // 3.2 Oportunidade de corte de gasto vampiro
-      const annualCents = occ.budgetImpact?.annualCostCents ?? occ.averageCents * 12;
+      const isProvenRecurring =
+        occ.isFormalRecurrence || occ.level === "subscription" || occ.level === "recurring";
+      const annualCents =
+        occ.budgetImpact?.annualCostCents ??
+        (isProvenRecurring ? occ.averageCents * 12 : occ.averageCents);
       const cardContext = resolveCardContext(occ.cardId, cards, occ.averageCents, todayISO, allExpenses);
       candidates.push({
         id: `savings:${occ.key}`,
@@ -905,7 +911,9 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
         priority: 3,
         category: "savings",
         title: "Oportunidade de economia",
-        description: `${occ.name} custa ${formatBRL(annualCents)} por ano. Deseja manter ou avaliar corte?`,
+        description: isProvenRecurring
+          ? `${occ.name} custa ${formatBRL(annualCents)} por ano. Deseja manter ou avaliar corte?`
+          : `${occ.name} teve gasto de ${formatBRL(occ.averageCents)}. Deseja manter ou avaliar corte?`,
         iconName: "trending-down",
         primaryAction: {
           label: "Avaliar corte",
@@ -919,8 +927,9 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
         },
         cardContext,
         metadata: {
-          annualSavingsCents: annualCents,
+          annualSavingsCents: isProvenRecurring ? annualCents : undefined,
           valueCents: occ.averageCents,
+          isProvenRecurring,
           cardId: occ.cardId ?? undefined,
           cardName: occ.cardName ?? undefined,
           cardContext,
@@ -969,19 +978,20 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
         },
         metadata: {
           valueCents: weekly.monthlyConsolidatedCents,
-          annualSavingsCents: weekly.monthlyConsolidatedCents * 12,
+          annualSavingsCents: weekly.active ? weekly.monthlyConsolidatedCents * 12 : undefined,
+          isProvenRecurring: weekly.active,
           categoryId: weekly.categoryId,
         },
       });
     }
   }
 
-  // 3.4 Teto familiar em ritmo acelerado
+  // 3.4 Teto familiar em ritmo acelerado (faixa exata por centavos: 85%..99,99%)
   if (
     household &&
     household.monthly_ceiling_cents > 0 &&
-    household.spent_percentage >= 85 &&
-    household.spent_percentage < 100 &&
+    100 * household.total_spent_cents >= 85 * household.monthly_ceiling_cents &&
+    household.total_spent_cents < household.monthly_ceiling_cents &&
     !isOccurrenceIgnored(feedbackMap["household:ceiling_warning"])
   ) {
     candidates.push({
@@ -1323,11 +1333,9 @@ export function filterAndRankAllAdvisorInsights(
     if (decayByFamily) {
       const family = resolveInsightThemeFamily(insight.themeKey);
       const familyRecord = decayByFamily[family];
-      if (insight.priority === 1) {
-        if (familyRecord?.muted === true) {
-          return false;
-        }
-      } else if (isFamilyUnderDecay(familyRecord, nowMs)) {
+      // Apenas o mute explícito da família silencia outros temas;
+      // advanceSmartDecay não prolonga nem sobrescreve a dispensa explícita por themeKey.
+      if (familyRecord?.muted === true) {
         return false;
       }
     }

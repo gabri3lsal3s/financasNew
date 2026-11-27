@@ -29,12 +29,12 @@ describe("OnboardingCarouselBanner — Fase 2 no Carrossel da Home", () => {
     expect(screen.getByText(/Próximo passo: Registrar primeiro lançamento/i)).toBeInTheDocument();
   });
 
-  it("chama onContinue ao clicar em Continuar e onDismiss ao clicar em Dispensar", async () => {
+  it("chama onContinue ao clicar em Continuar, abre presets e dispara fallback onDismiss ou onSelectPreset", async () => {
     const user = userEvent.setup();
     const onContinue = vi.fn();
     const onDismiss = vi.fn();
 
-    render(
+    const { rerender } = render(
       <OnboardingCarouselBanner
         counts={partialCounts}
         onContinue={onContinue}
@@ -46,6 +46,23 @@ describe("OnboardingCarouselBanner — Fase 2 no Carrossel da Home", () => {
     expect(onContinue).toHaveBeenCalledTimes(1);
 
     await user.click(screen.getByRole("button", { name: /Dispensar guia de primeiros passos/i }));
+    await user.click(screen.getByRole("button", { name: /Dispensar por 7 dias/i }));
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+
+    const onSelectPreset = vi.fn();
+    rerender(
+      <OnboardingCarouselBanner
+        counts={partialCounts}
+        onContinue={onContinue}
+        onDismiss={onDismiss}
+        onSelectPreset={onSelectPreset}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Dispensar guia de primeiros passos/i }));
+    expect(screen.getByRole("button", { name: /Dispensar em 6 meses/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Dispensar em 1 mês/i }));
+    expect(onSelectPreset).toHaveBeenCalledWith("1m");
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 

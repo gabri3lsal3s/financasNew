@@ -24,22 +24,24 @@ describe("insights-carousel-drift", () => {
     });
 
     expect(result.allocationDrift.isBalanced).toBe(false);
-    expect(result.hasInvalidTargetsSum).toBe(false);
     expect(result.driftSummaryText).toContain("Ações (-30 p.p.)");
     expect(result.driftSummaryText).not.toContain("Ações de Dividendos");
   });
 
-  it("não dispara alerta de soma inválida pois a alocação é auto-normalizada", () => {
+  it("expõe parcela em classes sem meta cadastrada no denominador investido", () => {
     const result = computePortfolioCarouselDrift({
       classTargets: [
-        { id: "c1", user_id: "u1", name: "Ações", group_type: "class", target_percentage: 60 },
+        { id: "c1", user_id: "u1", name: "Ações", group_type: "class", target_percentage: 100 },
       ],
-      rows: [],
-      totalBRL: 0,
+      rows: [
+        { assetClass: "Ações", valueBRL: 400, isCash: false },
+        { assetClass: "Cripto", valueBRL: 100, isCash: false },
+      ],
+      totalBRL: 500,
       cashBRL: 0,
     });
 
-    expect(result.targetsSumPct).toBe(60);
-    expect(result.hasInvalidTargetsSum).toBe(false);
+    expect(result.unallocatedClassesBRL).toBe(100);
+    expect(result.unallocatedClassNames).toEqual(["Cripto"]);
   });
 });

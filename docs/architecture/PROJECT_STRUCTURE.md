@@ -193,7 +193,7 @@
     │   │   │                      #   floating-calculator, calculator-keypad (F9),
     │   │   │                      #   credit-card-3d + credit-card-wallet + credit-card-gradient (F13),
     │   │   │                      #   delta-hint (F14), highlight-row, projection-line, pace-alert-banner,
-    │   │   │                      #   dashboard-alerts-carousel (carrossel inteligente de alertas do dashboard),
+    │   │   │                      #   dashboard-alerts-carousel + alert-carousel-card + bridge-alert-card + carousel-pause-context (carrossel unificado de alertas e pontes),
     │   │   │                      #   dashboard-pix-clipboard-card (card dinâmico de sugestão de Pix com valor detectado no clipboard),
     │   │   │                      #   smart-advisor-card (assistente proativo de insights com confirmação de renda em 1 toque),
     │   │   │                      #   quick-aporte-card (bloco de aporte rápido direcionado na Home com rebalanceamento em lote),
@@ -263,7 +263,7 @@
     │   │                          #     hooks/ (use-reports-data.ts — agregações, DRE, carteira, indicadores e exportação)
     │   ├── insights/              #   Insights, radar de vencimentos RF (F72), projeção e corte
     │   │                          #     components/ (diagnostic-card, diagnostics-tab, recurrences-tab, projection-tab F61)
-    │   ├── reminders/             #   Central unificada de notificações & preferências (hooks/use-notification-preferences-form, prefs/{InAppRemindersPrefsCard,DueNotificationsPrefsCard,DailyClosingReminderCard,RemotePushPrefsCard,QuietHoursPrefsCard})
+    │   ├── reminders/             #   Central unificada de notificações & preferências (components/deferred-alerts-section, hooks/use-notification-preferences-form, prefs/{InAppRemindersPrefsCard,DueNotificationsPrefsCard,DailyClosingReminderCard,RemotePushPrefsCard,QuietHoursPrefsCard})
     │   ├── settings/              #   Configurações consolidadas em 6 abas especializadas (incluindo notifications-tab em 5 blocos: reminders-card, device-push-card, dividend-automation-card, banking-assistant-card, email-digest-prefs-card; e security-tab: app-lock-card, session-inactivity-card, two-factor-card, active-devices-card)
     │   ├── admin/                 #   Módulo Administrativo SaaS Isolado (/admin/login, /admin/*)
     │   │                          #     layouts/ (admin-shell, admin-nav-config, admin-mobile-drawer), components/ (user-edit-dialog em abas, feature-toggle-card, telegram-settings-card, ticket-manage-dialog, statement-blueprints-card)
@@ -336,8 +336,8 @@
     │   ├── onboarding/            #   checklist/progresso do primeiro uso (F5.4)
     │   ├── theme/                 #   motor puro de resolução de tema (light/dark/oled/system/schedule), janela diurna e parsing HH:mm
     │   ├── demo-simulation/       # datasets sintéticos puros em memória, trilhas (finanças/investimentos), passos do tour e hand-off contextual (handoff.ts)
-    │   ├── notifications/         #   Motor do Notification Hub (hub/{types.ts,event-detectors.ts,build-notification-center.ts,index.ts} —
-    │   │                          #     classificação P0–P3, deduplicação por entityRefs, fechamento de fatura opt-in, estouro consolidado de orçamento, viagens/família e sinais Pix em rachas) +
+    │   ├── notifications/         #   Motor do Notification Hub (hub/{types.ts,event-detectors.ts,build-notification-center.ts,carousel-dismissal-policy.ts,carousel-dismissals.ts,bridge-evaluators.ts,slot-selector.ts,index.ts} —
+    │   │                          #     classificação P0–P3, pontes bidirecionais Home↔Carteira, orçamento/slots unificados, deduplicação por entityRefs, fechamento de fatura opt-in, estouro consolidado de orçamento, viagens/família e sinais Pix em rachas) +
     │   │                          #     Agendamento híbrido & Quiet Hours (schedule.ts) + Catálogo unificado 40 instituições (preferences.ts + bank-catalog-parity.test.ts) +
     │   │                          #     Parsing puro de notificações bancárias, comprovantes e área de transferência:
     │   │                          #     pix-clipboard.ts (cascateamento multiformato: EMV, texto livre, comprovante universal),
@@ -468,7 +468,8 @@
     │   │                          #      use-profile-mutations — atualização de perfil/nome)
     │   │                          #   optimistic-cache.ts (F30 — helpers de snapshot/
     │   │                          #     rollback e updaters das listas em cache)
-    │   └── demo-mode/             #   Fase 2 Tour: máquina de estados reativa da simulação (useDemoSession, demo-session-store, demo-storage)
+    │   ├── demo-mode/             #   Fase 2 Tour: máquina de estados reativa da simulação (useDemoSession, demo-session-store, demo-storage)
+    │   └── selectors/             #   Seletores reativos compartilhados e barramento passivo em memória (use-user-financial-context.ts, carousel-evidence.ts)
     │
     ├── hooks/                     # Hooks de UI reaproveitáveis (use-auth,
     │                              #   use-device-session-sync (orquestrador singleton StrictMode-safe com gate MFA e Realtime),

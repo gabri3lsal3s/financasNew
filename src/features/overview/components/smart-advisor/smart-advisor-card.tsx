@@ -3,6 +3,7 @@ import { ShieldCheck } from "lucide-react";
 import { useNavigate } from "react-router";
 import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
 import { CarouselDismissPopover } from "@/components/modules/carousel-dismiss-popover";
+import { useCarouselPauseLock } from "@/components/modules/carousel-pause-context";
 import { SmartAdvisorCardSkeleton } from "@/components/modules/smart-advisor-card-skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,10 @@ import { buildSmartAdvisorBreakdown } from "@/domain/calculation-memory/builders
 import type { SmartAdvisorCardContext, SmartAdvisorInsight } from "@/domain/insights/advisor";
 import { resolveInsightThemeFamily } from "@/domain/insights/attention-budget";
 import type { CalibrationDecision } from "@/domain/insights/feedback";
+import {
+  resolveCarouselCardPolicy,
+  type CarouselDismissPreset,
+} from "@/domain/notifications/hub";
 import { useSmartAdvisorInsights } from "@/features/overview/hooks";
 import { currentMonth } from "@/lib/date";
 import { cn } from "@/lib/utils";
@@ -67,6 +72,8 @@ export interface SmartAdvisorCardProps {
   committedObligationsCents?: number;
   suppressedThemeKeys?: readonly string[];
   embeddedInCarousel?: boolean;
+  onSelectPreset?: (preset: CarouselDismissPreset) => void;
+  allowedPresets?: readonly CarouselDismissPreset[];
 }
 
 interface SmartAdvisorCardViewProps {
@@ -79,6 +86,8 @@ interface SmartAdvisorCardViewProps {
   onNext?: () => void;
   onPrev?: () => void;
   onDismiss: (themeKey?: string, days?: number, options?: SmartAdvisorDismissOptions) => void;
+  onSelectPreset?: (preset: CarouselDismissPreset) => void;
+  allowedPresets?: readonly CarouselDismissPreset[];
   onConfirmRecurrence?: (occurrenceKey: string) => void | Promise<void>;
   onIgnoreRecurrence?: (occurrenceKey: string, reason?: CalibrationDecision) => void | Promise<void>;
   onConfirmIncome?: (payload: { name: string; valueCents: number; categoryId: string; date?: string }) => void | Promise<void>;
@@ -119,11 +128,15 @@ function SmartAdvisorCardView({
   onPauseFamily,
   canPauseFamily,
   embeddedInCarousel,
+  onSelectPreset,
+  allowedPresets,
 }: SmartAdvisorCardViewProps) {
   const navigate = useNavigate();
   const cardContext =
     controlledCardContext ?? activeInsight.cardContext ?? activeInsight.metadata?.cardContext;
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [memoryOpen, setMemoryOpen] = useState(false);
+  useCarouselPauseLock(Boolean(embeddedInCarousel && memoryOpen), "smart-advisor-memory");
 
   const breakdown = useMemo(() => {
     const now = new Date();
@@ -258,7 +271,7 @@ function SmartAdvisorCardView({
         <div
           key={activeInsight.id}
           data-testid="smart-advisor-content-body"
-          className="flex items-start sm:items-center gap-3 min-w-0 pr-8 sm:pr-0 flex-1 motion-safe:animate-in motion-safe:fade-in-50 motion-safe:duration-150 motion-reduce:animate-none motion-reduce:transition-none"
+          className="flex items-start sm:items-center gap-3 min-w-0 pr-9 sm:pr-0 flex-1 motion-safe:animate-in motion-safe:fade-in-50 motion-safe:duration-150 motion-reduce:animate-none motion-reduce:transition-none"
         >
           <span
             className={cn(
@@ -272,7 +285,7 @@ function SmartAdvisorCardView({
           <div className="flex flex-col gap-0.5 min-w-0 flex-1">
             <div className="flex items-center gap-2 min-w-0 flex-wrap">
               <h3
-                className="text-sm font-semibold text-foreground tracking-tight truncate"
+                className="text-sm font-semibold text-foreground tracking-tight line-clamp-2 break-words"
                 title={activeInsight.title}
               >
                 {activeInsight.title}
@@ -284,6 +297,9 @@ function SmartAdvisorCardView({
                 <CalculationMemoryModal
                   breakdown={breakdown}
                   label={`Memória de cálculo de ${presentation.badgeLabel}`}
+                  priority="p0"
+                  open={memoryOpen}
+                  onOpenChange={setMemoryOpen}
                 />
               ) : null}
             </div>
@@ -334,6 +350,11 @@ function SmartAdvisorCardView({
           ) : (
             <div className="absolute top-3 right-3 sm:static">
               <CarouselDismissPopover
+                allowedPresets={
+                  allowedPresets ??
+                  resolveCarouselCardPolicy(`advisor.${activeInsight.themeKey}`).allowedPresets
+                }
+                onSelectPreset={onSelectPreset}
                 onDismiss={(days) => handleDismiss(days)}
                 label="Dispensar sugestão"
               />
@@ -515,6 +536,8 @@ export function SmartAdvisorCard(props: SmartAdvisorCardProps) {
         onPauseFamily={props.onPauseFamily}
         canPauseFamily={props.canPauseFamily ?? false}
         embeddedInCarousel={props.embeddedInCarousel ?? false}
+        onSelectPreset={props.onSelectPreset}
+        allowedPresets={props.allowedPresets}
       />
     );
   }

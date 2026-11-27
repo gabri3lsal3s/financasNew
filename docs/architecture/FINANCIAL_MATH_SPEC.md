@@ -489,6 +489,12 @@ Em estrito cumprimento da Regra 33 do `AGENTS.md`, todo indicador financeiro der
 - O mesmo módulo de domínio puro (`src/domain/`) que alimenta os KPIs da tela fornece o builder estruturado da memória de cálculo correspondente.
 - Todos os formatadores (`formatters.ts`) tratam valores especiais com neutralização matemática: $\text{NaN}$, $\pm\infty$ e denominadores nulos retornam formatações seguras de zero com alertas contextuais.
 
+### 16.3. Builders de Memória de Cálculo dos Carrosséis (Onda 1 — `v3.35.0`)
+- **Risco estrutural da carteira (`portfolio-risk-breakdown.ts`):** `buildPortfolioRiskBreakdown` expõe os operandos reais (`asset`, `issuer`, `macro`, `nef`, `benchmark`) avaliados a mercado (`valuation.ts`) com registro explícito de ativos em `cost_fallback` quando sem cotação vigente.
+- **Carteira, governança e proventos (`portfolio-carousel-breakdown.ts`):** `buildPortfolioCarouselBreakdown` (`drift`, `idle`, `discount`, `lowScore`) e `buildDividendCarouselBreakdown` (`available`, `monthly`) detalham metas, caixa da corretora, margem de segurança e alíquotas de IR sem interpolação na UI.
+- **Dinheiro novo vs. caixa da corretora (`aporte-execution-mapper.ts`):** `cashUsedBRL` distingue explicitamente aportes com dinheiro novo (`cashUsedBRL = 0`, preservando `projectedCashBRL = currentCashBRL`) de simulações que consomem caixa livre.
+- **Carrossel da Home (`overview-carousel-breakdown.ts` + `family-breakdown.ts`):** `buildGoalProgressBreakdown`, `buildSplitPendingBreakdown`, `buildFamilyCeilingBreakdown` e `buildFamilySettlementBreakdown` conectam diretamente os cards do carrossel à Memória de Cálculo com `priority="p0"` (visível no mobile).
+
 
 
 

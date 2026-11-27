@@ -83,7 +83,7 @@ describe("HouseholdAlertBanner", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: /Dispensar aviso de acerto familiar/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Lembrar no próximo mês/i }));
+    fireEvent.click(screen.getByRole("button", { name: /1 mês/i }));
     expect(onDismiss).toHaveBeenCalledWith(30);
   });
 });

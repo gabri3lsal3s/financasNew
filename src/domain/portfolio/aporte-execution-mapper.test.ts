@@ -290,4 +290,62 @@ describe("aporte-execution-mapper", () => {
     expect(typeof vm.diversificationImpact?.currentTopAssetSharePct).toBe("number");
     expect(typeof vm.diversificationImpact?.projectedTopAssetSharePct).toBe("number");
   });
+
+  it("distingue dinheiro novo (cashUsedBRL=0) de uso de caixa da corretora (cashUsedBRL>0) na projeção de Nef", () => {
+    const rowsWithCash: AportePositionRowInput[] = [
+      ...baseRows,
+      {
+        assetId: "a-cash",
+        ticker: "CAIXA",
+        assetClass: "Caixa",
+        currency: "BRL",
+        valueBRL: 5_000,
+        priceBRL: 1,
+        isCash: true,
+      },
+    ];
+    const assetsWithCash: PortfolioAsset[] = [
+      ...rawAssets,
+      {
+        id: "a-cash",
+        user_id: "u1",
+        ticker: "CAIXA",
+        asset_class: "Caixa",
+        sector: null,
+        currency: "BRL",
+        quantity: 5000,
+        average_price: 1,
+        score: null,
+        allocation_status: "active",
+        last_reviewed_at: null,
+        review_frequency_months: 6,
+        thesis_summary: null,
+        score_criteria: null,
+        ceiling_price: null,
+        notes: null,
+        created_at: "2026-01-01",
+      },
+    ];
+
+    const newMoneyVm = buildAporteSimulationViewModel({
+      totalPurchasingCents: 200_000, // R$ 2.000 de dinheiro novo (cashUsedBRL=0)
+      positionRows: rowsWithCash,
+      rawAssets: assetsWithCash,
+      rawClassTargets: classTargets,
+      rawSectorTargets: [],
+    });
+
+    const usingCashVm = buildAporteSimulationViewModel({
+      totalPurchasingCents: 200_000, // R$ 2.000 do caixa da corretora
+      cashUsedBRL: 2_000,
+      positionRows: rowsWithCash,
+      rawAssets: assetsWithCash,
+      rawClassTargets: classTargets,
+      rawSectorTargets: [],
+    });
+
+    expect(newMoneyVm.diversificationImpact?.projectedNef).not.toBe(
+      usingCashVm.diversificationImpact?.projectedNef,
+    );
+  });
 });

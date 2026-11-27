@@ -1537,3 +1537,19 @@ A Central de Configurações unifica as preferências e gestão da conta do usu�
 2. ~~Hosting do frontend~~ — **RESOLVIDA**: **Cloudflare Workers Static Assets** (`financasnew`, Vite SPA + PWA, Workers Builds integrado ao repositório Git, cabeçalhos CSP/HSTS em `public/_headers` e SSL/TLS `Full (strict)`).
 4. ~~Notificações~~ — **RESOLVIDA**: **Arquitetura Híbrida Completa** — alertas in-app unificados via Notification Hub (`useNotificationCenter`), comunicados broadcast administrativos (`admin_broadcast_notifications`), Push Remoto em segundo plano (`push-dispatcher`: Web Push VAPID no PWA e FCM HTTP v1 no Android via `@capacitor/push-notifications`), resumo semanal dominical opt-in (`sunday-digest` via Resend), lembretes de ciclo de vida (`billing-lifecycle-cron` via `pg_cron`/`pg_net`) e alertas operacionais no Telegram com redundância por Database Webhook em `support_tickets` (`pg_net`/Vault + `WEBHOOK_SECRET` + deduplicação atômica `telegram_notified_at`) e `support-notify`.
 
+---
+
+## CONTRATOS DA ONDA 1 — CARROSSÉIS HOLÍSTICOS (`v3.35.0`)
+
+- **Persistência compatível (`carouselDismissals` + CAS `_settingsRev`):** dispensas unificadas em `user_preferences.custom_settings.carouselDismissals` com controle de concorrência otimista (`_settingsRev`), leitura de chaves legadas (`dashboardAlertDismissals`, `portfolioAlertDismissals`, `deviceNotifications`), presets `7d / 1m / 6m` em calendário civil local e Undo de 5s.
+- **Capacidade por superfície (Decisão D-4):** Home limitada a `maxItems={2}` (`1` em modo focado com P0) e Investimentos com `maxItems={5}`.
+- **Componente único & acessibilidade (`AlertCarouselCard` + `CarouselPauseContext`):** um nó por slide (sem clones no DOM), seleção por ID estável, `inert` nos slides inativos, retorno de foco ao remover slide ativo, pausa por locks sobrepostos (hover, foco, toque, popover, modal) e `prefers-reduced-motion`.
+- **Destinos e filtros sincronizados:** Família (`/familia?mes=YYYY-MM`) e Transações (`/transacoes?mes=YYYY-MM`) leem a competência da URL; `PendingDividendsDialog` aceita `competence` e `initialFilter`.
+
+
+
+## CONTRATOS DA ONDA 2 — PONTES, SELEÇÃO NO HUB E CENTRAL (/lembretes) (`v3.36.0`)
+
+- **Avaliadores bidirecionais passivos (`bridge-evaluators.ts` + `carousel-evidence.ts`):** 7 pontes cross-módulo (`bridge.combined_contribution`, `bridge.debt_vs_invest`, `cashflow.bill_impact`, `budget.category_pace`, `bridge.monthly_contribution_consistency`, `trip.settlement_pending`, `data.hygiene_review`) alimentadas exclusivamente por leitura passiva de cache quente, sem disparar novas queries na montagem fria.
+- **Seleção única no Hub (`slot-selector.ts` + `attention-budget.ts`):** ranking por severidade, relevância do ciclo e ID determinístico com deduplicação por `entityRefs` e capacidade efetiva na Home ampliada para `maxItems={3}` (`1` em modo focado com P0) e Investimentos em `maxItems={5}`.
+- **Central de avisos adiados (`/lembretes` · `DeferredAlertsSection`):** listagem de dispensas ativas (canônicas e aliases legados alinhados a `resolveLegacyAliasesForCanonicalId`) com rótulos genéricos de catálogo e reativação via tombstone canônico revogado (`revokeCarouselDismissalRecord`), preservando estados de leitura e opt-in.

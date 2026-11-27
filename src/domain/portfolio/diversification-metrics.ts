@@ -1,5 +1,10 @@
 import type { PortfolioAsset } from "@/types";
 import {
+  resolveCarouselPortfolioValuation,
+  type CarouselValuationRow,
+  type ValuedPortfolioAsset,
+} from "./carousel-valuation";
+import {
   inferEtfBenchmark,
   parseIssuerFromTicker,
 } from "./tickers-catalog";
@@ -7,7 +12,7 @@ import {
 export interface ConsolidatedRiskVector {
   key: string;
   label: string;
-  type: "asset" | "rf_issuer" | "etf_benchmark";
+  type: "asset" | "rf_issuer" | "etf_benchmark" | "cash";
   valueBRL: number;
   weightPct: number;
 }
@@ -22,6 +27,7 @@ export interface ClassDiversificationSummary {
 
 export interface PortfolioDiversificationSummary {
   totalValueBRL: number;
+  cashIncludedInGlobal: boolean;
   globalHHI: number | null;
   globalNef: number | null;
   byClass: Record<string, ClassDiversificationSummary>;
@@ -30,17 +36,8 @@ export interface PortfolioDiversificationSummary {
 
 export interface DiversificationCalculationOptions {
   fxRateUSD?: number;
-}
-
-/**
- * Calcula o valor financeiro em BRL de um ativo da carteira.
- */
-function getAssetValueBRL(asset: PortfolioAsset, fxRateUSD: number): number {
-  const qty = asset.quantity ?? 0;
-  const price = asset.average_price ?? 0;
-  if (qty <= 0 || price <= 0) return 0;
-  const raw = qty * price;
-  return asset.currency === "USD" ? raw * fxRateUSD : raw;
+  positionRows?: readonly CarouselValuationRow[];
+  cashBRL?: number;
 }
 
 /**
@@ -68,27 +65,21 @@ function normalizeClass(cls?: string | null): string {
 export function buildConsolidatedRiskVectors(
   assets: readonly PortfolioAsset[],
   options?: DiversificationCalculationOptions
-): { totalValueBRL: number; vectors: ConsolidatedRiskVector[] } {
-  const fxRate = options?.fxRateUSD && options.fxRateUSD > 0 ? options.fxRateUSD : 5.0;
-
-  // Filtra posições ativas com saldo financeiro positivo
-  const activeAssets = assets.filter((a) => (a.quantity ?? 0) > 0 && (a.average_price ?? 0) > 0);
-  if (activeAssets.length === 0) {
-    return { totalValueBRL: 0, vectors: [] };
+): { totalValueBRL: number; cashIncludedInGlobal: boolean; vectors: ConsolidatedRiskVector[]; valuedItems: ValuedPortfolioAsset[] } {
+  const valuation = resolveCarouselPortfolioValuation(assets, options);
+  const positiveItems = valuation.items.filter((i) => i.valueBRL > 0);
+  if (positiveItems.length === 0 && !valuation.cashIncludedInGlobal) {
+    return { totalValueBRL: 0, cashIncludedInGlobal: false, vectors: [], valuedItems: [] };
   }
 
   const vectorMap = new Map<
     string,
-    { label: string; type: "asset" | "rf_issuer" | "etf_benchmark"; valueBRL: number }
+    { label: string; type: ConsolidatedRiskVector["type"]; valueBRL: number }
   >();
 
-  let totalValueBRL = 0;
-
-  for (const asset of activeAssets) {
-    const val = getAssetValueBRL(asset, fxRate);
-    if (val <= 0) continue;
-
-    totalValueBRL += val;
+  for (const item of positiveItems) {
+    const asset = item.asset;
+    const val = item.valueBRL;
     const normCls = normalizeClass(asset.asset_class);
 
     // 1. Renda Fixa privada agrupada por emissor
@@ -145,8 +136,22 @@ export function buildConsolidatedRiskVectors(
     });
   }
 
+  if (valuation.cashIncludedInGlobal && valuation.cashBRL > 0) {
+    vectorMap.set("cash_global", {
+      label: "Caixa",
+      type: "cash",
+      valueBRL: valuation.cashBRL,
+    });
+  }
+
+  const totalValueBRL = valuation.patrimonyTotalBRL;
   if (totalValueBRL <= 0) {
-    return { totalValueBRL: 0, vectors: [] };
+    return {
+      totalValueBRL: 0,
+      cashIncludedInGlobal: valuation.cashIncludedInGlobal,
+      vectors: [],
+      valuedItems: positiveItems,
+    };
   }
 
   const vectors: ConsolidatedRiskVector[] = Array.from(vectorMap.entries())
@@ -159,7 +164,12 @@ export function buildConsolidatedRiskVectors(
     }))
     .sort((a, b) => b.valueBRL - a.valueBRL);
 
-  return { totalValueBRL, vectors };
+  return {
+    totalValueBRL,
+    cashIncludedInGlobal: valuation.cashIncludedInGlobal,
+    vectors,
+    valuedItems: positiveItems,
+  };
 }
 
 /**
@@ -207,32 +217,29 @@ export function calculatePortfolioDiversification(
   assets: readonly PortfolioAsset[],
   options?: DiversificationCalculationOptions
 ): PortfolioDiversificationSummary {
-  const fxRate = options?.fxRateUSD && options.fxRateUSD > 0 ? options.fxRateUSD : 5.0;
-  const { totalValueBRL, vectors } = buildConsolidatedRiskVectors(assets, options);
+  const { totalValueBRL, cashIncludedInGlobal, vectors, valuedItems } =
+    buildConsolidatedRiskVectors(assets, options);
 
   const globalHHI = totalValueBRL > 0 && vectors.length > 0 ? calculatePortfolioHHI(assets, options) : null;
   const globalNef = calculateEffectiveNumberAssets(globalHHI);
 
-  // Agrupamento por classe
-  const classMap = new Map<string, PortfolioAsset[]>();
-  for (const asset of assets) {
-    const val = getAssetValueBRL(asset, fxRate);
-    if (val <= 0) continue;
-    const normCls = normalizeClass(asset.asset_class);
+  // Agrupamento por classe (subportfólios isolados, sem caixa externo)
+  const classMap = new Map<string, ValuedPortfolioAsset[]>();
+  for (const item of valuedItems) {
+    const normCls = normalizeClass(item.asset.asset_class);
     const list = classMap.get(normCls) ?? [];
-    list.push(asset);
+    list.push(item);
     classMap.set(normCls, list);
   }
 
   const byClass: Record<string, ClassDiversificationSummary> = {};
-  for (const [cls, classAssets] of classMap.entries()) {
-    const classTotalVal = classAssets.reduce((sum, a) => sum + getAssetValueBRL(a, fxRate), 0);
+  for (const [cls, classItems] of classMap.entries()) {
+    const classTotalVal = classItems.reduce((sum, item) => sum + item.valueBRL, 0);
     if (classTotalVal <= 0) continue;
 
     let classSumSquared = 0;
-    for (const a of classAssets) {
-      const val = getAssetValueBRL(a, fxRate);
-      const w = val / classTotalVal;
+    for (const item of classItems) {
+      const w = item.valueBRL / classTotalVal;
       classSumSquared += w * w;
     }
 
@@ -244,12 +251,13 @@ export function calculatePortfolioDiversification(
       classValueBRL: classTotalVal,
       classHHI,
       classNef,
-      assetCount: classAssets.length,
+      assetCount: classItems.length,
     };
   }
 
   return {
     totalValueBRL,
+    cashIncludedInGlobal,
     globalHHI,
     globalNef,
     byClass,

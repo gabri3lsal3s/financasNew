@@ -16,6 +16,21 @@ let remindersEnabledMock = true;
 let familyModeEnabledMock = true;
 let tripModeEnabledMock = true;
 
+let dismissalsMapMock: Record<string, unknown> = {};
+
+vi.mock("./use-carousel-dismissals", () => ({
+  useCarouselDismissals: () => ({
+    dismissalsMap: dismissalsMapMock,
+    invalidIds: new Set<string>(),
+    nowMs: Date.now(),
+    isLoading: false,
+    dismissCard: vi.fn(),
+    revokeCard: vi.fn(),
+    evaluateCard: () => ({ visible: true, reason: "eligible" }),
+    isCardVisible: () => true,
+  }),
+}));
+
 vi.mock("@/features/overview/hooks", () => ({
   useSmartAdvisorInsights: (...args: unknown[]) => useSmartAdvisorInsightsMock(...args),
 }));
@@ -81,6 +96,7 @@ describe("useNotificationCenter (Fase 3 — Gate do SmartAdvisor)", () => {
     remindersEnabledMock = true;
     familyModeEnabledMock = true;
     tripModeEnabledMock = true;
+    dismissalsMapMock = {};
     useSmartAdvisorInsightsMock.mockReturnValue({
       insights: [
         {
@@ -123,5 +139,39 @@ describe("useNotificationCenter (Fase 3 — Gate do SmartAdvisor)", () => {
 
     expect(useMyFamilyMock).toHaveBeenCalledWith({ enabled: false });
     expect(useUserTripsMock).toHaveBeenCalledWith({ enabled: false });
+  });
+
+  it("filtra notificações nos canais pelo mapa efetivo de useCarouselDismissals", () => {
+    const now = Date.now();
+    dismissalsMapMock = {
+      "advisor.dup:netflix": {
+        preset: "7d",
+        dismissedAt: now - 1000,
+        dismissedUntil: now + 7 * 86_400_000,
+      },
+    };
+
+    const { result } = renderHook(() => useNotificationCenter({ today: "2026-08-15" }));
+
+    expect(result.current.carouselNotifications).toEqual([]);
+    expect(result.current.investmentsCarouselNotifications).toEqual([]);
+    expect(result.current.totalBellCount).toBe(0);
+  });
+
+  it("expõe deferredCarouselAlerts e mantém contadores de canais independentes do limite de slides", () => {
+    const now = Date.now();
+    dismissalsMapMock = {
+      "cashflow.pace": {
+        preset: "7d",
+        dismissedAt: now - 1000,
+        dismissedUntil: now + 7 * 86_400_000,
+      },
+    };
+
+    const { result } = renderHook(() => useNotificationCenter({ today: "2026-08-15" }));
+
+    expect(result.current.deferredCarouselAlerts.map((d) => d.canonicalId)).toContain("cashflow.pace");
+    expect(typeof result.current.revokeCarouselAlert).toBe("function");
+    expect(result.current.totalBellCount).toBe(result.current.notifications.filter((n) => n.channels.includes("bell")).length);
   });
 });

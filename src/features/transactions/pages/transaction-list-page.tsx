@@ -100,6 +100,8 @@ export function TransactionListPage() {
         searchQuery={tx.searchQuery}
         onSearchChange={tx.setSearchQuery}
         structuredFilterBadges={tx.structuredFilterBadges}
+        activeIdsFilterCount={tx.activeIdsFilterCount}
+        onClearIdsFilter={tx.clearIdsFilter}
         isBusinessModeEnabled={tx.isBusinessModeEnabled}
         businessSubFilter={tx.businessSubFilter}
         onBusinessSubFilterChange={tx.setBusinessSubFilter}

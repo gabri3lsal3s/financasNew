@@ -23,7 +23,7 @@ describe("attention-budget (Governança de Atenção & Smart Decay)", () => {
       expect(res.isSilent).toBe(true);
     });
 
-    it("limita a no máximo 2 slides por padrão quando há 5 alertas elegíveis", () => {
+    it("limita a no máximo 3 slides por padrão (Onda 2) quando há 5 alertas elegíveis", () => {
       const items = [
         { id: "surplus", priority: 4 },
         { id: "pace", priority: 2 },
@@ -33,11 +33,15 @@ describe("attention-budget (Governança de Atenção & Smart Decay)", () => {
       ];
 
       const res = applyHomeCarouselAttentionBudget(items);
-      expect(DEFAULT_ATTENTION_BUDGET_POLICY.homeMaxCards).toBe(2);
+      expect(DEFAULT_ATTENTION_BUDGET_POLICY.homeMaxCards).toBe(3);
       expect(res.focusedCriticalMode).toBe(false);
       expect(res.isSilent).toBe(false);
-      expect(res.visibleItems.map((i) => i.id)).toEqual(["pace", "advisor-1"]);
-      expect(res.hiddenCount).toBe(3);
+      expect(res.visibleItems.map((i) => i.id)).toEqual(["pace", "advisor-1", "goal-1"]);
+      expect(res.hiddenCount).toBe(2);
+
+      const bounded = applyHomeCarouselAttentionBudget(items, { homeMaxCards: 2 });
+      expect(bounded.visibleItems.map((i) => i.id)).toEqual(["pace", "advisor-1"]);
+      expect(bounded.hiddenCount).toBe(3);
     });
 
     it("ativa modo focado (1 único slide) quando há alerta crítico P0 (priority <= 1)", () => {

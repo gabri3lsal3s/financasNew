@@ -4,8 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DebtsPage } from "./debts-page";
 import type { Loan } from "@/types";
 
+let mockSearchParams = new URLSearchParams();
+const setSearchParamsMock = vi.fn();
+
 vi.mock("react-router", () => ({
-  useSearchParams: () => [new URLSearchParams(), vi.fn()],
+  useSearchParams: () => [mockSearchParams, setSearchParamsMock],
   useNavigate: () => vi.fn(),
 }));
 
@@ -138,6 +141,8 @@ vi.mock("@/state", () => ({
 
 describe("DebtsPage — contas a pagar e receber (§3.4)", () => {
   beforeEach(() => {
+    mockSearchParams = new URLSearchParams();
+    setSearchParamsMock.mockClear();
     debtsStateMocks.loans = [];
     mockDownloadCsv.mockClear();
     vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -414,6 +419,45 @@ describe("DebtsPage — contas a pagar e receber (§3.4)", () => {
     await waitFor(() =>
       expect(deleteLoanMock).toHaveBeenCalledWith({ id: "l1", deleteDebts: true }),
     );
+  });
+
+  it("prefill ?type=loans&q=loan-1 ativa a aba Contratos e destaca apenas o contrato alvo", () => {
+    mockSearchParams = new URLSearchParams("type=loans&q=loan-1");
+    debtsStateMocks.loans = [
+      {
+        id: "loan-1",
+        user_id: "u1",
+        name: "Contrato Alvo",
+        loan_type: "personal",
+        principal_amount: 50000,
+        interest_rate_monthly: 2.2,
+        amortization_system: "price",
+        total_installments: 24,
+        start_date: "2026-01-10",
+        installment_group_id: "ig-car-1",
+        created_at: "2026-01-01T00:00:00Z",
+      },
+      {
+        id: "loan-2",
+        user_id: "u1",
+        name: "Outro Contrato",
+        loan_type: "financing",
+        principal_amount: 120000,
+        interest_rate_monthly: 0.9,
+        amortization_system: "sac",
+        total_installments: 60,
+        start_date: "2026-01-10",
+        installment_group_id: "ig-other",
+        created_at: "2026-01-01T00:00:00Z",
+      },
+    ];
+
+    render(<DebtsPage />);
+
+    const loansTab = screen.getByRole("tab", { name: /contratos/i });
+    expect(loansTab).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("Contrato Alvo").closest(".ring-primary")).not.toBeNull();
+    expect(screen.getByText("Outro Contrato").closest(".ring-primary")).toBeNull();
   });
 });
 

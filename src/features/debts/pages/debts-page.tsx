@@ -119,6 +119,7 @@ export function DebtsPage() {
                   loans={state.loans}
                   debts={state.debts}
                   isLoading={state.loansLoading}
+                  highlightId={state.highlightId}
                   onOpenNewLoan={state.handleOpenLoanForm}
                 />
               ),

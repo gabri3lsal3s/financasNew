@@ -1,15 +1,15 @@
 {
-  "version": "3.32.0",
-  "versionCode": 121,
-  "releaseDate": "2026-11-26T22:43:49Z",
-  "minSupportedVersion": "3.32.0",
+  "version": "3.36.0",
+  "versionCode": 122,
+  "releaseDate": "2026-11-27T18:15:53Z",
+  "minSupportedVersion": "3.36.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "fb2f8eda4136aca32895ec01d1cceab4ac6aa3c778e9737bc2be340a0b7e1d81",
-  "fileSizeBytes": 11112800,
+  "sha256": "ed4d5bd8801682854eb8dffd1907e63aa083b2a6551da421bc33c93e9807d99e",
+  "fileSizeBytes": 11140249,
   "changelog": [
-    "Axir v3.32.0 (Build 121): Hardening Integral de Seguranca (F-01 a F-11) & Otimizacao de Queries",
-    "Blindagem de banco (migracao 0158): RLS administrativo ativo, FORCE RLS, protecao AAL2 em RPCs de superadmin e rate limit em viagens publicas",
-    "Edge Functions e crons endurecidos com isolamento por user_id em quotes e autenticacao dedicada via CRON_SECRET",
-    "Validacao estrita de URLs de atualizacao APK, guarda RequireSuperAdmin, exportacao CSV segura e otimizacao de queries da Home e relatorios"
+    "Axir v3.36.0 (Build 122): Carrosseis Holisticos, Pontes Bidirecionais & Central de Lembretes",
+    "Persistencia compativel de dispensas (7d/1m/6m) em calendario local com Undo de 5s e controle otimista (_settingsRev)",
+    "Card unico AlertCarouselCard sem clones no DOM, memoria de calculo integrada e acessibilidade reforcada",
+    "7 avaliadores passivos entre Visao Geral e Investimentos (maxItems=3 na Home, maxItems=5 na Carteira) e aba Adiados em /lembretes"
   ]
 }

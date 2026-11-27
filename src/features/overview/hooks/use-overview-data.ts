@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   filterCardsByViewScope,
   filterDebtsByViewScope,
@@ -6,7 +6,10 @@ import {
   filterIncomesByViewScope,
 } from "@/domain/business";
 import { todayISO } from "@/domain/debts";
-import { extractPendingSplitSignals } from "@/domain/notifications/hub";
+import {
+  extractPendingSplitSignals,
+  resolveNotificationCategoryPreferences,
+} from "@/domain/notifications/hub";
 import { isFirstUse, shouldShowOnboardingBanner } from "@/domain/onboarding";
 import {
   createTimedDismissalCheckpoint,
@@ -16,9 +19,12 @@ import {
   shouldShowSurplusAlert,
   shouldShowTrialBanner,
 } from "@/domain/overview";
+import { resolvePortfolioRiskPolicy } from "@/domain/portfolio/portfolio-risk-policy";
 import { useOnboardingDismissed } from "@/hooks";
+import { useCarouselDismissals } from "@/hooks/use-carousel-dismissals";
 import { useSafeViewScope } from "@/hooks/use-safe-business-scope";
 import { currentMonth, shiftMonth } from "@/lib/date";
+import { getActiveUserId } from "@/services/user-storage";
 import {
   useAllCardBillRollovers,
   useAllCardExpenses,
@@ -28,6 +34,7 @@ import {
   useCorporateDividends,
   useCreditCards,
   useDebts,
+  useDemoSession,
   useExpenses,
   useFamilyConsolidation,
   useFamilyMode,
@@ -46,7 +53,14 @@ import {
 } from "@/state";
 import { getStoredInitialGoal, setStoredInitialGoal } from "@/state/demo-mode";
 import { isQueryPending } from "@/state/query-readiness";
-import { useUserFinancialContext } from "@/state/selectors";
+import {
+  readWarmClassTargets,
+  readWarmLoans,
+  readWarmPortfolioAssets,
+  readWarmTripDetailsMap,
+  usePassiveCarouselCache,
+  useUserFinancialContext,
+} from "@/state/selectors";
 import type { DashboardAlertDismissals, OnboardingGoalId } from "@/types";
 import { useOverviewCashflow } from "./use-overview-cashflow";
 import { useOverviewObligations } from "./use-overview-obligations";
@@ -126,10 +140,20 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
   const corporateDividends = useCorporateDividends({
     enabled: canUseInvestments,
   });
+  const { isDemoActive } = useDemoSession();
   const subscription = useUserSubscription();
+  const {
+    dismissalsMap: carouselDismissalsMap,
+    invalidIds: carouselDismissalsInvalidIds,
+    isCardVisible,
+  } = useCarouselDismissals();
   const { isDismissed: isOnboardingDismissed, dismiss: rawDismissOnboarding } = useOnboardingDismissed();
   const isEffectiveOnboardingDismissed =
-    isOnboardingDismissed || isTimedAlertDismissed(alertDismissals.cards?.["onboarding-progress-banner"]);
+    isOnboardingDismissed ||
+    isTimedAlertDismissed(alertDismissals.cards?.["onboarding-progress-banner"]) ||
+    !isCardVisible("onboarding.progress", {
+      legacySources: { dashboardAlertDismissals: alertDismissals },
+    });
 
   const dismissOnboarding = useCallback(() => {
     rawDismissOnboarding();
@@ -265,33 +289,53 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
     () => userPreferencesQuery.data?.custom_settings?.advisorDecayMeta ?? {},
     [userPreferencesQuery.data?.custom_settings?.advisorDecayMeta],
   );
+  const legacyDismissalSources = useMemo(
+    () => ({ dashboardAlertDismissals: alertDismissals }),
+    [alertDismissals],
+  );
 
   const isPaceEligible =
+    isCardVisible("cashflow.pace") &&
     shouldShowPaceAlert(alertDismissals.pace, {
       month,
       spentPercent: cashflow.pace.spentPercent,
       surplusCents: cashflow.projection.surplusCents,
-    }) && advisorDecayMeta.pace?.muted !== true;
+    }) &&
+    advisorDecayMeta.pace?.muted !== true;
 
   const isSurplusEligible =
+    isCardVisible("cashflow.surplus") &&
     shouldShowSurplusAlert(alertDismissals.surplus, {
       month,
       surplusCents: cashflow.surplusCapacity.suggestedAporteCents,
-    }) && advisorDecayMeta.surplus?.muted !== true;
+    }) &&
+    advisorDecayMeta.surplus?.muted !== true;
 
-  const isGovernanceDismissed = isGovernanceAlertDismissed(alertDismissals.governance);
+  const isGovernanceDismissed =
+    !isCardVisible("portfolio.governance_review", {
+      legacySources: legacyDismissalSources,
+    }) || isGovernanceAlertDismissed(alertDismissals.governance);
   const hasPendingSplitSignals = useMemo(
     () => extractPendingSplitSignals(splitSharesQuery.data ?? []).length > 0,
     [splitSharesQuery.data],
   );
   const isCardDismissed = useCallback(
-    (cardKey: string) => isTimedAlertDismissed(alertDismissals.cards?.[cardKey]),
-    [alertDismissals.cards],
+    (cardKey: string) =>
+      !isCardVisible(cardKey, { legacySources: legacyDismissalSources }) ||
+      isTimedAlertDismissed(alertDismissals.cards?.[cardKey]),
+    [isCardVisible, legacyDismissalSources, alertDismissals.cards],
   );
   const isCashGapEligible =
-    !isCardDismissed("cash-gap-alert") && advisorDecayMeta.cash_gap?.muted !== true;
+    !isCardDismissed("cashflow.cash_gap") &&
+    advisorDecayMeta.cash_gap?.muted !== true;
   const isTrialBannerEligible =
     !subscription.isLoading &&
+    isCardVisible("billing.trial_ending", {
+      legacySources: legacyDismissalSources,
+      policyContext: {
+        trialDaysRemaining: subscription.trialDaysRemaining ?? undefined,
+      },
+    }) &&
     shouldShowTrialBanner(
       subscription.trialDaysRemaining,
       Boolean(subscription.hasAutoRenew),
@@ -320,6 +364,100 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
         hasFeature("investments") &&
         (corporateDividends.isLoading || portfolioPositionQuery?.isLoading),
     );
+
+  const notificationCategoryPrefs = useMemo(
+    () =>
+      resolveNotificationCategoryPreferences(
+        userPreferencesQuery.data?.custom_settings?.notificationCategories,
+      ),
+    [userPreferencesQuery.data?.custom_settings?.notificationCategories],
+  );
+  const portfolioRiskPolicy = useMemo(
+    () =>
+      resolvePortfolioRiskPolicy(
+        userPreferencesQuery.data?.custom_settings?.portfolioRiskPolicy,
+      ),
+    [userPreferencesQuery.data?.custom_settings?.portfolioRiskPolicy],
+  );
+
+  const activeSessionUserId = currentUserId ?? getActiveUserId();
+  const evidenceIdentity = useMemo(
+    () => ({
+      userId: activeSessionUserId,
+      mode: isDemoActive ? ("demo" as const) : ("auth" as const),
+      scope: effectiveViewScope,
+      month,
+      asOf: today,
+    }),
+    [activeSessionUserId, isDemoActive, effectiveViewScope, month, today],
+  );
+  const {
+    queryClient: passiveQueryClient,
+    cacheVersion: passiveCacheVersion,
+    publish: publishCarouselCache,
+  } = usePassiveCarouselCache(evidenceIdentity, { subscribeToEvidence: false });
+
+  useEffect(() => {
+    if (
+      loading ||
+      financialContextLoading ||
+      isAlertsDataLoading ||
+      !isCurrentMonth ||
+      !evidenceIdentity.userId
+    ) {
+      return;
+    }
+    publishCarouselCache({
+      surplusCapacity: cashflow.surplusCapacity,
+      cashGapResult: obligations.cashGapResult,
+      isCurrentMonth,
+      dayOfMonth: financialContext.dayOfMonth,
+      daysInMonth: financialContext.daysInMonth,
+      safeToSpendCents: realCashData.safeToSpend.safeToSpendCents,
+      hasLiquidityContext: financialContext.lens.liquidity.hasLiquidityContext,
+      investmentCents: cashflow.totals.investmentCents,
+      debtsCount: scopedDebts?.length ?? 0,
+    });
+  }, [
+    loading,
+    financialContextLoading,
+    isAlertsDataLoading,
+    isCurrentMonth,
+    evidenceIdentity.userId,
+    publishCarouselCache,
+    cashflow.surplusCapacity,
+    obligations.cashGapResult,
+    financialContext.dayOfMonth,
+    financialContext.daysInMonth,
+    realCashData.safeToSpend.safeToSpendCents,
+    financialContext.lens.liquidity.hasLiquidityContext,
+    cashflow.totals.investmentCents,
+    scopedDebts?.length,
+  ]);
+
+  const settlingOrEndedTripIds = useMemo(
+    () =>
+      (tripsQuery.data ?? [])
+        .filter((t) => t.status === "settling" || (t.status === "active" && t.end_date < today))
+        .map((t) => t.id),
+    [tripsQuery.data, today],
+  );
+  const warmLoans = useMemo(() => {
+    void passiveCacheVersion;
+    return readWarmLoans(passiveQueryClient);
+  }, [passiveCacheVersion, passiveQueryClient]);
+  const warmClassTargets = useMemo(() => {
+    void passiveCacheVersion;
+    return readWarmClassTargets(passiveQueryClient);
+  }, [passiveCacheVersion, passiveQueryClient]);
+  const warmPortfolioAssets = useMemo(() => {
+    void passiveCacheVersion;
+    return readWarmPortfolioAssets(passiveQueryClient);
+  }, [passiveCacheVersion, passiveQueryClient]);
+  const warmTripDetailsById = useMemo(() => {
+    void passiveCacheVersion;
+    return readWarmTripDetailsMap(passiveQueryClient, settlingOrEndedTripIds);
+  }, [passiveCacheVersion, passiveQueryClient, settlingOrEndedTripIds]);
 
   return {
     month,
@@ -359,15 +497,34 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
     dismissOnboarding,
     corporateDividends,
     dividendAutomationPrefs: userPreferencesQuery.data?.custom_settings?.dividendAutomation ?? null,
+    notificationCategoryPrefs,
+    portfolioRiskPolicy,
+    carouselDismissalsMap,
+    carouselDismissalsInvalidIds,
     subscription,
     realCashData,
     positionRows,
+    portfolioPositionQuery,
+    canUseInvestments,
+    effectiveViewScope,
     budgetsQuery,
     expenseCategories,
     cardsQuery,
+    scopedCards,
     debtsQuery,
+    scopedDebts,
     incomesQuery,
     expensesQuery,
+    scopedExpenses,
     prevExpensesQuery,
+    cardExpensesQuery,
+    cardPaymentsQuery,
+    cardRolloversQuery,
+    contributionsQuery,
+    tripsQuery,
+    warmLoans,
+    warmClassTargets,
+    warmPortfolioAssets,
+    warmTripDetailsById,
   };
 }

@@ -137,7 +137,7 @@ export function OverviewDashboardContent({
 
           <DashboardAlertsCarousel
             items={alertItems}
-            maxItems={2}
+            maxItems={3}
             isLoading={!isAlertsReady}
             presenceHintKey="home_alerts"
           />

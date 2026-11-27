@@ -328,6 +328,7 @@ export function buildCashGapBreakdown(params: CashGapBreakdownParams): Calculati
     },
   ];
 
+  const horizonTargetDate = result.worstDeficitDate ?? result.gapDate;
   const topObligations = result.causingObligations.slice(0, 4);
   for (const obligation of topObligations) {
     steps.push({
@@ -359,7 +360,7 @@ export function buildCashGapBreakdown(params: CashGapBreakdownParams): Calculati
 
   const inflowsUntilGapCents = predictedInflows
     ? predictedInflows
-        .filter((inf) => !result.gapDate || inf.expectedDate <= result.gapDate)
+        .filter((inf) => !horizonTargetDate || inf.expectedDate <= horizonTargetDate)
         .reduce((acc, inf) => acc + inf.amountCents, 0)
     : predictedInflowsTotalCents;
 
@@ -370,6 +371,38 @@ export function buildCashGapBreakdown(params: CashGapBreakdownParams): Calculati
       rawValue: inflowsUntilGapCents,
       hint: "Rendas recorrentes e recebíveis esperados até a data do descasamento",
       tone: "positive",
+    });
+  }
+
+  const priorPositiveEvents =
+    result.gapDate && result.runway.length > 0
+      ? result.runway.filter(
+          (pt) => pt.date < result.gapDate! && (pt.outflowCents > 0 || pt.inflowCents > 0),
+        )
+      : [];
+  for (const pt of priorPositiveEvents.slice(0, 4)) {
+    const netDay = pt.inflowCents - pt.outflowCents;
+    steps.push({
+      label: `Movimento prévio em ${formatDateBR(pt.date)} (${pt.events.join(", ") || "Fluxo"})`,
+      operator: netDay >= 0 ? "+" : "-",
+      rawValue: Math.abs(netDay),
+      hint: `Saldo projetado ao fim do dia: ${formatCentsAsBRL(pt.projectedBalanceCents)}`,
+      tone: netDay >= 0 ? "positive" : "negative",
+    });
+  }
+
+  if (
+    result.gapDate &&
+    result.worstDeficitDate &&
+    result.worstDeficitDate !== result.gapDate &&
+    result.firstGapDeficitCents != null
+  ) {
+    steps.push({
+      label: `Primeiro Saldo Negativo (${formatDateBR(result.gapDate)})`,
+      operator: "=",
+      rawValue: -Math.abs(result.firstGapDeficitCents),
+      hint: `Pior déficit ocorre posteriormente em ${formatDateBR(result.worstDeficitDate)}`,
+      tone: "negative",
     });
   }
 

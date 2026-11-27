@@ -8,7 +8,7 @@ import {
 } from "@/domain/business";
 import { numberToCents, sumWeightedCents } from "@/domain/money";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
-import { currentMonth } from "@/lib/date";
+import { currentMonth, isValidMonth } from "@/lib/date";
 import {
   useAllCategories,
   useBudgets,
@@ -38,8 +38,25 @@ export function useBudgetsPage() {
   const paramTab = searchParams.get("tab");
   const paramAba = searchParams.get("aba");
   const paramKit = searchParams.get("kit");
+  const paramMonth = searchParams.get("mes") ?? searchParams.get("month");
+  const validParamMonth = paramMonth && isValidMonth(paramMonth) ? paramMonth : null;
 
-  const [month, setMonth] = useState(currentMonth());
+  const [pickedMonth, setPickedMonth] = useState<string | null>(null);
+  const month = validParamMonth ?? pickedMonth ?? currentMonth();
+  const setMonth = (next: string) => {
+    setPickedMonth(next);
+    if (searchParams.has("mes") || searchParams.has("month")) {
+      setSearchParams(
+        (prev) => {
+          const updated = new URLSearchParams(prev);
+          updated.delete("mes");
+          updated.delete("month");
+          return updated;
+        },
+        { replace: true },
+      );
+    }
+  };
   const [pickedTab, setPickedTab] = useState<BudgetsTabKey>("limits");
   const [showArchivedCampaigns, setShowArchivedCampaigns] = useState(false);
   const [showAllCategories, setShowAllCategories] = useState(false);

@@ -2,6 +2,7 @@ import { createContext, createElement, useCallback, useContext, useEffect, useMe
 import { todayISO } from "@/domain/debts/index";
 import { buildNotificationCenter } from "@/domain/notifications/hub/build-notification-center";
 import { detectClosedCardBills, detectConsolidatedBudgetOverrun, detectDividendNotificationAlerts, detectTripAndFamilyPendingAlerts, resolveNotificationCategoryPreferences, type BudgetOverrunAlert, type ClosedCardBillAlert, type DividendNotificationAlert, type TripFamilyAlert } from "@/domain/notifications/hub/event-detectors";
+import { listActiveCarouselDismissals, type ActiveCarouselDismissalEntry } from "@/domain/notifications/hub/carousel-dismissals";
 import { type NotificationCenterSummary } from "@/domain/notifications/hub/types";
 import { FALLBACK_USD_RATE } from "@/domain/portfolio/valuation";
 import { coreOnboardingProgress, shouldShowOnboardingBanner, type OnboardingCounts } from "@/domain/onboarding/index";
@@ -34,6 +35,7 @@ import type {
   SupportTicket,
   UserSubscription,
 } from "@/types";
+import { useCarouselDismissals } from "./use-carousel-dismissals";
 import { useOnboardingDismissed } from "./use-onboarding-dismissed";
 
 const DEFAULT_REMINDER_PREFERENCES: ReminderPreferences = {
@@ -80,6 +82,8 @@ export interface UseNotificationCenterResult extends NotificationCenterSummary {
   isOnboardingDismissed: boolean;
   dismissOnboarding: () => void;
   dismissAdvisor: (themeKey: string, days?: number) => void;
+  deferredCarouselAlerts: ActiveCarouselDismissalEntry[];
+  revokeCarouselAlert: (canonicalId: string) => void;
   isLoading: boolean;
   error: unknown;
 }
@@ -118,6 +122,12 @@ function useNotificationCenterCompute(
   const onboardingQuery = useOnboardingCounts();
   const { isDismissed: isOnboardingDismissed, dismiss: dismissOnboarding } =
     useOnboardingDismissed();
+  const {
+    dismissalsMap: carouselDismissals,
+    invalidIds: carouselInvalidIds,
+    nowMs: carouselNowMs,
+    revokeCard: revokeCarouselAlert,
+  } = useCarouselDismissals();
 
   const preferences = reminders?.preferences ?? DEFAULT_REMINDER_PREFERENCES;
   const categoryPreferences = useMemo(
@@ -381,6 +391,7 @@ function useNotificationCenterCompute(
         onboardingCompletedCount: onboardingProg.done,
         onboardingTotalSteps: onboardingProg.total,
         isOnboardingDismissed: !showOnboarding,
+        carouselDismissals,
       }),
     [
       items,
@@ -397,6 +408,7 @@ function useNotificationCenterCompute(
       showOnboarding,
       onboardingProg.done,
       onboardingProg.total,
+      carouselDismissals,
     ],
   );
 
@@ -453,6 +465,34 @@ function useNotificationCenterCompute(
     [rawDismissAdvisor],
   );
 
+  const deferredCarouselAlerts = useMemo(
+    () =>
+      listActiveCarouselDismissals({
+        carouselDismissals,
+        invalidIds: carouselInvalidIds,
+        nowMs: carouselNowMs,
+        legacySources: {
+          dashboardAlertDismissals:
+            userPrefsQuery?.data?.custom_settings?.dashboardAlertDismissals,
+          portfolioAlertDismissals:
+            userPrefsQuery?.data?.custom_settings?.portfolioAlertDismissals,
+          advisorDismissals:
+            userPrefsQuery?.data?.custom_settings?.advisorDismissals,
+          deviceNotifications:
+            userPrefsQuery?.data?.custom_settings?.deviceNotifications,
+        },
+      }),
+    [
+      carouselDismissals,
+      carouselInvalidIds,
+      carouselNowMs,
+      userPrefsQuery?.data?.custom_settings?.dashboardAlertDismissals,
+      userPrefsQuery?.data?.custom_settings?.portfolioAlertDismissals,
+      userPrefsQuery?.data?.custom_settings?.advisorDismissals,
+      userPrefsQuery?.data?.custom_settings?.deviceNotifications,
+    ],
+  );
+
   const isLoading = Boolean(reminders?.isLoading) || Boolean(reminderStatesQuery?.isLoading);
   const error = reminders?.error ?? null;
 
@@ -482,6 +522,8 @@ function useNotificationCenterCompute(
       isOnboardingDismissed,
       dismissOnboarding,
       dismissAdvisor,
+      deferredCarouselAlerts,
+      revokeCarouselAlert,
       isLoading,
       error,
     }),
@@ -510,6 +552,8 @@ function useNotificationCenterCompute(
       isOnboardingDismissed,
       dismissOnboarding,
       dismissAdvisor,
+      deferredCarouselAlerts,
+      revokeCarouselAlert,
       isLoading,
       error,
     ],

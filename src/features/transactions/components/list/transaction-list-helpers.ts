@@ -65,6 +65,7 @@ export function computePagedFeed(params: {
   filter: FeedFilter;
   businessSubFilter?: BusinessSubFilter;
   searchQuery: string;
+  filterIds?: ReadonlySet<string> | null;
   categoryById: Map<string, Category>;
   cardById?: Map<string, string>;
   merchantLearning?: MerchantLearningMemory;
@@ -85,6 +86,7 @@ export function computePagedFeed(params: {
     filter,
     businessSubFilter = "all",
     searchQuery,
+    filterIds,
     categoryById,
     cardById,
     merchantLearning,
@@ -100,6 +102,11 @@ export function computePagedFeed(params: {
   let filteredFeedItems = feedItems;
   let structuredFilterBadges: string[] = [];
 
+  if (filterIds && filterIds.size > 0) {
+    filteredFeedItems = filteredFeedItems.filter((item) => filterIds.has(item.id));
+    structuredFilterBadges.push(`${filterIds.size} em revisão`);
+  }
+
   if (q) {
     const parsed = parseStructuredSearchQuery(trimmed, {
       todayISO,
@@ -108,10 +115,13 @@ export function computePagedFeed(params: {
     });
     const usesStructured = hasStructuredFilters(parsed) || Boolean(merchantLearning);
     if (hasStructuredFilters(parsed)) {
-      structuredFilterBadges = buildStructuredQueryBadges(parsed);
+      structuredFilterBadges = [
+        ...structuredFilterBadges,
+        ...buildStructuredQueryBadges(parsed),
+      ];
     }
 
-    filteredFeedItems = feedItems.filter((item) => {
+    filteredFeedItems = filteredFeedItems.filter((item) => {
       if (item.id.toLowerCase() === q) return true;
       const catName = categoryById.get(item.categoryId)?.name ?? "";
       const cardName = item.creditCardId && cardById ? cardById.get(item.creditCardId) ?? "" : "";

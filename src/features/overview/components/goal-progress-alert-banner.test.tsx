@@ -84,7 +84,7 @@ describe("GoalProgressAlertBanner", () => {
     fireEvent.click(dismissButton);
     expect(screen.getByText("Ocultar este aviso")).toBeInTheDocument();
 
-    const opt7 = screen.getByRole("button", { name: "Dispensar por 7 dias" });
+    const opt7 = screen.getByRole("button", { name: /7 dias/i });
     fireEvent.click(opt7);
 
     expect(handleDismiss).toHaveBeenCalledWith(7);

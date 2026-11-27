@@ -215,7 +215,7 @@ describe("DashboardAlertsCarousel", () => {
     expect(screen.queryByText("Slide 6")).not.toBeInTheDocument();
   });
 
-  it("aplica inert nos slides inativos e clones para eliminar elementos fantasmas no DOM", () => {
+  it("renderiza 1 nó por card (zero clones) e aplica inert nos slides inativos", () => {
     const { container } = render(
       <DashboardAlertsCarousel
         items={[mockItemCritical, mockItemDeficit]}
@@ -223,41 +223,165 @@ describe("DashboardAlertsCarousel", () => {
     );
 
     const slideContainers = container.querySelectorAll(".will-change-transform > div");
-    expect(slideContainers.length).toBe(4); // [lastClone, item0, item1, firstClone]
+    expect(slideContainers.length).toBe(2);
 
-    // Slide 1 (índice físico 1 = item0 ativo): NÃO deve ter inert
-    expect(slideContainers[1]).not.toHaveAttribute("inert");
-    expect(slideContainers[1]).toHaveAttribute("aria-hidden", "false");
+    // Slide 0 ativo: NÃO deve ter inert
+    expect(slideContainers[0]).not.toHaveAttribute("inert");
+    expect(slideContainers[0]).toHaveAttribute("aria-hidden", "false");
 
-    // Clones e slides inativos (índice 0, 2 e 3): DEVEM ter inert e aria-hidden="true"
-    expect(slideContainers[0]).toHaveAttribute("inert");
-    expect(slideContainers[0]).toHaveAttribute("aria-hidden", "true");
-    expect(slideContainers[2]).toHaveAttribute("inert");
-    expect(slideContainers[2]).toHaveAttribute("aria-hidden", "true");
-    expect(slideContainers[3]).toHaveAttribute("inert");
-    expect(slideContainers[3]).toHaveAttribute("aria-hidden", "true");
+    // Slide 1 inativo: DEVE ter inert e aria-hidden="true"
+    expect(slideContainers[1]).toHaveAttribute("inert");
+    expect(slideContainers[1]).toHaveAttribute("aria-hidden", "true");
   });
 
-  it("reinicia para o slide 1 quando itens são alterados ou dispensados", () => {
+  it("mantém o item selecionado por ID estável ao reordenar e escolhe vizinho ao remover", () => {
     const { rerender } = render(
       <DashboardAlertsCarousel
         items={[mockItemCritical, mockItemDeficit]}
       />,
     );
 
-    // Navega para o slide 2
-    const nextBtn = screen.getByRole("button", { name: /Próximo alerta/i });
-    fireEvent.click(nextBtn);
+    fireEvent.click(screen.getByRole("button", { name: /Próximo alerta/i }));
     expect(screen.getByText("2 de 2")).toBeInTheDocument();
 
-    // Simula dispensa do mockItemCritical substituído por mockItemSurplus (total permanece 2)
+    // Remove o item 1: mockItemDeficit passa a ser o índice 0 e permanece selecionado
     rerender(
       <DashboardAlertsCarousel
         items={[mockItemDeficit, mockItemSurplus]}
       />,
     );
 
-    // Ao mudar os itens (itemsKey), deve reiniciar para o slide 1 sem travar em índice obsoleto
     expect(screen.getByText("1 de 2")).toBeInTheDocument();
+  });
+
+  it("suporta pausa manual e locks sobrepostos (hover + popover) sem liberar antes do fechamento", async () => {
+    const { CarouselDismissPopover } = await import("./carousel-dismiss-popover");
+    render(
+      <DashboardAlertsCarousel
+        autoplayIntervalMs={5000}
+        items={[
+          {
+            id: "a",
+            priority: 1,
+            content: (
+              <div>
+                <span>Alerta A</span>
+                <CarouselDismissPopover onSelectPreset={vi.fn()} label="Dispensar A" />
+              </div>
+            ),
+          },
+          mockItemDeficit,
+        ]}
+      />,
+    );
+
+    const carousel = screen.getByRole("region", { name: /Alertas e avisos contextuais/i });
+    fireEvent.mouseEnter(carousel);
+    fireEvent.click(screen.getByRole("button", { name: "Dispensar A" }));
+
+    // Sair do hover não pode liberar o lock do popover aberto
+    fireEvent.mouseLeave(carousel);
+    act(() => {
+      vi.advanceTimersByTime(10000);
+    });
+    expect(screen.getByText("1 de 2")).toBeInTheDocument();
+
+    // Pausa manual também congela o autoplay
+    const pauseBtn = screen.getByRole("button", { name: /Pausar rotação automática/i });
+    fireEvent.click(pauseBtn);
+    expect(screen.getByRole("button", { name: /Retomar rotação automática/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("não intercepta swipe vertical e libera lock em touchCancel", () => {
+    render(
+      <DashboardAlertsCarousel
+        items={[mockItemCritical, mockItemDeficit]}
+        autoplayIntervalMs={5000}
+      />,
+    );
+
+    const carousel = screen.getByRole("region", { name: /Alertas e avisos contextuais/i });
+    fireEvent.touchStart(carousel, { touches: [{ clientX: 100, clientY: 100 }] });
+    fireEvent.touchEnd(carousel, { changedTouches: [{ clientX: 110, clientY: 220 }] });
+    expect(screen.getByText("1 de 2")).toBeInTheDocument();
+
+    fireEvent.touchStart(carousel, { touches: [{ clientX: 100, clientY: 100 }] });
+    fireEvent.touchCancel(carousel);
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(screen.getByText("2 de 2")).toBeInTheDocument();
+  });
+
+  it("retorna o foco ao próximo slide ativo ao remover slide focado (3 -> 2 e 2 -> 1)", () => {
+    const itemA: DashboardAlertItem = {
+      id: "slide-a",
+      priority: 1,
+      content: <button type="button">Ação Slide A</button>,
+    };
+    const itemB: DashboardAlertItem = {
+      id: "slide-b",
+      priority: 2,
+      content: <button type="button">Ação Slide B</button>,
+    };
+    const itemC: DashboardAlertItem = {
+      id: "slide-c",
+      priority: 3,
+      content: <button type="button">Ação Slide C</button>,
+    };
+
+    const { rerender } = render(
+      <DashboardAlertsCarousel items={[itemA, itemB, itemC]} />,
+    );
+
+    const btnA = screen.getByRole("button", { name: "Ação Slide A" });
+    btnA.focus();
+    expect(document.activeElement).toBe(btnA);
+
+    // 3 -> 2: remove slide-a, foco deve ir para Ação Slide B
+    rerender(<DashboardAlertsCarousel items={[itemB, itemC]} />);
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Ação Slide B" }),
+    );
+
+    // 2 -> 1: remove slide-b, foco deve ir para Ação Slide C no bloco single-item
+    rerender(<DashboardAlertsCarousel items={[itemC]} />);
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Ação Slide C" }),
+    );
+  });
+
+  it("respeita prefers-reduced-motion pausando o autoplay", () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query === "(prefers-reduced-motion: reduce)",
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    try {
+      render(
+        <DashboardAlertsCarousel
+          items={[mockItemCritical, mockItemDeficit]}
+          autoplayIntervalMs={5000}
+        />,
+      );
+
+      act(() => {
+        vi.advanceTimersByTime(15000);
+      });
+
+      expect(screen.getByText("1 de 2")).toBeInTheDocument();
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
   });
 });

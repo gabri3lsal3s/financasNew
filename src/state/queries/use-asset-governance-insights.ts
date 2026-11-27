@@ -1,9 +1,11 @@
 import { useMemo } from "react";
 import { usePortfolioAssets } from "./use-portfolio";
 import { usePortfolioPosition } from "./use-portfolio-position";
+import { useUserPreferences } from "./use-user-preferences";
 import {
   generateAssetGovernanceInsights,
   isCashAssetClass,
+  resolvePortfolioRiskPolicy,
   type GovernanceAssetInput,
   type GovernanceInsight,
   type GovernanceInsightsResult,
@@ -32,7 +34,11 @@ export interface UseAssetGovernanceInsightsResult {
 export function useAssetGovernanceInsights(options?: { enabled?: boolean }): UseAssetGovernanceInsightsResult {
   const enabled = options?.enabled ?? true;
   const assetsQuery = usePortfolioAssets({ enabled });
+  const userPreferencesQuery = useUserPreferences({ enabled });
   const { rows: positionRows, totalBRL: totalPortfolioBRL, isLoading: isPositionLoading, refetch: refetchPosition } = usePortfolioPosition({ enabled });
+  const lowScoreThreshold = resolvePortfolioRiskPolicy(
+    userPreferencesQuery.data?.custom_settings?.portfolioRiskPolicy,
+  ).lowScoreThreshold;
 
   const { result, overdueAssets, upcomingReviewAssets, unscoredAssets } = useMemo(() => {
     const allAssets = assetsQuery.data ?? [];
@@ -80,6 +86,9 @@ export function useAssetGovernanceInsights(options?: { enabled?: boolean }): Use
         sector: asset.sector,
         currentValueBRL: row?.valueBRL ?? 0,
         currentPrice: row?.priceBRL ?? 0,
+        currentQuote: row?.priceQuote ?? 0,
+        canonicalSource: row?.canonicalSource,
+        isEstimate: row?.isEstimate,
         averageCost: row?.averageCostBRL ?? 0,
         ceilingPrice: asset.ceiling_price ?? null,
         score: asset.score ?? null,
@@ -94,6 +103,7 @@ export function useAssetGovernanceInsights(options?: { enabled?: boolean }): Use
       assets: inputs,
       totalPortfolioBRL,
       referenceDate: new Date(),
+      lowScoreThreshold,
     });
 
     const mapIdsToAssets = (ids?: string[]) =>
@@ -107,7 +117,7 @@ export function useAssetGovernanceInsights(options?: { enabled?: boolean }): Use
       upcomingReviewAssets: mapIdsToAssets(computed.consolidatedUpcomingAlert?.assetIds),
       unscoredAssets: mapIdsToAssets(computed.consolidatedUnscoredAlert?.assetIds),
     };
-  }, [assetsQuery.data, positionRows, totalPortfolioBRL]);
+  }, [assetsQuery.data, positionRows, totalPortfolioBRL, lowScoreThreshold]);
 
   return {
     insights: result.insights,

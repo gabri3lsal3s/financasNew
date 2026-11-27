@@ -5,6 +5,8 @@ export type DividendReviewModalFilter = "all" | "missing_date" | "over_120_days"
 export interface OpenDividendReviewModalOptions {
   initialTab?: DividendReviewModalTab;
   initialFilter?: DividendReviewModalFilter;
+  /** Competência YYYY-MM para pré-filtrar o resumo ao abrir pelo carrossel/hub. */
+  competence?: string;
 }
 
 type Listener = (options: OpenDividendReviewModalOptions) => void;

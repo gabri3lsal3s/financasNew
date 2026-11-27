@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { serializePortfolioActivitiesCsv } from "@/domain/export";
-import { inferSectorFromTicker } from "@/domain/portfolio";
 import {
   buildUnifiedActivityTimeline,
   computeActivityMonthStats,
@@ -34,8 +33,6 @@ export function useActivityFiltersExport(defaultMonth?: string) {
   const { guardAction, upgradeModal } = useMutationGuard({ moduleKey: "investments" });
   const [month, setMonth] = useState(() => defaultMonth ?? currentMonth());
   const [filterType, setFilterType] = useState<ActivityFilterType>("all");
-  const [selectedClass, setSelectedClass] = useState<string>("all");
-  const [selectedSector, setSelectedSector] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [itemToDelete, setItemToDelete] = useState<ActivityItem | null>(null);
   const [rollbackCash, setRollbackCash] = useState(true);
@@ -99,23 +96,6 @@ export function useActivityFiltersExport(defaultMonth?: string) {
     [monthActivities, contributionsQuery.data, month, assetMap, usdRate],
   );
 
-  const availableClasses = useMemo(() => {
-    const set = new Set<string>();
-    for (const item of monthActivities) {
-      if (item.assetClass) set.add(item.assetClass);
-    }
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [monthActivities]);
-
-  const availableSectors = useMemo(() => {
-    const set = new Set<string>();
-    for (const item of monthActivities) {
-      const sec = inferSectorFromTicker(item.ticker, item.assetClass ?? undefined);
-      if (sec && sec !== "Outros") set.add(sec);
-    }
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [monthActivities]);
-
   const typeCounts = useMemo(
     () => computeActivityTypeCounts(monthActivities, contributionsQuery.data ?? [], month),
     [monthActivities, contributionsQuery.data, month],
@@ -126,11 +106,11 @@ export function useActivityFiltersExport(defaultMonth?: string) {
       filterActivityItems({
         monthActivities,
         filterType,
-        selectedClass,
-        selectedSector,
+        selectedClass: "all",
+        selectedSector: "all",
         search,
       }),
-    [monthActivities, filterType, selectedClass, selectedSector, search],
+    [monthActivities, filterType, search],
   );
 
   const handleExportCsv = () => {
@@ -176,17 +156,11 @@ export function useActivityFiltersExport(defaultMonth?: string) {
     setMonth,
     filterType,
     setFilterType,
-    selectedClass,
-    setSelectedClass,
-    selectedSector,
-    setSelectedSector,
     search,
     setSearch,
     monthStats,
     monthActivitiesCount: monthActivities.length,
     typeCounts,
-    availableClasses,
-    availableSectors,
     filteredActivities,
     assetMap,
     cashAsset,

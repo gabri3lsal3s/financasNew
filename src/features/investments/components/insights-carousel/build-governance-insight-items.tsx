@@ -1,10 +1,14 @@
 import { CalendarClock, Check, Clock, Loader2, Sparkles } from "lucide-react";
+import { AlertCarouselCard } from "@/components/modules/alert-carousel-card";
 import type { DashboardAlertItem } from "@/components/modules/dashboard-alerts-carousel";
-import { Button } from "@/components/ui/button";
+import type { CalculationBreakdown } from "@/domain/calculation-memory";
+import {
+  resolveCarouselCardPolicy,
+  type CarouselDismissPreset,
+} from "@/domain/notifications/hub";
 import { formatTickerListSummary, type GovernanceInsight } from "@/domain/portfolio";
 import type { PortfolioAsset } from "@/types";
 import { buildGovernanceRiskItems } from "./build-governance-risk-items";
-import { InsightSlide } from "./insight-slide";
 
 export interface BuildGovernanceInsightItemsParams {
   overdueReviewsCount: number;
@@ -13,6 +17,8 @@ export interface BuildGovernanceInsightItemsParams {
   quarantinedCount: number;
   discountOpportunitiesCount: number;
   lowScoreRiskCount: number;
+  lowScoreBreakdown?: CalculationBreakdown;
+  discountBreakdown?: CalculationBreakdown;
   overdueAssets: PortfolioAsset[];
   upcomingReviewAssets: PortfolioAsset[];
   unscoredAssets: PortfolioAsset[];
@@ -20,8 +26,10 @@ export interface BuildGovernanceInsightItemsParams {
   consolidatedUpcomingAlert: GovernanceInsight | null | undefined;
   consolidatedUnscoredAlert: GovernanceInsight | null | undefined;
   isUpdatingAsset: boolean;
-  isAlertDismissed: (alertId: string, fingerprint: string) => boolean;
-  dismissAlert: (alertId: string, days: 7 | 30, fingerprint: string) => void;
+  isCardVisible?: (cardKey: string) => boolean;
+  onSelectPreset?: (cardKey: string, preset: CarouselDismissPreset) => void;
+  isAlertDismissed?: (alertId: string, fingerprint: string) => boolean;
+  dismissAlert?: (alertId: string, days: 7 | 30, fingerprint: string) => void;
   onQuickConfirmScore: (asset: PortfolioAsset) => void;
   onOpenEvaluationQueue: (assets: PortfolioAsset[]) => void;
   onNavigate: (to: string) => void;
@@ -35,6 +43,8 @@ export function buildGovernanceInsightItems({
   quarantinedCount,
   discountOpportunitiesCount,
   lowScoreRiskCount,
+  lowScoreBreakdown,
+  discountBreakdown,
   overdueAssets,
   upcomingReviewAssets,
   unscoredAssets,
@@ -42,6 +52,8 @@ export function buildGovernanceInsightItems({
   consolidatedUpcomingAlert,
   consolidatedUnscoredAlert,
   isUpdatingAsset,
+  isCardVisible,
+  onSelectPreset,
   isAlertDismissed,
   dismissAlert,
   onQuickConfirmScore,
@@ -53,8 +65,24 @@ export function buildGovernanceInsightItems({
   const upcomingFp = `${(consolidatedUpcomingAlert?.tickers ?? []).join(",")}:${consolidatedUpcomingAlert?.daysUntilReview ?? ""}`;
   const unscoredFp = (consolidatedUnscoredAlert?.tickers ?? []).join(",");
 
+  const isOverdueVisible =
+    (isCardVisible ? isCardVisible("portfolio.governance_review") : true) &&
+    !(isAlertDismissed?.("overdue-reviews-alert", overdueFp) ?? false);
+  const isUpcomingVisible =
+    (isCardVisible ? isCardVisible("portfolio.governance_upcoming") : true) &&
+    !(isAlertDismissed?.("upcoming-reviews-alert", upcomingFp) ?? false);
+  const isUnscoredVisible =
+    (isCardVisible ? isCardVisible("portfolio.unscored_assets") : true) &&
+    !(isAlertDismissed?.("unscored-assets-alert", unscoredFp) ?? false);
+
+  const overduePolicy = resolveCarouselCardPolicy("portfolio.governance_review");
+  const upcomingPolicy = resolveCarouselCardPolicy("portfolio.governance_upcoming");
+  const unscoredPolicy = resolveCarouselCardPolicy("portfolio.unscored_assets");
+
   const singleOverdueAsset = overdueAssets.length === 1 ? overdueAssets[0] : null;
-  const canQuickConfirmOverdue = Boolean(singleOverdueAsset && singleOverdueAsset.score != null);
+  const canQuickConfirmOverdue = Boolean(
+    singleOverdueAsset && singleOverdueAsset.score != null,
+  );
 
   const overdueTickersText = formatTickerListSummary(
     consolidatedReviewAlert?.tickers ?? overdueAssets.map((a) => a.ticker),
@@ -68,16 +96,19 @@ export function buildGovernanceInsightItems({
 
   return [
     overdueReviewsCount > 0 &&
-      !isAlertDismissed("overdue-reviews-alert", overdueFp) && {
-        id: "overdue-reviews-alert",
+      isOverdueVisible && {
+        id: "portfolio.governance_review",
         priority: 3,
         content: (
-          <InsightSlide
+          <AlertCarouselCard
+            id="portfolio.governance_review"
             tone="warning"
             icon={<Clock className="size-4.5" />}
             title="Revisão de Teses Pendente"
-            badgeText={`${overdueReviewsCount} ${overdueReviewsCount === 1 ? "ativo" : "ativos"}`}
-            badgeVariant="warning"
+            badge={{
+              label: `${overdueReviewsCount} ${overdueReviewsCount === 1 ? "ativo" : "ativos"}`,
+              variant: "warning",
+            }}
             description={
               overdueTickersText
                 ? overdueAssets.length === 1
@@ -86,52 +117,60 @@ export function buildGovernanceInsightItems({
                 : consolidatedReviewAlert?.description ??
                   "Existem teses com prazo de revisão expirado. Reavalie suas notas."
             }
-            onDismiss={(days) => dismissAlert("overdue-reviews-alert", days, overdueFp)}
             className={className}
-            actions={
-              <>
-                {canQuickConfirmOverdue && singleOverdueAsset ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={isUpdatingAsset}
-                    onClick={() => onQuickConfirmScore(singleOverdueAsset)}
-                    className="gap-1"
-                  >
-                    {isUpdatingAsset ? (
-                      <Loader2 className="size-3.5 animate-spin mr-1" aria-hidden="true" />
+            secondaryAction={
+              canQuickConfirmOverdue && singleOverdueAsset
+                ? {
+                    label: `Manter nota (${singleOverdueAsset.score})`,
+                    onClick: () => onQuickConfirmScore(singleOverdueAsset),
+                    variant: "ghost",
+                    disabled: isUpdatingAsset,
+                    loading: isUpdatingAsset,
+                    icon: isUpdatingAsset ? (
+                      <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
                     ) : (
                       <Check className="size-3.5" aria-hidden="true" />
-                    )}
-                    Manter nota ({singleOverdueAsset.score})
-                  </Button>
-                ) : null}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onOpenEvaluationQueue(overdueAssets)}
-                >
-                  {overdueAssets.length > 0 ? "Reavaliar Agora" : "Revisar Metas"}
-                </Button>
-              </>
+                    ),
+                  }
+                : undefined
             }
+            primaryAction={{
+              label: overdueAssets.length > 0 ? "Reavaliar Agora" : "Revisar Metas",
+              onClick: () => onOpenEvaluationQueue(overdueAssets),
+              variant: "outline",
+            }}
+            dismissPolicy={{
+              allowedPresets: overduePolicy.allowedPresets,
+              onSelectPreset: (preset) => {
+                if (onSelectPreset) {
+                  onSelectPreset("portfolio.governance_review", preset);
+                } else {
+                  dismissAlert?.(
+                    "overdue-reviews-alert",
+                    preset === "7d" ? 7 : 30,
+                    overdueFp,
+                  );
+                }
+              },
+            }}
           />
         ),
       },
 
     upcomingReviewsCount > 0 &&
-      !isAlertDismissed("upcoming-reviews-alert", upcomingFp) && {
-        id: "upcoming-reviews-alert",
+      isUpcomingVisible && {
+        id: "portfolio.governance_upcoming",
         priority: 4,
         content: (
-          <InsightSlide
-            tone="primary"
+          <AlertCarouselCard
+            id="portfolio.governance_upcoming"
+            tone="info"
             icon={<CalendarClock className="size-4.5" />}
             title="Reavaliação Próxima do Prazo"
-            badgeText={`${upcomingReviewsCount} ${upcomingReviewsCount === 1 ? "ativo" : "ativos"}`}
-            badgeVariant="muted"
+            badge={{
+              label: `${upcomingReviewsCount} ${upcomingReviewsCount === 1 ? "ativo" : "ativos"}`,
+              variant: "muted",
+            }}
             description={
               upcomingTickersText
                 ? (consolidatedUpcomingAlert?.daysUntilReview ?? 30) === 0
@@ -141,32 +180,44 @@ export function buildGovernanceInsightItems({
                     : `${upcomingTickersText} ${upcomingReviewsCount === 1 ? "vence" : "vencem"} em até ${consolidatedUpcomingAlert?.daysUntilReview ?? 30} dias.`
                 : "Alguns ativos estão próximos da data de reavaliação periódica."
             }
-            onDismiss={(days) => dismissAlert("upcoming-reviews-alert", days, upcomingFp)}
             className={className}
-            actions={
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => onOpenEvaluationQueue(upcomingReviewAssets)}
-              >
-                Antecipar Revisão
-              </Button>
-            }
+            primaryAction={{
+              label: "Antecipar Revisão",
+              onClick: () => onOpenEvaluationQueue(upcomingReviewAssets),
+              variant: "outline",
+            }}
+            dismissPolicy={{
+              allowedPresets: upcomingPolicy.allowedPresets,
+              onSelectPreset: (preset) => {
+                if (onSelectPreset) {
+                  onSelectPreset("portfolio.governance_upcoming", preset);
+                } else {
+                  dismissAlert?.(
+                    "upcoming-reviews-alert",
+                    preset === "7d" ? 7 : 30,
+                    upcomingFp,
+                  );
+                }
+              },
+            }}
           />
         ),
       },
 
     unscoredAssetsCount > 0 &&
-      !isAlertDismissed("unscored-assets-alert", unscoredFp) && {
-        id: "unscored-assets-alert",
+      isUnscoredVisible && {
+        id: "portfolio.unscored_assets",
         priority: 6,
         content: (
-          <InsightSlide
+          <AlertCarouselCard
+            id="portfolio.unscored_assets"
             tone="portfolio"
             icon={<Sparkles className="size-4.5" />}
             title="Ativos sem Nota Definida"
-            badgeText={`${unscoredAssetsCount} ${unscoredAssetsCount === 1 ? "ativo" : "ativos"}`}
+            badge={{
+              label: `${unscoredAssetsCount} ${unscoredAssetsCount === 1 ? "ativo" : "ativos"}`,
+              variant: "portfolio",
+            }}
             description={
               unscoredTickersText
                 ? unscoredAssetsCount === 1
@@ -174,18 +225,26 @@ export function buildGovernanceInsightItems({
                   : `Defina as notas de ${unscoredTickersText} para incluí-los no rebalanceamento.`
                 : "Avalie os ativos recém-cadastrados para calibrar os aportes."
             }
-            onDismiss={(days) => dismissAlert("unscored-assets-alert", days, unscoredFp)}
             className={className}
-            actions={
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => onOpenEvaluationQueue(unscoredAssets)}
-              >
-                Avaliar Agora
-              </Button>
-            }
+            primaryAction={{
+              label: "Avaliar Agora",
+              onClick: () => onOpenEvaluationQueue(unscoredAssets),
+              variant: "outline",
+            }}
+            dismissPolicy={{
+              allowedPresets: unscoredPolicy.allowedPresets,
+              onSelectPreset: (preset) => {
+                if (onSelectPreset) {
+                  onSelectPreset("portfolio.unscored_assets", preset);
+                } else {
+                  dismissAlert?.(
+                    "unscored-assets-alert",
+                    preset === "7d" ? 7 : 30,
+                    unscoredFp,
+                  );
+                }
+              },
+            }}
           />
         ),
       },
@@ -194,6 +253,10 @@ export function buildGovernanceInsightItems({
       lowScoreRiskCount,
       quarantinedCount,
       discountOpportunitiesCount,
+      lowScoreBreakdown,
+      discountBreakdown,
+      isCardVisible,
+      onSelectPreset,
       isAlertDismissed,
       dismissAlert,
       onNavigate,

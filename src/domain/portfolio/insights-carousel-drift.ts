@@ -20,10 +20,10 @@ export interface CarouselPositionRowInput {
 export interface CarouselAllocationDriftModel {
   allocationDrift: AllocationDriftAnalysis;
   targetsSumPct: number;
-  hasInvalidTargetsSum: boolean;
+  unallocatedClassesBRL: number;
+  unallocatedClassNames: string[];
   driftSummaryText: string;
   driftFingerprint: string;
-  targetsSumFingerprint: string;
 }
 
 export function computePortfolioCarouselDrift({
@@ -45,27 +45,50 @@ export function computePortfolioCarouselDrift({
     return {
       allocationDrift: calculateAllocationDrift({ totalPortfolioCents: 0, items: [] }),
       targetsSumPct: 0,
-      hasInvalidTargetsSum: false,
+      unallocatedClassesBRL: 0,
+      unallocatedClassNames: [],
       driftSummaryText: "Alguns ativos ou classes estão fora da tolerância estipulada.",
       driftFingerprint: "",
-      targetsSumFingerprint: "0",
     };
   }
 
+  const targetClassNamesLower = new Set(
+    validClassTargets.map((ct) => normalizeAllocationClassName(ct.name).toLowerCase()),
+  );
+
   const driftItems = validClassTargets.map((ct) => {
+    const normalizedTargetName = normalizeAllocationClassName(ct.name);
     const classRows = rows.filter((r) => {
       if (r.isCash) return false;
-      const cls = r.assetClass?.trim() || "Sem classe";
-      return cls.toLowerCase() === ct.name.trim().toLowerCase();
+      const cls = normalizeAllocationClassName(r.assetClass?.trim() || "Sem classe");
+      return (
+        cls.toLowerCase() === normalizedTargetName.toLowerCase() ||
+        (r.assetClass?.trim() || "").toLowerCase() === ct.name.trim().toLowerCase()
+      );
     });
     const totalClassValBRL = classRows.reduce((acc, r) => acc + (r.valueBRL ?? 0), 0);
     return {
       id: ct.id,
-      name: normalizeAllocationClassName(ct.name),
+      name: normalizedTargetName,
       currentValueCents: Math.round(totalClassValBRL * 100),
       targetPercent: Number(ct.target_percentage),
     };
   });
+
+  let unallocatedClassesBRL = 0;
+  const unallocatedNameSet = new Set<string>();
+  for (const r of rows) {
+    if (r.isCash) continue;
+    const rawCls = r.assetClass?.trim() || "Sem classe";
+    const normCls = normalizeAllocationClassName(rawCls);
+    const matched =
+      targetClassNamesLower.has(normCls.toLowerCase()) ||
+      validClassTargets.some((ct) => ct.name.trim().toLowerCase() === rawCls.toLowerCase());
+    if (!matched && r.valueBRL > 0) {
+      unallocatedClassesBRL += r.valueBRL;
+      unallocatedNameSet.add(normCls);
+    }
+  }
 
   const investableRowsSumBRL = rows
     .filter((r) => !r.isCash)
@@ -84,19 +107,31 @@ export function computePortfolioCarouselDrift({
     items: driftItems,
   });
 
-  const driftSummaryText = buildDriftSummaryText(allocationDrift);
-  const driftFingerprint = allocationDrift.underweightItems
+  const sortedUnderweight = [...allocationDrift.underweightItems].sort(
+    (a, b) => Math.abs(b.diffPercent) - Math.abs(a.diffPercent),
+  );
+  const sortedOverweight = [...allocationDrift.overweightItems].sort(
+    (a, b) => Math.abs(b.diffPercent) - Math.abs(a.diffPercent),
+  );
+  const orderedDrift: AllocationDriftAnalysis = {
+    ...allocationDrift,
+    underweightItems: sortedUnderweight,
+    overweightItems: sortedOverweight,
+  };
+
+  const driftSummaryText = buildDriftSummaryText(orderedDrift);
+  const driftFingerprint = orderedDrift.underweightItems
     .map((i) => `${i.id}:${Math.round(i.diffPercent)}`)
-    .concat(allocationDrift.overweightItems.map((i) => `${i.id}:+${Math.round(i.diffPercent)}`))
+    .concat(orderedDrift.overweightItems.map((i) => `${i.id}:+${Math.round(i.diffPercent)}`))
     .join("|");
 
   return {
-    allocationDrift,
+    allocationDrift: orderedDrift,
     targetsSumPct,
-    hasInvalidTargetsSum: false, // Normalização automática ativa (§AutoNormalize) — sem alertas punitivos
+    unallocatedClassesBRL,
+    unallocatedClassNames: Array.from(unallocatedNameSet),
     driftSummaryText,
     driftFingerprint,
-    targetsSumFingerprint: String(targetsSumPct),
   };
 }
 

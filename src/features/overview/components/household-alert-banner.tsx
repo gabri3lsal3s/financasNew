@@ -1,13 +1,16 @@
 import { ArrowRight, HandCoins, Users } from "lucide-react";
 import { useNavigate } from "react-router";
-import { CarouselDismissPopover } from "@/components/modules/carousel-dismiss-popover";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { AlertCarouselCard } from "@/components/modules/alert-carousel-card";
 import { MoneyText } from "@/components/ui/money-text";
-import { cn } from "@/lib/utils";
+import type { CalculationBreakdown } from "@/domain/calculation-memory";
+import {
+  resolveCarouselCardPolicy,
+  type CarouselDismissPreset,
+} from "@/domain/notifications/hub";
 
 export interface HouseholdAlertBannerProps {
   variant: "ceiling_exceeded" | "ceiling_warning" | "settlement_pending";
+  month?: string;
   totalSpentCents?: number;
   ceilingCents?: number;
   spentPercentage?: number;
@@ -17,12 +20,15 @@ export interface HouseholdAlertBannerProps {
   isCurrentUserPayer?: boolean;
   isCurrentUserReceiver?: boolean;
   daysRemaining?: number;
+  calculationBreakdown?: CalculationBreakdown;
   onDismiss?: (days: 7 | 30) => void;
+  onSelectPreset?: (preset: CarouselDismissPreset) => void;
   className?: string;
 }
 
 export function HouseholdAlertBanner({
   variant,
+  month,
   totalSpentCents = 0,
   ceilingCents = 0,
   spentPercentage = 0,
@@ -32,138 +38,118 @@ export function HouseholdAlertBanner({
   isCurrentUserPayer,
   isCurrentUserReceiver,
   daysRemaining,
+  calculationBreakdown,
   onDismiss,
+  onSelectPreset,
   className,
 }: HouseholdAlertBannerProps) {
   const navigate = useNavigate();
 
   const handleNavigate = () => {
-    navigate("/familia");
+    const query = month ? `?mes=${encodeURIComponent(month)}` : "";
+    navigate(`/familia${query}`);
   };
 
   const isExceeded = variant === "ceiling_exceeded";
   const isWarning = variant === "ceiling_warning";
   const isSettlement = variant === "settlement_pending";
+  const cardKey = isSettlement
+    ? "household.settlement_pending"
+    : "household.ceiling_exceeded";
+  const policy = resolveCarouselCardPolicy(cardKey);
 
-  const containerBorderBg = isExceeded
-    ? "border-critical/30 bg-critical/5 text-foreground"
-    : isWarning
-      ? "border-warning/30 bg-warning/5 text-foreground"
-      : "border-primary/25 bg-primary/5 text-foreground";
-
-  const iconContainerClass = isExceeded
-    ? "bg-critical/10 border-critical/20 text-critical-strong"
-    : isWarning
-      ? "bg-warning/15 border-warning/20 text-warning-strong"
-      : "bg-primary/10 border-primary/20 text-primary-strong";
-
-  const badgeVariant = isExceeded ? "critical" : isWarning ? "warning" : "default";
+  const title = isSettlement
+    ? "Acerto Familiar Pendente"
+    : isExceeded
+      ? "Teto Familiar Estourado"
+      : "Atenção ao Teto Familiar";
 
   return (
-    <div
+    <AlertCarouselCard
+      id={cardKey}
+      tone={isExceeded ? "critical" : isWarning ? "warning" : "info"}
       role="region"
-      aria-label={isSettlement ? "Alerta de Acerto Familiar" : "Alerta de Teto Familiar"}
-      className={cn(
-        "relative w-full h-full min-h-[104px] sm:min-h-[84px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border p-3.5 sm:p-4 shadow-xs transition-all",
-        containerBorderBg,
-        className,
-      )}
-    >
-      <div className={cn("flex items-start sm:items-center gap-3 min-w-0 flex-1", onDismiss && "pr-6 sm:pr-0")}>
-        <span
-          className={cn("flex size-9 shrink-0 items-center justify-center rounded-xl border", iconContainerClass)}
-          aria-hidden="true"
-        >
-          {isSettlement ? <HandCoins className="size-4.5" /> : <Users className="size-4.5" />}
-        </span>
-
-        <div className="flex flex-col gap-0.5 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h2
-              className="text-sm font-semibold text-foreground truncate"
-              title={
-                isSettlement
-                  ? "Acerto Familiar Pendente"
-                  : isExceeded
-                    ? "Teto Familiar Estourado"
-                    : "Atenção ao Teto Familiar"
-              }
-            >
-              {isSettlement
-                ? "Acerto Familiar Pendente"
-                : isExceeded
-                  ? "Teto Familiar Estourado"
-                  : "Atenção ao Teto Familiar"}
-            </h2>
-            <Badge variant={badgeVariant} size="xs">
-              {isSettlement ? "Pix" : `${spentPercentage}% do teto`}
-            </Badge>
-          </div>
-
-          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 break-words">
-            {isSettlement ? (
-              isCurrentUserPayer ? (
-                <>
-                  Você deve compensar{" "}
-                  <MoneyText cents={settlementAmountCents} tone="negative" className="font-semibold" /> para{" "}
-                  {settlementReceiverName ?? "seu parceiro"}.
-                </>
-              ) : isCurrentUserReceiver ? (
-                <>
-                  Você tem{" "}
-                  <MoneyText cents={settlementAmountCents} tone="positive" className="font-semibold" /> a receber de{" "}
-                  {settlementPayerName ?? "seu parceiro"}.
-                </>
-              ) : (
-                <>
-                  Compensação de{" "}
-                  <MoneyText cents={settlementAmountCents} className="font-semibold" /> pendente no rateio da casa.
-                </>
-              )
-            ) : (
-              <>
-                A casa gastou{" "}
-                <MoneyText cents={totalSpentCents} tone={isExceeded ? "negative" : "default"} className="font-semibold" /> de{" "}
-                <MoneyText cents={ceilingCents} className="font-semibold" />
-                {daysRemaining !== undefined && daysRemaining > 0 ? ` (restam ${daysRemaining} dias).` : "."}
-              </>
-            )}
-          </p>
-        </div>
-      </div>
-
-      <div className="flex shrink-0 items-center gap-2 w-full sm:w-auto self-stretch sm:self-center mt-auto sm:mt-0">
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={handleNavigate}
-          className={cn(
-            "gap-1.5 shrink-0 flex-1 sm:flex-initial justify-center text-xs font-medium cursor-pointer",
-            isExceeded
-              ? "border-critical/30 hover:bg-critical/10 text-critical-strong"
-              : isWarning
-                ? "border-warning/30 hover:bg-warning/10 text-warning-strong"
-                : "border-primary/30 hover:bg-primary/10 text-primary-strong",
-          )}
-        >
-          <span>{isSettlement ? "Fazer Acerto" : "Ver Família"}</span>
-          <ArrowRight className="size-3.5" aria-hidden="true" />
-        </Button>
-
-        {onDismiss ? (
-          <div className="absolute top-3 right-3 sm:static">
-            <CarouselDismissPopover
-              onDismiss={onDismiss}
-              label={
-                isSettlement
-                  ? "Dispensar aviso de acerto familiar"
-                  : "Dispensar aviso de teto familiar"
-              }
-            />
-          </div>
-        ) : null}
-      </div>
-    </div>
+      ariaLabel={
+        isSettlement ? "Alerta de Acerto Familiar" : "Alerta de Teto Familiar"
+      }
+      className={className}
+      icon={
+        isSettlement ? (
+          <HandCoins className="size-4.5" />
+        ) : (
+          <Users className="size-4.5" />
+        )
+      }
+      title={title}
+      badge={{
+        label: isSettlement ? "Pix" : `${spentPercentage}% do teto`,
+        variant: isExceeded ? "critical" : isWarning ? "warning" : "default",
+      }}
+      description={
+        isSettlement ? (
+          isCurrentUserPayer ? (
+            <>
+              Você deve compensar{" "}
+              <MoneyText
+                cents={settlementAmountCents}
+                tone="negative"
+                className="font-semibold"
+              />{" "}
+              para {settlementReceiverName ?? "seu parceiro"}.
+            </>
+          ) : isCurrentUserReceiver ? (
+            <>
+              Você tem{" "}
+              <MoneyText
+                cents={settlementAmountCents}
+                tone="positive"
+                className="font-semibold"
+              />{" "}
+              a receber de {settlementPayerName ?? "seu parceiro"}.
+            </>
+          ) : (
+            <>
+              Compensação de{" "}
+              <MoneyText cents={settlementAmountCents} className="font-semibold" />{" "}
+              pendente no rateio da casa.
+            </>
+          )
+        ) : (
+          <>
+            A casa gastou{" "}
+            <MoneyText
+              cents={totalSpentCents}
+              tone={isExceeded ? "negative" : "default"}
+              className="font-semibold"
+            />{" "}
+            de <MoneyText cents={ceilingCents} className="font-semibold" />
+            {daysRemaining !== undefined && daysRemaining > 0
+              ? ` (restam ${daysRemaining} dias).`
+              : "."}
+          </>
+        )
+      }
+      primaryAction={{
+        label: isSettlement ? "Fazer Acerto" : "Ver Família",
+        onClick: handleNavigate,
+        variant: "outline",
+        icon: <ArrowRight className="size-3.5" aria-hidden="true" />,
+      }}
+      calculationBreakdown={calculationBreakdown}
+      dismissPolicy={
+        onSelectPreset || onDismiss
+          ? {
+              allowedPresets: policy.allowedPresets,
+              onSelectPreset: (preset) => {
+                if (onSelectPreset) onSelectPreset(preset);
+                else onDismiss?.(preset === "7d" ? 7 : 30);
+              },
+              label: isSettlement
+                ? "Dispensar aviso de acerto familiar"
+                : "Dispensar aviso de teto familiar",
+            }
+          : undefined
+      }
+    />
   );
 }

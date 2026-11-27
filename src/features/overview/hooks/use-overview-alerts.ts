@@ -1,18 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { NavigateFunction } from "react-router";
 import type { PermissionAlertBannerType } from "@/components/modules";
+import type { CarouselDismissPreset } from "@/domain/notifications/hub";
 import { mergeDashboardAlertDismissals } from "@/domain/overview";
+import { useCarouselDismissals } from "@/hooks/use-carousel-dismissals";
 import {
   isDailyReminderEnabled,
   isDueNotificationsEnabled,
   isNativePlatform,
   isPermissionAlertDismissed,
-  setDismissedPermissionAlert,
   useBankAssistantPreferences,
   usePermissionsStatus,
 } from "@/services/native";
 import { getActiveUserId, getUserStorageKey, subscribeActiveUserId } from "@/services/user-storage";
-import { useUpdateCustomSettings, useUserAccess, useUserPreferences } from "@/state";
+import { useUserAccess, useUserPreferences } from "@/state";
+import { useUpdateCustomSettings } from "@/state/mutations/use-preference-mutations";
 import { isQueryPending } from "@/state/query-readiness";
 import type { DashboardAlertDismissals } from "@/types";
 
@@ -109,7 +111,7 @@ export function useOverviewPermissionsBanner(navigate: NavigateFunction) {
     usePermissionsStatus();
   const { preferences: bankPrefs } = useBankAssistantPreferences();
   const userPreferencesQuery = useUserPreferences();
-  const updateCustomSettingsMutation = useUpdateCustomSettings();
+  const { isCardVisible, dismissCard } = useCarouselDismissals();
 
   const { hasFeature } = useUserAccess();
   const isBankListenerAllowed = hasFeature("bank_notification_listener");
@@ -134,19 +136,20 @@ export function useOverviewPermissionsBanner(navigate: NavigateFunction) {
   const isPushDueMissing =
     isNative && (dueNotificationsActive || dailyReminderActive) && !postNotificationsGranted;
 
-  const [dismissedSession, setDismissedSession] = useState<{
-    pushDue?: boolean;
-    passiveBankListener?: boolean;
-  }>({});
+  const legacyPermissionSources = {
+    deviceNotifications: cloudDeviceNotifs,
+    localPermissionDismissals: {
+      pushDue: isPermissionAlertDismissed("pushDue"),
+      passiveBankListener: isPermissionAlertDismissed("passiveBankListener"),
+    },
+  };
 
-  const isBankListenerDismissed =
-    Boolean(dismissedSession.passiveBankListener) ||
-    isPermissionAlertDismissed("passiveBankListener") ||
-    Boolean(cloudDeviceNotifs?.dismissedPermissionAlerts?.passiveBankListener);
-  const isPushDueDismissed =
-    Boolean(dismissedSession.pushDue) ||
-    isPermissionAlertDismissed("pushDue") ||
-    Boolean(cloudDeviceNotifs?.dismissedPermissionAlerts?.pushDue);
+  const isBankListenerDismissed = !isCardVisible("device.permissions.bank_listener", {
+    legacySources: legacyPermissionSources,
+  });
+  const isPushDueDismissed = !isCardVisible("device.permissions.push_due", {
+    legacySources: legacyPermissionSources,
+  });
 
   const showBankMissing = isBankListenerMissing && !isBankListenerDismissed;
   const showPushMissing = isPushDueMissing && !isPushDueDismissed;
@@ -180,28 +183,15 @@ export function useOverviewPermissionsBanner(navigate: NavigateFunction) {
     }
   };
 
-  const handlePermissionsBannerDismiss = () => {
-    setDismissedSession((prev) => ({
-      ...prev,
-      ...(showBankMissing ? { passiveBankListener: true } : {}),
-      ...(showPushMissing ? { pushDue: true } : {}),
-    }));
-    if (showBankMissing) {
-      setDismissedPermissionAlert("passiveBankListener", true);
-    }
-    if (showPushMissing) {
-      setDismissedPermissionAlert("pushDue", true);
-    }
-    updateCustomSettingsMutation.mutate({
-      deviceNotifications: {
-        ...cloudDeviceNotifs,
-        dismissedPermissionAlerts: {
-          ...(cloudDeviceNotifs?.dismissedPermissionAlerts ?? {}),
-          ...(showPushMissing ? { pushDue: true } : {}),
-          ...(showBankMissing ? { passiveBankListener: true } : {}),
-        },
-      },
-    });
+  const handlePermissionsBannerDismiss = (
+    preset: CarouselDismissPreset = "7d",
+    capability?: "bank_listener" | "push_due",
+  ) => {
+    const targetCapability =
+      capability ??
+      (showBankMissing ? "bank_listener" : showPushMissing ? "push_due" : null);
+    if (!targetCapability) return;
+    dismissCard(`device.permissions.${targetCapability}`, preset);
   };
 
   return {

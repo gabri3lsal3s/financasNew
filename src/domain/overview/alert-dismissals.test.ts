@@ -94,7 +94,7 @@ describe("alert-dismissals (Motor Puro de Elegibilidade e Descarte de Alertas)",
       ).toBe(true);
     });
 
-    it("reativa o alerta quando o valor alvo (targetCents) é redefinido mesmo dentro do cooldown", () => {
+    it("respeita o cooldown ativo mesmo quando o valor alvo (targetCents) é alterado", () => {
       const checkpoint = createGoalDismissalCheckpoint(baseGoal, "2026-11-01T12:00:00Z");
       const afterTargetChange: GoalAlertEvaluation = {
         ...baseGoal,
@@ -106,7 +106,7 @@ describe("alert-dismissals (Motor Puro de Elegibilidade e Descarte de Alertas)",
         shouldShowGoalAlert(checkpoint, afterTargetChange, {
           nowIso: "2026-11-05T12:00:00Z",
         }),
-      ).toBe(true);
+      ).toBe(false);
     });
 
     it("reativa o alerta imediatamente quando a meta atinge 100% batido (celebração fura cooldown)", () => {
@@ -133,7 +133,7 @@ describe("alert-dismissals (Motor Puro de Elegibilidade e Descarte de Alertas)",
       ).toBe(true);
     });
 
-    it("reativa o alerta quando a meta entra na reta final (>= 80%) a partir de estágio anterior", () => {
+    it("respeita o cooldown ativo mesmo quando a meta entra na reta final (>= 80%)", () => {
       const regularGoal: GoalAlertEvaluation = {
         goalId: "goal-3",
         currentCents: 50000,
@@ -153,10 +153,10 @@ describe("alert-dismissals (Motor Puro de Elegibilidade e Descarte de Alertas)",
         shouldShowGoalAlert(checkpoint, enteredFinalStretch, {
           nowIso: "2026-11-05T12:00:00Z",
         }),
-      ).toBe(true);
+      ).toBe(false);
     });
 
-    it("reativa o alerta quando o status da meta é alterado", () => {
+    it("respeita o cooldown ativo mesmo quando o status da meta é alterado", () => {
       const checkpoint = createGoalDismissalCheckpoint(
         {
           ...baseGoal,
@@ -172,7 +172,7 @@ describe("alert-dismissals (Motor Puro de Elegibilidade e Descarte de Alertas)",
         shouldShowGoalAlert(checkpoint, updatedStatus, {
           nowIso: "2026-11-05T12:00:00Z",
         }),
-      ).toBe(true);
+      ).toBe(false);
     });
   });
 

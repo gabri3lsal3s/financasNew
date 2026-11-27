@@ -11,6 +11,7 @@ import {
 import { getTourTrackMeta } from "@/domain/demo-simulation";
 import { selectOperationalHomeBanner } from "@/domain/insights";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
+import { useCarouselDismissals } from "@/hooks/use-carousel-dismissals";
 import { currentMonth } from "@/lib/date";
 import { openDividendReviewModal } from "@/services/dividend-review-modal";
 import { useAutoRegisteredBanner, usePendingSuggestions } from "@/services/native";
@@ -40,6 +41,7 @@ export function OverviewPage() {
   const { guardAction, upgradeModal } = useMutationGuard();
 
   const { alertDismissals, updateAlertDismissals } = useDashboardAlertDismissals();
+  const { dismissCard: dismissCarouselCard } = useCarouselDismissals();
   const permissions = useOverviewPermissionsBanner(navigate);
   useMarketQuotesSwr({ enabled: !accessLoading && hasFeature("investments"), enableInterval: false });
   const data = useOverviewData({ month, alertDismissals });
@@ -184,6 +186,7 @@ export function OverviewPage() {
         onPermissionsAction: permissions.handlePermissionsBannerAction,
         onPermissionsDismiss: permissions.handlePermissionsBannerDismiss,
         onNavigateInsights: () => navigate("/insights?aba=projection"),
+        onNavigate: (to) => navigate(to),
         onDismissPace: modals.handleDismissPace,
         onOpenGoalDeposit: (share) => modals.setDepositGoalShare(share),
         onNavigateGoal: (shareId) => navigate(`/orcamentos?tab=goals&q=${shareId}`),
@@ -192,6 +195,7 @@ export function OverviewPage() {
         onInspectDividends: () => openDividendReviewModal({ initialTab: "review" }),
         canViewInvestments: hasFeature("investments"),
         overdueReviewsCount: govInsights.overdueReviewsCount,
+        govInsights: govInsights.insights,
         onReviewGovernance: () => navigate("/investments?tab=metas"),
         onDismissGovernance: modals.handleDismissGovernance,
         isGovernanceDismissed: data.isGovernanceDismissed,
@@ -202,6 +206,7 @@ export function OverviewPage() {
         showJitDeviceAlertsInvite,
         onOpenInitialPreferences: () => modals.setInitialPreferencesOpen(true),
         onDismissCard: modals.handleDismissCard,
+        onSelectPreset: (cardKey, preset) => dismissCarouselCard(cardKey, preset),
         advisorInsights: advisor.insights,
         onDismissAdvisor: advisor.dismiss,
         onConfirmRecurrence: advisor.confirmRecurrence,

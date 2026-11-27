@@ -39,14 +39,21 @@ export function buildSmartAdvisorBreakdown(
   } = options;
 
   const valueCents = insight.metadata?.valueCents ?? 0;
-  const annualSavingsCents = insight.metadata?.annualSavingsCents ?? valueCents * 12;
+  const isProvenRecurring = insight.metadata?.isProvenRecurring !== false;
+  const annualSavingsCents =
+    insight.metadata?.annualSavingsCents ?? (isProvenRecurring ? valueCents * 12 : valueCents);
   const percentIncrease = insight.metadata?.percentIncrease;
   const duplicateCount = insight.metadata?.duplicateCount;
 
   // 1. REAJUSTE DE PREÇO (PRICE ADJUSTMENT)
   if (insight.themeKey.startsWith("price_adj:") || percentIncrease != null) {
     const pct = percentIncrease ?? 0;
-    const oldCents = pct > -100 && pct !== 0 ? Math.round(valueCents / (1 + pct / 100)) : valueCents;
+    const hasExactOldCents = insight.metadata?.previousValueCents != null;
+    const oldCents = hasExactOldCents
+      ? insight.metadata!.previousValueCents!
+      : pct > -100 && pct !== 0
+        ? Math.round(valueCents / (1 + pct / 100))
+        : valueCents;
     const diffMonthCents = Math.max(0, valueCents - oldCents);
     const diffYearCents = diffMonthCents * 12;
 
@@ -516,6 +523,9 @@ export interface PaceProjectionBreakdownParams {
   dailyCents: number | null;
   dayOfMonth: number;
   daysInMonth: number;
+  variablePct?: number;
+  elapsedTimePct?: number;
+  triggerReason?: string;
 }
 
 const REFERENCE_SOURCE_LABELS: Record<ReferenceBudgetSource, { title: string; hint: string }> = {

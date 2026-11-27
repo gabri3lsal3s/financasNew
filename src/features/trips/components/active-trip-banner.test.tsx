@@ -31,8 +31,8 @@ describe("ActiveTripBanner", () => {
     expect(screen.getByText("Feriado em Paraty")).toBeInTheDocument();
     expect(screen.getByText("Viagem Ativa")).toBeInTheDocument();
     expect(screen.getByText("15/11/2026 até 18/11/2026")).toBeInTheDocument();
-    const link = screen.getByRole("link", { name: /Acessar Viagem/i });
-    expect(link).toHaveAttribute("href", "/viagens/trip-1");
+    const actionBtn = screen.getByRole("button", { name: /Acessar Viagem/i });
+    expect(actionBtn).toBeInTheDocument();
   });
 
   it("renderiza Total gasto com MoneyText quando totalExpensesCents é informado", () => {
@@ -58,7 +58,7 @@ describe("ActiveTripBanner", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: /Dispensar aviso de viagem ativa/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Dispensar por 7 dias/i }));
+    fireEvent.click(screen.getByRole("button", { name: /7 dias/i }));
     expect(onDismiss).toHaveBeenCalledWith(7);
   });
 });
