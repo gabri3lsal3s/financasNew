@@ -363,7 +363,7 @@ Para validar a integridade transacional de ponta a ponta com o gateway bancário
 1. Acesse o **Painel Asaas** (Sandbox ou Produção) → **Menu Superior** → **Configurações da Conta** → **Integrações** → **Webhooks**;
 2. Adicione um novo webhook para Cobranças/Assinaturas:
    - **URL de Envio:** `https://<PROJECT_REF>.supabase.co/functions/v1/asaas-webhook`
-   - **E-mail para Alertas de Erro:** `suporte@axis.app`
+   - **E-mail para Alertas de Erro:** `suporte@axir.com.br`
    - **Versão da API:** `v3`
    - **Token de Autenticação (`asaas-access-token`):** Insira a mesma chave gerada para o secret `ASAAS_WEBHOOK_TOKEN` do Supabase;
 3. Marque obrigatoriamente os seguintes eventos:
@@ -409,11 +409,12 @@ where user_id = '<ID_DO_USUARIO_TESTE>';
   * `current_period_end`: preenchido com a vigência correspondente (+12 meses ou +1 mês civil);
   * Permissão de escrita ativa: a chamada `public.can_current_user_write()` deve retornar `true`.
 
-#### 4. Homologação do Estorno em 7 Dias (CDC Artigo 49) e Cancelamento
-1. Na tela `/assinatura`, acione o cancelamento dentro da janela de 7 dias (ou efetue o **Estorno/Reembolso** da cobrança no painel Asaas);
-2. O webhook receberá `PAYMENT_REFUNDED`, encerrando imediatamente o acesso pago (`tier = 'read_only'`, `status = 'canceled'`) e cancelando a recorrência no Asaas;
-3. Fora dos 7 dias, o cancelamento voluntário ou evento `SUBSCRIPTION_DELETED` marca `cancel_at_period_end = true` preservando o acesso até o fim do período já pago;
-4. Em inadimplência (`PAYMENT_OVERDUE`), o status passa para `'past_due'` conforme a carência configurada, recuperando para `'active'` na liquidação (`PAYMENT_CONFIRMED`/`PAYMENT_RECEIVED`).
+#### 4. Homologação do Estorno em 7 Dias (CDC Artigo 49), Cancelamento, Parcial e Chargeback
+1. **Cancelamento `<= 7 dias`:** na tela `/assinatura`, acionar o cancelamento dentro da janela de 7 dias solicita estorno integral no Asaas, encerra imediatamente o acesso pago (`tier = 'read_only'`, `status = 'canceled'`) e cancela a recorrência; o webhook `PAYMENT_REFUNDED` confirma a transição de forma idempotente;
+2. **Cancelamento `> 7 dias`:** o cancelamento voluntário ou o evento `SUBSCRIPTION_DELETED` marca `cancel_at_period_end = true`, preservando o acesso `active` até o término do período já pago;
+3. **Estorno parcial (`PAYMENT_PARTIALLY_REFUNDED`):** registra trilha imutável em `audit_events` (`payment_partially_refunded`) e alerta administrativo no Telegram sem revogar o período integral automaticamente;
+4. **Chargeback (`PAYMENT_CHARGEBACK_REQUESTED`):** aplica bloqueio imediato para `read_only` (`status = 'canceled'`, `chargeback_flagged_at` preenchido), cancela a recorrência no Asaas e dispara alerta crítico;
+5. **Inadimplência (`PAYMENT_OVERDUE`):** altera o status para `'past_due'` conforme a carência configurada, recuperando para `'active'` na liquidação (`PAYMENT_CONFIRMED`/`PAYMENT_RECEIVED`).
 
 ---
 

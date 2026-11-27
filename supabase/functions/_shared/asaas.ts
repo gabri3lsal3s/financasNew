@@ -705,6 +705,54 @@ export async function findAsaasSubscriptionByExternalReference(
   return list.find((s) => !s.deleted) || list[0] || null;
 }
 
+export interface EarlyWebhookResolution {
+  confirmedByEarlyWebhook: boolean;
+  responseStatus: "active" | "incomplete";
+  shouldPersistPending: boolean;
+  shouldMarkPendingResync: boolean;
+}
+
+/**
+ * Resolve o estado de retorno e persistência do checkout quando a consulta inicial
+ * ao Asaas retorna PENDING, verificando se o webhook já liquidou ESTA intenção/fatura.
+ */
+export function resolveEarlyWebhookSettlement(params: {
+  latestIntent: {
+    status?: string | null;
+    provider_subscription_id?: string | null;
+    provider_payment_id?: string | null;
+  } | null;
+  subscriptionId: string;
+  firstPaymentId?: string | null;
+  prevCancelOk: boolean;
+}): EarlyWebhookResolution {
+  const { latestIntent, subscriptionId, firstPaymentId, prevCancelOk } = params;
+  const confirmedByEarlyWebhook = Boolean(
+    latestIntent?.status === "paid" &&
+      (!latestIntent.provider_subscription_id ||
+        latestIntent.provider_subscription_id === subscriptionId) &&
+      (!firstPaymentId ||
+        !latestIntent.provider_payment_id ||
+        latestIntent.provider_payment_id === firstPaymentId),
+  );
+
+  if (confirmedByEarlyWebhook) {
+    return {
+      confirmedByEarlyWebhook: true,
+      responseStatus: "active",
+      shouldPersistPending: false,
+      shouldMarkPendingResync: !prevCancelOk,
+    };
+  }
+
+  return {
+    confirmedByEarlyWebhook: false,
+    responseStatus: "incomplete",
+    shouldPersistPending: true,
+    shouldMarkPendingResync: false,
+  };
+}
+
 /**
  * Regra pura para reaproveitamento de cobrança Pix pendente gerada há menos de 1 hora.
  */

@@ -8,6 +8,7 @@ import {
   getAsaasSubscriptionPayments,
   ensurePreviousSubscriptionCanceled,
   findAsaasSubscriptionByExternalReference,
+  resolveEarlyWebhookSettlement,
   PIX_REUSE_WINDOW_MS,
   isValidCPF,
   isValidLuhn,
@@ -1189,16 +1190,25 @@ Deno?.serve?.(async (req: Request) => {
         .eq("user_id", user.id)
         .maybeSingle();
 
-      confirmedByEarlyWebhook = Boolean(
-        latestIntent?.status === "paid" &&
-          (!latestIntent.provider_subscription_id ||
-            latestIntent.provider_subscription_id === subscription.id) &&
-          (!firstPaymentId ||
-            !latestIntent.provider_payment_id ||
-            latestIntent.provider_payment_id === firstPaymentId),
-      );
+      const earlySettlement = resolveEarlyWebhookSettlement({
+        latestIntent,
+        subscriptionId: subscription.id,
+        firstPaymentId,
+        prevCancelOk,
+      });
+      confirmedByEarlyWebhook = earlySettlement.confirmedByEarlyWebhook;
 
-      if (!confirmedByEarlyWebhook) {
+      if (earlySettlement.shouldMarkPendingResync) {
+        await supabase
+          .from("user_subscriptions")
+          .update({
+            asaas_sync_status: "pending_resync",
+            updated_at: nowIso,
+          })
+          .eq("user_id", user.id);
+      }
+
+      if (earlySettlement.shouldPersistPending) {
         const baseMetaFields = {
           payment_method: "credit_card",
           card_last4: cardLast4,
