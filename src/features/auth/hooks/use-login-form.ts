@@ -11,7 +11,11 @@ import {
   verifyMfaTotpCode,
 } from "@/hooks/use-auth";
 import { useSignOut } from "@/hooks/use-sign-out";
-import { isSessionTransportError, postSessionOperation } from "@/state/session-custody";
+import {
+  isSessionTransportError,
+  postSessionOperation,
+  syncCurrentSupabaseSessionToBff,
+} from "@/state/session-custody";
 import { classifyError, getErrorMessage } from "@/services/errors";
 import { markPendingExplicitDeviceRegistration } from "@/services/native/device-info";
 import { setSessionContext } from "@/services/session-context";
@@ -228,22 +232,6 @@ export function useLoginForm() {
       setSharedDeviceSession(isSharedDevice);
       await signInWithEmail(email, password, captchaToken ?? undefined);
       try {
-        const bffResponse = await postSessionOperation<
-          PublicSessionContext | { context: PublicSessionContext }
-        >("login", {
-          grant: "password",
-          mode: isSharedDevice ? "shared" : "personal",
-          email: email.trim(),
-          password,
-        });
-        const bffContext = extractSessionContext(bffResponse);
-        if (bffContext) {
-          setSessionContext(bffContext);
-        }
-      } catch {
-        // Best-effort: mantém o login Supabase caso o BFF ainda não esteja habilitado no host local
-      }
-      try {
         const verified = await listVerifiedMfaFactors();
         if (verified) {
           setMfaFactorId(verified.id);
@@ -253,6 +241,25 @@ export function useLoginForm() {
         }
       } catch {
         // Segue login se MFA não configurado
+      }
+      const syncedCtx = await syncCurrentSupabaseSessionToBff(isSharedDevice ? "shared" : "personal");
+      if (!syncedCtx) {
+        try {
+          const bffResponse = await postSessionOperation<
+            PublicSessionContext | { context: PublicSessionContext }
+          >("login", {
+            grant: "password",
+            mode: isSharedDevice ? "shared" : "personal",
+            email: email.trim(),
+            password,
+          });
+          const bffContext = extractSessionContext(bffResponse);
+          if (bffContext) {
+            setSessionContext(bffContext);
+          }
+        } catch {
+          // Best-effort: mantém o login Supabase caso o BFF ainda não esteja habilitado no host local
+        }
       }
       markPendingExplicitDeviceRegistration();
       triggerSensory("success");
@@ -288,6 +295,7 @@ export function useLoginForm() {
       if (!verifyOk) throw new Error("Código de autenticação incorreto ou expirado.");
 
       markMfaVerified();
+      await syncCurrentSupabaseSessionToBff(isSharedDevice ? "shared" : "personal");
       markPendingExplicitDeviceRegistration();
       triggerSensory("success");
       setIsMfaRequired(false);

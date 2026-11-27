@@ -10,8 +10,9 @@ import type {
 import {
   isSessionTransportError,
   postSessionOperation,
+  syncCurrentSupabaseSessionToBff,
   type SessionTransportErrorCode,
-} from "@/data/session-transport";
+} from "@/state/session-custody";
 import {
   captureContext,
   clearSessionContext,
@@ -201,11 +202,16 @@ export function useAccountSwitcher(): UseAccountSwitcherReturn {
   const listAccounts = useCallback(
     async (options?: { signal?: AbortSignal }): Promise<AccountSwitcherResult<{ accounts: AccountSummary[] }>> => {
       const captured = captureContext();
-      if (!captured.contextId) {
-        setAccounts([]);
-        setLoading(false);
-        setBusyAction(null);
-        return { ok: true, accounts: [] };
+      let activeContextId = captured.contextId;
+      if (!activeContextId) {
+        const synced = await syncCurrentSupabaseSessionToBff();
+        if (!synced?.contextId) {
+          setAccounts([]);
+          setLoading(false);
+          setBusyAction(null);
+          return { ok: true, accounts: [] };
+        }
+        activeContextId = synced.contextId;
       }
       setLoading(true);
       setBusyAction("list");
@@ -218,7 +224,7 @@ export function useAccountSwitcher(): UseAccountSwitcherReturn {
           { signal: options?.signal },
         );
         const visible = filterVisibleAccounts(response);
-        if (!isContextCurrent(captured)) {
+        if (!isContextCurrent(captured) && getSessionContext().contextId !== activeContextId) {
           return {
             ok: false,
             code: "stale_context",

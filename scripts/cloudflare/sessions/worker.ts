@@ -54,6 +54,15 @@ const loginSchema = z.discriminatedUnion("grant", [
       redirectTo: z.string().url().max(512),
     })
     .strict(),
+  z
+    .object({
+      grant: z.literal("session-sync"),
+      mode: z.enum(["personal", "shared", "operator"]).default("personal"),
+      accessToken: z.string().min(10).max(4096),
+      refreshToken: z.string().min(1).max(1024).default("sync"),
+      displayName: z.string().trim().min(1).max(80).optional(),
+    })
+    .strict(),
 ]);
 
 const mfaSchema = z
@@ -425,6 +434,47 @@ export default {
           });
           const authorizeUrl = `${env.SUPABASE_URL}/auth/v1/authorize?provider=email&code_challenge=${codeChallenge}&state=${intentId}`;
           return jsonResponse({ intentId, authorizeUrl, expiresAt }, 200, setCookieHeaders);
+        }
+
+        if (parsed.data.grant === "session-sync") {
+          try {
+            const userRes = await fetch(`${env.SUPABASE_URL}/auth/v1/user`, {
+              method: "GET",
+              headers: {
+                apikey: env.SUPABASE_ANON_KEY,
+                Authorization: `Bearer ${parsed.data.accessToken}`,
+              },
+            });
+
+            if (!userRes.ok) {
+              if (userRes.status >= 500) return errorResponse("service_unavailable", 503);
+              return errorResponse("unauthorized", 401);
+            }
+
+            const verifiedUser = (await userRes.json()) as {
+              id: string;
+              email?: string;
+              user_metadata?: { full_name?: string };
+            };
+
+            const publicCtx = await coordinator.admitAuthenticatedAccount({
+              userId: verifiedUser.id,
+              email: verifiedUser.email,
+              displayName: parsed.data.displayName ?? verifiedUser.user_metadata?.full_name,
+              mode: parsed.data.mode,
+              accessToken: parsed.data.accessToken,
+              refreshToken: parsed.data.refreshToken,
+              mfaVerified: true,
+              nowMs,
+            });
+
+            return jsonResponse(publicCtx, 200, setCookieHeaders);
+          } catch (err) {
+            if (err instanceof Error && err.message === "limit_reached") {
+              return errorResponse("limit_reached", 409);
+            }
+            return errorResponse("service_unavailable", 503);
+          }
         }
 
         try {
