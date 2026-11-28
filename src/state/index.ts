@@ -233,6 +233,10 @@ export {
   useAdminPastDueSubscriptions,
   useAdminSubscriptions,
   useMyBroadcastNotifications,
+  useAdminConnectionsHealth,
+  useAdminAiUsageSummary,
+  useAdminUserSupportDiagnostics,
+  useAdminRetentionRadar,
   ADMIN_METRICS_KEY,
   ADMIN_USERS_KEY,
   ADMIN_FEATURES_KEY,
@@ -247,6 +251,10 @@ export {
   ADMIN_USER_CONTACT_KEY,
   ADMIN_PAST_DUE_KEY,
   MY_BROADCASTS_KEY,
+  ADMIN_CONNECTIONS_HEALTH_KEY,
+  ADMIN_AI_USAGE_KEY,
+  ADMIN_USER_SUPPORT_DIAGNOSTICS_KEY,
+  ADMIN_RETENTION_RADAR_KEY,
 } from "./queries/use-admin";
 
 

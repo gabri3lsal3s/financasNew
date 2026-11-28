@@ -8,7 +8,17 @@ import type {
   BroadcastAudience,
   BroadcastType,
   UserBroadcastNotification,
+  AdminConnectionsHealth,
+  AdminAiUsageRow,
+  AdminUserSupportDiagnostics,
+  AdminRetentionRadarRow,
 } from "@/types";
+import {
+  adminConnectionsHealthSchema,
+  adminAiUsageSummarySchema,
+  adminUserSupportDiagnosticsSchema,
+  adminRetentionRadarSchema,
+} from "@/domain/admin/schemas";
 
 /**
  * Consulta o mapa de funcionalidades ativas/resolvidas para o usuário atual.
@@ -493,4 +503,64 @@ export async function adminListPastDueSubscriptions(): Promise<AdminPastDueSubsc
   return unwrapRpc(
     callRpc("admin_list_past_due_subscriptions" as never, {} as never),
   ) as Promise<AdminPastDueSubscriptionRow[]>;
+}
+
+/**
+ * Consulta passiva da saúde das conexões e integrações do sistema (sem chamadas externas).
+ */
+export async function adminGetConnectionsHealth(): Promise<AdminConnectionsHealth> {
+  const raw = await unwrapRpc(
+    callRpc("admin_get_connections_health" as never, {} as never),
+  );
+  return adminConnectionsHealthSchema.parse(raw);
+}
+
+export interface AdminAiUsageSummaryParams {
+  periodMonth?: string | null;
+  limit?: number;
+  offset?: number;
+}
+
+/**
+ * Lista paginada do consumo de IA por usuário no mês de referência.
+ */
+export async function adminGetAiUsageSummary(
+  params: AdminAiUsageSummaryParams = {},
+): Promise<AdminAiUsageRow[]> {
+  const raw = await unwrapRpc(
+    callRpc("admin_get_ai_usage_summary" as never, {
+      p_period_month: params.periodMonth ?? null,
+      p_limit: params.limit ?? 50,
+      p_offset: params.offset ?? 0,
+    } as never),
+  );
+  return adminAiUsageSummarySchema.parse(raw ?? []);
+}
+
+/**
+ * Consulta diagnósticos passivos de suporte de um usuário (dispositivos, push e cota de IA).
+ */
+export async function adminGetUserSupportDiagnostics(
+  userId: string,
+): Promise<AdminUserSupportDiagnostics> {
+  const raw = await unwrapRpc(
+    callRpc("admin_get_user_support_diagnostics" as never, {
+      p_user_id: userId,
+    } as never),
+  );
+  return adminUserSupportDiagnosticsSchema.parse(raw);
+}
+
+/**
+ * Lista usuários em risco de retenção cruzando assinaturas, dispositivos e tickets.
+ */
+export async function adminGetRetentionRadar(
+  limit = 20,
+): Promise<AdminRetentionRadarRow[]> {
+  const raw = await unwrapRpc(
+    callRpc("admin_get_retention_radar" as never, {
+      p_limit: limit,
+    } as never),
+  );
+  return adminRetentionRadarSchema.parse(raw ?? []);
 }
