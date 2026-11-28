@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import { getSupabaseEnv } from "@/lib/env";
 import { isSharedDeviceSession } from "@/services/session-policy";
+import { isTabIsolatedSession } from "@/services/user-storage";
 
 /**
  * Cliente tipado com o Schema REAL do Database.
@@ -84,6 +85,48 @@ export function resetSupabaseClient(): void {
   client = null;
 }
 
+function createTabIsolatedAuthStorage() {
+  return {
+    getItem(key: string): string | null {
+      if (typeof window === "undefined") return null;
+      try {
+        const tabValue = window.sessionStorage?.getItem(key) ?? null;
+        if (tabValue !== null) return tabValue;
+        if (isTabIsolatedSession()) return null;
+        const localValue = window.localStorage.getItem(key);
+        if (localValue !== null) {
+          window.sessionStorage?.setItem(key, localValue);
+        }
+        return localValue;
+      } catch {
+        return null;
+      }
+    },
+    setItem(key: string, value: string): void {
+      if (typeof window === "undefined") return;
+      try {
+        window.sessionStorage?.setItem(key, value);
+        if (!isTabIsolatedSession()) {
+          window.localStorage.setItem(key, value);
+        }
+      } catch {
+        // no-op
+      }
+    },
+    removeItem(key: string): void {
+      if (typeof window === "undefined") return;
+      try {
+        window.sessionStorage?.removeItem(key);
+        if (!isTabIsolatedSession()) {
+          window.localStorage.removeItem(key);
+        }
+      } catch {
+        // no-op
+      }
+    },
+  };
+}
+
 export function getSupabase(): Supabase {
   if (!client) {
     const { url, anonKey } = getSupabaseEnv();
@@ -98,6 +141,7 @@ export function getSupabase(): Supabase {
         persistSession: !sharedMode,
         autoRefreshToken: true,
         detectSessionInUrl: true,
+        storage: createTabIsolatedAuthStorage(),
       },
       ...(devFetch ? { global: { fetch: devFetch } } : {}),
     }) as Supabase;

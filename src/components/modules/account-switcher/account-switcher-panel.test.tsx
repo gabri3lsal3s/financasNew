@@ -70,7 +70,7 @@ describe("AccountSwitcherPanel", () => {
     expect(onOpenAdminPortal).toHaveBeenCalledTimes(1);
   });
 
-  it("mascara e-mail e exige confirmação explícita na troca, permitindo cancelamento", async () => {
+  it("mascara e-mail e dispara a troca direta ao clicar em Alternar", async () => {
     const user = userEvent.setup();
     const onSwitchAccount = vi.fn();
     const acc1 = makeAccount({ accountRef: "acc-1", displayName: "Ana Costa", status: "active" });
@@ -94,19 +94,8 @@ describe("AccountSwitcherPanel", () => {
     expect(screen.queryByText("bruno.completo@exemplo.com")).not.toBeInTheDocument();
     expect(screen.getByText("br***@exemplo.com")).toBeInTheDocument();
 
-    // Primeiro clique abre confirmação explícita sem trocar ainda
+    // Clique direto dispara a troca sem confirmação intermediária
     await user.click(screen.getByRole("button", { name: /Alternar/i }));
-    expect(onSwitchAccount).not.toHaveBeenCalled();
-    expect(screen.getByRole("region", { name: /Confirmar troca para Bruno Lima/i })).toBeInTheDocument();
-
-    // Cancelamento preserva sessão atual sem efeito colateral
-    await user.click(screen.getByRole("button", { name: "Cancelar" }));
-    expect(onSwitchAccount).not.toHaveBeenCalled();
-    expect(screen.queryByRole("region", { name: /Confirmar troca para Bruno Lima/i })).not.toBeInTheDocument();
-
-    // Confirmação dispara a troca
-    await user.click(screen.getByRole("button", { name: /Alternar/i }));
-    await user.click(screen.getByRole("button", { name: "Confirmar troca" }));
     expect(onSwitchAccount).toHaveBeenCalledWith(acc2);
   });
 
@@ -218,15 +207,15 @@ describe("AccountSwitcherPanel", () => {
     const reauthBtn = screen.getByRole("button", { name: /Entrar novamente/i });
 
     await user.click(enterBtn);
-    await user.click(screen.getByRole("button", { name: "Confirmar troca" }));
     expect(onSwitchAccount).toHaveBeenCalledWith(remembered);
 
     await user.click(reauthBtn);
     expect(onReauthAccount).toHaveBeenCalledWith(revoked);
   });
 
-  it("suporta navegação por teclado (setas, Home, End e Escape) na lista de contas", async () => {
+  it("suporta navegação por teclado (setas, Home, End e Enter) na lista de contas", async () => {
     const user = userEvent.setup();
+    const onSwitchAccount = vi.fn();
     const acc1 = makeAccount({ accountRef: "acc-1", displayName: "Ana Costa", status: "active" });
     const acc2 = makeAccount({ accountRef: "acc-2", displayName: "Bruno Lima", status: "remembered" });
     const acc3 = makeAccount({
@@ -239,7 +228,7 @@ describe("AccountSwitcherPanel", () => {
       <AccountSwitcherPanel
         context={makeContext({ accountRef: "acc-1" })}
         accounts={[acc1, acc2, acc3]}
-        onSwitchAccount={vi.fn()}
+        onSwitchAccount={onSwitchAccount}
         onReauthAccount={vi.fn()}
       />,
     );
@@ -262,10 +251,8 @@ describe("AccountSwitcherPanel", () => {
     await user.keyboard("{Home}");
     expect(switchBtn).toHaveFocus();
 
-    // Abrir confirmação e cancelar via Escape
+    // Enter aciona troca direta
     await user.keyboard("{Enter}");
-    expect(screen.getByRole("region", { name: /Confirmar troca para Bruno Lima/i })).toBeInTheDocument();
-    await user.keyboard("{Escape}");
-    expect(screen.queryByRole("region", { name: /Confirmar troca para Bruno Lima/i })).not.toBeInTheDocument();
+    expect(onSwitchAccount).toHaveBeenCalledWith(acc2);
   });
 });

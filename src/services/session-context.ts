@@ -57,7 +57,40 @@ const INITIAL_SESSION_CONTEXT: TabSessionContext = {
   pendingRevocations: 0,
 };
 
-let currentContext: TabSessionContext = { ...INITIAL_SESSION_CONTEXT };
+const TAB_SESSION_CONTEXT_STORAGE_KEY = "axir_tab_session_context";
+
+function loadInitialSessionContext(): TabSessionContext {
+  if (typeof window === "undefined") return { ...INITIAL_SESSION_CONTEXT };
+  try {
+    const raw = window.sessionStorage?.getItem(TAB_SESSION_CONTEXT_STORAGE_KEY);
+    if (!raw) return { ...INITIAL_SESSION_CONTEXT };
+    const parsed = JSON.parse(raw) as Partial<TabSessionContext>;
+    if (typeof parsed.status === "string" && typeof parsed.generation === "number") {
+      return {
+        ...INITIAL_SESSION_CONTEXT,
+        ...parsed,
+      };
+    }
+  } catch {
+    // no-op
+  }
+  return { ...INITIAL_SESSION_CONTEXT };
+}
+
+function persistTabSessionContext(context: TabSessionContext): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (context.contextId) {
+      window.sessionStorage?.setItem(TAB_SESSION_CONTEXT_STORAGE_KEY, JSON.stringify(context));
+    } else {
+      window.sessionStorage?.removeItem(TAB_SESSION_CONTEXT_STORAGE_KEY);
+    }
+  } catch {
+    // no-op
+  }
+}
+
+let currentContext: TabSessionContext = loadInitialSessionContext();
 let contextEpoch = 0;
 const contextListeners = new Set<SessionContextListener>();
 
@@ -104,6 +137,7 @@ export function setSessionContext(next: PublicSessionContext): TabSessionContext
   }
 
   currentContext = normalized;
+  persistTabSessionContext(currentContext);
   notifyListeners();
   return getSessionContext();
 }
@@ -122,6 +156,7 @@ export function clearSessionContext(
     environment: currentContext.environment,
     generation: currentContext.generation + 1,
   };
+  persistTabSessionContext(currentContext);
   notifyListeners();
   return getSessionContext();
 }
@@ -189,4 +224,11 @@ export function resetSessionContextForTests(): void {
   currentContext = { ...INITIAL_SESSION_CONTEXT };
   contextEpoch = 0;
   contextListeners.clear();
+  if (typeof window !== "undefined") {
+    try {
+      window.sessionStorage?.removeItem(TAB_SESSION_CONTEXT_STORAGE_KEY);
+    } catch {
+      // no-op
+    }
+  }
 }

@@ -185,11 +185,31 @@ function extractRequestHost(request: Request, env: WorkerEnv): string {
   return rawHost.split(":")[0].trim().toLowerCase();
 }
 
+function getNativeInstallationId(request: Request): string | null {
+  const raw = request.headers.get("x-axir-native-installation")?.trim();
+  if (!raw || !/^[a-f0-9]{32,64}$/i.test(raw)) {
+    return null;
+  }
+  return raw.toLowerCase();
+}
+
+function resolveInstallationId(request: Request, env: WorkerEnv): string | null {
+  const cookieId = getCookieValue(request, env.SESSION_COOKIE_NAME);
+  if (cookieId) return cookieId;
+  const nativeId = getNativeInstallationId(request);
+  return nativeId ? `native:${nativeId}` : null;
+}
+
 function validateOrigin(request: Request, env: WorkerEnv): boolean {
-  const origin = request.headers.get("Origin");
-  if (!origin) return false;
-  const allowed = parseCsvSet(env.ALLOWED_ORIGINS);
-  return allowed.has(origin.trim().toLowerCase());
+  const origin = request.headers.get("Origin")?.trim().toLowerCase() ?? "";
+  if (origin && parseCsvSet(env.ALLOWED_ORIGINS).has(origin)) {
+    return true;
+  }
+  const nativeId = getNativeInstallationId(request);
+  if (nativeId && (origin === "" || origin === "https://localhost" || origin === "capacitor://localhost")) {
+    return true;
+  }
+  return false;
 }
 
 function parseOptionalNowHeader(request: Request, env: WorkerEnv): number | undefined {
@@ -503,13 +523,13 @@ export default {
         const parsed = bootstrapSchema.safeParse(rawBody);
         if (!parsed.success) return errorResponse("invalid_payload", 400);
 
-        const existingCookie = getCookieValue(request, env.SESSION_COOKIE_NAME);
-        const installationId = existingCookie ?? generateOpaqueToken(16);
+        const existingId = resolveInstallationId(request, env);
+        const installationId = existingId ?? generateOpaqueToken(16);
         const coordinator = getCoordinatorStub(env, installationId);
         const contextId = parsed.data.contextId ?? request.headers.get("x-axir-context");
 
         const result = await coordinator.bootstrap(contextId, env.ENVIRONMENT, nowMs);
-        const extraHeaders: HeadersInit | undefined = existingCookie
+        const extraHeaders: HeadersInit | undefined = existingId
           ? undefined
           : { "Set-Cookie": `${env.SESSION_COOKIE_NAME}=${installationId}; HttpOnly; Secure; Path=/; SameSite=Lax` };
 
@@ -520,10 +540,10 @@ export default {
         const parsed = loginSchema.safeParse(rawBody);
         if (!parsed.success) return errorResponse("invalid_payload", 400);
 
-        const existingCookie = getCookieValue(request, env.SESSION_COOKIE_NAME);
-        const installationId = existingCookie ?? generateOpaqueToken(16);
+        const existingId = resolveInstallationId(request, env);
+        const installationId = existingId ?? generateOpaqueToken(16);
         const coordinator = getCoordinatorStub(env, installationId);
-        const setCookieHeaders: HeadersInit | undefined = existingCookie
+        const setCookieHeaders: HeadersInit | undefined = existingId
           ? undefined
           : { "Set-Cookie": `${env.SESSION_COOKIE_NAME}=${installationId}; HttpOnly; Secure; Path=/; SameSite=Lax` };
 
@@ -656,8 +676,8 @@ export default {
         }
       }
 
-      // Demais operações exigem cookie de instalação e contexto
-      const installationId = getCookieValue(request, env.SESSION_COOKIE_NAME);
+      // Demais operações exigem cookie de instalação (ou canal nativo) e contexto
+      const installationId = resolveInstallationId(request, env);
       const contextId = request.headers.get("x-axir-context");
       const csrfToken = request.headers.get("x-axir-csrf");
 

@@ -23,6 +23,7 @@ import { classifyError, getErrorMessage } from "@/services/errors";
 import { markPendingExplicitDeviceRegistration } from "@/services/native/device-info";
 import { setSessionContext } from "@/services/session-context";
 import { setSharedDeviceSession } from "@/services/session-policy";
+import { markTabIsolatedSession } from "@/services/user-storage";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import type { PublicSessionContext } from "@/types/session-custody";
@@ -151,6 +152,7 @@ export function useLoginForm() {
         }
         const bridge = extractSessionBridge(response);
         if (bridge) {
+          markTabIsolatedSession();
           const hydrated = await hydrateSupabaseSessionFromBridge(bridge);
           if (cancelled) return;
           if (!hydrated) {

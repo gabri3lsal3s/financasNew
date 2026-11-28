@@ -5,11 +5,40 @@
  */
 
 const ACTIVE_USER_ID_STORAGE_KEY = "financas_active_user_id";
+const TAB_ISOLATED_STORAGE_KEY = "axir_tab_isolated";
+
+export function isTabIsolatedSession(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    if (window.sessionStorage?.getItem(TAB_ISOLATED_STORAGE_KEY) === "1") {
+      return true;
+    }
+    return new URLSearchParams(window.location.search).has("tab_intent");
+  } catch {
+    return false;
+  }
+}
+
+export function markTabIsolatedSession(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage?.setItem(TAB_ISOLATED_STORAGE_KEY, "1");
+  } catch {
+    // no-op
+  }
+}
 
 function getInitialActiveUserId(): string | null {
   if (typeof window === "undefined") return null;
   try {
-    return window.localStorage.getItem(ACTIVE_USER_ID_STORAGE_KEY) || null;
+    const tabUserId = window.sessionStorage?.getItem(ACTIVE_USER_ID_STORAGE_KEY) || null;
+    if (tabUserId) return tabUserId;
+    if (isTabIsolatedSession()) return null;
+    const localUserId = window.localStorage.getItem(ACTIVE_USER_ID_STORAGE_KEY) || null;
+    if (localUserId) {
+      window.sessionStorage?.setItem(ACTIVE_USER_ID_STORAGE_KEY, localUserId);
+    }
+    return localUserId;
   } catch {
     return null;
   }
@@ -31,9 +60,15 @@ export function setActiveUserId(userId: string | null): void {
     if (typeof window !== "undefined") {
       try {
         if (userId) {
-          window.localStorage.setItem(ACTIVE_USER_ID_STORAGE_KEY, userId);
+          window.sessionStorage?.setItem(ACTIVE_USER_ID_STORAGE_KEY, userId);
+          if (!isTabIsolatedSession()) {
+            window.localStorage.setItem(ACTIVE_USER_ID_STORAGE_KEY, userId);
+          }
         } else {
-          window.localStorage.removeItem(ACTIVE_USER_ID_STORAGE_KEY);
+          window.sessionStorage?.removeItem(ACTIVE_USER_ID_STORAGE_KEY);
+          if (!isTabIsolatedSession()) {
+            window.localStorage.removeItem(ACTIVE_USER_ID_STORAGE_KEY);
+          }
         }
       } catch {
         // no-op

@@ -188,13 +188,16 @@ const ROUTE_FEATURE_MAP: Record<string, string> = {
 };
 
 function hasStoredAuthSession(): boolean {
-  if (typeof window === "undefined" || !window.localStorage) return false;
+  if (typeof window === "undefined") return false;
   try {
-    for (let i = 0; i < window.localStorage.length; i++) {
-      const key = window.localStorage.key(i);
-      if (key && key.startsWith("sb-") && key.endsWith("-auth-token")) {
-        const item = window.localStorage.getItem(key);
-        if (item && item.includes("access_token")) return true;
+    for (const store of [window.sessionStorage, window.localStorage]) {
+      if (!store) continue;
+      for (let i = 0; i < store.length; i++) {
+        const key = store.key(i);
+        if (key && key.startsWith("sb-") && key.endsWith("-auth-token")) {
+          const item = store.getItem(key);
+          if (item && item.includes("access_token")) return true;
+        }
       }
     }
   } catch {

@@ -114,7 +114,7 @@ export function AccountSwitcherPanel({
   className,
 }: AccountSwitcherPanelProps) {
   const [rememberOnLogout, setRememberOnLogout] = useState(false);
-  const [pendingSwitchAccount, setPendingSwitchAccount] = useState<AccountSummary | null>(null);
+  const [switchingAccountRef, setSwitchingAccountRef] = useState<string | null>(null);
   const [pendingForgetAccount, setPendingForgetAccount] = useState<AccountSummary | null>(null);
   const [confirmLogoutDeviceOpen, setConfirmLogoutDeviceOpen] = useState(false);
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -133,11 +133,6 @@ export function AccountSwitcherPanel({
 
   const handleListKeyDown = useCallback(
     (event: KeyboardEvent<HTMLUListElement>) => {
-      if (event.key === "Escape" && pendingSwitchAccount) {
-        event.preventDefault();
-        setPendingSwitchAccount(null);
-        return;
-      }
       const focusable = itemRefs.current.filter((node): node is HTMLButtonElement => node !== null && !node.disabled);
       if (focusable.length === 0) return;
 
@@ -159,29 +154,27 @@ export function AccountSwitcherPanel({
         focusable[focusable.length - 1]?.focus();
       }
     },
-    [pendingSwitchAccount],
+    [],
   );
 
-  const handleConfirmSwitch = async () => {
-    if (!pendingSwitchAccount) return;
-    const target = pendingSwitchAccount;
-    setPendingSwitchAccount(null);
-    await onSwitchAccount?.(target);
+  const handleDirectSwitch = async (account: AccountSummary) => {
+    setSwitchingAccountRef(account.accountRef);
+    try {
+      await onSwitchAccount?.(account);
+    } finally {
+      setSwitchingAccountRef((current) => (current === account.accountRef ? null : current));
+    }
   };
 
   const handleConfirmForget = async () => {
     if (!pendingForgetAccount) return;
     const target = pendingForgetAccount;
     setPendingForgetAccount(null);
-    if (pendingSwitchAccount?.accountRef === target.accountRef) {
-      setPendingSwitchAccount(null);
-    }
     await onForgetAccount?.(target);
   };
 
   const handleConfirmLogoutDevice = async () => {
     setConfirmLogoutDeviceOpen(false);
-    setPendingSwitchAccount(null);
     await onLogoutDevice?.();
   };
 
@@ -219,12 +212,6 @@ export function AccountSwitcherPanel({
     <section
       aria-label="Alternador de contas"
       className={cn("space-y-4", className)}
-      onKeyDown={(event) => {
-        if (event.key === "Escape" && pendingSwitchAccount) {
-          event.stopPropagation();
-          setPendingSwitchAccount(null);
-        }
-      }}
     >
       {error ? (
         <Alert variant="error" className="items-center">
@@ -412,7 +399,8 @@ export function AccountSwitcherPanel({
                 const safeMaskedEmail = formatSafeMaskedEmail(account.maskedEmail);
                 const statusBadge = getAccountStatusBadge(account.status);
                 const needsLogin = requiresFreshLogin(account.status);
-                const isPendingTarget = pendingSwitchAccount?.accountRef === account.accountRef;
+                const isSwitchingThis =
+                  busyAction === "switch" && switchingAccountRef === account.accountRef;
 
                 return (
                   <li
@@ -471,12 +459,12 @@ export function AccountSwitcherPanel({
                               itemRefs.current[index] = node;
                             }}
                             type="button"
-                            variant={isPendingTarget ? "default" : "outline"}
+                            variant="outline"
                             size="sm"
                             className="flex-1 sm:flex-initial"
+                            loading={isSwitchingThis}
                             disabled={isBusy}
-                            aria-expanded={isPendingTarget}
-                            onClick={() => setPendingSwitchAccount(account)}
+                            onClick={() => void handleDirectSwitch(account)}
                           >
                             <ArrowLeftRight className="size-3.5 shrink-0" aria-hidden="true" />
                             <span>{isNeutral ? "Entrar" : "Alternar"}</span>
@@ -516,40 +504,6 @@ export function AccountSwitcherPanel({
                         ) : null}
                       </div>
                     </div>
-
-                    {isPendingTarget ? (
-                      <div
-                        role="region"
-                        aria-label={`Confirmar troca para ${account.displayName}`}
-                        className="mt-3 space-y-2.5 border-t border-border/80 pt-3"
-                      >
-                        <p className="text-xs text-muted-foreground">
-                          {account.hasLocalLock
-                            ? "Esta conta possui trava local configurada. Confirme para continuar e validar o desbloqueio antes de exibir os dados."
-                            : `Confirme a troca desta aba para ${account.displayName}. Outras abas abertas permanecem isoladas.`}
-                        </p>
-                        <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            disabled={isBusy}
-                            onClick={() => setPendingSwitchAccount(null)}
-                          >
-                            Cancelar
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            loading={busyAction === "switch"}
-                            disabled={isBusy}
-                            onClick={() => void handleConfirmSwitch()}
-                          >
-                            Confirmar troca
-                          </Button>
-                        </div>
-                      </div>
-                    ) : null}
                   </li>
                 );
               })}

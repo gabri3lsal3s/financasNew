@@ -8,11 +8,40 @@
 
 import type { SessionErrorCode, SessionOperation } from "@/types/session-custody";
 import { captureContext, getSessionContext, isContextCurrent } from "@/services/session-context";
+import { isNativePlatform } from "@/services/native/platform";
 
 export const SESSION_API_BASE_PATH = "/api/sessions/v1";
 export const DATA_API_BASE_PATH = "/api/data/v1";
 export const AXIR_CONTEXT_HEADER = "x-axir-context";
 export const AXIR_CSRF_HEADER = "x-axir-csrf";
+export const AXIR_NATIVE_INSTALLATION_HEADER = "x-axir-native-installation";
+
+const NATIVE_INSTALLATION_STORAGE_KEY = "axir_native_installation_id";
+
+function getNativeApiOrigin(): string {
+  const configured =
+    typeof import.meta !== "undefined" && import.meta.env
+      ? (import.meta.env.VITE_SESSIONS_API_ORIGIN as string | undefined)
+      : undefined;
+  return (configured?.trim() || "https://axir.com.br").replace(/\/+$/, "");
+}
+
+function getOrCreateNativeInstallationId(): string | null {
+  if (typeof window === "undefined" || !window.localStorage) return null;
+  try {
+    const existing = window.localStorage.getItem(NATIVE_INSTALLATION_STORAGE_KEY);
+    if (existing && /^[a-f0-9]{32,64}$/i.test(existing)) {
+      return existing;
+    }
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    const generated = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+    window.localStorage.setItem(NATIVE_INSTALLATION_STORAGE_KEY, generated);
+    return generated;
+  } catch {
+    return null;
+  }
+}
 
 export type SessionTransportErrorCode =
   | SessionErrorCode
@@ -143,7 +172,16 @@ async function postOperation<TResponse, TPayload>(
     headers[AXIR_CSRF_HEADER] = csrfToken;
   }
 
-  const url = `${basePath}/${encodeURIComponent(normalizedOp)}`;
+  const nativeRuntime = isNativePlatform();
+  if (nativeRuntime) {
+    const nativeId = getOrCreateNativeInstallationId();
+    if (nativeId) {
+      headers[AXIR_NATIVE_INSTALLATION_HEADER] = nativeId;
+    }
+  }
+
+  const resolvedBasePath = nativeRuntime ? `${getNativeApiOrigin()}${basePath}` : basePath;
+  const url = `${resolvedBasePath}/${encodeURIComponent(normalizedOp)}`;
   const requireCurrentContext = options.requireCurrentContext ?? defaultRequireCurrentContext;
 
   let response: Response;
