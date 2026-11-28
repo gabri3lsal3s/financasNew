@@ -1,5 +1,4 @@
 import {
-  BellRing,
   KeyRound,
   LayoutDashboard,
   LifeBuoy,
@@ -32,7 +31,7 @@ export interface AdminNavGroup {
 export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
   {
     id: "operacao",
-    label: "Operação Diária",
+    label: "Operação",
     items: [
       { to: "/admin/dashboard", label: "Visão Geral", icon: LayoutDashboard },
       { to: "/admin/usuarios", label: "Usuários", icon: Users, badgeKey: "pendingUsers" },
@@ -41,25 +40,28 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
   },
   {
     id: "receita",
-    label: "Receita & Crescimento",
+    label: "Receita e crescimento",
     items: [
       { to: "/admin/faturamento", label: "Faturamento", icon: Receipt, badgeKey: "pastDue" },
       { to: "/admin/convites", label: "Convites", icon: KeyRound },
-      { to: "/admin/notificacoes", label: "Comunicados", icon: BellRing },
     ],
   },
   {
     id: "plataforma",
-    label: "Plataforma & Governança",
+    label: "Plataforma",
     items: [
       {
-        to: "/admin/configuracoes",
-        label: "Configurações",
+        to: "/admin/sistema",
+        label: "Sistema",
         icon: SlidersHorizontal,
         badgeKey: "pendingBlueprints",
       },
-      { to: "/admin/seguranca", label: "Auditoria", icon: ShieldAlert },
     ],
+  },
+  {
+    id: "governanca",
+    label: "Governança",
+    items: [{ to: "/admin/seguranca", label: "Auditoria", icon: ShieldAlert }],
   },
 ];
 

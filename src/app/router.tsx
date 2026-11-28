@@ -143,9 +143,6 @@ const AdminDashboardPage = lazy(() =>
 const AdminUsersPage = lazy(() =>
   import("@/features/admin/pages/admin-users-page").then((m) => ({ default: m.AdminUsersPage })),
 );
-const AdminNotificationsPage = lazy(() =>
-  import("@/features/admin/pages/admin-notifications-page").then((m) => ({ default: m.AdminNotificationsPage })),
-);
 const AdminBillingPage = lazy(() =>
   import("@/features/admin/pages/admin-billing-page").then((m) => ({ default: m.AdminBillingPage })),
 );
@@ -387,7 +384,7 @@ export function AppRouter() {
                 <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
                 <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
                 <Route path="/admin/usuarios" element={<AdminUsersPage />} />
-                <Route path="/admin/notificacoes" element={<AdminNotificationsPage />} />
+                <Route path="/admin/notificacoes" element={<Navigate to="/admin/chamados?tab=comunicados" replace />} />
                 <Route path="/admin/faturamento" element={<AdminBillingPage />} />
                 <Route path="/admin/chamados" element={<AdminTicketsPage />} />
                 <Route path="/admin/convites" element={<AdminInvitesPage />} />
@@ -396,7 +393,8 @@ export function AppRouter() {
                 <Route element={<RequireSuperAdmin />}>
                   <Route path="/admin/laboratorio-forense" element={<AdminForensicsPage />} />
                 </Route>
-                <Route path="/admin/configuracoes" element={<AdminSettingsPage />} />
+                <Route path="/admin/sistema" element={<AdminSettingsPage />} />
+                <Route path="/admin/configuracoes" element={<RedirectWithSearch to="/admin/sistema" />} />
               </Route>
             </Route>
 
