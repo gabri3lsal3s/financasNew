@@ -1,7 +1,8 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   adminCreateInvite,
   adminDeleteUser,
+  adminPreviewGlobalFeatureImpact,
   adminRemoveFeatureOverride,
   adminRevokeInvite,
   adminSetFeatureOverride,
@@ -43,7 +44,13 @@ import {
   ADMIN_BROADCASTS_KEY,
   MY_BROADCASTS_KEY,
 } from "../queries/use-admin";
-import { userAccessQueryKey, userFeaturesQueryKey } from "../queries/use-user-access";
+import {
+  USER_FEATURES_KEY,
+  USER_SUBSCRIPTION_KEY,
+  userAccessQueryKey,
+  userFeaturesQueryKey,
+  userSubscriptionQueryKey,
+} from "../queries/use-user-access";
 
 import { pushToast } from "@/services/toast";
 import { getErrorMessage } from "@/services/errors";
@@ -160,18 +167,29 @@ export function useAdminRemoveFeatureOverride() {
   });
 }
 
+export function useAdminGlobalFeatureImpact(featureKey: string, enabled: boolean) {
+  return useQuery({
+    queryKey: [...ADMIN_FEATURES_KEY, "impact", featureKey],
+    queryFn: () => adminPreviewGlobalFeatureImpact(featureKey),
+    enabled,
+    retry: false,
+  });
+}
+
 export function useAdminToggleGlobalFeature() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (params: { featureKey: string; enabled: boolean }) =>
-      adminToggleGlobalFeature(params),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ADMIN_FEATURES_KEY });
-      void queryClient.invalidateQueries({ queryKey: ADMIN_AUDIT_KEY });
+    mutationFn: adminToggleGlobalFeature,
+    onSuccess: async (_, { enabled }) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ADMIN_FEATURES_KEY, exact: true }),
+        queryClient.invalidateQueries({ queryKey: ADMIN_AUDIT_KEY }),
+        queryClient.invalidateQueries({ queryKey: USER_FEATURES_KEY }),
+        queryClient.invalidateQueries({ queryKey: USER_SUBSCRIPTION_KEY }),
+      ]);
       pushToast({
-        title: "Funcionalidade global atualizada",
-        description: "O Kill-Switch da funcionalidade foi atualizado com sucesso.",
+        title: enabled ? "Módulo ativado globalmente" : "Módulo desativado globalmente",
         variant: "success",
       });
     },
@@ -277,16 +295,20 @@ export function useAdminSetUserModulePermission() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (params: {
-      userId: string;
-      moduleKey: string;
-      accessLevel: ModuleAccessLevel;
-      expiresAt?: string | null;
-    }) => adminSetUserModulePermission(params),
+    mutationFn: (params:
+      | { userId: string; moduleKey: string; accessLevel: ModuleAccessLevel; expiresAt?: string | null }
+      | { userId: string; featureKey: "ai_extraction"; enabled: boolean }
+    ) => "featureKey" in params
+      ? adminSetFeatureOverride(params)
+      : adminSetUserModulePermission(params),
     onSuccess: (_, variables) => {
       void queryClient.invalidateQueries({ queryKey: [...ADMIN_USER_MODULE_PERMISSIONS_KEY, variables.userId] });
       void queryClient.invalidateQueries({ queryKey: userAccessQueryKey(variables.userId) });
       void queryClient.invalidateQueries({ queryKey: userFeaturesQueryKey(variables.userId) });
+      void queryClient.invalidateQueries({ queryKey: userSubscriptionQueryKey(variables.userId) });
+      if ("featureKey" in variables) {
+        void queryClient.invalidateQueries({ queryKey: [...ADMIN_USER_OVERRIDES_KEY, variables.userId] });
+      }
       void queryClient.invalidateQueries({ queryKey: ADMIN_AUDIT_KEY });
       pushToast({
         title: "Permissão de módulo salva",
@@ -308,14 +330,20 @@ export function useAdminRemoveUserModulePermission() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (params: {
-      userId: string;
-      moduleKey: string;
-    }) => adminRemoveUserModulePermission(params),
+    mutationFn: (params:
+      | { userId: string; moduleKey: string }
+      | { userId: string; featureKey: "ai_extraction" }
+    ) => "featureKey" in params
+      ? adminRemoveFeatureOverride(params)
+      : adminRemoveUserModulePermission(params),
     onSuccess: (_, variables) => {
       void queryClient.invalidateQueries({ queryKey: [...ADMIN_USER_MODULE_PERMISSIONS_KEY, variables.userId] });
       void queryClient.invalidateQueries({ queryKey: userAccessQueryKey(variables.userId) });
       void queryClient.invalidateQueries({ queryKey: userFeaturesQueryKey(variables.userId) });
+      void queryClient.invalidateQueries({ queryKey: userSubscriptionQueryKey(variables.userId) });
+      if ("featureKey" in variables) {
+        void queryClient.invalidateQueries({ queryKey: [...ADMIN_USER_OVERRIDES_KEY, variables.userId] });
+      }
       void queryClient.invalidateQueries({ queryKey: ADMIN_AUDIT_KEY });
       pushToast({
         title: "Permissão restaurada",

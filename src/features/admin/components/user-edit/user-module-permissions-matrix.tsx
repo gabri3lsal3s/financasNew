@@ -1,13 +1,25 @@
 import { Check, RotateCcw, Sparkles, TrendingUp, X } from "lucide-react";
 import { Badge, Button } from "@/components/ui";
-import type { ModuleAccessLevel, UserModulePermission } from "@/types";
-import { BETA_MODULES, CORE_MODULES, SUBSCRIPTION_STATUS_LABELS } from "./admin-module-catalog";
+import {
+  AI_FEATURE_MODULES,
+  BETA_MODULES,
+  CORE_MODULES,
+  SUBSCRIPTION_STATUS_LABELS,
+  type AdminModuleDescriptor,
+} from "@/domain/admin";
+import type { ModuleAccessLevel, SystemFeature, UserFeatureOverride, UserModulePermission } from "@/types";
+
+const AI_AND_BETA_MODULES = [...BETA_MODULES, ...AI_FEATURE_MODULES];
 
 export interface UserModulePermissionsMatrixProps {
   effectiveSubStatus: string;
   hasAnyModuleOverride: boolean;
   hasCoreOverrides: boolean;
   modulePermissionsMap: Map<string, UserModulePermission>;
+  accessSources?: {
+    features: SystemFeature[] | undefined;
+    overrides: UserFeatureOverride[] | undefined;
+  };
   isQuickActionPending: boolean;
   isMutating: boolean;
   onSetModulePermission: (moduleKey: string, level: ModuleAccessLevel) => void;
@@ -31,6 +43,7 @@ export function UserModulePermissionsMatrix({
   hasAnyModuleOverride,
   hasCoreOverrides,
   modulePermissionsMap,
+  accessSources,
   isQuickActionPending,
   isMutating,
   onSetModulePermission,
@@ -42,6 +55,38 @@ export function UserModulePermissionsMatrix({
   const planDefaultLevel: ModuleAccessLevel = isPlanActive ? "write" : "read";
   const planStatusLabel = SUBSCRIPTION_STATUS_LABELS[effectiveSubStatus] ?? effectiveSubStatus;
   const actionsDisabled = isQuickActionPending || isMutating;
+
+  const getEffectiveAccess = (module: AdminModuleDescriptor) => {
+    const feature = accessSources?.features?.find((item) => item.key === module.key);
+    const individualFlag = accessSources?.overrides?.find((item) => item.feature_key === module.key);
+    const isAi = module.key === "ai_extraction";
+    const individualAiLevel = isAi && individualFlag
+      ? individualFlag.is_enabled ? "write" : "none"
+      : undefined;
+    const override = modulePermissionsMap.get(module.key);
+    const category: string = module.category;
+    const isExpansion = category === "expansions";
+    const inherited = isExpansion && !override
+      ? modulePermissionsMap.get("transactions")
+      : undefined;
+    const moduleOverride = override ?? inherited;
+    const isGloballyBlocked = feature?.is_globally_enabled === false;
+    const isIndividuallyBlocked = individualFlag?.is_enabled === false;
+    const isBeta = module.key === "bank_notification_listener";
+    const isDisabledByDefault = isAi && !individualFlag && feature?.default_enabled_for_new_users === false;
+    const defaultLevel = isBeta || isDisabledByDefault ? "none" : planDefaultLevel;
+    const configuredLevel = individualAiLevel ?? moduleOverride?.access_level;
+    const level = isGloballyBlocked || isIndividuallyBlocked ? "none" : configuredLevel ?? defaultLevel;
+    const source = isGloballyBlocked
+      ? "Kill-Switch Global"
+      : accessSources && (!accessSources.features || !accessSources.overrides)
+        ? "Origem do acesso indisponível"
+        : isIndividuallyBlocked || configuredLevel !== undefined
+          ? "Override Individual"
+          : "Regra do Plano";
+
+    return { level, source, override, configuredLevel, isBeta, isGloballyBlocked, isIndividuallyBlocked, inherited, isExpansion };
+  };
 
   return (
     <div className="flex flex-col gap-3 pt-2 border-t border-border/80">
@@ -85,41 +130,44 @@ export function UserModulePermissionsMatrix({
         </div>
       </div>
 
-      <div className="flex flex-col gap-2 p-3 rounded-xl border border-primary/20 bg-primary/5">
-        <div className="flex items-center gap-1.5 font-semibold text-xs text-primary-strong">
-          <Sparkles className="size-3.5 text-primary-strong" aria-hidden="true" />
-          <span>Funcionalidades Beta (Acesso Selecionado)</span>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+          <Sparkles className="size-4 text-muted-foreground" aria-hidden="true" />
+          <span>IA &amp; Beta</span>
         </div>
-        <p className="text-[11px] text-muted-foreground leading-relaxed">
-          Recursos em estágio experimental. O acesso permanece restrito exclusivamente a usuários selecionados com concessão individual do Superadmin.
+        <p className="text-[11px] text-muted-foreground">
+          Funcionalidades Beta (Acesso Selecionado) exigem concessão individual. A extração por IA também depende da permissão de escrita em Transações.
         </p>
 
-        {BETA_MODULES.map((mod) => {
-          const override = modulePermissionsMap.get(mod.key);
-          const hasOverride = Boolean(override);
-          const isGranted = override?.access_level === "write" || override?.access_level === "admin";
+        {AI_AND_BETA_MODULES.map((mod) => {
+          const { configuredLevel, level, source, isBeta } = getEffectiveAccess(mod);
+          const isGranted = level !== "none";
+          const accessLabel = isGranted
+            ? "Liberado para este usuário"
+            : isBeta && source === "Regra do Plano" ? "Bloqueado (Padrão Beta)" : "Bloqueado";
           return (
             <div key={mod.key} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-2.5 rounded-lg border border-border/80 bg-surface text-xs shadow-xs">
               <div className="flex flex-col gap-1 max-w-sm">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-semibold text-foreground">{mod.label}</span>
                   <Badge variant={isGranted ? "positive" : "muted"} size="xs">
-                    {isGranted ? "Liberado para este usuário" : "Bloqueado (Padrão Beta)"}
+                    {accessLabel}
                   </Badge>
                 </div>
                 <span className="text-[11px] text-muted-foreground">{mod.desc}</span>
+                <span className="text-[11px] font-medium text-muted-foreground">{source}</span>
               </div>
-              <div className="flex items-center gap-1.5 w-full sm:w-auto justify-end shrink-0">
-                <Button type="button" variant="outline" size="sm" onClick={() => onSetModulePermission(mod.key, "write")} disabled={isMutating} className={`gap-1 text-xs h-7 px-2.5 ${isGranted ? BTN_STYLES.writeActive : BTN_STYLES.writeIdle}`}>
+              <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto justify-end shrink-0">
+                <Button type="button" variant="outline" size="sm" onClick={() => onSetModulePermission(mod.key, "write")} disabled={actionsDisabled} className={`gap-1 text-xs h-7 px-2.5 ${configuredLevel && configuredLevel !== "none" ? BTN_STYLES.writeActive : BTN_STYLES.writeIdle}`}>
                   <Check className="size-3.5" aria-hidden="true" />
                   <span>Liberado</span>
                 </Button>
-                <Button type="button" variant="outline" size="sm" onClick={() => onSetModulePermission(mod.key, "none")} disabled={isMutating} className={`gap-1 text-xs h-7 px-2.5 ${!isGranted && hasOverride ? BTN_STYLES.noneActive : BTN_STYLES.noneIdle}`}>
+                <Button type="button" variant="outline" size="sm" onClick={() => onSetModulePermission(mod.key, "none")} disabled={actionsDisabled} className={`gap-1 text-xs h-7 px-2.5 ${configuredLevel === "none" ? BTN_STYLES.noneActive : BTN_STYLES.noneIdle}`}>
                   <X className="size-3.5" aria-hidden="true" />
                   <span>Bloqueado</span>
                 </Button>
-                {hasOverride && (
-                  <Button type="button" variant="ghost" size="sm" onClick={() => onRemoveModulePermission(mod.key)} disabled={isMutating} className="size-7 p-0 shrink-0 text-muted-foreground hover:text-foreground" aria-label={`Restaurar padrão de ${mod.label}`} title="Restaurar padrão da funcionalidade">
+                {configuredLevel !== undefined && (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => onRemoveModulePermission(mod.key)} disabled={actionsDisabled} className="size-7 p-0 shrink-0 text-muted-foreground hover:text-foreground" aria-label={`Restaurar padrão de ${mod.label}`} title="Restaurar padrão da funcionalidade">
                     <RotateCcw className="size-3.5" aria-hidden="true" />
                   </Button>
                 )}
@@ -150,15 +198,17 @@ export function UserModulePermissionsMatrix({
 
         <div className="flex flex-col gap-2">
           {CORE_MODULES.map((mod) => {
-            const override = modulePermissionsMap.get(mod.key);
-            const hasOverride = Boolean(override);
-            const level = override?.access_level ?? planDefaultLevel;
-            const badgeVariant = hasOverride ? (level === "write" || level === "admin" ? "positive" : level === "read" ? "warning" : "critical") : isPlanActive ? "positive" : "warning";
-            const badgeLabel = hasOverride
-              ? `Override: ${level === "write" || level === "admin" ? "Acesso Total" : level === "read" ? "Somente Leitura" : "Bloqueado"}`
-              : isPlanActive
-                ? "Acesso Total (Plano Ativo)"
-                : `Somente Leitura (${planStatusLabel})`;
+            const { override, level, source, isGloballyBlocked, isIndividuallyBlocked, inherited, isExpansion } = getEffectiveAccess(mod);
+            const configuredLevel = override?.access_level ?? inherited?.access_level ?? planDefaultLevel;
+            const badgeVariant = level === "none" ? "critical" : level === "read" ? "warning" : "positive";
+            const levelLabel = level === "none" ? "Bloqueado" : level === "read" ? "Somente Leitura" : "Acesso Total";
+            const badgeLabel = override || inherited
+              ? isGloballyBlocked || isIndividuallyBlocked ? levelLabel : `Override: ${levelLabel}`
+              : isExpansion || isGloballyBlocked || isIndividuallyBlocked
+                ? levelLabel
+                : isPlanActive
+                  ? "Acesso Total (Plano Ativo)"
+                  : `Somente Leitura (${planStatusLabel})`;
 
             return (
               <div key={mod.key} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-xl border border-border/80 bg-surface text-xs shadow-xs">
@@ -168,21 +218,24 @@ export function UserModulePermissionsMatrix({
                     <Badge variant={badgeVariant} size="xs">{badgeLabel}</Badge>
                   </div>
                   <span className="text-[11px] text-muted-foreground">{mod.desc}</span>
+                  <span className="text-[11px] font-medium text-muted-foreground">
+                    {source}{!override && inherited && source === "Override Individual" ? " de Transações" : ""}
+                  </span>
                 </div>
-                <div className="flex items-center gap-1.5 w-full sm:w-auto justify-end sm:justify-start shrink-0 pt-1 sm:pt-0">
-                  <Button type="button" variant="outline" size="sm" onClick={() => onSetModulePermission(mod.key, "write")} disabled={isMutating} className={`gap-1 text-xs h-7 px-2 flex-1 sm:flex-initial justify-center ${level === "write" ? BTN_STYLES.writeActive : BTN_STYLES.writeIdle}`} title="Liberar escrita e leitura neste módulo">
+                <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto justify-end sm:justify-start shrink-0 pt-1 sm:pt-0">
+                  <Button type="button" variant="outline" size="sm" onClick={() => onSetModulePermission(mod.key, "write")} disabled={actionsDisabled} className={`gap-1 text-xs h-7 px-2 flex-1 sm:flex-initial justify-center ${configuredLevel === "write" ? BTN_STYLES.writeActive : BTN_STYLES.writeIdle}`} title="Liberar escrita e leitura neste módulo">
                     <Check className="size-3.5" aria-hidden="true" />
                     <span>Total</span>
                   </Button>
-                  <Button type="button" variant="outline" size="sm" onClick={() => onSetModulePermission(mod.key, "read")} disabled={isMutating} className={`gap-1 text-xs h-7 px-2 flex-1 sm:flex-initial justify-center ${level === "read" ? BTN_STYLES.readActive : BTN_STYLES.readIdle}`} title="Restringir a somente leitura neste módulo">
+                  <Button type="button" variant="outline" size="sm" onClick={() => onSetModulePermission(mod.key, "read")} disabled={actionsDisabled} className={`gap-1 text-xs h-7 px-2 flex-1 sm:flex-initial justify-center ${configuredLevel === "read" ? BTN_STYLES.readActive : BTN_STYLES.readIdle}`} title="Restringir a somente leitura neste módulo">
                     <span>Leitura</span>
                   </Button>
-                  <Button type="button" variant="outline" size="sm" onClick={() => onSetModulePermission(mod.key, "none")} disabled={isMutating} className={`gap-1 text-xs h-7 px-2 flex-1 sm:flex-initial justify-center ${level === "none" ? BTN_STYLES.noneActive : BTN_STYLES.noneIdle}`} title="Bloquear completamente o módulo para este usuário">
+                  <Button type="button" variant="outline" size="sm" onClick={() => onSetModulePermission(mod.key, "none")} disabled={actionsDisabled} className={`gap-1 text-xs h-7 px-2 flex-1 sm:flex-initial justify-center ${configuredLevel === "none" ? BTN_STYLES.noneActive : BTN_STYLES.noneIdle}`} title="Bloquear completamente o módulo para este usuário">
                     <X className="size-3.5" aria-hidden="true" />
                     <span>Bloquear</span>
                   </Button>
-                  {hasOverride && (
-                    <Button type="button" variant="ghost" size="sm" onClick={() => onRemoveModulePermission(mod.key)} disabled={isMutating} className="size-7 p-0 shrink-0 text-muted-foreground hover:text-foreground" aria-label={`Restaurar regra padrão de ${mod.label}`} title="Restaurar regra padrão do plano">
+                  {override && (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => onRemoveModulePermission(mod.key)} disabled={actionsDisabled} className="size-7 p-0 shrink-0 text-muted-foreground hover:text-foreground" aria-label={`Restaurar regra padrão de ${mod.label}`} title="Restaurar regra padrão do plano">
                       <RotateCcw className="size-3.5" aria-hidden="true" />
                     </Button>
                   )}

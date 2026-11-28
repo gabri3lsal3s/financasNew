@@ -177,11 +177,11 @@ const ROUTE_FEATURE_MAP: Record<string, string> = {
   "/insights": "insights",
   "/investments": "investments",
   "/lembretes": "reminders",
-  "/familia": "transactions",
-  "/modo-familia": "transactions",
-  "/viagens": "transactions",
-  "/viagens/:id": "transactions",
-  "/negocio": "transactions",
+  "/familia": "family",
+  "/modo-familia": "family",
+  "/viagens": "trips",
+  "/viagens/:id": "trips",
+  "/negocio": "business",
 };
 
 function hasStoredAuthSession(): boolean {
