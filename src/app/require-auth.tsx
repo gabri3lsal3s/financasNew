@@ -1,9 +1,12 @@
 import type { ReactNode } from "react";
-import { Suspense, lazy, useEffect, useRef } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { Navigate, Outlet, useLocation, useNavigate } from "react-router";
+import { ShieldAlert } from "lucide-react";
 import { LoadingScreen } from "@/components/layout/loading-screen";
+import { Button } from "@/components/ui";
 import { AuthenticatedProviders } from "@/app/authenticated-providers";
-import { useAuth, refreshMfaState } from "@/hooks/use-auth";
+import { clearGlobalAuthSession, refreshMfaState, useAuth } from "@/hooks/use-auth";
+import { useSignOut } from "@/hooks/use-sign-out";
 import { useDeviceSessionSync } from "@/hooks/use-device-session-sync";
 import { useIdleSessionTimeout } from "@/hooks/use-idle-session-timeout";
 import { useMinimumLoading } from "@/hooks/use-minimum-loading";
@@ -147,6 +150,10 @@ function NativeIntegrationsHandler() {
  */
 export function RequireAuth({ children }: { children?: ReactNode }) {
   const { session, loading: authLoading, configError, mfaRequired, mfaVerified, mfaAdminOnly, mfaError } = useAuth();
+  const { signOut } = useSignOut();
+  const navigate = useNavigate();
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const hasUser = Boolean(session?.user);
   const bootstrapQuery = useSessionBootstrap(session?.user?.id);
   const userAccess = useUserAccess(session?.user?.id);
@@ -163,18 +170,63 @@ export function RequireAuth({ children }: { children?: ReactNode }) {
 
   const { isShowing: isTransitioning, isClosing } = useMinimumLoading(isDataLoading, 200);
 
+  const handleRetryMfa = async () => {
+    if (isRetrying || isSigningOut) return;
+    setIsRetrying(true);
+    try {
+      await refreshMfaState();
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    if (isSigningOut || isRetrying) return;
+    setIsSigningOut(true);
+    try {
+      await signOut({ scope: "local" });
+    } catch {
+      // Garante saída imediata mesmo offline
+    } finally {
+      clearGlobalAuthSession();
+      setIsSigningOut(false);
+      navigate("/entrar", { replace: true });
+    }
+  };
+
   if (!authLoading && session?.user && mfaError) {
     return (
       <div className="flex min-h-dvh items-center justify-center p-4">
-        <div className="max-w-md space-y-4 rounded-xl border border-critical/40 bg-surface p-6 text-center shadow-xs">
-          <p className="text-sm font-medium text-foreground">{mfaError}</p>
-          <button
-            type="button"
-            onClick={() => void refreshMfaState()}
-            className="inline-flex h-9 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground"
-          >
-            Tentar novamente
-          </button>
+        <div className="w-full max-w-md space-y-4 rounded-2xl border border-border/80 bg-surface p-6 text-center shadow-xs">
+          <div className="mx-auto flex size-12 items-center justify-center rounded-2xl border border-critical/20 bg-critical/10">
+            <ShieldAlert className="size-6 text-critical-strong" aria-hidden="true" />
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-sm font-medium text-foreground">{mfaError}</p>
+            <p className="text-xs text-muted-foreground">
+              Se o problema persistir, saia e entre novamente na sua conta.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            <Button
+              type="button"
+              variant="outline"
+              loading={isSigningOut}
+              disabled={isRetrying || isSigningOut}
+              onClick={() => void handleSignOut()}
+            >
+              Sair e entrar novamente
+            </Button>
+            <Button
+              type="button"
+              className="order-first sm:order-last"
+              loading={isRetrying}
+              disabled={isRetrying || isSigningOut}
+              onClick={() => void handleRetryMfa()}
+            >
+              Tentar novamente
+            </Button>
+          </div>
         </div>
       </div>
     );

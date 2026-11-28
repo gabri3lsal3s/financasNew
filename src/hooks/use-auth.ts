@@ -196,20 +196,123 @@ export function clearGlobalAuthSession(): void {
   });
 }
 
+const INVALID_SESSION_KEYWORDS = [
+  "jwt",
+  "expired",
+  "invalid",
+  "session_not_found",
+  "user from sub claim",
+  "unauthorized",
+  "refresh_token",
+] as const;
+
+function isInvalidSessionError(err: unknown): boolean {
+  if (!err) return false;
+  if (typeof err === "string") {
+    const lower = err.toLowerCase();
+    return INVALID_SESSION_KEYWORDS.some((kw) => lower.includes(kw));
+  }
+  if (typeof err !== "object") return false;
+
+  const record = err as { status?: unknown; message?: unknown; code?: unknown };
+  if (record.status === 401 || record.status === 403) {
+    return true;
+  }
+
+  const message = typeof record.message === "string" ? record.message : "";
+  const code = typeof record.code === "string" ? record.code : "";
+  const combined = `${message} ${code}`.toLowerCase();
+  if (!combined.trim()) return false;
+
+  return INVALID_SESSION_KEYWORDS.some((kw) => combined.includes(kw));
+}
+
+function isSessionExpiringSoon(session: Session | null): boolean {
+  if (!session?.expires_at) return false;
+  return session.expires_at * 1000 <= Date.now() + 30_000;
+}
+
+async function clearLocalAuthSession(supabase: ReturnType<typeof getSupabase>): Promise<void> {
+  if (typeof supabase?.auth?.signOut === "function") {
+    await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+  }
+  setActiveUserId(null);
+  clearGlobalAuthSession();
+}
+
 /**
  * Reavalia forçadamente o estado de MFA da sessão atual (ex.: após desativação ou ativação de 2FA).
  */
 export async function refreshMfaState(): Promise<void> {
   try {
     const supabase = getSupabase();
-    const { data } = await supabase.auth.getSession();
-    const session = data?.session ?? null;
-    const mfa = await resolveMfaState(supabase, session);
+    let session: Session | null = null;
+    let didAttemptRefresh = false;
+
+    const shouldRefreshBeforeGetSession =
+      globalMfaError !== null || isSessionExpiringSoon(globalSession);
+
+    if (shouldRefreshBeforeGetSession && typeof supabase.auth.refreshSession === "function") {
+      didAttemptRefresh = true;
+      const { data: refreshedData, error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError && isInvalidSessionError(refreshError)) {
+        await clearLocalAuthSession(supabase);
+        return;
+      }
+      if (!refreshError && refreshedData?.session) {
+        session = refreshedData.session;
+      }
+    }
+
+    if (!session) {
+      const { data, error } = await supabase.auth.getSession();
+      if (error && isInvalidSessionError(error)) {
+        await clearLocalAuthSession(supabase);
+        return;
+      }
+      session = data?.session ?? null;
+
+      if (
+        session &&
+        isSessionExpiringSoon(session) &&
+        !didAttemptRefresh &&
+        typeof supabase.auth.refreshSession === "function"
+      ) {
+        didAttemptRefresh = true;
+        const { data: refreshedData, error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError && isInvalidSessionError(refreshError)) {
+          await clearLocalAuthSession(supabase);
+          return;
+        }
+        if (!refreshError && refreshedData?.session) {
+          session = refreshedData.session;
+        }
+      }
+    }
+
+    const resolved = await resolveSessionWithMfaRecovery(supabase, session, !didAttemptRefresh);
+    if (resolved.user?.id) {
+      setActiveUserId(resolved.user.id);
+    }
     updateGlobalAuthState({
-      ...mfa,
-      mfaAdminOnly: isMfaAdminOnlySession(session),
+      session: resolved.session,
+      user: resolved.user,
+      mfaRequired: resolved.mfaRequired,
+      mfaVerified: resolved.mfaVerified,
+      aalLevel: resolved.aalLevel,
+      mfaError: resolved.mfaError,
+      mfaAdminOnly: isMfaAdminOnlySession(resolved.session),
     });
-  } catch {
+  } catch (err) {
+    if (isInvalidSessionError(err)) {
+      try {
+        await clearLocalAuthSession(getSupabase());
+      } catch {
+        setActiveUserId(null);
+        clearGlobalAuthSession();
+      }
+      return;
+    }
     // Silencia em ambiente offline / mock
   }
 }
@@ -233,15 +336,51 @@ function parseJwtAalBaseline(accessToken?: string): "aal1" | "aal2" | null {
   return null;
 }
 
-async function resolveMfaState(
-  supabase: ReturnType<typeof getSupabase>,
-  session: Session | null,
-): Promise<{
+interface MfaResolution {
   mfaRequired: boolean;
   mfaVerified: boolean;
   aalLevel: "aal1" | "aal2" | null;
   mfaError: string | null;
-}> {
+  invalidSession?: boolean;
+}
+
+interface SessionMfaResolution {
+  session: Session | null;
+  user: User | null;
+  mfaRequired: boolean;
+  mfaVerified: boolean;
+  aalLevel: "aal1" | "aal2" | null;
+  mfaError: string | null;
+}
+
+function buildMfaFailureFallback(
+  jwtAal: "aal1" | "aal2" | null,
+  isInvalid: boolean,
+): MfaResolution {
+  if (jwtAal === "aal2") {
+    return { mfaRequired: false, mfaVerified: true, aalLevel: "aal2", mfaError: null };
+  }
+  if (isInvalid) {
+    return {
+      mfaRequired: false,
+      mfaVerified: false,
+      aalLevel: null,
+      mfaError: null,
+      invalidSession: true,
+    };
+  }
+  return {
+    mfaRequired: false,
+    mfaVerified: false,
+    aalLevel: jwtAal ?? "aal1",
+    mfaError: "Não foi possível validar o segundo fator (MFA). Tente novamente.",
+  };
+}
+
+async function resolveMfaState(
+  supabase: ReturnType<typeof getSupabase>,
+  session: Session | null,
+): Promise<MfaResolution> {
   if (!session) {
     return { mfaRequired: false, mfaVerified: false, aalLevel: null, mfaError: null };
   }
@@ -257,15 +396,9 @@ async function resolveMfaState(
     ]);
 
     if (aalResult.error || factorsResult.error) {
-      if (jwtAal === "aal2") {
-        return { mfaRequired: false, mfaVerified: true, aalLevel: "aal2", mfaError: null };
-      }
-      return {
-        mfaRequired: false,
-        mfaVerified: false,
-        aalLevel: jwtAal ?? "aal1",
-        mfaError: "Não foi possível validar o segundo fator (MFA). Tente novamente.",
-      };
+      const invalid =
+        isInvalidSessionError(aalResult.error) || isInvalidSessionError(factorsResult.error);
+      return buildMfaFailureFallback(jwtAal, invalid);
     }
 
     const aalData = aalResult.data;
@@ -291,17 +424,62 @@ async function resolveMfaState(
       aalLevel: currentLevel,
       mfaError: null,
     };
-  } catch {
-    if (jwtAal === "aal2") {
-      return { mfaRequired: false, mfaVerified: true, aalLevel: "aal2", mfaError: null };
-    }
+  } catch (err) {
+    return buildMfaFailureFallback(jwtAal, isInvalidSessionError(err));
+  }
+}
+
+async function resolveSessionWithMfaRecovery(
+  supabase: ReturnType<typeof getSupabase>,
+  session: Session | null,
+  allowRefresh = true,
+): Promise<SessionMfaResolution> {
+  const mfa = await resolveMfaState(supabase, session);
+  if (!mfa.invalidSession) {
     return {
-      mfaRequired: false,
-      mfaVerified: false,
-      aalLevel: jwtAal ?? "aal1",
-      mfaError: "Falha de comunicação ao verificar segundo fator (MFA).",
+      session,
+      user: session?.user ?? null,
+      mfaRequired: mfa.mfaRequired,
+      mfaVerified: mfa.mfaVerified,
+      aalLevel: mfa.aalLevel,
+      mfaError: mfa.mfaError,
     };
   }
+
+  if (allowRefresh && typeof supabase.auth.refreshSession === "function") {
+    try {
+      const { data, error } = await supabase.auth.refreshSession();
+      const refreshedSession = !error ? (data?.session ?? null) : null;
+      if (refreshedSession) {
+        const refreshedMfa = await resolveMfaState(supabase, refreshedSession);
+        if (!refreshedMfa.invalidSession) {
+          if (refreshedSession.user?.id) {
+            setActiveUserId(refreshedSession.user.id);
+          }
+          return {
+            session: refreshedSession,
+            user: refreshedSession.user ?? null,
+            mfaRequired: refreshedMfa.mfaRequired,
+            mfaVerified: refreshedMfa.mfaVerified,
+            aalLevel: refreshedMfa.aalLevel,
+            mfaError: refreshedMfa.mfaError,
+          };
+        }
+      }
+    } catch {
+      // Falha no refresh — segue para limpeza local da sessão
+    }
+  }
+
+  await clearLocalAuthSession(supabase);
+  return {
+    session: null,
+    user: null,
+    mfaRequired: false,
+    mfaVerified: false,
+    aalLevel: null,
+    mfaError: null,
+  };
 }
 
 let globalAuthSubscription: { unsubscribe: () => void } | null = null;
@@ -329,18 +507,20 @@ function initGlobalAuth(): void {
     .then(async ({ data }) => {
       if (bootstrapGen !== authGeneration) return;
       const session = data?.session ?? null;
-      const user = session?.user ?? null;
-      const uid = user?.id ?? null;
+      const uid = session?.user?.id ?? null;
       if (uid) setActiveUserId(uid);
-      const mfa = await resolveMfaState(supabase, session);
+      const resolved = await resolveSessionWithMfaRecovery(supabase, session);
       if (bootstrapGen !== authGeneration) return;
       updateGlobalAuthState({
-        session,
-        user,
+        session: resolved.session,
+        user: resolved.user,
         loading: false,
         configError: null,
-        mfaAdminOnly: isMfaAdminOnlySession(session),
-        ...mfa,
+        mfaAdminOnly: isMfaAdminOnlySession(resolved.session),
+        mfaRequired: resolved.mfaRequired,
+        mfaVerified: resolved.mfaVerified,
+        aalLevel: resolved.aalLevel,
+        mfaError: resolved.mfaError,
       });
     })
     .catch((err) => {
@@ -360,22 +540,24 @@ function initGlobalAuth(): void {
 
   const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
     const eventGen = ++authGeneration;
-    const user = session?.user ?? null;
-    const uid = user?.id ?? null;
+    const uid = session?.user?.id ?? null;
     if (uid) {
       setActiveUserId(uid);
     } else {
       setActiveUserId(null);
     }
-    const mfa = await resolveMfaState(supabase, session);
+    const resolved = await resolveSessionWithMfaRecovery(supabase, session);
     if (eventGen !== authGeneration) return;
     updateGlobalAuthState({
-      session,
-      user,
+      session: resolved.session,
+      user: resolved.user,
       loading: false,
       configError: null,
-      mfaAdminOnly: isMfaAdminOnlySession(session),
-      ...mfa,
+      mfaAdminOnly: isMfaAdminOnlySession(resolved.session),
+      mfaRequired: resolved.mfaRequired,
+      mfaVerified: resolved.mfaVerified,
+      aalLevel: resolved.aalLevel,
+      mfaError: resolved.mfaError,
     });
   });
 
