@@ -48,7 +48,7 @@ export function AdminMobileDrawer({
       role="dialog"
       aria-modal="true"
       aria-label="Menu de navegação administrativa"
-      className="fixed inset-x-0 bottom-0 top-16 pt-safe z-sticky flex flex-col bg-background/95 backdrop-blur-xs p-4 md:hidden border-b border-border/80 pb-safe overflow-y-auto"
+      className="fixed inset-x-0 bottom-0 top-16 pt-safe z-40 flex flex-col bg-background/95 backdrop-blur-xs p-4 md:hidden border-b border-border/80 pb-safe overflow-y-auto"
     >
       <nav className="flex flex-col gap-4" aria-label="Navegação administrativa móvel">
         {ADMIN_NAV_GROUPS.map((group) => (
