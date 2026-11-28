@@ -71,6 +71,7 @@ vi.mock("@/data/session-transport", () => ({
 
 vi.mock("@/services/user-storage", () => ({
   getActiveUserId: vi.fn(() => "user-123"),
+  isAdminPortalContext: vi.fn(() => false),
 }));
 
 const mockSignOut = vi.fn();

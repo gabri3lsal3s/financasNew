@@ -75,7 +75,7 @@ export function resetAppState(
   clearRecentReceipts();
 
   // 2.4 Limpa registros temporários em sessionStorage (resíduos de checkout, navegação transitória)
-  if (typeof window !== "undefined" && window.sessionStorage) {
+  if (!options?.preserveSessionContext && typeof window !== "undefined" && window.sessionStorage) {
     try {
       window.sessionStorage.clear();
     } catch {

@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 import {
   getActiveUserMfaFactor,
+  getCurrentUserMfaAdminOnly,
   listVerifiedMfaFactors,
   markMfaVerified,
   resendConfirmationEmail,
@@ -23,7 +24,7 @@ import { classifyError, getErrorMessage } from "@/services/errors";
 import { markPendingExplicitDeviceRegistration } from "@/services/native/device-info";
 import { setSessionContext } from "@/services/session-context";
 import { setSharedDeviceSession } from "@/services/session-policy";
-import { markTabIsolatedSession } from "@/services/user-storage";
+import { markAdminPortalTab, markTabIsolatedSession } from "@/services/user-storage";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import type { PublicSessionContext } from "@/types/session-custody";
@@ -95,17 +96,22 @@ async function resolveMfaFactorId(currentId: string | null): Promise<string | nu
 }
 
 export function useLoginForm() {
-  const { session, loading, configError, mfaRequired, mfaVerified } = useAuth();
+  const { session, loading, configError, mfaRequired, mfaVerified, mfaAdminOnly } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { signOut } = useSignOut();
 
   const isDesafioTotpParam = searchParams.get("desafio") === "totp";
-  const loginMode = parseLoginMode(searchParams.get("mode"));
+  const rawMode = searchParams.get("mode");
+  const loginMode = parseLoginMode(rawMode);
   const loginCopy = LOGIN_MODE_COPY[loginMode];
   const tabIntentToken = searchParams.get("tab_intent")?.trim() || null;
   const from = resolveLoginRedirect({ searchParams, locationState: location.state });
+  const isAdminTarget =
+    from.startsWith("/admin") ||
+    rawMode === "operator" ||
+    searchParams.get("portal") === "admin";
 
   const [email, setEmail] = useState(searchParams.get("email") || "");
   const [password, setPassword] = useState("");
@@ -128,9 +134,16 @@ export function useLoginForm() {
   const [mfaError, setMfaError] = useState<string | null>(null);
   const lastRedeemedTokenRef = useRef<string | null>(null);
 
+  const effectiveMfaRequired = mfaRequired && (!mfaAdminOnly || isAdminTarget);
   const isMfaActive = Boolean(
-    !mfaVerified && (mfaRequired || isMfaRequired || (session && isDesafioTotpParam)),
+    !mfaVerified && (effectiveMfaRequired || isMfaRequired || (session && isDesafioTotpParam)),
   );
+
+  useEffect(() => {
+    if (isAdminTarget) {
+      markAdminPortalTab(true);
+    }
+  }, [isAdminTarget]);
 
   useEffect(() => {
     if (!tabIntentToken) return;
@@ -252,10 +265,13 @@ export function useLoginForm() {
       try {
         const verified = await listVerifiedMfaFactors();
         if (verified) {
-          setMfaFactorId(verified.id);
-          setIsMfaRequired(true);
-          triggerSensory("action");
-          return;
+          const hasMfaAdminOnly = await getCurrentUserMfaAdminOnly();
+          if (!hasMfaAdminOnly || isAdminTarget) {
+            setMfaFactorId(verified.id);
+            setIsMfaRequired(true);
+            triggerSensory("action");
+            return;
+          }
         }
       } catch {
         // Segue login se MFA não configurado
@@ -295,7 +311,9 @@ export function useLoginForm() {
       if (!verifyOk) throw new Error("Código de autenticação incorreto ou expirado.");
 
       markMfaVerified();
-      await syncCurrentSupabaseSessionToBff(isSharedDevice ? "shared" : "personal");
+      if (!isAdminTarget) {
+        await syncCurrentSupabaseSessionToBff(isSharedDevice ? "shared" : "personal");
+      }
       markPendingExplicitDeviceRegistration();
       triggerSensory("success");
       setIsMfaRequired(false);

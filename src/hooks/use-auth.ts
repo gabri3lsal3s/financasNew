@@ -22,6 +22,7 @@ import {
   changeUserPassword,
   requestUserEmailChange,
   updateUserPassword,
+  updateMfaAdminOnlyPreference,
   verifyCurrentPassword,
   getActiveUserMfaFactor,
   verifyMfaTotpCode,
@@ -39,6 +40,15 @@ import {
   type MfaEnrollResult,
 } from "@/data/auth";
 
+export async function getCurrentUserMfaAdminOnly(): Promise<boolean> {
+  try {
+    const { data } = await getSupabase().auth.getSession();
+    return data?.session?.user?.user_metadata?.mfa_admin_only === true;
+  } catch {
+    return false;
+  }
+}
+
 export {
   signInWithEmail,
   signUpWithEmail,
@@ -47,6 +57,7 @@ export {
   changeUserPassword,
   requestUserEmailChange,
   updateUserPassword,
+  updateMfaAdminOnlyPreference,
   verifyCurrentPassword,
   getActiveUserMfaFactor,
   verifyMfaTotpCode,
@@ -72,6 +83,8 @@ export interface AuthState {
   mfaRequired?: boolean;
   /** Flag indicando se o desafio de segundo fator (AAL2) já foi verificado nesta sessão. */
   mfaVerified?: boolean;
+  /** Preferência do usuário de exigir 2FA apenas no portal administrativo. */
+  mfaAdminOnly?: boolean;
   /** Nível de garantia da autenticação (aal1, aal2 ou null sem sessão). */
   aalLevel?: "aal1" | "aal2" | null;
   /** Erro ao verificar estado de MFA (fail-closed quando aal !== aal2). */
@@ -93,6 +106,7 @@ let globalLoading = true;
 let globalConfigError: string | null = null;
 let globalMfaRequired = false;
 let globalMfaVerified = false;
+let globalMfaAdminOnly = false;
 let globalAalLevel: "aal1" | "aal2" | null = null;
 let globalMfaError: string | null = null;
 let isGlobalAuthInitialized = false;
@@ -106,8 +120,13 @@ interface AuthStateSnapshot {
   configError: string | null;
   mfaRequired: boolean;
   mfaVerified: boolean;
+  mfaAdminOnly: boolean;
   aalLevel: "aal1" | "aal2" | null;
   mfaError: string | null;
+}
+
+function isMfaAdminOnlySession(session: Session | null): boolean {
+  return session?.user?.user_metadata?.mfa_admin_only === true;
 }
 
 function updateGlobalAuthState(partial: Partial<AuthStateSnapshot>): void {
@@ -117,6 +136,7 @@ function updateGlobalAuthState(partial: Partial<AuthStateSnapshot>): void {
   if (partial.configError !== undefined) globalConfigError = partial.configError;
   if (partial.mfaRequired !== undefined) globalMfaRequired = partial.mfaRequired;
   if (partial.mfaVerified !== undefined) globalMfaVerified = partial.mfaVerified;
+  if (partial.mfaAdminOnly !== undefined) globalMfaAdminOnly = partial.mfaAdminOnly;
   if (partial.aalLevel !== undefined) globalAalLevel = partial.aalLevel;
   if (partial.mfaError !== undefined) globalMfaError = partial.mfaError;
 
@@ -127,6 +147,7 @@ function updateGlobalAuthState(partial: Partial<AuthStateSnapshot>): void {
     configError: globalConfigError,
     mfaRequired: globalMfaRequired,
     mfaVerified: globalMfaVerified,
+    mfaAdminOnly: globalMfaAdminOnly,
     aalLevel: globalAalLevel,
     mfaError: globalMfaError,
   };
@@ -169,6 +190,7 @@ export function clearGlobalAuthSession(): void {
     loading: false,
     mfaRequired: false,
     mfaVerified: false,
+    mfaAdminOnly: false,
     aalLevel: null,
     mfaError: null,
   });
@@ -183,7 +205,10 @@ export async function refreshMfaState(): Promise<void> {
     const { data } = await supabase.auth.getSession();
     const session = data?.session ?? null;
     const mfa = await resolveMfaState(supabase, session);
-    updateGlobalAuthState(mfa);
+    updateGlobalAuthState({
+      ...mfa,
+      mfaAdminOnly: isMfaAdminOnlySession(session),
+    });
   } catch {
     // Silencia em ambiente offline / mock
   }
@@ -309,7 +334,14 @@ function initGlobalAuth(): void {
       if (uid) setActiveUserId(uid);
       const mfa = await resolveMfaState(supabase, session);
       if (bootstrapGen !== authGeneration) return;
-      updateGlobalAuthState({ session, user, loading: false, configError: null, ...mfa });
+      updateGlobalAuthState({
+        session,
+        user,
+        loading: false,
+        configError: null,
+        mfaAdminOnly: isMfaAdminOnlySession(session),
+        ...mfa,
+      });
     })
     .catch((err) => {
       if (bootstrapGen !== authGeneration) return;
@@ -320,6 +352,7 @@ function initGlobalAuth(): void {
         configError: getErrorMessage(err),
         mfaRequired: false,
         mfaVerified: false,
+        mfaAdminOnly: false,
         aalLevel: null,
         mfaError: null,
       });
@@ -336,7 +369,14 @@ function initGlobalAuth(): void {
     }
     const mfa = await resolveMfaState(supabase, session);
     if (eventGen !== authGeneration) return;
-    updateGlobalAuthState({ session, user, loading: false, configError: null, ...mfa });
+    updateGlobalAuthState({
+      session,
+      user,
+      loading: false,
+      configError: null,
+      mfaAdminOnly: isMfaAdminOnlySession(session),
+      ...mfa,
+    });
   });
 
   globalAuthSubscription = authListener?.subscription ?? null;
@@ -365,6 +405,7 @@ export function useAuth(): AuthState {
       configError: configError ?? globalConfigError,
       mfaRequired: globalMfaRequired,
       mfaVerified: globalMfaVerified,
+      mfaAdminOnly: globalMfaAdminOnly,
       aalLevel: globalAalLevel,
       mfaError: globalMfaError,
     };
@@ -390,6 +431,7 @@ export function useAuth(): AuthState {
         loading: true,
         mfaRequired: false,
         mfaVerified: false,
+        mfaAdminOnly: false,
         aalLevel: null,
         mfaError: null,
       });

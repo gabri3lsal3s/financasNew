@@ -582,7 +582,7 @@ export default {
             const verifiedUser = (await userRes.json()) as {
               id: string;
               email?: string;
-              user_metadata?: { name?: string; full_name?: string };
+              user_metadata?: { name?: string; full_name?: string; mfa_admin_only?: boolean };
               factors?: Array<{ id: string; status: string }>;
             };
 
@@ -600,7 +600,9 @@ export default {
             }
 
             const verifiedFactor = verifiedUser.factors?.find((f) => f.status === "verified");
-            const mfaRequired = Boolean(verifiedFactor) && jwtAal !== "aal2";
+            const mfaAdminOnlyBypass =
+              parsed.data.mode !== "operator" && verifiedUser.user_metadata?.mfa_admin_only === true;
+            const mfaRequired = Boolean(verifiedFactor) && jwtAal !== "aal2" && !mfaAdminOnlyBypass;
 
             const publicCtx = await coordinator.admitAuthenticatedAccount({
               userId: verifiedUser.id,

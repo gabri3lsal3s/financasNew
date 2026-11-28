@@ -146,7 +146,7 @@ function NativeIntegrationsHandler() {
  * nunca baixam/executam stores, prefetch de rotas ou sincronizações de conta.
  */
 export function RequireAuth({ children }: { children?: ReactNode }) {
-  const { session, loading: authLoading, configError, mfaRequired, mfaVerified, mfaError } = useAuth();
+  const { session, loading: authLoading, configError, mfaRequired, mfaVerified, mfaAdminOnly, mfaError } = useAuth();
   const hasUser = Boolean(session?.user);
   const bootstrapQuery = useSessionBootstrap(session?.user?.id);
   const userAccess = useUserAccess(session?.user?.id);
@@ -180,7 +180,7 @@ export function RequireAuth({ children }: { children?: ReactNode }) {
     );
   }
 
-  if (!authLoading && session?.user && mfaRequired && !mfaVerified) {
+  if (!authLoading && session?.user && mfaRequired && !mfaVerified && !mfaAdminOnly) {
     return <Navigate to="/entrar?desafio=totp" replace />;
   }
 

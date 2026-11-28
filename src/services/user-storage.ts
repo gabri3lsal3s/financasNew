@@ -5,7 +5,40 @@
  */
 
 const ACTIVE_USER_ID_STORAGE_KEY = "financas_active_user_id";
+const ADMIN_ACTIVE_USER_ID_STORAGE_KEY = "financas_admin_active_user_id";
 const TAB_ISOLATED_STORAGE_KEY = "axir_tab_isolated";
+const ADMIN_PORTAL_TAB_STORAGE_KEY = "axir_admin_portal_tab";
+
+export function isAdminPortalContext(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    if (window.sessionStorage?.getItem(ADMIN_PORTAL_TAB_STORAGE_KEY) === "1") {
+      return true;
+    }
+    const pathname = window.location.pathname || "";
+    const portalParam = new URLSearchParams(window.location.search || "").get("portal");
+    if (pathname.startsWith("/admin") || portalParam === "admin") {
+      window.sessionStorage?.setItem(ADMIN_PORTAL_TAB_STORAGE_KEY, "1");
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+export function markAdminPortalTab(enabled = true): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (enabled) {
+      window.sessionStorage?.setItem(ADMIN_PORTAL_TAB_STORAGE_KEY, "1");
+    } else {
+      window.sessionStorage?.removeItem(ADMIN_PORTAL_TAB_STORAGE_KEY);
+    }
+  } catch {
+    // no-op
+  }
+}
 
 export function isTabIsolatedSession(): boolean {
   if (typeof window === "undefined") return false;
@@ -31,44 +64,53 @@ export function markTabIsolatedSession(): void {
 function getInitialActiveUserId(): string | null {
   if (typeof window === "undefined") return null;
   try {
-    const tabUserId = window.sessionStorage?.getItem(ACTIVE_USER_ID_STORAGE_KEY) || null;
-    if (tabUserId) return tabUserId;
-    if (isTabIsolatedSession()) return null;
-    const localUserId = window.localStorage.getItem(ACTIVE_USER_ID_STORAGE_KEY) || null;
-    if (localUserId) {
-      window.sessionStorage?.setItem(ACTIVE_USER_ID_STORAGE_KEY, localUserId);
+    if (isAdminPortalContext()) {
+      return window.sessionStorage?.getItem(ADMIN_ACTIVE_USER_ID_STORAGE_KEY) || null;
     }
-    return localUserId;
+    if (isTabIsolatedSession()) {
+      return window.sessionStorage?.getItem(ACTIVE_USER_ID_STORAGE_KEY) || null;
+    }
+    return window.localStorage.getItem(ACTIVE_USER_ID_STORAGE_KEY) || null;
   } catch {
     return null;
   }
 }
 
 let activeUserId: string | null = getInitialActiveUserId();
+let hasInitializedActiveUserId = typeof window !== "undefined";
 const userListeners = new Set<(userId: string | null) => void>();
 
 export function getActiveUserId(): string | null {
-  if (activeUserId) return activeUserId;
-  return getInitialActiveUserId();
+  if (hasInitializedActiveUserId) return activeUserId;
+  activeUserId = getInitialActiveUserId();
+  hasInitializedActiveUserId = typeof window !== "undefined";
+  return activeUserId;
 }
 
 export function setActiveUserId(userId: string | null): void {
+  hasInitializedActiveUserId = true;
   if (activeUserId !== userId) {
     const prevUserId = activeUserId;
     activeUserId = userId;
 
     if (typeof window !== "undefined") {
       try {
-        if (userId) {
-          window.sessionStorage?.setItem(ACTIVE_USER_ID_STORAGE_KEY, userId);
-          if (!isTabIsolatedSession()) {
-            window.localStorage.setItem(ACTIVE_USER_ID_STORAGE_KEY, userId);
+        if (isAdminPortalContext()) {
+          if (userId) {
+            window.sessionStorage?.setItem(ADMIN_ACTIVE_USER_ID_STORAGE_KEY, userId);
+          } else {
+            window.sessionStorage?.removeItem(ADMIN_ACTIVE_USER_ID_STORAGE_KEY);
           }
+        } else if (isTabIsolatedSession()) {
+          if (userId) {
+            window.sessionStorage?.setItem(ACTIVE_USER_ID_STORAGE_KEY, userId);
+          } else {
+            window.sessionStorage?.removeItem(ACTIVE_USER_ID_STORAGE_KEY);
+          }
+        } else if (userId) {
+          window.localStorage.setItem(ACTIVE_USER_ID_STORAGE_KEY, userId);
         } else {
-          window.sessionStorage?.removeItem(ACTIVE_USER_ID_STORAGE_KEY);
-          if (!isTabIsolatedSession()) {
-            window.localStorage.removeItem(ACTIVE_USER_ID_STORAGE_KEY);
-          }
+          window.localStorage.removeItem(ACTIVE_USER_ID_STORAGE_KEY);
         }
       } catch {
         // no-op
@@ -221,6 +263,8 @@ export function purgeAccountStorage(accountKey: string): number {
 
     if (getActiveUserId() === normalizedKey) {
       activeUserId = null;
+      window.sessionStorage?.removeItem(ADMIN_ACTIVE_USER_ID_STORAGE_KEY);
+      window.sessionStorage?.removeItem(ACTIVE_USER_ID_STORAGE_KEY);
       window.localStorage.removeItem(ACTIVE_USER_ID_STORAGE_KEY);
       window.localStorage.removeItem("financas_active_accent_theme");
       window.localStorage.removeItem("financas_active_biometric_lock_enabled");

@@ -4,6 +4,7 @@ import { ArrowLeftRight, LogOut } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { BrandLogo } from "@/components/layout/brand-logo";
+import { LoadingScreen } from "@/components/layout/loading-screen";
 import { AccountSwitcherPanel } from "@/components/modules/account-switcher";
 import { DemoTrackSelectModal } from "@/components/modules/demo-track-select-modal";
 import { HelpModal } from "@/components/modules/help-modal";
@@ -56,6 +57,8 @@ export function LogoProfileButton({
 }: LogoProfileButtonProps) {
   const [open, setOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [isInitialListPending, setIsInitialListPending] = useState(false);
+  const [isSwitchingAccount, setIsSwitchingAccount] = useState(false);
   const [demoSelectOpen, setDemoSelectOpen] = useState(false);
   const [helpModalOpen, setHelpModalOpen] = useState(false);
   const { scheduleAfterClose, cancelTransition } = useModalTransition();
@@ -74,7 +77,11 @@ export function LogoProfileButton({
   useEffect(() => {
     if (!switcherOpen) return;
     const controller = new AbortController();
-    void listAccounts({ signal: controller.signal });
+    void listAccounts({ signal: controller.signal }).finally(() => {
+      if (!controller.signal.aborted) {
+        setIsInitialListPending(false);
+      }
+    });
     return () => controller.abort();
   }, [switcherOpen, listAccounts]);
 
@@ -144,7 +151,10 @@ export function LogoProfileButton({
                 onClick={() => {
                   scheduleAfterClose(
                     () => setOpen(false),
-                    () => setSwitcherOpen(true),
+                    () => {
+                      setIsInitialListPending(true);
+                      setSwitcherOpen(true);
+                    },
                   );
                 }}
               >
@@ -200,7 +210,10 @@ export function LogoProfileButton({
 
       <Modal
         open={switcherOpen}
-        onOpenChange={setSwitcherOpen}
+        onOpenChange={(nextOpen) => {
+          setIsInitialListPending(nextOpen);
+          setSwitcherOpen(nextOpen);
+        }}
         title="Contas e Sessões"
         description="Alterne entre contas com isolamento por aba ou encerre sessões deste dispositivo."
         size="lg"
@@ -208,7 +221,7 @@ export function LogoProfileButton({
         <AccountSwitcherPanel
           context={accountSwitcher.context}
           accounts={accountSwitcher.accounts}
-          loading={accountSwitcher.loading}
+          loading={accountSwitcher.loading || isInitialListPending}
           busyAction={accountSwitcher.busyAction}
           error={accountSwitcher.error}
           onClearError={accountSwitcher.clearError}
@@ -219,22 +232,17 @@ export function LogoProfileButton({
               expectedGeneration: account.generation,
             });
             if (res.ok) {
+              setIsSwitchingAccount(true);
               setSwitcherOpen(false);
-              if (typeof window !== "undefined") {
-                window.location.assign("/");
-              } else {
-                navigate("/");
+              try {
+                if (typeof window !== "undefined") {
+                  window.location.assign("/");
+                } else {
+                  navigate("/");
+                }
+              } catch {
+                setIsSwitchingAccount(false);
               }
-            }
-          }}
-          onOpenTab={async (account) => {
-            const res = await accountSwitcher.openTab({
-              accountRef: account.accountRef,
-              expectedGeneration: account.generation,
-            });
-            if (res.ok && typeof window !== "undefined") {
-              const params = new URLSearchParams({ tab_intent: res.intent.intentToken });
-              window.open(`/login?${params.toString()}`, "_blank", "noopener,noreferrer");
             }
           }}
           onAddAccount={() => navigateFromSwitcher("/login?mode=add")}
@@ -269,6 +277,12 @@ export function LogoProfileButton({
           }}
         />
       </Modal>
+
+      {isSwitchingAccount ? (
+        <div className="fixed inset-0 z-[100] bg-background">
+          <LoadingScreen statusText="Alternando para sua conta…" />
+        </div>
+      ) : null}
 
       <HelpModal
         open={helpModalOpen}

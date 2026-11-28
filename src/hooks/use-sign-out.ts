@@ -1,6 +1,7 @@
 import { useCallback, useContext } from "react";
 import { QueryClientContext } from "@tanstack/react-query";
 import { getSupabase } from "@/data/client";
+import { isAdminPortalContext } from "@/services/user-storage";
 import { revokeOtherDevices } from "@/data/repositories/devices";
 import {
   deactivatePushSubscriptionByEndpoint,
@@ -35,17 +36,27 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | und
 }
 
 function clearResidualSupabaseTokens(): void {
-  if (typeof window === "undefined" || !window.localStorage) return;
+  if (typeof window === "undefined") return;
   try {
-    const keysToRemove: string[] = [];
-    for (let i = 0; i < window.localStorage.length; i++) {
-      const key = window.localStorage.key(i);
-      if (key && key.startsWith("sb-") && key.endsWith("-auth-token")) {
-        keysToRemove.push(key);
+    const adminContext =
+      typeof isAdminPortalContext === "function" ? isAdminPortalContext() : false;
+    const targetSuffix = adminContext ? "-auth-token-admin" : "-auth-token";
+    const stores = adminContext
+      ? [window.sessionStorage]
+      : [window.localStorage, window.sessionStorage];
+
+    for (const store of stores) {
+      if (!store) continue;
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < store.length; i++) {
+        const key = store.key(i);
+        if (key && key.startsWith("sb-") && key.endsWith(targetSuffix)) {
+          keysToRemove.push(key);
+        }
       }
-    }
-    for (const key of keysToRemove) {
-      window.localStorage.removeItem(key);
+      for (const key of keysToRemove) {
+        store.removeItem(key);
+      }
     }
   } catch {
     // no-op

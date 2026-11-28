@@ -196,6 +196,25 @@ describe("Cloudflare Worker + Durable Object — T03 Custody & Session Lifecycle
         return;
       }
 
+      if (req.method === "GET" && reqUrl.pathname === "/auth/v1/user") {
+        const auth = req.headers["authorization"];
+        if (auth === "Bearer synthetic.jwt.mfa-admin-only-aal1") {
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(
+            JSON.stringify({
+              id: "user-admin-only",
+              email: "adminonly@axir.com.br",
+              user_metadata: { mfa_admin_only: true },
+              factors: [{ id: "fac-1", status: "verified" }],
+            }),
+          );
+          return;
+        }
+        res.writeHead(401, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "invalid_jwt" }));
+        return;
+      }
+
       if (req.method === "POST" && reqUrl.pathname === "/auth/v1/recover") {
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({}));
@@ -937,5 +956,42 @@ describe("Cloudflare Worker + Durable Object — T03 Custody & Session Lifecycle
     failUpstreamRefresh = false;
     expect(failedSwitch.status).toBe(401);
     expect(await failedSwitch.json()).toEqual({ error: "unauthorized" });
+  });
+
+  it("no session-sync admite mfaVerified quando mfa_admin_only === true em modo personal, mas exige AAL2 em modo operator", async () => {
+    const bootRes = await previewFetch("https://preview.axir.com.br/api/sessions/v1/bootstrap", {
+      method: "POST",
+      headers: { Origin: "https://preview.axir.com.br", "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    const cookie = bootRes.headers.get("set-cookie")?.split(";")[0] ?? "";
+
+    const personalSync = await previewFetch("https://preview.axir.com.br/api/sessions/v1/login", {
+      method: "POST",
+      headers: { Origin: "https://preview.axir.com.br", Cookie: cookie, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        grant: "session-sync",
+        mode: "personal",
+        accessToken: "synthetic.jwt.mfa-admin-only-aal1",
+        refreshToken: "rt-admin-only-1",
+      }),
+    });
+    expect(personalSync.status).toBe(200);
+    const personalCtx = (await personalSync.json()) as { status: string };
+    expect(personalCtx.status).toBe("authenticated");
+
+    const operatorSync = await previewFetch("https://preview.axir.com.br/api/sessions/v1/login", {
+      method: "POST",
+      headers: { Origin: "https://preview.axir.com.br", Cookie: cookie, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        grant: "session-sync",
+        mode: "operator",
+        accessToken: "synthetic.jwt.mfa-admin-only-aal1",
+        refreshToken: "rt-admin-only-2",
+      }),
+    });
+    expect(operatorSync.status).toBe(200);
+    const operatorCtx = (await operatorSync.json()) as { status: string };
+    expect(operatorCtx.status).toBe("mfa_required");
   });
 });

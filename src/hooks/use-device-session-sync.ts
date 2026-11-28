@@ -235,7 +235,7 @@ async function revalidateBffSession(
  */
 export function useDeviceSessionSync(options?: UseDeviceSessionSyncOptions): void {
   const queryClient = useContext(QueryClientContext);
-  const { user, loading: authLoading, mfaRequired, mfaVerified } = useAuth();
+  const { user, loading: authLoading, mfaRequired, mfaVerified, mfaAdminOnly = false } = useAuth();
   const { signOut } = useSignOut();
   const signOutRef = useRef(signOut);
   const onRevokedRef = useRef(options?.onRevoked);
@@ -278,7 +278,7 @@ export function useDeviceSessionSync(options?: UseDeviceSessionSyncOptions): voi
   }, [sessionContextId, queryClient]);
 
   const userId = user?.id ?? null;
-  const isMfaPending = Boolean(mfaRequired && !mfaVerified);
+  const isMfaPending = Boolean(mfaRequired && !mfaVerified && !mfaAdminOnly);
   const isEligible = !authLoading && Boolean(userId) && !isMfaPending;
 
   useEffect(() => {

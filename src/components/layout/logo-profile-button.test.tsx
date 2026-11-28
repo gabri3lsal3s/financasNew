@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -55,9 +55,55 @@ vi.mock("@/state/queries/use-user-access", () => ({
   useUserAccess: () => mockUseUserAccess(),
 }));
 
+const mockAccountSwitcherState = {
+  context: {
+    status: "authenticated" as const,
+    contextId: "ctx-1",
+    csrfToken: "csrf-1",
+    generation: 1,
+    revision: 1,
+    environment: "production" as const,
+    mode: "personal" as const,
+    accountRef: "acc-1",
+    displayName: "Gabriel Sales",
+    expiresAt: Date.now() + 60_000,
+    mfaFactorId: null,
+    pendingRevocations: 0,
+  },
+  accounts: [] as Array<{
+    accountRef: string;
+    displayName: string;
+    maskedEmail: string;
+    mode: "personal" | "shared" | "operator";
+    status: "active" | "remembered" | "trust_expired" | "requires_reauth" | "revoked";
+    generation: number;
+    lastActivityAt: number;
+    hasLocalLock: boolean;
+  }>,
+  loading: false,
+  busyAction: null,
+  error: null,
+  clearError: vi.fn(),
+  listAccounts: vi.fn().mockResolvedValue({ ok: true, accounts: [] }),
+  switchAccount: vi.fn().mockResolvedValue({ ok: true }),
+  openTab: vi.fn(),
+  logout: vi.fn().mockResolvedValue({ ok: true }),
+  logoutDevice: vi.fn().mockResolvedValue({ ok: true }),
+  forgetAccount: vi.fn().mockResolvedValue({ ok: true }),
+};
+
+vi.mock("@/state/use-account-switcher", () => ({
+  useAccountSwitcher: () => mockAccountSwitcherState,
+}));
+
 describe("LogoProfileButton (mobile & desktop)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseUserAccess.mockReturnValue({ isAdmin: false });
+    mockAccountSwitcherState.accounts = [];
+    mockAccountSwitcherState.loading = false;
+    mockAccountSwitcherState.listAccounts.mockResolvedValue({ ok: true, accounts: [] });
+    mockAccountSwitcherState.switchAccount.mockResolvedValue({ ok: true });
   });
 
   it("renderiza no mobile com ícone e abre o modal de perfil ao clicar", async () => {
@@ -229,5 +275,82 @@ describe("LogoProfileButton (mobile & desktop)", () => {
 
     expect(await screen.findByText("Central de Ajuda & Suporte")).toBeInTheDocument();
     expect(screen.getByText("Tour Guiado & Modo Simulação")).toBeInTheDocument();
+  });
+
+  it("exibe skeleton ao abrir Contas e Sessões enquanto listAccounts está pendente sem piscar estado vazio", async () => {
+    const user = userEvent.setup();
+    const resolveListRef: { current: ((value: { ok: true; accounts: [] }) => void) | null } = {
+      current: null,
+    };
+    mockAccountSwitcherState.listAccounts.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveListRef.current = resolve;
+        }),
+    );
+
+    render(
+      <MemoryRouter>
+        <LogoProfileButton />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Abrir perfil do usuário" }));
+    await user.click(screen.getByRole("button", { name: /Alternar conta/i }));
+
+    expect(await screen.findByLabelText("Carregando contas")).toBeInTheDocument();
+    expect(screen.queryByText("Nenhuma conta ativa nesta aba")).not.toBeInTheDocument();
+
+    resolveListRef.current?.({ ok: true, accounts: [] });
+    await waitFor(() => {
+      expect(mockAccountSwitcherState.listAccounts).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("exibe LoadingScreen ao alternar de conta com sucesso e navega para /", async () => {
+    const user = userEvent.setup();
+    const assignSpy = vi.fn();
+    Object.defineProperty(window, "location", {
+      value: { ...window.location, assign: assignSpy },
+      writable: true,
+    });
+
+    mockAccountSwitcherState.accounts = [
+      {
+        accountRef: "acc-1",
+        displayName: "Gabriel Sales",
+        maskedEmail: "ga***@exemplo.com",
+        mode: "personal",
+        status: "active",
+        generation: 1,
+        lastActivityAt: Date.now(),
+        hasLocalLock: false,
+      },
+      {
+        accountRef: "acc-2",
+        displayName: "Maria Silva",
+        maskedEmail: "ma***@exemplo.com",
+        mode: "personal",
+        status: "remembered",
+        generation: 2,
+        lastActivityAt: Date.now(),
+        hasLocalLock: false,
+      },
+    ];
+
+    render(
+      <MemoryRouter>
+        <LogoProfileButton />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Abrir perfil do usuário" }));
+    await user.click(screen.getByRole("button", { name: /Alternar conta/i }));
+
+    const switchBtn = await screen.findByRole("button", { name: /Alternar/i });
+    await user.click(switchBtn);
+
+    expect(await screen.findByText("Alternando para sua conta…")).toBeInTheDocument();
+    expect(assignSpy).toHaveBeenCalledWith("/");
   });
 });

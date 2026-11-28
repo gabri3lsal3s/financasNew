@@ -23,6 +23,7 @@ import {
   useUserPreferences,
 } from "@/state";
 import { useDemoSession } from "@/state/demo-mode";
+import { useUserAccess } from "@/state/queries/use-user-access";
 import { MfaModal } from "../mfa-modal";
 import { PinSetupDialog } from "../pin-setup-dialog";
 import { ActiveDevicesCard } from "./active-devices-card";
@@ -35,6 +36,7 @@ import { TwoFactorCard } from "./security/two-factor-card";
 export function SecurityTab() {
   const { user } = useAuth();
   const userId = user?.id ?? null;
+  const { isAdmin } = useUserAccess(user?.id);
   const userPreferencesQuery = useUserPreferences();
   const updateCustomSettingsMutation = useUpdateCustomSettings();
 
@@ -181,6 +183,7 @@ export function SecurityTab() {
 
       <TwoFactorCard
         refreshKey={mfaRefreshKey}
+        isAdmin={isAdmin}
         onOpenMfaModal={() => setIsMfaModalOpen(true)}
       />
 

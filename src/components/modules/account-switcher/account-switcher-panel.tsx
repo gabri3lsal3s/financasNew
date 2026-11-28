@@ -2,8 +2,6 @@ import { useCallback, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import {
   ArrowLeftRight,
-  Check,
-  ExternalLink,
   KeyRound,
   Lock,
   LogOut,
@@ -21,9 +19,8 @@ import { Alert } from "@/components/ui/alert";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { ContentLoading } from "@/components/ui/content-loading";
 import { EmptyState } from "@/components/ui/empty-state";
-import { isNativePlatform } from "@/services/native/platform";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 export type AccountSwitcherBusyAction =
@@ -89,6 +86,44 @@ function requiresFreshLogin(status: AccountSummary["status"]): boolean {
   return status === "trust_expired" || status === "revoked" || status === "requires_reauth";
 }
 
+function AccountSwitcherSkeleton() {
+  return (
+    <div
+      aria-label="Carregando contas"
+      aria-busy="true"
+      className="space-y-3 rounded-xl border border-border/80 bg-surface p-3 sm:p-4 shadow-xs"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Skeleton className="size-4 rounded-md bg-muted/60" />
+          <Skeleton className="h-4 w-36 bg-muted/60" />
+        </div>
+        <Skeleton className="h-5 w-20 rounded-full bg-muted/60" />
+      </div>
+      <div className="space-y-2.5">
+        {[0, 1].map((idx) => (
+          <div
+            key={idx}
+            className="rounded-lg border border-border/80 bg-surface p-3 space-y-2.5"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="space-y-1.5 min-w-0 flex-1">
+                <Skeleton className="h-4 w-32 bg-muted/60" />
+                <Skeleton className="h-3 w-44 bg-muted/60" />
+              </div>
+              <Skeleton className="h-5 w-16 rounded-full shrink-0 bg-muted/60" />
+            </div>
+            <div className="flex items-center gap-2 w-full">
+              <Skeleton className="h-8 flex-1 rounded-md bg-muted/60" />
+              <Skeleton className="size-8 shrink-0 rounded-md bg-muted/60" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /**
  * Painel do alternador multiconta (T06).
  * Regras de segurança: nunca exibe e-mail completo, valores monetários ou identidade
@@ -102,7 +137,6 @@ export function AccountSwitcherPanel({
   error = null,
   onRefresh,
   onSwitchAccount,
-  onOpenTab,
   onAddAccount,
   onReauthAccount,
   onLogout,
@@ -117,7 +151,6 @@ export function AccountSwitcherPanel({
   const [pendingForgetAccount, setPendingForgetAccount] = useState<AccountSummary | null>(null);
   const [confirmLogoutDeviceOpen, setConfirmLogoutDeviceOpen] = useState(false);
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const isNative = isNativePlatform();
 
   // Nunca expor identidades de operador na tela inicial do alternador.
   const visibleAccounts = accounts.filter((account) => account.mode !== "operator");
@@ -202,7 +235,7 @@ export function AccountSwitcherPanel({
   if (loading && visibleAccounts.length === 0) {
     return (
       <div className={cn("space-y-4", className)}>
-        <ContentLoading />
+        <AccountSwitcherSkeleton />
         {renderAdminPortalFooter()}
       </div>
     );
@@ -436,28 +469,24 @@ export function AccountSwitcherPanel({
                       </Badge>
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 w-full">
                       {isCurrent ? (
-                        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                          <Badge variant="positive" size="sm">
-                            <Check className="size-3" aria-hidden="true" />
-                            <span>Nesta aba</span>
-                          </Badge>
-                          {onLogout ? (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="flex-1 sm:flex-initial"
-                              loading={busyAction === "logout"}
-                              disabled={isBusy}
-                              onClick={() => void onLogout({ remember: false })}
-                            >
-                              <LogOut className="size-3.5 shrink-0" aria-hidden="true" />
-                              <span>Sair desta conta</span>
-                            </Button>
-                          ) : null}
-                        </div>
+                        onLogout ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            loading={busyAction === "logout"}
+                            disabled={isBusy}
+                            onClick={() => void onLogout({ remember: false })}
+                          >
+                            <LogOut className="size-3.5 shrink-0" aria-hidden="true" />
+                            <span>Sair desta conta</span>
+                          </Button>
+                        ) : (
+                          <div className="flex-1" />
+                        )
                       ) : needsLogin ? (
                         <Button
                           ref={(node) => {
@@ -466,7 +495,7 @@ export function AccountSwitcherPanel({
                           type="button"
                           variant="outline"
                           size="sm"
-                          className="flex-1 sm:flex-initial"
+                          className="flex-1"
                           disabled={isBusy}
                           onClick={() => onReauthAccount?.(account)}
                         >
@@ -481,7 +510,7 @@ export function AccountSwitcherPanel({
                           type="button"
                           variant="outline"
                           size="sm"
-                          className="flex-1 sm:flex-initial"
+                          className="flex-1"
                           loading={isSwitchingThis}
                           disabled={isBusy}
                           onClick={() => void handleDirectSwitch(account)}
@@ -491,39 +520,21 @@ export function AccountSwitcherPanel({
                         </Button>
                       )}
 
-                      <div className="flex items-center gap-1 shrink-0 ml-auto">
-                        {!isNative && !needsLogin && account.status !== "remembered" && onOpenTab ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="hidden sm:inline-flex size-8 !w-8 !min-w-8 p-0 shrink-0"
-                            aria-label={`Abrir ${account.displayName} em nova aba`}
-                            title="Abrir em nova aba"
-                            disabled={isBusy}
-                            onClick={() => void onOpenTab(account)}
-                          >
-                            <ExternalLink className="size-4" aria-hidden="true" />
-                            <span className="sr-only">Abrir em nova aba</span>
-                          </Button>
-                        ) : null}
-
-                        {onForgetAccount ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="size-8 !w-8 !min-w-8 p-0 shrink-0 text-critical-strong hover:bg-critical/10 hover:text-critical-strong"
-                            aria-label={`Esquecer conta ${account.displayName}`}
-                            title="Esquecer conta"
-                            disabled={isBusy}
-                            onClick={() => setPendingForgetAccount(account)}
-                          >
-                            <Trash2 className="size-4" aria-hidden="true" />
-                            <span className="sr-only">Esquecer conta</span>
-                          </Button>
-                        ) : null}
-                      </div>
+                      {onForgetAccount ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="size-8 !w-8 !min-w-8 p-0 shrink-0 text-critical-strong hover:bg-critical/10 hover:text-critical-strong"
+                          aria-label={`Esquecer conta ${account.displayName}`}
+                          title="Esquecer conta"
+                          disabled={isBusy}
+                          onClick={() => setPendingForgetAccount(account)}
+                        >
+                          <Trash2 className="size-4" aria-hidden="true" />
+                          <span className="sr-only">Esquecer conta</span>
+                        </Button>
+                      ) : null}
                     </div>
                   </li>
                 );
@@ -567,7 +578,7 @@ export function AccountSwitcherPanel({
             variant="ghost"
             size="sm"
             disabled={isBusy}
-            className="w-full sm:w-auto text-critical-strong hover:bg-critical/10 hover:text-critical-strong"
+            className="w-full sm:w-auto min-h-10 sm:min-h-8 text-critical-strong hover:bg-critical/10 hover:text-critical-strong"
             onClick={() => setConfirmLogoutDeviceOpen(true)}
           >
             <span>Sair de todas as contas deste dispositivo</span>

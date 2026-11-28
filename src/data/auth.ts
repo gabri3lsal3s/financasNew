@@ -136,6 +136,19 @@ export async function resendConfirmationEmail(
 }
 
 /**
+ * Atualiza a preferência de 2FA exclusiva para o portal Admin (`mfa_admin_only`).
+ */
+export async function updateMfaAdminOnlyPreference(enabled: boolean): Promise<void> {
+  const { error } = await getSupabase().auth.updateUser({
+    data: { mfa_admin_only: enabled },
+  });
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+}
+
+/**
  * Atualiza a senha do usuário em sessão ativa (troca preventiva ou recuperação de senha) (Fase 3.2).
  */
 export async function updateUserPassword(newPassword: string): Promise<void> {

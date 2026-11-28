@@ -250,4 +250,43 @@ describe("AccountSwitcherPanel", () => {
     await user.keyboard("{Enter}");
     expect(onSwitchAccount).toHaveBeenCalledWith(acc2);
   });
+
+  it("não exibe badge 'Nesta aba' nem botão 'Abrir em nova aba' e alinha 'Sair desta conta' lado a lado com a lixeira", () => {
+    const acc1 = makeAccount({ accountRef: "acc-1", displayName: "Ana Costa", status: "active" });
+    const acc2 = makeAccount({ accountRef: "acc-2", displayName: "Bruno Lima", status: "active" });
+
+    render(
+      <AccountSwitcherPanel
+        context={makeContext({ accountRef: "acc-1" })}
+        accounts={[acc1, acc2]}
+        onLogout={vi.fn()}
+        onForgetAccount={vi.fn()}
+        onSwitchAccount={vi.fn()}
+        onOpenTab={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("Nesta aba")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Abrir .* em nova aba/i })).not.toBeInTheDocument();
+
+    const logoutBtn = screen.getByRole("button", { name: /Sair desta conta/i });
+    const forgetCurrentBtn = screen.getByRole("button", { name: "Esquecer conta Ana Costa" });
+    expect(logoutBtn.parentElement).toBe(forgetCurrentBtn.parentElement);
+    expect(logoutBtn.parentElement?.className).toContain("flex items-center gap-2 w-full");
+    expect(logoutBtn.className).toContain("flex-1");
+    expect(forgetCurrentBtn.className).toContain("size-8");
+  });
+
+  it("exibe skeleton de 2 cards quando loading é true e ainda não há contas carregadas", () => {
+    render(
+      <AccountSwitcherPanel
+        context={makeContext({ status: "neutral", accountRef: null, displayName: null })}
+        accounts={[]}
+        loading={true}
+      />,
+    );
+
+    expect(screen.getByLabelText("Carregando contas")).toBeInTheDocument();
+    expect(screen.queryByText("Nenhuma conta ativa nesta aba")).not.toBeInTheDocument();
+  });
 });

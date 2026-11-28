@@ -15,6 +15,8 @@ const mockNavigate = vi.fn();
 const mockUseAuth = vi.fn();
 const mockSignInWithEmail = vi.fn();
 const mockListVerifiedMfaFactors = vi.fn();
+const mockGetCurrentUserMfaAdminOnly = vi.fn();
+const mockGetSession = vi.fn();
 
 vi.mock("react-router", async () => {
   const actual = await vi.importActual<typeof import("react-router")>("react-router");
@@ -28,6 +30,7 @@ vi.mock("@/hooks/use-auth", () => ({
   useAuth: () => mockUseAuth(),
   signInWithEmail: (...args: unknown[]) => mockSignInWithEmail(...args),
   listVerifiedMfaFactors: (...args: unknown[]) => mockListVerifiedMfaFactors(...args),
+  getCurrentUserMfaAdminOnly: (...args: unknown[]) => mockGetCurrentUserMfaAdminOnly(...args),
   getActiveUserMfaFactor: vi.fn().mockResolvedValue(null),
   markMfaVerified: vi.fn(),
   resendConfirmationEmail: vi.fn().mockResolvedValue(undefined),
@@ -51,14 +54,7 @@ vi.mock("@/data/session-transport", async () => {
 vi.mock("@/data/client", () => ({
   getSupabase: () => ({
     auth: {
-      getSession: vi.fn().mockResolvedValue({
-        data: {
-          session: {
-            access_token: "tok-1234567890",
-            refresh_token: "ref-1234567890",
-          },
-        },
-      }),
+      getSession: (...args: unknown[]) => mockGetSession(...args),
       setSession: vi.fn().mockResolvedValue({
         data: {
           session: {
@@ -118,12 +114,21 @@ describe("useLoginForm", () => {
     mockedPostSessionOperation.mockReset();
     mockSignInWithEmail.mockReset().mockResolvedValue(undefined);
     mockListVerifiedMfaFactors.mockReset().mockResolvedValue(null);
+    mockGetSession.mockReset().mockResolvedValue({
+      data: {
+        session: {
+          access_token: "tok-1234567890",
+          refresh_token: "ref-1234567890",
+        },
+      },
+    });
     mockUseAuth.mockReturnValue({
       session: null,
       loading: false,
       configError: null,
       mfaRequired: false,
       mfaVerified: false,
+      mfaAdminOnly: false,
     });
   });
 
@@ -292,6 +297,74 @@ describe("useLoginForm", () => {
       });
       expect(result.current.error).toBeNull();
       expect(mockNavigate).toHaveBeenCalledWith("/transacoes", { replace: true });
+    });
+
+    it("ignora TOTP no app pessoal quando mfa_admin_only === true", async () => {
+      const ctx = makeContext({ contextId: "ctx-personal-bypass", mode: "personal" });
+      mockedPostSessionOperation.mockResolvedValueOnce(ctx);
+      mockListVerifiedMfaFactors.mockResolvedValueOnce({ id: "factor-1", status: "verified" });
+      mockGetCurrentUserMfaAdminOnly.mockResolvedValueOnce(true);
+      mockGetSession.mockResolvedValue({
+        data: {
+          session: {
+            access_token: "tok-1234567890",
+            refresh_token: "ref-1234567890",
+            user: { id: "u-admin-1", user_metadata: { mfa_admin_only: true } },
+          },
+        },
+      });
+
+      const { result } = renderHook(() => useLoginForm(), {
+        wrapper: createWrapper("/login?mode=add&redirect=%2Ftransacoes"),
+      });
+
+      act(() => {
+        result.current.setEmail("admin@exemplo.com");
+        result.current.setPassword("SenhaSegura123!");
+      });
+
+      await act(async () => {
+        await result.current.handleSubmit({ preventDefault: vi.fn() } as unknown as FormEvent<HTMLFormElement>);
+      });
+
+      expect(result.current.isMfaActive).toBe(false);
+      expect(mockedPostSessionOperation).toHaveBeenCalledWith("login", {
+        grant: "session-sync",
+        mode: "personal",
+        accessToken: "tok-1234567890",
+        refreshToken: "ref-1234567890",
+      });
+      expect(mockNavigate).toHaveBeenCalledWith("/transacoes", { replace: true });
+    });
+
+    it("exige TOTP normalmente quando destino comeca com /admin mesmo com mfa_admin_only === true", async () => {
+      mockListVerifiedMfaFactors.mockResolvedValueOnce({ id: "factor-1", status: "verified" });
+      mockGetCurrentUserMfaAdminOnly.mockResolvedValueOnce(true);
+      mockGetSession.mockResolvedValue({
+        data: {
+          session: {
+            access_token: "tok-1234567890",
+            refresh_token: "ref-1234567890",
+            user: { id: "u-admin-1", user_metadata: { mfa_admin_only: true } },
+          },
+        },
+      });
+
+      const { result } = renderHook(() => useLoginForm(), {
+        wrapper: createWrapper("/login?redirect=%2Fadmin"),
+      });
+
+      act(() => {
+        result.current.setEmail("admin@exemplo.com");
+        result.current.setPassword("SenhaSegura123!");
+      });
+
+      await act(async () => {
+        await result.current.handleSubmit({ preventDefault: vi.fn() } as unknown as FormEvent<HTMLFormElement>);
+      });
+
+      expect(result.current.isMfaActive).toBe(true);
+      expect(mockedPostSessionOperation).not.toHaveBeenCalled();
     });
   });
 });

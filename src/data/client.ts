@@ -3,7 +3,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import { getSupabaseEnv } from "@/lib/env";
 import { isSharedDeviceSession } from "@/services/session-policy";
-import { isTabIsolatedSession } from "@/services/user-storage";
+import {
+  isAdminPortalContext,
+  isTabIsolatedSession,
+  markAdminPortalTab,
+} from "@/services/user-storage";
+
+export { isAdminPortalContext, markAdminPortalTab };
 
 /**
  * Cliente tipado com o Schema REAL do Database.
@@ -15,6 +21,8 @@ import { isTabIsolatedSession } from "@/services/user-storage";
 export type Supabase = SupabaseClient<Database, "public", "public", Database["public"]>;
 
 let client: Supabase | null = null;
+let clientContextIsAdmin: boolean | null = null;
+const tabAuthStorageCache = new Map<string, string | null>();
 
 /**
  * Em modo desenvolvimento (`vite dev`), roteia chamadas `/functions/v1/*` pelo proxy
@@ -65,7 +73,11 @@ function clearLegacyPersistedSupabaseTokens(): void {
     const keysToRemove: string[] = [];
     for (let i = 0; i < window.localStorage.length; i++) {
       const key = window.localStorage.key(i);
-      if (key && key.startsWith("sb-") && key.endsWith("-auth-token")) {
+      if (
+        key &&
+        key.startsWith("sb-") &&
+        (key.endsWith("-auth-token") || key.endsWith("-auth-token-admin"))
+      ) {
         keysToRemove.push(key);
       }
     }
@@ -83,6 +95,16 @@ function clearLegacyPersistedSupabaseTokens(): void {
  */
 export function resetSupabaseClient(): void {
   client = null;
+  tabAuthStorageCache.clear();
+}
+
+function getDefaultStorageKey(supabaseUrl: string): string {
+  try {
+    const projectRef = new URL(supabaseUrl).hostname.split(".")[0];
+    return projectRef ? `sb-${projectRef}-auth-token` : "sb-auth-token";
+  } catch {
+    return "sb-auth-token";
+  }
 }
 
 function createTabIsolatedAuthStorage() {
@@ -90,13 +112,14 @@ function createTabIsolatedAuthStorage() {
     getItem(key: string): string | null {
       if (typeof window === "undefined") return null;
       try {
-        const tabValue = window.sessionStorage?.getItem(key) ?? null;
-        if (tabValue !== null) return tabValue;
-        if (isTabIsolatedSession()) return null;
-        const localValue = window.localStorage.getItem(key);
-        if (localValue !== null) {
-          window.sessionStorage?.setItem(key, localValue);
+        if (isAdminPortalContext() || isTabIsolatedSession()) {
+          return window.sessionStorage?.getItem(key) ?? null;
         }
+        if (tabAuthStorageCache.has(key)) {
+          return tabAuthStorageCache.get(key) ?? null;
+        }
+        const localValue = window.localStorage.getItem(key);
+        tabAuthStorageCache.set(key, localValue);
         return localValue;
       } catch {
         return null;
@@ -105,10 +128,12 @@ function createTabIsolatedAuthStorage() {
     setItem(key: string, value: string): void {
       if (typeof window === "undefined") return;
       try {
-        window.sessionStorage?.setItem(key, value);
-        if (!isTabIsolatedSession()) {
-          window.localStorage.setItem(key, value);
+        if (isAdminPortalContext() || isTabIsolatedSession()) {
+          window.sessionStorage?.setItem(key, value);
+          return;
         }
+        tabAuthStorageCache.set(key, value);
+        window.localStorage.setItem(key, value);
       } catch {
         // no-op
       }
@@ -116,10 +141,12 @@ function createTabIsolatedAuthStorage() {
     removeItem(key: string): void {
       if (typeof window === "undefined") return;
       try {
-        window.sessionStorage?.removeItem(key);
-        if (!isTabIsolatedSession()) {
-          window.localStorage.removeItem(key);
+        if (isAdminPortalContext() || isTabIsolatedSession()) {
+          window.sessionStorage?.removeItem(key);
+          return;
         }
+        tabAuthStorageCache.set(key, null);
+        window.localStorage.removeItem(key);
       } catch {
         // no-op
       }
@@ -128,19 +155,28 @@ function createTabIsolatedAuthStorage() {
 }
 
 export function getSupabase(): Supabase {
+  const adminContext = isAdminPortalContext();
+  if (client && clientContextIsAdmin !== adminContext) {
+    resetSupabaseClient();
+  }
   if (!client) {
     const { url, anonKey } = getSupabaseEnv();
     const devFetch = createDevFunctionsProxyFetch(url);
-    const sharedMode = isSharedDeviceSession();
+    const sharedMode = !adminContext && isSharedDeviceSession();
     if (sharedMode) {
       clearLegacyPersistedSupabaseTokens();
     }
+    const defaultStorageKey = getDefaultStorageKey(url);
+    const storageKey = adminContext ? `${defaultStorageKey}-admin` : defaultStorageKey;
+
+    clientContextIsAdmin = adminContext;
     client = createClient<Database, "public">(url, anonKey, {
       auth: {
         flowType: "pkce",
         persistSession: !sharedMode,
         autoRefreshToken: true,
         detectSessionInUrl: true,
+        storageKey,
         storage: createTabIsolatedAuthStorage(),
       },
       ...(devFetch ? { global: { fetch: devFetch } } : {}),
