@@ -56,13 +56,25 @@ export function ActiveDevicesCard({ className }: ActiveDevicesCardProps) {
 
   const devices = useMemo(() => devicesQuery.data ?? [], [devicesQuery.data]);
 
-  const sortedDevices = useMemo(() => {
-    const active: UserDevice[] = [];
+  const { sortedDevices, activeCount, hasOtherActiveDevices, currentActiveRecordId } = useMemo(() => {
+    const activeByDeviceId = new Map<string, UserDevice>();
     const recentRevoked: UserDevice[] = [];
 
     for (const d of devices) {
       if (!d.is_revoked) {
-        active.push(d);
+        const existing = activeByDeviceId.get(d.device_id);
+        if (!existing) {
+          activeByDeviceId.set(d.device_id, d);
+        } else {
+          const existingSeenAt = new Date(existing.last_seen_at).getTime();
+          const candidateSeenAt = new Date(d.last_seen_at).getTime();
+          if (
+            (Number.isFinite(candidateSeenAt) ? candidateSeenAt : 0) >
+            (Number.isFinite(existingSeenAt) ? existingSeenAt : 0)
+          ) {
+            activeByDeviceId.set(d.device_id, d);
+          }
+        }
       } else {
         const seenAt = new Date(d.last_seen_at).getTime();
         if (Number.isFinite(seenAt) && referenceNow - seenAt <= REVOKED_RETENTION_WINDOW_MS) {
@@ -71,6 +83,7 @@ export function ActiveDevicesCard({ className }: ActiveDevicesCardProps) {
       }
     }
 
+    const active = Array.from(activeByDeviceId.values());
     active.sort((a, b) => {
       if (a.device_id === currentDeviceId) return -1;
       if (b.device_id === currentDeviceId) return 1;
@@ -81,17 +94,15 @@ export function ActiveDevicesCard({ className }: ActiveDevicesCardProps) {
       (a, b) => new Date(b.last_seen_at).getTime() - new Date(a.last_seen_at).getTime(),
     );
 
-    return [...active, ...recentRevoked.slice(0, MAX_VISIBLE_REVOKED_DEVICES)];
-  }, [devices, currentDeviceId, referenceNow]);
+    const currentActive = active.find((d) => d.device_id === currentDeviceId) ?? null;
 
-  const activeCount = useMemo(
-    () => devices.filter((d) => !d.is_revoked).length,
-    [devices],
-  );
-  const hasOtherActiveDevices = useMemo(
-    () => devices.some((d) => !d.is_revoked && d.device_id !== currentDeviceId),
-    [devices, currentDeviceId],
-  );
+    return {
+      sortedDevices: [...active, ...recentRevoked.slice(0, MAX_VISIBLE_REVOKED_DEVICES)],
+      activeCount: active.length,
+      hasOtherActiveDevices: active.some((d) => d.device_id !== currentDeviceId),
+      currentActiveRecordId: currentActive?.id ?? null,
+    };
+  }, [devices, currentDeviceId, referenceNow]);
 
   const handleOpenRevokeModal = async (device: UserDevice) => {
     setTargetDevice(device);
@@ -263,7 +274,7 @@ export function ActiveDevicesCard({ className }: ActiveDevicesCardProps) {
                 <DeviceRowItem
                   key={device.id}
                   device={device}
-                  isCurrent={device.device_id === currentDeviceId}
+                  isCurrent={!device.is_revoked && device.id === currentActiveRecordId}
                   isRevokePending={revokeDeviceMutation.isPending}
                   isDeletePending={deleteDeviceMutation.isPending}
                   onRequestRevoke={(item) => {

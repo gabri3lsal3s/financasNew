@@ -317,4 +317,56 @@ describe("ActiveDevicesCard — Painel de Dispositivos Conectados", () => {
       expect(mockSignOut).toHaveBeenCalledWith({ scope: "others" });
     });
   });
+
+  it("deduplica múltiplas sessões ativas do mesmo device_id exibindo apenas a mais recente como Dispositivo Atual", () => {
+    mockDevicesData = [
+      {
+        id: "rec-dup-old",
+        user_id: "user-1",
+        device_id: mockCurrentDeviceId,
+        device_name: "Mozilla Firefox no Linux",
+        browser: "Mozilla Firefox",
+        os: "Linux",
+        ip_address: "192.168.1.10",
+        auth_session_id: "sess-old",
+        last_seen_at: "2026-11-27T19:00:00.000Z",
+        created_at: "2026-11-27T19:00:00.000Z",
+        is_revoked: false,
+      },
+      {
+        id: "rec-dup-new",
+        user_id: "user-1",
+        device_id: mockCurrentDeviceId,
+        device_name: "Mozilla Firefox no Linux",
+        browser: "Mozilla Firefox",
+        os: "Linux",
+        ip_address: "192.168.1.10",
+        auth_session_id: "sess-new",
+        last_seen_at: "2026-11-27T20:00:00.000Z",
+        created_at: "2026-11-27T20:00:00.000Z",
+        is_revoked: false,
+      },
+      {
+        id: "rec-remote-1",
+        user_id: "user-1",
+        device_id: "android-nativo-1",
+        device_name: "Axir Android (Nativo)",
+        browser: "App Axir Android",
+        os: "Android",
+        ip_address: null,
+        auth_session_id: "sess-android-1",
+        last_seen_at: "2026-11-27T18:00:00.000Z",
+        created_at: "2026-11-27T18:00:00.000Z",
+        is_revoked: false,
+      },
+    ];
+
+    renderCard();
+
+    expect(screen.getByText("2 ativos")).toBeInTheDocument();
+    expect(screen.getAllByText("Dispositivo Atual")).toHaveLength(1);
+    expect(screen.queryByTestId("device-row-rec-dup-old")).not.toBeInTheDocument();
+    expect(screen.getByTestId("device-row-rec-dup-new")).toBeInTheDocument();
+    expect(screen.getByTestId("device-row-rec-remote-1")).toBeInTheDocument();
+  });
 });
