@@ -26,12 +26,12 @@ import {
   useUserAccess,
 } from "@/state";
 import type { AdminAiUsageRow } from "@/types";
-import { AI_QUOTA_LIMITS } from "../../../../supabase/functions/_shared/ai-schemas";
+import { ADMIN_AI_QUOTA_LIMITS } from "@/domain/admin";
 
 type QuotaBucketChoice = "all" | "receipt_calls" | "batch_calls";
 
-const RECEIPT_LIMITS = AI_QUOTA_LIMITS.pro.receipt_calls;
-const BATCH_LIMITS = AI_QUOTA_LIMITS.pro.batch_calls;
+const RECEIPT_LIMITS = ADMIN_AI_QUOTA_LIMITS.receipt_calls;
+const BATCH_LIMITS = ADMIN_AI_QUOTA_LIMITS.batch_calls;
 
 const SUB_STATUS_LABELS: Record<string, string> = {
   active: "Ativa",

@@ -267,10 +267,11 @@
     │   ├── reminders/             #   Central unificada de notificações & preferências (components/deferred-alerts-section, hooks/use-notification-preferences-form, prefs/{InAppRemindersPrefsCard,DueNotificationsPrefsCard,DailyClosingReminderCard,RemotePushPrefsCard,QuietHoursPrefsCard})
     │   ├── settings/              #   Configurações consolidadas em 6 abas especializadas (incluindo notifications-tab em 5 blocos: reminders-card, device-push-card, dividend-automation-card, banking-assistant-card, email-digest-prefs-card; e security-tab: app-lock-card, session-inactivity-card, two-factor-card, active-devices-card)
     │   ├── admin/                 #   Módulo Administrativo SaaS Isolado (/admin/login, /admin/*)
-    │   │                          #     layouts/ (admin-shell, admin-nav-config, admin-mobile-drawer), components/ (user-edit-dialog em abas, feature-toggle-card, telegram-settings-card, ticket-manage-dialog, statement-blueprints-card)
-    │   │                          #     pages: admin-login-page, admin-dashboard-page, admin-users-page, admin-billing-page,
-    │   │                          #            admin-settings-page (4 abas), admin-notifications-page, admin-invites-page,
-    │   │                          #            admin-tickets-page, admin-security-page
+    │   │                          #     layouts/ (admin-shell, admin-nav-config, admin-mobile-drawer, admin-bottom-nav, admin-console-preferences)
+    │   │                          #     components/ (admin-help-tip, admin-page-guide-data, connections-health-panel, retention-radar-card, finops-overview-panel, ai-quotas-usage-panel, user-edit-dialog + user-support-diagnostics-card, feature-toggle-card, telegram-settings-card, ticket-manage-dialog, statement-blueprints-card)
+    │   │                          #     pages: admin-login-page, admin-dashboard-page, admin-users-page, admin-billing-page (3 abas: FinOps, Assinaturas, Cotas IA),
+    │   │                          #            admin-settings-page (/admin/sistema — 5 abas: Conexões, Módulos, APK, Telegram, Blueprints),
+    │   │                          #            admin-invites-page, admin-tickets-page (Chamados + Comunicados), admin-security-page
     │   │                          #     forensics/ (Laboratório Forense de Auditoria Quantitativa, Sintética e Contínua /admin/laboratorio-forense):
     │   │                          #       core/ (núcleo isomórfico puro TS: personas determinísticas, motor de invariantes, relatórios, runner)
     │   │                          #       components/ (forensics-dashboard, invariants-list, persona-selector, snapshot-inspector, artifacts-panel)
@@ -332,7 +333,7 @@
     │   ├── finance/               #   motor puro de rateio e reconciliação de despesas em centavos (split-math.ts, split-reconciliation.ts)
     │   ├── pix/                   #   motor puro de Pix Copia e Cola e validação estrita padrão BACEN (pix-br-code.ts, pix-key-validation.ts, build-pix-transfer-code.ts)
     │   ├── validation/            #   validação pura e defensiva com Zod: sanitization.ts (XSS/control chars/money limits), password.ts, cpf.ts
-    │   ├── admin/                 #   F43: RBAC, hierarquia de papéis, resolução de Feature Flags, schemas.ts e validação de convites
+    │   ├── admin/                 #   F43/F136: RBAC, hierarquia de papéis, feature-flags.ts, module-catalog.ts, unit-economics.ts, schemas.ts e invites.ts
     │   ├── navigation/            #   F43: Resolução dinâmica de slots BottomNav e rota de fallback (landing route)
     │   ├── onboarding/            #   checklist/progresso do primeiro uso (F5.4)
     │   ├── theme/                 #   motor puro de resolução de tema (light/dark/oled/system/schedule), janela diurna e parsing HH:mm

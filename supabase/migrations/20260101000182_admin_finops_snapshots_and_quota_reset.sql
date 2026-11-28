@@ -320,7 +320,7 @@ CREATE OR REPLACE FUNCTION public.admin_get_billing_finops_overview(
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-STABLE
+VOLATILE
 SET search_path = public, pg_temp
 AS $$
 DECLARE

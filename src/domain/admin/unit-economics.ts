@@ -1,5 +1,10 @@
 import type { SubscriptionTier } from "@/types/subscription";
 
+export const ADMIN_AI_QUOTA_LIMITS = {
+  receipt_calls: { month: 100, day: 15 },
+  batch_calls: { month: 120, day: 30 },
+} as const;
+
 export type FinOpsConfidence = "measured" | "estimated" | "partial" | "no_data";
 
 export interface FinOpsMonthlyParams {

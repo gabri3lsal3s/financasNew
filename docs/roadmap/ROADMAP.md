@@ -8298,3 +8298,18 @@ flowchart TD
 > - **Avaliadores de pontes & leitura passiva (`bridge-evaluators.ts`, `carousel-evidence.ts`):** projeção bidirecional entre Visão Geral e Investimentos sem requisições extras na montagem fria, com prefill nos destinos (`/investments`, `/dividas`, `/viagens`, `/transacoes`, `/orcamentos`).
 > - **Seleção & Capacidade (`slot-selector.ts`, `attention-budget.ts`):** deduplicação e ranking unificados no Hub, elevando a Home para `maxItems={3}` (mantendo `1` em modo focado P0) e Investimentos em `maxItems={5}`.
 > - **Central de adiados (`DeferredAlertsSection` em `/lembretes` + `listActiveCarouselDismissals`):** gerenciamento e reativação de avisos ocultos com paridade total entre chaves canônicas e aliases legados, rollback em falha offline e preservação de opt-in/leitura.
+
+---
+
+### Fase 136 — Evolução Progressiva, Paridade Modular, Conexões Passivas & FinOps do Portal Administrativo (`v3.38.0`)
+
+> **Status:** Concluída em Código, Testes & Migrations (`v3.38.0`):
+> - **Limpeza & Navegação Progressiva (`AdminShell`, `AdminBottomNav`, `AdminNavConfig`):**
+>   - Remoção de código morto de UI (`admin-backups-page.tsx`, `backup-history-list.tsx`, `backup-integrity-verifier.tsx`) preservando `/admin/backups` → `/admin/seguranca` e exportação pessoal.
+>   - Navegação reorganizada em 4 grupos (`Operação`, `Receita e crescimento`, `Plataforma`, `Governança`), barra inferior mobile (`AdminBottomNav` reutilizando `BottomNavItem`), seletor discreto de cor de destaque (`Padrão`, `Índigo`, `Verde`) em `admin-console-preferences.ts`, redirecionamentos legados (`/admin/notificacoes` → `/admin/chamados?tab=comunicados`, `/admin/configuracoes` → `/admin/sistema`), `PageGuideButton` em todas as telas Admin e ajuda contextual (`AdminHelpTip`).
+> - **Paridade Modular & Proteção de Ações Globais (`0180_admin_modular_expansions_and_parity.sql`, `module-catalog.ts`):**
+>   - Chaves independentes `family`, `trips`, `business` em `SYSTEM_FEATURE_KEYS`, `ROUTE_FEATURE_MAP` e `navItems`, com fallback compatível herdando override legado de `transactions` em `get_user_module_access` e `useUserAccess`.
+>   - Preview de impacto (`admin_preview_global_feature_impact`) e motivo obrigatório no servidor e UI (`ConfirmDialog`) para desligamento global de módulos (`admin_toggle_global_feature`).
+> - **Observabilidade Passiva, Suporte & FinOps (`0181`, `0182`, `unit-economics.ts`):**
+>   - Painel passivo de saúde das 7 integrações (`ConnectionsHealthPanel` + popover no cabeçalho), Raio-X de Suporte sob demanda no `UserEditDialog` (`UserSupportDiagnosticsCard`), telemetria determinística em `StatementBlueprintsCard` e `RetentionRadarCard` na Visão Geral.
+>   - Motor puro `unit-economics.ts` (centavos inteiros), snapshots mensais de parâmetros (`admin_finops_monthly_params`), memória de cálculo (`admin-finops-memory.ts` + `EquationBreakdownPopover`), reset auditado de cotas IA (`AiQuotasUsagePanel`) e abas consolidadas em `AdminBillingPage`.

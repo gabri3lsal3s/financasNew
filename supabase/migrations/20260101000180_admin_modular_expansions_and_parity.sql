@@ -211,6 +211,11 @@ BEGIN
     RAISE EXCEPTION 'Acesso negado: privilégios administrativos requeridos.';
   END IF;
 
+  IF NOT p_enabled AND v_reason IS NULL THEN
+    RAISE EXCEPTION 'Motivo obrigatório para desativar um módulo globalmente.'
+      USING ERRCODE = '23502';
+  END IF;
+
   SELECT count(*)::integer
   INTO v_active_users_total
   FROM public.profiles
@@ -273,6 +278,11 @@ DECLARE
 BEGIN
   IF NOT public.is_admin() THEN
     RAISE EXCEPTION 'Acesso negado: privilégios administrativos requeridos.';
+  END IF;
+
+  IF NOT p_enabled AND v_reason IS NULL THEN
+    RAISE EXCEPTION 'Motivo obrigatório para desativar um módulo globalmente.'
+      USING ERRCODE = '23502';
   END IF;
 
   UPDATE public.system_features
