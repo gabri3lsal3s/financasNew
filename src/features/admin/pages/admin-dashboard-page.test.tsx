@@ -39,6 +39,18 @@ vi.mock("@/state", () => ({
     data: [],
     isLoading: false,
   }),
+  useAdminSupportTickets: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
+  useAdminPastDueSubscriptions: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
 }));
 
 describe("AdminDashboardPage", () => {
