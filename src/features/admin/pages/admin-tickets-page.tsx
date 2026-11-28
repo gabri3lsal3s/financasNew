@@ -4,7 +4,6 @@ import { PageHeader } from "@/components/layout";
 import { ErrorState, Tabs } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { useAdminBroadcastNotifications, useAdminSendBroadcast } from "@/state";
-import { AdminPageGuide } from "../components/admin-help-tip";
 import { BroadcastComposerForm } from "../components/broadcast-composer-form";
 import { BroadcastHistoryList } from "../components/broadcast-history-list";
 import { TicketsTab } from "./tickets-tab";
@@ -46,7 +45,6 @@ export function AdminTicketsPage() {
       <PageHeader
         title="Chamados"
         description="Fila de atendimento e comunicados"
-        utilityActions={<AdminPageGuide page="tickets" />}
       />
 
       <Tabs

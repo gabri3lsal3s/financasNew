@@ -13,7 +13,6 @@ import {
 } from "@/state";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
-import { AdminPageGuide } from "../components/admin-help-tip";
 import { FeatureUsageSection } from "../components/feature-usage-section";
 import { AdminMetricsKpiGrid } from "../components/admin-metrics-kpi-grid";
 import { AdminPendingApprovalsCard } from "../components/admin-pending-approvals-card";
@@ -101,7 +100,6 @@ export function AdminDashboardPage() {
       <PageHeader
         title="Visão Geral"
         description="Pendências e indicadores da operação"
-        utilityActions={<AdminPageGuide page="dashboard" />}
         actions={
           <>
             <Link

@@ -14,4 +14,4 @@ export { RetentionRadarCard } from "./retention-radar-card";
 export { FinOpsOverviewPanel } from "./finops-overview-panel";
 export { AiQuotasUsagePanel } from "./ai-quotas-usage-panel";
 export type { TicketManageDialogProps } from "./ticket-manage-dialog";
-export { AdminHelpTip, AdminPageGuide } from "./admin-help-tip";
+export { AdminHelpTip } from "./admin-help-tip";

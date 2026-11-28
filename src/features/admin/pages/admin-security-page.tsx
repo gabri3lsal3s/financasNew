@@ -2,7 +2,6 @@ import { useState } from "react";
 import { AlertCircle, ChevronLeft, ChevronRight, Download, History } from "lucide-react";
 import { Badge, Button, DatePicker, EmptyState, SearchInput, Select, SkeletonList } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
-import { AdminPageGuide } from "../components/admin-help-tip";
 import { toCsv } from "@/domain/export/csv";
 import { formatDateTimeBR } from "@/lib/date";
 import { downloadCsv, downloadJson } from "@/services/export-actions";
@@ -64,7 +63,6 @@ export function AdminSecurityPage() {
   return (
     <div className="flex flex-col gap-6 w-full min-w-0">
       <PageHeader
-        utilityActions={<AdminPageGuide page="security" />}
         title="Auditoria"
         description="Eventos administrativos e exportações"
         actions={

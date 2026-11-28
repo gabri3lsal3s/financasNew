@@ -15,7 +15,7 @@ import { KpiCard, KpiGrid } from "@/components/modules";
 import { ROLE_LABELS } from "@/domain/admin";
 import { formatDateBR } from "@/lib/date";
 import { useAdminBillingOverview, useAdminPlans } from "@/state";
-import { AdminHelpTip, AdminPageGuide } from "../components/admin-help-tip";
+import { AdminHelpTip } from "../components/admin-help-tip";
 import { AiQuotasUsagePanel } from "../components/ai-quotas-usage-panel";
 import { FinOpsOverviewPanel } from "../components/finops-overview-panel";
 import { PastDueManagementCard } from "../components/past-due-management-card";
@@ -346,7 +346,6 @@ export function AdminBillingPage() {
   return (
     <div className="flex flex-col gap-6 w-full min-w-0">
       <PageHeader
-        utilityActions={<AdminPageGuide page="billing" />}
         title="Faturamento"
         description="Receitas, assinaturas e pagamentos"
         actions={

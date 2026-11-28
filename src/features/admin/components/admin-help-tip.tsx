@@ -1,8 +1,5 @@
-import { useState } from "react";
 import { HelpCircle } from "lucide-react";
-import { PageGuideButton } from "@/components/layout";
-import { Button, Modal, Popover, PopoverContent, PopoverTrigger } from "@/components/ui";
-import { ADMIN_PAGE_GUIDES, type AdminPageGuideId } from "./admin-page-guide-data";
+import { Button, Popover, PopoverContent, PopoverTrigger } from "@/components/ui";
 
 interface AdminHelpTipProps {
   title: string;
@@ -44,21 +41,5 @@ export function AdminHelpTip({ title, what, when, impact }: AdminHelpTipProps) {
         </dl>
       </PopoverContent>
     </Popover>
-  );
-}
-
-export function AdminPageGuide({ page }: { page: AdminPageGuideId }) {
-  const [open, setOpen] = useState(false);
-  const { title, steps } = ADMIN_PAGE_GUIDES[page];
-
-  return (
-    <>
-      <PageGuideButton label={title} onClick={() => setOpen(true)} />
-      <Modal open={open} onOpenChange={setOpen} title={title} size="md">
-        <ol className="list-decimal space-y-3 ps-5 text-sm text-muted-foreground">
-          {steps.map((step) => <li key={step}>{step}</li>)}
-        </ol>
-      </Modal>
-    </>
   );
 }

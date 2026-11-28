@@ -4,7 +4,7 @@ import { Activity, AlertCircle, Bot, FileSpreadsheet, Layers, Smartphone } from 
 import { Alert, Badge, Button, EmptyState, Skeleton, Tabs } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
 import { ALL_SYSTEM_MODULES } from "@/domain/admin";
-import { AdminHelpTip, AdminPageGuide } from "../components/admin-help-tip";
+import { AdminHelpTip } from "../components/admin-help-tip";
 import { useAdminFeatures, useAdminStatementBlueprints } from "@/state";
 import { ConnectionsHealthPanel, FeatureToggleCard, StatementBlueprintsCard, TelegramSettingsCard } from "../components";
 
@@ -194,7 +194,6 @@ export function AdminSettingsPage() {
   return (
     <div className="flex flex-col gap-6 w-full min-w-0">
       <PageHeader
-        utilityActions={<AdminPageGuide page="settings" />}
         title="Sistema"
         description="Módulos e conexões da plataforma"
       />

@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router";
 import { AlertCircle, ChevronLeft, ChevronRight, UserPlus } from "lucide-react";
 import { Badge, Button, EmptyState, SearchInput, Select } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
-import { AdminHelpTip, AdminPageGuide } from "../components/admin-help-tip";
+import { AdminHelpTip } from "../components/admin-help-tip";
 import { ROLE_LABELS, STATUS_LABELS } from "@/domain/admin";
 import { useAdminUsers, useUserAccess } from "@/state";
 import { UserCreateDialog, UserEditDialog } from "../components";
@@ -58,7 +58,6 @@ export function AdminUsersPage() {
   return (
     <div className="flex flex-col gap-6 w-full min-w-0">
       <PageHeader
-        utilityActions={<AdminPageGuide page="users" />}
         title="Usuários"
         description="Cadastros, planos e permissões"
         badge={<Badge variant="muted" size="sm">{totalCount} usuários</Badge>}
