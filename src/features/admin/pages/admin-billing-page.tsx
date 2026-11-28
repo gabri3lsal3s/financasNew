@@ -329,7 +329,7 @@ export function AdminBillingPage() {
       <PageHeader
         utilityActions={<AdminPageGuide page="billing" />}
         title="Faturamento"
-        description="Receita recorrente, planos e pagamentos em atraso"
+        description="Receitas, assinaturas e pagamentos"
         actions={
           <a
             href="https://www.asaas.com"
@@ -347,16 +347,17 @@ export function AdminBillingPage() {
         value={activeTab}
         onValueChange={setActiveTab}
         ariaLabel="Seções de faturamento"
+        fullWidth
         keepMountedAfterFirstVisit
         items={[
           {
             value: "visao-financeira",
-            label: "Receita & Custos",
+            label: "FinOps",
             content: <FinOpsOverviewPanel />,
           },
           {
             value: "assinaturas",
-            label: "Assinaturas & Inadimplência",
+            label: "Assinaturas",
             badge:
               pastDueCount > 0 ? (
                 <Badge variant="critical" size="xs">
@@ -367,7 +368,7 @@ export function AdminBillingPage() {
           },
           {
             value: "cotas-ia",
-            label: "Cotas & Uso de IA",
+            label: "Cotas IA",
             content: <AiQuotasUsagePanel />,
           },
         ]}

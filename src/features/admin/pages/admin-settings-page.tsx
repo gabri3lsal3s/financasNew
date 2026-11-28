@@ -195,8 +195,8 @@ export function AdminSettingsPage() {
     <div className="flex flex-col gap-6 w-full min-w-0">
       <PageHeader
         utilityActions={<AdminPageGuide page="settings" />}
-        title="Configurações"
-        description="Gerencie módulos e acompanhe as conexões"
+        title="Sistema"
+        description="Módulos e conexões da plataforma"
       />
 
       <Tabs
