@@ -22,6 +22,8 @@ import {
   adminSetPastDuePolicy,
   adminBlockPastDueNow,
   adminSendPastDueReminder,
+  adminUpsertFinopsMonthlyParams,
+  adminResetUserAiQuota,
   type AdminProvisionUserParams,
 } from "@/data/repositories/admin";
 import {
@@ -32,6 +34,10 @@ import {
 } from "@/data/repositories/subscriptions";
 import {
   ADMIN_AUDIT_KEY,
+  ADMIN_AI_USAGE_KEY,
+  ADMIN_BILLING_FINOPS_KEY,
+  ADMIN_FINOPS_PARAMS_KEY,
+  ADMIN_USER_SUPPORT_DIAGNOSTICS_KEY,
   ADMIN_FEATURES_KEY,
   ADMIN_INVITES_KEY,
   ADMIN_METRICS_KEY,
@@ -52,6 +58,7 @@ import {
   userSubscriptionQueryKey,
 } from "../queries/use-user-access";
 
+import { aiQuotaMonthQueryKey } from "../queries/use-ai-quota";
 import { pushToast } from "@/services/toast";
 import { getErrorMessage } from "@/services/errors";
 import type {
@@ -742,6 +749,58 @@ export function useAdminDeleteBroadcast() {
       pushToast({
         title: "Erro ao excluir comunicado",
         description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useAdminUpsertFinopsParams() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: adminUpsertFinopsMonthlyParams,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ADMIN_FINOPS_PARAMS_KEY }),
+        queryClient.invalidateQueries({ queryKey: ADMIN_BILLING_FINOPS_KEY }),
+        queryClient.invalidateQueries({ queryKey: ADMIN_AUDIT_KEY }),
+      ]);
+      pushToast({ title: "Parâmetros mensais salvos", variant: "success" });
+    },
+    onError: (error) => {
+      pushToast({
+        title: "Erro ao salvar parâmetros",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useAdminResetUserAiQuota() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: adminResetUserAiQuota,
+    onSuccess: async (result) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ADMIN_AI_USAGE_KEY }),
+        queryClient.invalidateQueries({ queryKey: ADMIN_BILLING_FINOPS_KEY }),
+        queryClient.invalidateQueries({ queryKey: ADMIN_AUDIT_KEY }),
+        queryClient.invalidateQueries({
+          queryKey: [...ADMIN_USER_SUPPORT_DIAGNOSTICS_KEY, result.user_id],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: aiQuotaMonthQueryKey(result.user_id, result.period_month),
+        }),
+      ]);
+      pushToast({ title: "Redefinição de cota registrada", variant: "success" });
+    },
+    onError: (error) => {
+      pushToast({
+        title: "Erro ao redefinir cota",
+        description: getErrorMessage(error),
         variant: "destructive",
       });
     },

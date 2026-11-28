@@ -14,6 +14,8 @@ import {
   getMyBroadcastNotifications,
   adminGetConnectionsHealth,
   adminGetAiUsageSummary,
+  adminGetFinopsMonthlyParams,
+  adminGetBillingFinopsOverview,
   adminGetUserSupportDiagnostics,
   adminGetRetentionRadar,
   type AdminAiUsageSummaryParams,
@@ -42,6 +44,8 @@ export const ADMIN_PAST_DUE_KEY = ["admin_past_due"] as const;
 export const ADMIN_SUBSCRIPTIONS_KEY = ["admin_subscriptions"] as const;
 export const MY_BROADCASTS_KEY = ["my_broadcasts"] as const;
 export const ADMIN_CONNECTIONS_HEALTH_KEY = ["admin_connections_health"] as const;
+export const ADMIN_FINOPS_PARAMS_KEY = ["admin_finops_params"] as const;
+export const ADMIN_BILLING_FINOPS_KEY = ["admin_billing_finops"] as const;
 export const ADMIN_AI_USAGE_KEY = ["admin_ai_usage"] as const;
 export const ADMIN_USER_SUPPORT_DIAGNOSTICS_KEY = ["admin_user_support_diagnostics"] as const;
 export const ADMIN_RETENTION_RADAR_KEY = ["admin_retention_radar"] as const;
@@ -204,5 +208,23 @@ export function useAdminRetentionRadar(limit = 20) {
     queryKey: [...ADMIN_RETENTION_RADAR_KEY, limit],
     queryFn: () => adminGetRetentionRadar(limit),
     staleTime: 1000 * 60,
+  });
+}
+
+export function useAdminFinopsParams(periodMonth?: string, enabled = true) {
+  return useQuery({
+    queryKey: [...ADMIN_FINOPS_PARAMS_KEY, periodMonth],
+    queryFn: () => adminGetFinopsMonthlyParams(periodMonth),
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useAdminBillingFinopsOverview(periodMonth?: string, enabled = true) {
+  return useQuery({
+    queryKey: [...ADMIN_BILLING_FINOPS_KEY, periodMonth],
+    queryFn: () => adminGetBillingFinopsOverview(periodMonth),
+    enabled,
+    staleTime: 30_000,
   });
 }
