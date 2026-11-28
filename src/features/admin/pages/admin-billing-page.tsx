@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { AlertCircle, AlertTriangle, Clock, Crown, ExternalLink, Receipt, TrendingUp } from "lucide-react";
 import { Badge, Button, EmptyState, MoneyText, Select, Skeleton, buttonVariants } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
+import { AdminHelpTip, AdminPageGuide } from "../components/admin-help-tip";
 import { KpiCard, KpiGrid } from "@/components/modules";
 import { formatDateBR } from "@/lib/date";
 import { useAdminPastDueSubscriptions, useAdminPlans, useAdminSubscriptions } from "@/state";
@@ -84,8 +85,9 @@ export function AdminBillingPage() {
   return (
     <div className="flex flex-col gap-6 w-full min-w-0">
       <PageHeader
-        title="Faturamento SaaS"
-        description="Receita recorrente, inadimplência e catálogo de planos"
+        utilityActions={<AdminPageGuide page="billing" />}
+        title="Faturamento"
+        description="Receita recorrente, planos e pagamentos em atraso"
         actions={
           <a
             href="https://www.asaas.com"
@@ -134,7 +136,15 @@ export function AdminBillingPage() {
       ) : (
         <KpiGrid columns={4}>
           <KpiCard
-            label="MRR Estimado"
+            label="MRR estimado"
+            action={
+              <AdminHelpTip
+                title="MRR estimado"
+                what="Estimativa mensal da receita das assinaturas pagas ativas exibidas. Planos anuais entram pelo valor dividido por 12."
+                when="Consulte o indicador para acompanhar a receita recorrente prevista."
+                impact="Ajuda a planejar receitas. O valor recebido pode ser diferente da estimativa."
+              />
+            }
             cents={estimatedMrrCents}
             tone="positive"
             icon={<TrendingUp className="size-4 text-positive-strong" aria-hidden="true" />}
@@ -153,6 +163,14 @@ export function AdminBillingPage() {
           />
           <KpiCard
             label="Inadimplentes"
+            action={
+              <AdminHelpTip
+                title="Inadimplência"
+                what="Assinaturas com pagamento em atraso."
+                when="Confira as cobranças pendentes na lista de inadimplência antes de tomar uma ação."
+                impact="O atraso pode restringir o acesso da conta a somente leitura."
+              />
+            }
             value={String(pastDueCount)}
             tone={pastDueCount > 0 ? "negative" : "default"}
             icon={<AlertTriangle className="size-4 text-critical-strong" aria-hidden="true" />}

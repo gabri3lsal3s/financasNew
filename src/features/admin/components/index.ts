@@ -13,3 +13,4 @@ export type { TicketManageDialogProps } from "./ticket-manage-dialog";
 
 
 
+export { AdminHelpTip, AdminPageGuide } from "./admin-help-tip";
