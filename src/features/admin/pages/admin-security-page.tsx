@@ -193,7 +193,7 @@ export function AdminSecurityPage() {
                   className="p-4 flex flex-col gap-2 hover:bg-surface-hover/20 transition-colors text-xs"
                 >
                   <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <Badge variant="muted" size="xs" className="font-mono">
+                    <Badge variant="muted" size="xs" className="font-mono max-w-full truncate inline-block">
                       {log.action}
                     </Badge>
                     <span className="text-muted-foreground text-[11px] font-mono">

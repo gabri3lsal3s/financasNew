@@ -373,7 +373,7 @@ O console operacional administrativo do Áxis Finance foi completamente segregad
 
 1. **Segregação de Roteador & Portal de Acesso Próprio (`/admin/login` e `/admin/*`):**
    - O módulo admin não utiliza o `PageShell` comum de clientes (calculadora flutuante, atalhos de transação, navegação financeira);
-   - Possui seu próprio layout executivo (`AdminShell`) com barra de controle superior, telemetria de saúde e navegação lateral especializada;
+   - Possui seu próprio layout executivo (`AdminShell`) que espelha a anatomia visual do `PageShell`/`Sidebar` do app oficial (sidebar fixa colapsável em `lg:`, topbar sticky com `useContainerScroll`, `BackToTop`, `AdminBottomNav` mobile e `AdminMobileDrawer` em `Modal`), mantendo isolamento total de dados e telemetria administrativa;
    - Todas as sub-páginas administrativas (`/admin/dashboard`, `/admin/users`, `/admin/billing`, `/admin/settings`, `/admin/notifications`, `/admin/backups`, `/admin/invites`, `/admin/tickets`, `/admin/security`) rodam sob o guard estrito `RequireAdminSession`, que desconecta e redireciona qualquer usuário sem credencial de operador ativa para `/admin/login`.
 2. **Controle de Acesso ao APK Android Nativo (Beta Fechado):**
    - Chaves globais `apk_access_free` e `apk_access_pro` na tabela `system_features` controladas via interface em `/admin/settings`;

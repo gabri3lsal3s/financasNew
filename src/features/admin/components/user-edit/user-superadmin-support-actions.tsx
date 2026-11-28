@@ -58,7 +58,7 @@ export function UserSuperadminSupportActions({ user, revealContact }: UserSupera
 
   return (
     <>
-      <div className="flex flex-col gap-3 p-3.5 rounded-xl border border-border/80 bg-muted/40 text-xs">
+      <div className="flex flex-col gap-3 p-3.5 rounded-xl border border-border/80 bg-surface text-xs shadow-xs">
         <div className="flex items-center gap-1.5 font-semibold text-foreground">
           <ShieldAlert className="size-4 text-warning-strong" aria-hidden="true" />
           <span>Ações de Suporte do Superadmin</span>
@@ -71,17 +71,17 @@ export function UserSuperadminSupportActions({ user, revealContact }: UserSupera
           <Alert variant="info" className="border-primary/30 bg-primary/5 text-xs flex flex-col gap-2">
             <div className="flex items-center justify-between gap-2">
               <span className="font-semibold text-primary-strong">Link de Acesso Direto Gerado:</span>
-              <Button type="button" variant="ghost" size="xs" onClick={() => setGeneratedRecoveryLink(null)} className="h-6 px-2 text-[11px]">Ocultar</Button>
+              <Button type="button" variant="ghost" size="xs" onClick={() => setGeneratedRecoveryLink(null)} className="h-6 px-2">Ocultar</Button>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-2">
               <Input readOnly value={generatedRecoveryLink} aria-label="Link seguro de recuperação" className="text-base sm:text-sm font-mono h-9 bg-surface selection:bg-primary/20" />
               <div className="flex items-center gap-2 shrink-0">
-                <Button type="button" variant="outline" size="sm" sensoryIntent="selection" className="h-9 gap-1.5 shrink-0" onClick={handleCopyLink}>
-                  {hasCopiedRecoveryLink ? <Check className="size-3.5 text-positive-strong" aria-hidden="true" /> : <Copy className="size-3.5" aria-hidden="true" />}
+                <Button type="button" variant="outline" size="sm" sensoryIntent="selection" className="shrink-0" onClick={handleCopyLink}>
+                  {hasCopiedRecoveryLink ? <Check className="text-positive-strong" aria-hidden="true" /> : <Copy aria-hidden="true" />}
                   <span>{hasCopiedRecoveryLink ? "Copiado" : "Copiar"}</span>
                 </Button>
-                <Button type="button" variant="positive" size="sm" className="h-9 gap-1.5 shrink-0" onClick={handleSendWhatsApp}>
-                  <MessageCircle className="size-3.5" aria-hidden="true" />
+                <Button type="button" variant="positive" size="sm" className="shrink-0" onClick={handleSendWhatsApp}>
+                  <MessageCircle aria-hidden="true" />
                   <span>WhatsApp</span>
                 </Button>
               </div>
@@ -90,16 +90,16 @@ export function UserSuperadminSupportActions({ user, revealContact }: UserSupera
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
-          <Button type="button" variant="outline" size="sm" onClick={() => setIsResetMfaOpen(true)} disabled={resetMfaMutation.isPending} className="gap-1.5 h-8 text-xs justify-start">
-            <ShieldOff className="size-3.5 text-warning-strong" aria-hidden="true" />
+          <Button type="button" variant="outline" size="sm" onClick={() => setIsResetMfaOpen(true)} disabled={resetMfaMutation.isPending} className="justify-start">
+            <ShieldOff className="text-warning-strong" aria-hidden="true" />
             <span>Resetar 2FA</span>
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => setIsRevokeSessionsOpen(true)} disabled={revokeSessionsMutation.isPending} className="gap-1.5 h-8 text-xs justify-start">
-            <LogOut className="size-3.5 text-warning-strong" aria-hidden="true" />
+          <Button type="button" variant="outline" size="sm" onClick={() => setIsRevokeSessionsOpen(true)} disabled={revokeSessionsMutation.isPending} className="justify-start">
+            <LogOut className="text-warning-strong" aria-hidden="true" />
             <span>Derrubar Sessões</span>
           </Button>
-          <Button type="button" variant="outline" size="sm" sensoryIntent={false} onClick={handleGenerateRecoveryLink} disabled={generateRecoveryMutation.isPending} className="gap-1.5 h-8 text-xs justify-start">
-            <KeyRound className="size-3.5 text-primary-strong" aria-hidden="true" />
+          <Button type="button" variant="outline" size="sm" sensoryIntent={false} onClick={handleGenerateRecoveryLink} disabled={generateRecoveryMutation.isPending} className="justify-start">
+            <KeyRound className="text-primary-strong" aria-hidden="true" />
             <span>{generateRecoveryMutation.isPending ? "Gerando..." : "Link Recuperação"}</span>
           </Button>
         </div>
@@ -114,6 +114,7 @@ export function UserSuperadminSupportActions({ user, revealContact }: UserSupera
         cancelLabel="Cancelar"
         variant="destructive"
         confirmPending={resetMfaMutation.isPending}
+        elevated
         onConfirm={async () => {
           try {
             await resetMfaMutation.mutateAsync(user.id);
@@ -134,6 +135,7 @@ export function UserSuperadminSupportActions({ user, revealContact }: UserSupera
         cancelLabel="Cancelar"
         variant="destructive"
         confirmPending={revokeSessionsMutation.isPending}
+        elevated
         onConfirm={async () => {
           try {
             await revokeSessionsMutation.mutateAsync(user.id);

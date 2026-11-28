@@ -90,10 +90,11 @@ export function UserAccountStatusSection({
       </div>
 
       {(status === "suspended" || status === "banned") && (
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="user-reason" className="text-xs font-semibold text-critical-strong">
-            Motivo da Suspensão / Banimento
-          </label>
+        <FormField
+          label="Motivo da Suspensão / Banimento"
+          htmlFor="user-reason"
+          labelClassName="text-critical-strong"
+        >
           <Input
             id="user-reason"
             type="text"
@@ -102,11 +103,11 @@ export function UserAccountStatusSection({
             placeholder="Ex: Violação dos termos de uso / Inadimplência"
             required
           />
-        </div>
+        </FormField>
       )}
 
       {canDeleteUser && (
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5 rounded-xl border border-critical/30 bg-critical/5 text-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5 rounded-xl border border-critical/30 bg-critical/5 text-xs shadow-xs">
           <div className="space-y-0.5">
             <span className="font-semibold text-critical-strong block">
               Zona de Perigo: Exclusão Definitiva
@@ -121,9 +122,9 @@ export function UserAccountStatusSection({
             size="sm"
             onClick={onOpenDeleteConfirm}
             disabled={isDeletePending}
-            className="gap-1.5 h-8 text-xs shrink-0"
+            className="shrink-0"
           >
-            <Trash2 className="size-3.5" aria-hidden="true" />
+            <Trash2 aria-hidden="true" />
             <span>Excluir Usuário do Sistema</span>
           </Button>
         </div>

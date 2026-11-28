@@ -73,9 +73,8 @@ export function AdminPendingApprovalsCard({
                   sensoryIntent={false}
                   onClick={() => onApprove(u.id, u.name)}
                   disabled={isMutating}
-                  className="gap-1.5 text-xs"
                 >
-                  <Check className="size-3.5" aria-hidden="true" />
+                  <Check aria-hidden="true" />
                   <span>Aprovar</span>
                 </Button>
                 <Button
@@ -85,9 +84,8 @@ export function AdminPendingApprovalsCard({
                   sensoryIntent="selection"
                   onClick={() => setRejectTarget(u)}
                   disabled={isMutating}
-                  className="gap-1.5 text-xs"
                 >
-                  <X className="size-3.5" aria-hidden="true" />
+                  <X aria-hidden="true" />
                   <span>Recusar</span>
                 </Button>
               </div>

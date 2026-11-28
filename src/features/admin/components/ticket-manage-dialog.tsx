@@ -81,16 +81,16 @@ export function TicketManageDialog({ ticket, open, onOpenChange, onSuccess }: Ti
       size="lg"
       footer={
         <ModalFooter borderless>
-          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Cancelar</Button>
-          <Button type="submit" form="ticket-manage-form" variant="default" sensoryIntent={false} disabled={isSubmitting} className="gap-2">
-            {isSubmitting ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Save className="size-4" aria-hidden="true" />}
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Cancelar</Button>
+          <Button type="submit" form="ticket-manage-form" variant="default" sensoryIntent={false} disabled={isSubmitting}>
+            {isSubmitting ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}
             <span>{isSubmitting ? "Salvando..." : "Salvar e Enviar"}</span>
           </Button>
         </ModalFooter>
       }
     >
       <form id="ticket-manage-form" onSubmit={handleSubmit} className="space-y-5 pt-1">
-        <div className="rounded-xl border border-border/80 bg-muted/50 p-3.5 sm:p-4 space-y-3">
+        <div className="rounded-xl border border-border/80 bg-surface p-3.5 sm:p-4 space-y-3 shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/80 pb-2.5">
             <div className="flex items-center gap-2">
               <Badge variant="muted" size="sm">{TYPE_LABELS[ticket.type] || "Outro"}</Badge>

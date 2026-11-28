@@ -22,7 +22,7 @@ export function UserPiiAuditVaultCard({
   const createdDate = user.created_at.slice(0, 10);
 
   return (
-    <div className="rounded-xl border border-border/80 bg-muted/40 p-3.5 flex flex-col gap-2 text-xs">
+    <div className="rounded-xl border border-border/80 bg-surface p-3.5 flex flex-col gap-2 text-xs shadow-xs">
       <div className="flex justify-between gap-2">
         <span className="text-muted-foreground">Nome:</span>
         <span className="font-semibold text-foreground text-right">{user.name || "Não informado"}</span>
@@ -45,9 +45,9 @@ export function UserPiiAuditVaultCard({
             variant="outline"
             size="sm"
             onClick={() => onRevealChange(true)}
-            className="w-full justify-center gap-1.5 text-xs min-h-[34px] h-auto py-1.5 px-3 border-dashed whitespace-normal text-center"
+            className="w-full justify-center min-h-8 h-auto py-1.5 border-dashed whitespace-normal text-center"
           >
-            <Eye className="size-3.5 text-primary-strong shrink-0" aria-hidden="true" />
+            <Eye className="text-primary-strong shrink-0" aria-hidden="true" />
             <span>Revelar Contatos e CPF (Auditoria LGPD)</span>
           </Button>
         ) : contactQuery.isLoading ? (
@@ -96,9 +96,9 @@ export function UserPiiAuditVaultCard({
                 variant="ghost"
                 size="xs"
                 onClick={() => onRevealChange(false)}
-                className="h-6 px-1.5 gap-1 text-muted-foreground hover:text-foreground"
+                className="h-6 px-1.5 text-muted-foreground hover:text-foreground"
               >
-                <EyeOff className="size-3" aria-hidden="true" />
+                <EyeOff aria-hidden="true" />
                 <span>Ocultar</span>
               </Button>
             </div>

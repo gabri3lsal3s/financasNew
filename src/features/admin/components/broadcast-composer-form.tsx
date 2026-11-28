@@ -255,9 +255,9 @@ export function BroadcastComposerForm({ isPending, onSubmit }: BroadcastComposer
               variant="default"
               loading={isPending}
               disabled={isPending || !title.trim() || !message.trim()}
-              className="mt-1 gap-2"
+              className="mt-1"
             >
-              <Send className="size-4" aria-hidden="true" />
+              <Send aria-hidden="true" />
               <span>{isPending ? "Disparando comunicado…" : "Enviar Notificação aos Clientes"}</span>
             </Button>
           </form>
@@ -279,11 +279,11 @@ export function BroadcastComposerForm({ isPending, onSubmit }: BroadcastComposer
           <div className={cn("rounded-xl border p-3.5 flex items-start gap-3 mt-1", previewMeta.container)}>
             <PreviewIcon className={cn("size-4 shrink-0 mt-0.5", previewMeta.iconTone)} aria-hidden="true" />
             <div className="flex-1 min-w-0 space-y-1">
-              <div className="flex items-center justify-between gap-1">
-                <span className="text-xs font-semibold text-foreground truncate">
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-xs font-semibold text-foreground line-clamp-2 break-words">
                   {title.trim() || "Título do Comunicado"}
                 </span>
-                <Badge variant={previewMeta.badgeVariant} size="xs">
+                <Badge variant={previewMeta.badgeVariant} size="xs" className="shrink-0">
                   {previewMeta.badgeLabel}
                 </Badge>
               </div>
@@ -292,13 +292,13 @@ export function BroadcastComposerForm({ isPending, onSubmit }: BroadcastComposer
                   "O texto digitado aparecerá aqui para os usuários no sininho de notificações."}
               </p>
               {actionUrl.trim() && (
-                <div className="flex items-center gap-1 text-[10px] text-primary-strong pt-1">
+                <div className="flex items-center gap-1 text-[11px] text-primary-strong pt-1">
                   <ExternalLink className="size-3 shrink-0" aria-hidden="true" />
                   <span className="truncate">{actionUrl.trim()}</span>
                 </div>
               )}
               {expirationPreset !== "none" ? (
-                <p className="text-[10px] text-muted-foreground pt-0.5">{selectedExpirationLabel}</p>
+                <p className="text-[11px] text-muted-foreground pt-0.5">{selectedExpirationLabel}</p>
               ) : null}
             </div>
           </div>

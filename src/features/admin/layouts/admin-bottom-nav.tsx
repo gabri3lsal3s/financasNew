@@ -44,10 +44,10 @@ export function AdminBottomNav({ moreOpen, onOpenMore, badges }: AdminBottomNavP
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-bottom-nav border-t border-border/80 bg-surface/95 backdrop-blur pb-safe md:hidden"
+      className="fixed inset-x-0 bottom-0 z-bottom-nav border-t border-border bg-surface/90 backdrop-blur pb-safe lg:hidden"
       aria-label="Navegação inferior administrativa"
     >
-      <div className="mx-auto grid h-16 max-w-md grid-cols-5 items-center px-1.5">
+      <div className="mx-auto grid h-16 max-w-md md:max-w-xl grid-cols-5 items-center px-1.5 sm:px-2">
         {ADMIN_BOTTOM_NAV_ITEMS.map((item) => (
           <BottomNavItem key={item.path} item={item} />
         ))}

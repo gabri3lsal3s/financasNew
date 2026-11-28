@@ -102,28 +102,28 @@ export function UserModulePermissionsMatrix({
           <Button
             type="button"
             variant="outline"
-            size="sm"
+            size="xs"
             sensoryIntent={false}
             onClick={onQuickOnlyInvestments}
             disabled={actionsDisabled}
-            className="gap-1.5 text-xs h-7 px-2.5 text-portfolio-strong border-portfolio/30 hover:bg-portfolio/10"
+            className="text-portfolio-strong border-portfolio/30 hover:bg-portfolio/10"
             title="Configurar acesso exclusivo a Investimentos"
           >
-            <TrendingUp className="size-3.5" aria-hidden="true" />
+            <TrendingUp aria-hidden="true" />
             <span>Apenas Investimentos</span>
           </Button>
           {hasAnyModuleOverride && (
             <Button
               type="button"
               variant="outline"
-              size="sm"
+              size="xs"
               sensoryIntent={false}
               onClick={onQuickRestorePlanDefaults}
               disabled={actionsDisabled}
-              className="gap-1.5 text-xs h-7 px-2.5 text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground"
               title="Remover todos os overrides e restaurar o padrão do plano base"
             >
-              <RotateCcw className="size-3.5" aria-hidden="true" />
+              <RotateCcw aria-hidden="true" />
               <span>Restaurar Padrão do Plano</span>
             </Button>
           )}
@@ -158,17 +158,17 @@ export function UserModulePermissionsMatrix({
                 <span className="text-[11px] font-medium text-muted-foreground">{source}</span>
               </div>
               <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto justify-end shrink-0">
-                <Button type="button" variant="outline" size="sm" onClick={() => onSetModulePermission(mod.key, "write")} disabled={actionsDisabled} className={`gap-1 text-xs h-7 px-2.5 ${configuredLevel && configuredLevel !== "none" ? BTN_STYLES.writeActive : BTN_STYLES.writeIdle}`}>
-                  <Check className="size-3.5" aria-hidden="true" />
+                <Button type="button" variant="outline" size="xs" onClick={() => onSetModulePermission(mod.key, "write")} disabled={actionsDisabled} className={configuredLevel && configuredLevel !== "none" ? BTN_STYLES.writeActive : BTN_STYLES.writeIdle}>
+                  <Check aria-hidden="true" />
                   <span>Liberado</span>
                 </Button>
-                <Button type="button" variant="outline" size="sm" onClick={() => onSetModulePermission(mod.key, "none")} disabled={actionsDisabled} className={`gap-1 text-xs h-7 px-2.5 ${configuredLevel === "none" ? BTN_STYLES.noneActive : BTN_STYLES.noneIdle}`}>
-                  <X className="size-3.5" aria-hidden="true" />
+                <Button type="button" variant="outline" size="xs" onClick={() => onSetModulePermission(mod.key, "none")} disabled={actionsDisabled} className={configuredLevel === "none" ? BTN_STYLES.noneActive : BTN_STYLES.noneIdle}>
+                  <X aria-hidden="true" />
                   <span>Bloqueado</span>
                 </Button>
                 {configuredLevel !== undefined && (
-                  <Button type="button" variant="ghost" size="sm" onClick={() => onRemoveModulePermission(mod.key)} disabled={actionsDisabled} className="size-7 p-0 shrink-0 text-muted-foreground hover:text-foreground" aria-label={`Restaurar padrão de ${mod.label}`} title="Restaurar padrão da funcionalidade">
-                    <RotateCcw className="size-3.5" aria-hidden="true" />
+                  <Button type="button" variant="ghost" size="xs" onClick={() => onRemoveModulePermission(mod.key)} disabled={actionsDisabled} className="size-7 p-0 shrink-0 text-muted-foreground hover:text-foreground" aria-label={`Restaurar padrão de ${mod.label}`} title="Restaurar padrão da funcionalidade">
+                    <RotateCcw aria-hidden="true" />
                   </Button>
                 )}
               </div>
@@ -223,20 +223,20 @@ export function UserModulePermissionsMatrix({
                   </span>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto justify-end sm:justify-start shrink-0 pt-1 sm:pt-0">
-                  <Button type="button" variant="outline" size="sm" onClick={() => onSetModulePermission(mod.key, "write")} disabled={actionsDisabled} className={`gap-1 text-xs h-7 px-2 flex-1 sm:flex-initial justify-center ${configuredLevel === "write" ? BTN_STYLES.writeActive : BTN_STYLES.writeIdle}`} title="Liberar escrita e leitura neste módulo">
-                    <Check className="size-3.5" aria-hidden="true" />
+                  <Button type="button" variant="outline" size="xs" onClick={() => onSetModulePermission(mod.key, "write")} disabled={actionsDisabled} className={`px-2 flex-1 sm:flex-initial justify-center ${configuredLevel === "write" ? BTN_STYLES.writeActive : BTN_STYLES.writeIdle}`} title="Liberar escrita e leitura neste módulo">
+                    <Check aria-hidden="true" />
                     <span>Total</span>
                   </Button>
-                  <Button type="button" variant="outline" size="sm" onClick={() => onSetModulePermission(mod.key, "read")} disabled={actionsDisabled} className={`gap-1 text-xs h-7 px-2 flex-1 sm:flex-initial justify-center ${configuredLevel === "read" ? BTN_STYLES.readActive : BTN_STYLES.readIdle}`} title="Restringir a somente leitura neste módulo">
+                  <Button type="button" variant="outline" size="xs" onClick={() => onSetModulePermission(mod.key, "read")} disabled={actionsDisabled} className={`px-2 flex-1 sm:flex-initial justify-center ${configuredLevel === "read" ? BTN_STYLES.readActive : BTN_STYLES.readIdle}`} title="Restringir a somente leitura neste módulo">
                     <span>Leitura</span>
                   </Button>
-                  <Button type="button" variant="outline" size="sm" onClick={() => onSetModulePermission(mod.key, "none")} disabled={actionsDisabled} className={`gap-1 text-xs h-7 px-2 flex-1 sm:flex-initial justify-center ${configuredLevel === "none" ? BTN_STYLES.noneActive : BTN_STYLES.noneIdle}`} title="Bloquear completamente o módulo para este usuário">
-                    <X className="size-3.5" aria-hidden="true" />
+                  <Button type="button" variant="outline" size="xs" onClick={() => onSetModulePermission(mod.key, "none")} disabled={actionsDisabled} className={`px-2 flex-1 sm:flex-initial justify-center ${configuredLevel === "none" ? BTN_STYLES.noneActive : BTN_STYLES.noneIdle}`} title="Bloquear completamente o módulo para este usuário">
+                    <X aria-hidden="true" />
                     <span>Bloquear</span>
                   </Button>
                   {override && (
-                    <Button type="button" variant="ghost" size="sm" onClick={() => onRemoveModulePermission(mod.key)} disabled={actionsDisabled} className="size-7 p-0 shrink-0 text-muted-foreground hover:text-foreground" aria-label={`Restaurar regra padrão de ${mod.label}`} title="Restaurar regra padrão do plano">
-                      <RotateCcw className="size-3.5" aria-hidden="true" />
+                    <Button type="button" variant="ghost" size="xs" onClick={() => onRemoveModulePermission(mod.key)} disabled={actionsDisabled} className="size-7 p-0 shrink-0 text-muted-foreground hover:text-foreground" aria-label={`Restaurar regra padrão de ${mod.label}`} title="Restaurar regra padrão do plano">
+                      <RotateCcw aria-hidden="true" />
                     </Button>
                   )}
                 </div>

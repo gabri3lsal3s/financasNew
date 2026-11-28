@@ -217,7 +217,7 @@ export function AdminBillingPage() {
                     <span className="font-mono text-[11px] text-foreground truncate">
                       {sub.user_id}
                     </span>
-                    <Badge variant={resolveSubBadgeVariant(sub.status)} size="xs">
+                    <Badge variant={resolveSubBadgeVariant(sub.status)} size="xs" className="max-w-full truncate inline-block">
                       {SUB_STATUS_LABELS[sub.status] ?? sub.status}
                     </Badge>
                   </div>
@@ -252,7 +252,7 @@ export function AdminBillingPage() {
                       </td>
                       <td className="py-3 px-4 font-medium text-foreground">{sub.tier}</td>
                       <td className="py-3 px-4">
-                        <Badge variant={resolveSubBadgeVariant(sub.status)} size="xs">
+                        <Badge variant={resolveSubBadgeVariant(sub.status)} size="xs" className="max-w-full truncate inline-block">
                           {SUB_STATUS_LABELS[sub.status] ?? sub.status}
                         </Badge>
                       </td>

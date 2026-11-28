@@ -67,7 +67,7 @@ export function UserSaasPlanSection({
       </div>
 
       {(currentPeriodEnd || trialEndsAt || cardLast4 || asaasSubscriptionId) ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2.5 rounded-lg bg-surface-raised/60 text-[11px] text-muted-foreground border border-border/40">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2.5 rounded-lg bg-surface-raised/60 text-[11px] text-muted-foreground border border-border/80">
           <div>
             <span className="font-semibold text-foreground block">Vencimento / Vigência</span>
             <span>
@@ -87,7 +87,7 @@ export function UserSaasPlanSection({
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
         <FormField label="Tier de Assinatura" htmlFor="target-tier">
           <Select
             id="target-tier"
@@ -121,7 +121,7 @@ export function UserSaasPlanSection({
           />
         </FormField>
 
-        <FormField label="Fim do Trial (opcional)" htmlFor="target-trial-ends">
+        <FormField label="Fim do Trial" optional htmlFor="target-trial-ends">
           <DatePicker
             id="target-trial-ends"
             value={effectiveTrialEndsAt ?? ""}
@@ -131,7 +131,7 @@ export function UserSaasPlanSection({
           />
         </FormField>
 
-        <FormField label="Vigência do Período (opcional)" htmlFor="target-period-end">
+        <FormField label="Vigência do Período" optional htmlFor="target-period-end">
           <DatePicker
             id="target-period-end"
             value={effectivePeriodEnd ?? ""}
@@ -150,9 +150,8 @@ export function UserSaasPlanSection({
           sensoryIntent={false}
           onClick={onSaveSubscription}
           disabled={isSaving}
-          className="gap-1.5 text-xs h-8 px-3"
         >
-          <Crown className="size-3.5" aria-hidden="true" />
+          <Crown aria-hidden="true" />
           <span>{isSaving ? "Salvando…" : "Atualizar Plano / Tier"}</span>
         </Button>
       </div>

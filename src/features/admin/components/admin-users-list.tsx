@@ -59,7 +59,7 @@ export function AdminUsersList({ users, isLoading, onSelectUser }: AdminUsersLis
           <div key={u.id} className="p-4 flex flex-col gap-3 hover:bg-surface-hover/20 transition-colors">
             <div className="flex items-start justify-between gap-2">
               <div className="flex flex-col min-w-0">
-                <span className="text-sm font-semibold text-foreground truncate">
+                <span className="text-sm font-semibold text-foreground line-clamp-2 break-words">
                   {u.name || "Nome não informado"}
                 </span>
                 <span className="text-xs text-muted-foreground font-mono truncate">{u.email}</span>
@@ -80,9 +80,8 @@ export function AdminUsersList({ users, isLoading, onSelectUser }: AdminUsersLis
                 size="sm"
                 sensoryIntent="selection"
                 onClick={() => onSelectUser(u)}
-                className="gap-1 text-xs"
               >
-                <Settings2 className="size-3.5" aria-hidden="true" />
+                <Settings2 aria-hidden="true" />
                 <span>Gerenciar</span>
               </Button>
             </div>
@@ -134,9 +133,8 @@ export function AdminUsersList({ users, isLoading, onSelectUser }: AdminUsersLis
                     size="sm"
                     sensoryIntent="selection"
                     onClick={() => onSelectUser(u)}
-                    className="gap-1.5 text-xs px-2.5"
                   >
-                    <Settings2 className="size-3.5" aria-hidden="true" />
+                    <Settings2 aria-hidden="true" />
                     <span>Gerenciar</span>
                   </Button>
                 </td>

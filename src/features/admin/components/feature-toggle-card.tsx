@@ -75,16 +75,16 @@ export function FeatureToggleCard({ feature }: FeatureToggleCardProps) {
         sensoryIntent={feature.is_globally_enabled ? false : undefined}
         onClick={handleToggle}
         loading={toggleMutation.isPending && !confirmOpen}
-        className="w-full sm:w-auto justify-center shrink-0 gap-1.5 text-xs px-3"
+        className="w-full sm:w-auto justify-center shrink-0"
       >
         {feature.is_globally_enabled ? (
           <>
-            <ShieldAlert className="size-3.5" aria-hidden="true" />
+            <ShieldAlert aria-hidden="true" />
             <span>Desativar Módulo</span>
           </>
         ) : (
           <>
-            <Check className="size-3.5" aria-hidden="true" />
+            <Check aria-hidden="true" />
             <span>Ativar Módulo</span>
           </>
         )}

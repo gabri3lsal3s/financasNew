@@ -92,17 +92,17 @@ function PastDueRow({ row }: { row: AdminPastDueSubscriptionRow }) {
   const isBusy = setPolicy.isPending || blockNow.isPending || sendReminder.isPending;
 
   return (
-    <div className="rounded-xl border border-border/80 bg-surface-raised/60 p-4 flex flex-col gap-3.5">
+    <div className="rounded-xl border border-border/80 bg-surface shadow-xs p-4 flex flex-col gap-3.5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-semibold text-foreground truncate">
+            <span className="text-sm font-semibold text-foreground line-clamp-2 break-words">
               {row.user_name || "Assinante"}
             </span>
-            <Badge variant="warning" size="xs">
+            <Badge variant="warning" size="xs" className="max-w-full truncate inline-block">
               {daysOverdue === 0 ? "Venceu hoje" : `${daysOverdue}d em atraso`}
             </Badge>
-            <Badge variant={row.past_due_block_at ? "critical" : "muted"} size="xs">
+            <Badge variant={row.past_due_block_at ? "critical" : "muted"} size="xs" className="max-w-full truncate inline-block">
               {row.past_due_block_at
                 ? `Bloqueio em ${formatDatePtBr(row.past_due_block_at)}`
                 : "Tolerância manual"}
@@ -118,23 +118,22 @@ function PastDueRow({ row }: { row: AdminPastDueSubscriptionRow }) {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
           <Button
             type="button"
             variant="outline"
             size="sm"
             disabled={isBusy}
             onClick={handleToggleWeeklyReminders}
-            className="gap-1.5 text-xs"
           >
             {row.past_due_reminders_enabled ? (
               <>
-                <BellRing className="size-3.5 text-positive-strong" aria-hidden="true" />
+                <BellRing className="text-positive-strong" aria-hidden="true" />
                 <span>Lembrete semanal ativo</span>
               </>
             ) : (
               <>
-                <BellOff className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                <BellOff className="text-muted-foreground" aria-hidden="true" />
                 <span>Lembrete semanal pausado</span>
               </>
             )}
@@ -146,15 +145,14 @@ function PastDueRow({ row }: { row: AdminPastDueSubscriptionRow }) {
             size="sm"
             disabled={isBusy}
             onClick={() => setConfirmBlockOpen(true)}
-            className="gap-1.5 text-xs"
           >
-            <ShieldAlert className="size-3.5" aria-hidden="true" />
+            <ShieldAlert aria-hidden="true" />
             <span>Bloquear agora</span>
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-border/60">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-border/80">
         <div className="flex flex-col gap-1.5">
           <span className="text-[11px] font-semibold text-foreground flex items-center gap-1.5">
             <CalendarClock className="size-3.5 text-muted-foreground" aria-hidden="true" />
@@ -190,9 +188,9 @@ function PastDueRow({ row }: { row: AdminPastDueSubscriptionRow }) {
               size="sm"
               disabled={isBusy}
               onClick={() => sendReminder.mutate({ userId: row.user_id, preset })}
-              className="gap-1.5 shrink-0"
+              className="shrink-0"
             >
-              <Send className="size-3.5" aria-hidden="true" />
+              <Send aria-hidden="true" />
               <span>Enviar</span>
             </Button>
           </div>
@@ -232,7 +230,7 @@ export function PastDueManagementCard() {
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div className="flex items-center gap-2">
-          <Clock className="size-4 text-warning-strong" aria-hidden="true" />
+          <Clock className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
           <div>
             <h2 className="text-sm font-bold text-foreground">
               Assinaturas em Atraso (Tolerância &amp; Lembretes)

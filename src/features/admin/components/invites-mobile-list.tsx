@@ -46,7 +46,7 @@ export function InvitesMobileList({
                 </span>
               </div>
 
-              <Badge variant={status.variant} size="xs">
+              <Badge variant={status.variant} size="xs" className="max-w-full truncate inline-block">
                 {status.label}
               </Badge>
             </div>
@@ -96,9 +96,9 @@ export function InvitesMobileList({
                 sensoryIntent={false}
                 onClick={() => onCopyLink(invite.code)}
                 disabled={invite.is_revoked || isExpired || isExhausted}
-                className="flex-1 gap-1.5 text-xs justify-center"
+                className="flex-1 justify-center"
               >
-                <Copy className="size-3.5" aria-hidden="true" />
+                <Copy aria-hidden="true" />
                 <span>Copiar Link</span>
               </Button>
               {!invite.is_revoked && (
@@ -109,11 +109,11 @@ export function InvitesMobileList({
                   sensoryIntent="selection"
                   onClick={() => onRequestRevoke(invite)}
                   disabled={isRevoking}
-                  className="size-8 p-0 shrink-0"
+                  className="size-8 !w-8 !min-w-8 p-0 shrink-0"
                   title="Revogar convite"
                   aria-label={`Revogar convite ${invite.code}`}
                 >
-                  <Trash2 className="size-3.5" aria-hidden="true" />
+                  <Trash2 aria-hidden="true" />
                 </Button>
               )}
             </div>

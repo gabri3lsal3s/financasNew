@@ -75,11 +75,11 @@ export function BroadcastHistoryList({ broadcasts, isLoading }: BroadcastHistory
                 <div className="flex flex-col min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-semibold text-foreground line-clamp-2 break-words">{b.title}</span>
-                    <Badge variant="muted" size="xs" className="font-mono">
+                    <Badge variant="muted" size="xs" className="font-mono max-w-full truncate inline-block">
                       {audienceLabel}
                     </Badge>
                     {b.expires_at ? (
-                      <Badge variant={isExpired ? "warning" : "default"} size="xs">
+                      <Badge variant={isExpired ? "warning" : "default"} size="xs" className="max-w-full truncate inline-block">
                         {isExpired ? "Expirado" : `Expira ${formatDateTimeBR(b.expires_at)}`}
                       </Badge>
                     ) : null}

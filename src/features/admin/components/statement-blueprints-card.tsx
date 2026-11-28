@@ -169,7 +169,7 @@ export function StatementBlueprintsCard() {
                     <span className="text-sm font-semibold text-foreground line-clamp-2 break-words">
                       {row.issuer_name}
                     </span>
-                    <Badge variant={meta.variant} size="xs">
+                    <Badge variant={meta.variant} size="xs" className="max-w-full truncate inline-block">
                       {meta.label}
                     </Badge>
                   </div>
@@ -198,9 +198,8 @@ export function StatementBlueprintsCard() {
                       sensoryIntent={false}
                       disabled={isMutating}
                       onClick={() => void handleApprove(row)}
-                      className="gap-1.5 text-xs"
                     >
-                      <Check className="size-3.5" aria-hidden="true" />
+                      <Check aria-hidden="true" />
                       <span>Aprovar global</span>
                     </Button>
                   ) : null}
@@ -211,9 +210,9 @@ export function StatementBlueprintsCard() {
                       size="sm"
                       disabled={isMutating}
                       onClick={() => setSuspendTarget(row)}
-                      className="gap-1.5 text-xs text-critical-strong hover:bg-critical/10"
+                      className="text-critical-strong hover:bg-critical/10"
                     >
-                      <ShieldOff className="size-3.5" aria-hidden="true" />
+                      <ShieldOff aria-hidden="true" />
                       <span>Suspender</span>
                     </Button>
                   ) : null}

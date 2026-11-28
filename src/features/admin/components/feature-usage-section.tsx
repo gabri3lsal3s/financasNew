@@ -68,7 +68,7 @@ export function FeatureUsageSection() {
                   >
                     <div className="flex items-center justify-between text-xs gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-surface-hover text-[10px] font-bold text-foreground">
+                        <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-surface-hover text-[11px] font-bold text-foreground">
                           {idx + 1}
                         </span>
                         <span className="font-semibold text-foreground truncate">{label}</span>

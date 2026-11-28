@@ -52,12 +52,12 @@ export function InvitesTab() {
   };
 
   return (
-    <div className="flex flex-col gap-5 w-full min-w-0">
+    <div className="flex flex-col gap-6 w-full min-w-0">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 sm:p-5 rounded-xl border border-border/80 bg-surface shadow-xs">
         <div className="flex items-start gap-3 min-w-0">
-          <KeyRound className="size-4.5 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
+          <KeyRound className="size-4 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
           <div className="flex flex-col min-w-0">
-            <span className="text-sm font-bold text-foreground truncate">
+            <span className="text-sm font-bold text-foreground line-clamp-2 break-words">
               Gestão de Convites &amp; Allowlist
             </span>
             <span className="text-xs text-muted-foreground leading-relaxed">
@@ -72,9 +72,9 @@ export function InvitesTab() {
           size="sm"
           sensoryIntent="selection"
           onClick={() => setCreateOpen(true)}
-          className="gap-2 w-full sm:w-auto justify-center shrink-0"
+          className="w-full sm:w-auto justify-center shrink-0"
         >
-          <Plus className="size-4" aria-hidden="true" />
+          <Plus aria-hidden="true" />
           <span>Gerar Novo Convite</span>
         </Button>
       </div>

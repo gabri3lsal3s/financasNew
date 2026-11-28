@@ -8313,3 +8313,14 @@ flowchart TD
 > - **Observabilidade Passiva, Suporte & FinOps (`0181`, `0182`, `unit-economics.ts`):**
 >   - Painel passivo de saúde das 7 integrações (`ConnectionsHealthPanel` + popover no cabeçalho), Raio-X de Suporte sob demanda no `UserEditDialog` (`UserSupportDiagnosticsCard`), telemetria determinística em `StatementBlueprintsCard` e `RetentionRadarCard` na Visão Geral.
 >   - Motor puro `unit-economics.ts` (centavos inteiros), snapshots mensais de parâmetros (`admin_finops_monthly_params`), memória de cálculo (`admin-finops-memory.ts` + `EquationBreakdownPopover`), reset auditado de cotas IA (`AiQuotasUsagePanel`) e abas consolidadas em `AdminBillingPage`.
+
+---
+
+### Fase 137 — Padronização Visual e Estrutural 1:1 do Portal `/admin` com o App Oficial (`v3.38.1`)
+
+> **Status:** Concluída em Código, Docs & Build:
+> - **Shell & Navegação (`AdminShell`, `AdminBottomNav`, `AdminMobileDrawer`):**
+>   - Paridade 1:1 com `PageShell`, `Sidebar` e `MoreMenuSheet`: sidebar fixa colapsável (`w-64` ↔ `w-20` via `useSidebarState`, hover-expand de 120ms, botão de recolher no rodapé, remoção do bloco estático *"Ambiente Seguro"*), topbar `h-16` sticky (`z-sticky`) com `useContainerScroll` em `#admin-main-content`, `BackToTop`, alinhamento do breakpoint mobile para `lg:hidden` e conversão do `AdminMobileDrawer` para `<Modal size="md">`.
+> - **Páginas, Listagens & Modais (`src/features/admin/pages/`, `src/features/admin/components/`):**
+>   - Unificação de superfícies (`border-border/80 bg-surface shadow-xs`), remoção de `border-border/60`, `text-[10px]`/`text-[9px]` ad-hoc e overrides redundantes de ícones/botões; prevenção de truncamento cego (`line-clamp-2 break-words` em títulos e `max-w-full truncate inline-block` em badges dinâmicos).
+>   - Padronização dos diálogos (`CreateInviteDialog`, `TicketManageDialog`, `UserCreateDialog`, `UserEditDialog`, `FinOpsOverviewPanel`) em `Modal` + `ModalFooter borderless` + `FormField` + `ConfirmDialog` (`elevated` quando sobreposto), zero `autoFocus` declarativo e grids responsivos `sm:grid-cols-2`.

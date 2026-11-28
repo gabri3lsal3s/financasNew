@@ -63,7 +63,7 @@ export function TicketRow({ ticket, onOpenManage }: TicketRowProps) {
           </Badge>
 
           {ticket.subject && (
-            <span className="text-xs font-semibold text-foreground truncate max-w-xs sm:max-w-md">
+            <span className="text-xs font-semibold text-foreground line-clamp-2 break-words max-w-xs sm:max-w-md">
               {ticket.subject}
             </span>
           )}
@@ -80,9 +80,8 @@ export function TicketRow({ ticket, onOpenManage }: TicketRowProps) {
             variant="outline"
             sensoryIntent="selection"
             onClick={() => onOpenManage(ticket.id)}
-            className="gap-1.5 text-xs font-medium"
           >
-            <Settings2 className="size-3.5" aria-hidden="true" />
+            <Settings2 aria-hidden="true" />
             <span>Atender Chamado</span>
           </Button>
         </div>

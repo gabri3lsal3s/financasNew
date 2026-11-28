@@ -1,7 +1,7 @@
-import { useEffect } from "react";
 import { Link, NavLink } from "react-router";
 import { ExternalLink } from "lucide-react";
-import { Badge, buttonVariants } from "@/components/ui";
+import { Badge } from "@/components/ui/badge";
+import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
 import { triggerSensory } from "@/services/sensory";
 import {
@@ -17,112 +17,108 @@ export interface AdminMobileDrawerProps {
   badges?: Partial<Record<AdminNavBadgeKey, number>>;
 }
 
-/**
- * Menu deslizante móvel do Console Administrativo (< md) com suporte a Escape e semântica de diálogo.
- */
 export function AdminMobileDrawer({
   open,
   onClose,
   isSuperAdmin = false,
   badges,
 }: AdminMobileDrawerProps) {
-  useEffect(() => {
-    if (!open) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open, onClose]);
-
-  if (!open) return null;
-
   const ForensicsIcon = ADMIN_FORENSICS_NAV_ITEM.icon;
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Menu de navegação administrativa"
-      className="fixed inset-x-0 bottom-0 top-16 pt-safe z-40 flex flex-col bg-surface p-4 md:hidden border-b border-border/80 pb-24 pb-safe overflow-y-auto"
+    <Modal
+      open={open}
+      onOpenChange={(next) => !next && onClose()}
+      title="Mais opções"
+      description="Navegue pelas áreas administrativas"
+      size="md"
     >
-      <nav className="flex flex-col gap-4" aria-label="Navegação administrativa móvel">
+      <div className="space-y-6 pt-2 pb-4 pb-safe">
         {ADMIN_NAV_GROUPS.map((group) => (
-          <div key={group.id} className="flex flex-col gap-1">
-            <span className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+          <section key={group.id} aria-label={group.label} className="space-y-2">
+            <h2 className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {group.label}
-            </span>
-            {group.items.map(({ to, label, icon: Icon, badgeKey }) => {
-              const count = badgeKey ? (badges?.[badgeKey] ?? 0) : 0;
-              return (
-                <NavLink
-                  key={to}
-                  to={to}
-                  onClick={() => {
-                    triggerSensory("selection");
-                    onClose();
-                  }}
-                  className={({ isActive }) =>
-                    cn(
-                      "flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 min-h-11 text-sm font-medium transition-colors",
-                      isActive
-                        ? "bg-primary/10 font-semibold text-primary-strong border border-primary/20"
-                        : "text-muted-foreground hover:bg-surface-hover hover:text-foreground",
-                    )
-                  }
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Icon className="size-4.5 shrink-0" aria-hidden="true" />
-                    <span className="truncate">{label}</span>
-                  </div>
-                  {count > 0 && (
-                    <Badge variant="warning" size="xs">
-                      {count}
-                    </Badge>
-                  )}
-                </NavLink>
-              );
-            })}
-          </div>
+            </h2>
+            <nav className="grid gap-2" aria-label={group.label}>
+              {group.items.map(({ to, label, icon: Icon, badgeKey }) => {
+                const count = badgeKey ? (badges?.[badgeKey] ?? 0) : 0;
+                return (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    onClick={() => {
+                      triggerSensory("selection");
+                      onClose();
+                    }}
+                    className={({ isActive }) =>
+                      cn(
+                        "flex min-h-11 items-center justify-between rounded-xl border border-border/80 bg-surface shadow-xs px-4 py-3 text-sm font-medium transition-colors hover:bg-surface-hover active:scale-[0.99] cursor-pointer",
+                        isActive && "text-primary-strong font-semibold",
+                      )
+                    }
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Icon className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                      <span className="truncate">{label}</span>
+                    </div>
+                    {count > 0 && (
+                      <Badge
+                        size="xs"
+                        variant="warning"
+                        className="h-5 min-w-5 px-1.5 font-bold"
+                      >
+                        {count > 9 ? "9+" : count}
+                      </Badge>
+                    )}
+                  </NavLink>
+                );
+              })}
+            </nav>
+          </section>
         ))}
-      </nav>
 
-      <div className="mt-auto pt-4 border-t border-border/80 flex flex-col gap-2">
-        {isSuperAdmin && (
-          <NavLink
-            to={ADMIN_FORENSICS_NAV_ITEM.to}
-            onClick={() => {
-              triggerSensory("selection");
-              onClose();
-            }}
-            className={({ isActive }) =>
-              cn(
-                "flex items-center gap-2.5 rounded-xl px-3.5 py-2 min-h-10 text-xs font-medium transition-colors",
-                isActive
-                  ? "bg-primary/10 font-semibold text-primary-strong border border-primary/20"
-                  : "text-muted-foreground hover:bg-surface-hover hover:text-foreground",
-              )
-            }
-          >
-            <ForensicsIcon className="size-4 shrink-0" aria-hidden="true" />
-            <span>{ADMIN_FORENSICS_NAV_ITEM.label}</span>
-          </NavLink>
-        )}
+        <section aria-label="Ferramentas & Aplicativo" className="space-y-2 pt-2">
+          <h2 className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Ferramentas &amp; Aplicativo
+          </h2>
+          <div className="grid gap-2">
+            {isSuperAdmin && (
+              <NavLink
+                to={ADMIN_FORENSICS_NAV_ITEM.to}
+                onClick={() => {
+                  triggerSensory("selection");
+                  onClose();
+                }}
+                className={({ isActive }) =>
+                  cn(
+                    "flex min-h-11 items-center justify-between rounded-xl border border-border/80 bg-surface shadow-xs px-4 py-3 text-sm font-medium transition-colors hover:bg-surface-hover active:scale-[0.99] cursor-pointer",
+                    isActive && "text-primary-strong font-semibold",
+                  )
+                }
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <ForensicsIcon className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <span className="truncate">{ADMIN_FORENSICS_NAV_ITEM.label}</span>
+                </div>
+              </NavLink>
+            )}
 
-        <Link
-          to="/"
-          onClick={onClose}
-          className={cn(
-            buttonVariants({ variant: "outline", size: "sm" }),
-            "w-full justify-center gap-2 text-xs font-semibold",
-          )}
-        >
-          <ExternalLink className="size-3.5" aria-hidden="true" />
-          <span>Ver App</span>
-        </Link>
+            <Link
+              to="/"
+              onClick={() => {
+                triggerSensory("selection");
+                onClose();
+              }}
+              className="flex min-h-11 items-center justify-between rounded-xl border border-border/80 bg-surface shadow-xs px-4 py-3 text-sm font-medium transition-colors hover:bg-surface-hover active:scale-[0.99] cursor-pointer"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <ExternalLink className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <span>Ver App</span>
+              </div>
+            </Link>
+          </div>
+        </section>
       </div>
-    </div>
+    </Modal>
   );
 }

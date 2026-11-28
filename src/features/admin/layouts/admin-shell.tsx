@@ -1,9 +1,11 @@
-import { useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
-import { ExternalLink, LogOut } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, LogOut } from "lucide-react";
 import { Badge, Button, buttonVariants } from "@/components/ui";
-import { BrandLogo, ThemeToggle } from "@/components/layout";
+import { BackToTop, BrandLogo, ThemeToggle } from "@/components/layout";
 import { useAuth } from "@/hooks/use-auth";
+import { useContainerScroll } from "@/hooks/use-container-scroll";
+import { useSidebarState } from "@/hooks/use-sidebar-state";
 import { useSignOut } from "@/hooks/use-sign-out";
 import {
   useAdminMetrics,
@@ -24,13 +26,19 @@ import { AdminBottomNav } from "./admin-bottom-nav";
 import { AdminMobileDrawer } from "./admin-mobile-drawer";
 import { ConnectionsHealthPopover } from "../components/connections-health-panel";
 
+const HOVER_EXPAND_DELAY_MS = 120;
+
 export function AdminShell() {
   const navigate = useNavigate();
   const location = useLocation();
   const { session } = useAuth();
   const { signOut } = useSignOut();
   const { profile, role, isSuperAdmin } = useUserAccess(session?.user?.id);
+  const { isCollapsed, toggle } = useSidebarState();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [hoverExpanded, setHoverExpanded] = useState(false);
+  const enterTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const metricsQuery = useAdminMetrics();
   const ticketsQuery = useAdminSupportTickets();
@@ -56,141 +64,276 @@ export function AdminShell() {
     resetPageScroll({ containerId: "admin-main-content" });
   }, [location.pathname]);
 
+  useEffect(() => {
+    return () => {
+      if (enterTimer.current !== null) clearTimeout(enterTimer.current);
+      if (leaveTimer.current !== null) clearTimeout(leaveTimer.current);
+    };
+  }, []);
+
+  const handleMouseEnter = () => {
+    if (leaveTimer.current !== null) {
+      clearTimeout(leaveTimer.current);
+      leaveTimer.current = null;
+    }
+    if (isCollapsed && !hoverExpanded) {
+      enterTimer.current = setTimeout(() => setHoverExpanded(true), HOVER_EXPAND_DELAY_MS);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (enterTimer.current !== null) {
+      clearTimeout(enterTimer.current);
+      enterTimer.current = null;
+    }
+    leaveTimer.current = setTimeout(() => setHoverExpanded(false), HOVER_EXPAND_DELAY_MS);
+  };
+
+  const { isScrolled, showBackToTop } = useContainerScroll({
+    containerId: "admin-main-content",
+    scrolledThreshold: 15,
+    backToTopThreshold: 400,
+  });
+
   const handleSignOut = async () => {
     await signOut();
     navigate("/admin/login", { replace: true });
   };
 
+  const expanded = !isCollapsed || hoverExpanded;
   const ForensicsIcon = ADMIN_FORENSICS_NAV_ITEM.icon;
 
   return (
-    <div className="flex min-h-dvh flex-col bg-background text-foreground">
-      <header className="sticky top-0 z-sidebar flex min-h-16 pt-safe w-full items-center justify-between gap-2 border-b border-border/80 bg-surface/95 px-4 backdrop-blur-xs sm:px-6">
-        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <Link to="/admin/dashboard" className="flex items-center gap-2.5 min-w-0">
-            <BrandLogo markClassName="size-8 shrink-0" showWordmark={false} />
-            <div className="flex flex-col min-w-0">
-              <span className="font-display text-sm font-bold tracking-tight text-foreground sm:text-base leading-none whitespace-nowrap">
-                Axir Admin
-              </span>
-              <span className="hidden sm:block text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
-                Console
-              </span>
-            </div>
-          </Link>
-        </div>
-
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          <ConnectionsHealthPopover />
-
-          <ThemeToggle />
-
-          <Link
-            to="/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={cn(
-              buttonVariants({ variant: "outline", size: "sm" }),
-              "hidden md:inline-flex gap-1.5 text-xs text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <ExternalLink className="size-3.5" aria-hidden="true" />
-            <span>Ver App</span>
-          </Link>
-
-          <div className="flex items-center gap-2 md:pl-2 md:border-l md:border-border/80">
-            <div className="hidden md:flex flex-col items-end">
-              <span className="text-xs font-semibold text-foreground truncate max-w-[130px]">
-                {profile?.name || session?.user?.email}
-              </span>
-              <Badge variant={isSuperAdmin ? "default" : "muted"} size="xs" className="uppercase font-mono">
-                {role || "admin"}
-              </Badge>
-            </div>
-
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              sensoryIntent="action"
-              onClick={handleSignOut}
-              className="size-10 sm:size-8 shrink-0 text-muted-foreground hover:text-critical-strong hover:bg-critical/10 cursor-pointer"
-              title="Encerrar sessão de administrador"
-              aria-label="Sair do painel administrativo"
+    <div className="h-dvh flex flex-col overflow-hidden text-foreground">
+      <aside
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        className={cn(
+          "fixed inset-y-0 left-0 z-sidebar hidden lg:flex flex-col border-r border-border bg-surface transition-[width] duration-200 ease-out motion-reduce:transition-none",
+          expanded ? "w-64" : "w-20",
+          hoverExpanded && isCollapsed && "shadow-2xl",
+        )}
+      >
+        <div
+          className={cn(
+            "pt-safe flex shrink-0 items-center border-b border-border overflow-hidden",
+            expanded ? "px-4" : "justify-center px-2.5",
+          )}
+        >
+          <div className={cn("flex h-16 w-full items-center", !expanded && "justify-center")}>
+            <Link
+              to="/admin/dashboard"
+              aria-label="Axir Admin"
+              title={expanded ? undefined : "Axir Admin"}
+              className={cn(
+                "flex items-center rounded-lg hover:bg-surface-hover/80 p-2 transition-colors overflow-hidden",
+                expanded ? "w-full justify-start gap-2.5 text-left" : "w-full justify-center",
+              )}
             >
-              <LogOut className="size-4" aria-hidden="true" />
-            </Button>
+              <BrandLogo markClassName="size-8 shrink-0" showWordmark={false} />
+              {expanded && (
+                <span className="font-display text-sm font-bold tracking-tight text-foreground whitespace-nowrap overflow-hidden animate-fade-slide-in">
+                  Axir Admin
+                </span>
+              )}
+            </Link>
           </div>
         </div>
-      </header>
 
-      <div className="flex flex-1 w-full min-w-0">
-        <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-border/80 bg-surface/50 p-4">
-          <nav className="flex flex-col gap-4" aria-label="Navegação administrativa">
-            {ADMIN_NAV_GROUPS.map((group) => (
-              <div key={group.id} className="flex flex-col gap-1">
-                <span className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+        <nav className="flex-1 space-y-4 overflow-y-auto p-2.5" aria-label="Navegação administrativa">
+          {ADMIN_NAV_GROUPS.map((group, groupIndex) => (
+            <div key={group.id} className="space-y-1">
+              {expanded ? (
+                <p className="px-3.5 pt-1 pb-0.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80 animate-fade-slide-in">
                   {group.label}
-                </span>
-                {group.items.map(({ to, label, icon: Icon, badgeKey }) => {
-                  const count = badgeKey ? (navBadges[badgeKey] ?? 0) : 0;
-                  return (
-                    <NavLink
-                      key={to}
-                      to={to}
-                      onClick={() => triggerSensory("selection")}
-                      className={({ isActive }) =>
-                        cn(
-                          "flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-xs font-medium transition-colors",
-                          isActive
-                            ? "bg-primary/10 font-semibold text-primary-strong border border-primary/20"
-                            : "text-muted-foreground hover:bg-surface-hover hover:text-foreground",
-                        )
-                      }
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <Icon className="size-4 shrink-0" aria-hidden="true" />
-                        <span className="truncate">{label}</span>
-                      </div>
-                      {count > 0 && (
-                        <Badge variant="warning" size="xs">
-                          {count}
-                        </Badge>
-                      )}
-                    </NavLink>
-                  );
-                })}
-              </div>
-            ))}
-          </nav>
+                </p>
+              ) : groupIndex > 0 ? (
+                <div className="my-2 mx-auto h-px w-8 bg-border/80" aria-hidden="true" />
+              ) : null}
 
-          <div className="mt-auto pt-4 border-t border-border/80 flex flex-col gap-2">
-            {isSuperAdmin && (
+              {group.items.map(({ to, label, icon: Icon, badgeKey }) => {
+                const count = badgeKey ? (navBadges[badgeKey] ?? 0) : 0;
+                return (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    onClick={() => triggerSensory("selection")}
+                    aria-label={expanded ? undefined : label}
+                    title={expanded ? undefined : label}
+                    className={({ isActive }) =>
+                      cn(
+                        "flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium transition-colors overflow-hidden whitespace-nowrap relative cursor-pointer",
+                        !expanded && "justify-center px-2",
+                        isActive
+                          ? "bg-primary/12 text-primary-strong font-semibold"
+                          : "text-muted-foreground hover:bg-surface-hover hover:text-foreground",
+                      )
+                    }
+                  >
+                    <div className="relative shrink-0">
+                      <Icon className="size-5 shrink-0" aria-hidden="true" />
+                      {!expanded && count > 0 && (
+                        <span className="absolute -top-1 -right-1 size-2 rounded-full ring-2 ring-surface bg-warning-strong" />
+                      )}
+                    </div>
+                    {expanded && (
+                      <div className="flex flex-1 items-center justify-between overflow-hidden animate-fade-slide-in">
+                        <span className="overflow-hidden truncate">{label}</span>
+                        {count > 0 && (
+                          <Badge
+                            size="xs"
+                            variant="warning"
+                            className="ml-auto h-5 min-w-5 px-1.5 font-bold"
+                          >
+                            {count > 9 ? "9+" : count}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </NavLink>
+                );
+              })}
+            </div>
+          ))}
+
+          {isSuperAdmin && (
+            <div className="space-y-1">
+              {expanded ? (
+                <p className="px-3.5 pt-1 pb-0.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80 animate-fade-slide-in">
+                  Forense
+                </p>
+              ) : (
+                <div className="my-2 mx-auto h-px w-8 bg-border/80" aria-hidden="true" />
+              )}
               <NavLink
                 to={ADMIN_FORENSICS_NAV_ITEM.to}
                 onClick={() => triggerSensory("selection")}
+                aria-label={expanded ? undefined : ADMIN_FORENSICS_NAV_ITEM.label}
+                title={expanded ? undefined : ADMIN_FORENSICS_NAV_ITEM.label}
                 className={({ isActive }) =>
                   cn(
-                    "flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium transition-colors",
+                    "flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium transition-colors overflow-hidden whitespace-nowrap relative cursor-pointer",
+                    !expanded && "justify-center px-2",
                     isActive
-                      ? "bg-primary/10 font-semibold text-primary-strong border border-primary/20"
+                      ? "bg-primary/12 text-primary-strong font-semibold"
                       : "text-muted-foreground hover:bg-surface-hover hover:text-foreground",
                   )
                 }
               >
-                <ForensicsIcon className="size-4 shrink-0" aria-hidden="true" />
-                <span className="truncate">{ADMIN_FORENSICS_NAV_ITEM.label}</span>
+                <div className="relative shrink-0">
+                  <ForensicsIcon className="size-5 shrink-0" aria-hidden="true" />
+                </div>
+                {expanded && (
+                  <div className="flex flex-1 items-center justify-between overflow-hidden animate-fade-slide-in">
+                    <span className="overflow-hidden truncate">{ADMIN_FORENSICS_NAV_ITEM.label}</span>
+                  </div>
+                )}
               </NavLink>
-            )}
+            </div>
+          )}
+        </nav>
 
-            <div className="rounded-xl bg-surface-raised p-3 text-xs text-muted-foreground flex flex-col gap-1">
-              <span className="font-semibold text-foreground">Ambiente Seguro</span>
-              <p className="text-[11px] leading-relaxed">
-                Ações administrativas geram registros imutáveis em trilha de auditoria.
-              </p>
+        <div className="shrink-0 border-t border-border pb-safe">
+          <div className="p-2.5">
+            <Button
+              type="button"
+              variant="ghost"
+              sensoryIntent="selection"
+              onClick={toggle}
+              aria-label={expanded ? "Recolher menu lateral" : "Expandir menu lateral"}
+              className={cn(
+                "flex w-full items-center justify-start gap-3 px-3.5 py-2.5 text-sm font-medium text-muted-foreground hover:bg-surface-hover hover:text-foreground overflow-hidden whitespace-nowrap cursor-pointer",
+                !expanded && "justify-center px-2",
+              )}
+            >
+              {expanded ? (
+                <>
+                  <ChevronLeft className="size-5 shrink-0" aria-hidden="true" />
+                  <span className="overflow-hidden whitespace-nowrap animate-fade-slide-in">
+                    Recolher
+                  </span>
+                </>
+              ) : (
+                <ChevronRight className="size-5 shrink-0" aria-hidden="true" />
+              )}
+            </Button>
+          </div>
+        </div>
+      </aside>
+
+      <div
+        className={cn(
+          "flex flex-1 flex-col overflow-hidden transition-[padding] duration-200 ease-out motion-reduce:transition-none",
+          isCollapsed ? "lg:pl-20" : "lg:pl-64",
+        )}
+      >
+        <header
+          className={cn(
+            "sticky top-0 z-sticky flex shrink-0 items-center border-b border-border transition-[background-color,backdrop-filter,box-shadow] duration-200 app-region-drag pt-safe",
+            isScrolled
+              ? "bg-surface/95 backdrop-blur-md shadow-xs"
+              : "bg-surface/80 backdrop-blur-sm shadow-none",
+          )}
+        >
+          <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-2 px-3 sm:px-6 lg:px-8 app-region-no-drag">
+            <Link
+              to="/admin/dashboard"
+              className="flex items-center gap-2 min-w-0 lg:hidden"
+            >
+              <BrandLogo markClassName="size-8 shrink-0" showWordmark={false} />
+              <span className="font-display text-sm font-bold tracking-tight text-foreground whitespace-nowrap">
+                Axir Admin
+              </span>
+            </Link>
+
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 lg:ml-auto">
+              <ConnectionsHealthPopover />
+
+              <ThemeToggle />
+
+              <Link
+                to="/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  buttonVariants({ variant: "outline", size: "sm" }),
+                  "hidden lg:inline-flex gap-1.5 text-xs text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <ExternalLink className="size-3.5" aria-hidden="true" />
+                <span>Ver App</span>
+              </Link>
+
+              <div className="flex items-center gap-2 lg:pl-2 lg:border-l lg:border-border/80">
+                <div className="hidden lg:flex flex-col items-end">
+                  <span className="text-xs font-semibold text-foreground truncate max-w-[130px]">
+                    {profile?.name || session?.user?.email}
+                  </span>
+                  <Badge
+                    variant={isSuperAdmin ? "default" : "muted"}
+                    size="xs"
+                    className="uppercase font-mono"
+                  >
+                    {role || "admin"}
+                  </Badge>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  sensoryIntent="action"
+                  onClick={handleSignOut}
+                  className="size-10 sm:size-8 shrink-0 text-muted-foreground hover:text-critical-strong hover:bg-critical/10 cursor-pointer"
+                  title="Encerrar sessão de administrador"
+                  aria-label="Sair do painel administrativo"
+                >
+                  <LogOut className="size-4" aria-hidden="true" />
+                </Button>
+              </div>
             </div>
           </div>
-        </aside>
+        </header>
 
         <AdminMobileDrawer
           open={mobileMenuOpen}
@@ -201,13 +344,17 @@ export function AdminShell() {
 
         <main
           id="admin-main-content"
-          className="flex-1 w-full min-w-0 p-4 sm:p-6 lg:p-8 pb-24 md:pb-8 pb-safe overflow-y-auto"
+          className="flex-1 overflow-y-auto overflow-x-hidden overscroll-none min-h-0 w-full"
         >
-          <div key={location.pathname} className="animate-route-in max-w-7xl mx-auto w-full min-w-0">
-            <Outlet />
+          <div className="mx-auto w-full max-w-7xl px-3 sm:px-6 pb-[calc(6.5rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))] lg:pb-10 pt-4 sm:pt-6 lg:px-8 min-w-0">
+            <div key={location.pathname} className="animate-route-in min-w-0 w-full">
+              <Outlet />
+            </div>
           </div>
         </main>
       </div>
+
+      <BackToTop visible={showBackToTop} containerId="admin-main-content" bottomNavOffset />
 
       <AdminBottomNav
         moreOpen={mobileMenuOpen}

@@ -19,6 +19,7 @@ import {
   Badge,
   Button,
   EmptyState,
+  FormField,
   Modal,
   ModalFooter,
   MoneyInput,
@@ -481,25 +482,28 @@ export function FinOpsOverviewPanel() {
         >
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="finops-pix-fee" className="text-xs font-semibold text-foreground">
-                  Taxa fixa Pix
-                </label>
+              <FormField
+                label="Taxa fixa Pix"
+                htmlFor="finops-pix-fee"
+                helperText="Valor cobrado por pagamento Pix."
+              >
                 <MoneyInput
                   id="finops-pix-fee"
                   size="sm"
                   cents={pixFeeCents}
                   onCentsChange={setPixFeeCents}
                 />
-                <span className="text-[11px] text-muted-foreground">
-                  Valor cobrado por pagamento Pix.
-                </span>
-              </div>
+              </FormField>
 
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="finops-card-pct" className="text-xs font-semibold text-foreground">
-                  Taxa cartão (%)
-                </label>
+              <FormField
+                label="Taxa cartão (%)"
+                htmlFor="finops-card-pct"
+                helperText={
+                  previewBps != null
+                    ? `Equivalente a ${previewBps} bps sobre receita de cartão.`
+                    : "Informe um percentual entre 0% e 100%."
+                }
+              >
                 <NumericInput
                   id="finops-card-pct"
                   size="sm"
@@ -511,57 +515,47 @@ export function FinOpsOverviewPanel() {
                   maxDecimals={2}
                   placeholder="2,99"
                 />
-                <span className="text-[11px] text-muted-foreground">
-                  {previewBps != null
-                    ? `Equivalente a ${previewBps} bps sobre receita de cartão.`
-                    : "Informe um percentual entre 0% e 100%."}
-                </span>
-              </div>
+              </FormField>
 
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="finops-ai-receipt" className="text-xs font-semibold text-foreground">
-                  Custo IA por comprovante
-                </label>
+              <FormField
+                label="Custo IA por comprovante"
+                htmlFor="finops-ai-receipt"
+                helperText="Custo unitário estimado por leitura."
+              >
                 <MoneyInput
                   id="finops-ai-receipt"
                   size="sm"
                   cents={aiReceiptCents}
                   onCentsChange={setAiReceiptCents}
                 />
-                <span className="text-[11px] text-muted-foreground">
-                  Custo unitário estimado por leitura.
-                </span>
-              </div>
+              </FormField>
 
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="finops-ai-batch" className="text-xs font-semibold text-foreground">
-                  Custo IA por lote
-                </label>
+              <FormField
+                label="Custo IA por lote"
+                htmlFor="finops-ai-batch"
+                helperText="Custo unitário estimado por chamada em lote."
+              >
                 <MoneyInput
                   id="finops-ai-batch"
                   size="sm"
                   cents={aiBatchCents}
                   onCentsChange={setAiBatchCents}
                 />
-                <span className="text-[11px] text-muted-foreground">
-                  Custo unitário estimado por chamada em lote.
-                </span>
-              </div>
+              </FormField>
 
-              <div className="flex flex-col gap-1.5 sm:col-span-2">
-                <label htmlFor="finops-fixed-infra" className="text-xs font-semibold text-foreground">
-                  Custo fixo mensal de infraestrutura
-                </label>
+              <FormField
+                label="Custo fixo mensal de infraestrutura"
+                htmlFor="finops-fixed-infra"
+                helperText="Soma de servidores, banco de dados, domínios e serviços fixos do mês."
+                className="sm:col-span-2"
+              >
                 <MoneyInput
                   id="finops-fixed-infra"
                   size="sm"
                   cents={fixedInfraCents}
                   onCentsChange={setFixedInfraCents}
                 />
-                <span className="text-[11px] text-muted-foreground">
-                  Soma de servidores, banco de dados, domínios e serviços fixos do mês.
-                </span>
-              </div>
+              </FormField>
 
               <div className="sm:col-span-2">
                 <Textarea
@@ -575,7 +569,7 @@ export function FinOpsOverviewPanel() {
             </div>
 
             {formError && (
-              <p role="alert" className="text-xs text-critical-strong font-medium">
+              <p role="alert" className="text-[11px] text-critical-strong font-medium">
                 {formError}
               </p>
             )}

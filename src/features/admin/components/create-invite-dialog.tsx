@@ -84,8 +84,8 @@ export function CreateInviteDialog({ open, onOpenChange }: CreateInviteDialogPro
       footer={
         <ModalFooter borderless>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button type="submit" form="create-invite-form" variant="default" sensoryIntent={false} disabled={createInviteMutation.isPending} className="gap-1.5">
-            <Plus className="size-4" aria-hidden="true" />
+          <Button type="submit" form="create-invite-form" variant="default" sensoryIntent={false} disabled={createInviteMutation.isPending}>
+            <Plus aria-hidden="true" />
             <span>{createInviteMutation.isPending ? "Criando…" : "Salvar Convite"}</span>
           </Button>
         </ModalFooter>
@@ -96,41 +96,44 @@ export function CreateInviteDialog({ open, onOpenChange }: CreateInviteDialogPro
           <div className="flex items-center gap-2">
             <Input id="invite-code" type="text" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} required className="font-mono uppercase text-base sm:text-sm font-bold" />
             <Button type="button" variant="outline" size="icon" onClick={() => setCode(generateInviteCode())} aria-label="Gerar outro código aleatório" title="Gerar outro código aleatório">
-              <Sparkles className="size-4" aria-hidden="true" />
+              <Sparkles aria-hidden="true" />
             </Button>
             <Button type="button" variant="outline" size="icon" sensoryIntent="selection" onClick={handleCopyCode} aria-label="Copiar código" title="Copiar código">
-              <Copy className="size-4" aria-hidden="true" />
+              <Copy aria-hidden="true" />
             </Button>
           </div>
         </FormField>
 
-        <div className="p-3.5 rounded-xl border border-border/80 bg-surface">
-          <FormField
-            label={<span className="flex items-center gap-2"><KeyRound className="size-4 text-muted-foreground" aria-hidden="true" />Plano / Tier Atribuído ao Usuário</span>}
-            htmlFor="invite-tier"
-            helperText="Define o tier padrão que será ativado na conta do usuário ao resgatar o código."
-          >
-            <Select
-              id="invite-tier"
-              value={targetTier}
-              onValueChange={(v) => setTargetTier(v as SubscriptionTier)}
-              options={[
-                { value: "trial", label: "Trial Pro (Período de Teste)" },
-                { value: "lifetime", label: "Plano Vitalício VIP (Acesso Permanente)" },
-                { value: "pro_annual", label: "Plano Pro Anual" },
-                { value: "pro_monthly", label: "Plano Pro Mensal" },
-              ]}
-            />
-          </FormField>
+        <div className="p-3.5 rounded-xl border border-border/80 bg-surface shadow-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <FormField
+              label={<span className="flex items-center gap-2"><KeyRound className="size-4 text-muted-foreground" aria-hidden="true" />Plano / Tier Atribuído ao Usuário</span>}
+              htmlFor="invite-tier"
+              helperText="Define o tier padrão que será ativado na conta do usuário ao resgatar o código."
+              className={targetTier === "trial" ? undefined : "sm:col-span-2"}
+            >
+              <Select
+                id="invite-tier"
+                value={targetTier}
+                onValueChange={(v) => setTargetTier(v as SubscriptionTier)}
+                options={[
+                  { value: "trial", label: "Trial Pro (Período de Teste)" },
+                  { value: "lifetime", label: "Plano Vitalício VIP (Acesso Permanente)" },
+                  { value: "pro_annual", label: "Plano Pro Anual" },
+                  { value: "pro_monthly", label: "Plano Pro Mensal" },
+                ]}
+              />
+            </FormField>
+
+            {targetTier === "trial" && (
+              <FormField label="Dias de Teste (Trial Estendido)" htmlFor="invite-trial-days" helperText="Padrão: 30 dias">
+                <NumericInput id="invite-trial-days" inputMode="numeric" maxLength={3} value={customTrialDays} onValueChange={(v) => setCustomTrialDays(v.replace(/\D/g, ""))} placeholder="30" />
+              </FormField>
+            )}
+          </div>
         </div>
 
-        {targetTier === "trial" && (
-          <FormField label="Dias de Teste (Trial Estendido)" htmlFor="invite-trial-days" helperText="Padrão: 30 dias">
-            <NumericInput id="invite-trial-days" inputMode="numeric" maxLength={3} value={customTrialDays} onValueChange={(v) => setCustomTrialDays(v.replace(/\D/g, ""))} placeholder="30" />
-          </FormField>
-        )}
-
-        <div className="flex flex-col gap-2 p-3.5 rounded-xl border border-border/80 bg-surface">
+        <div className="flex flex-col gap-2 p-3.5 rounded-xl border border-border/80 bg-surface shadow-xs">
           <div className="flex items-center gap-2">
             <Checkbox id="customize-modules" checked={customizeModules} onCheckedChange={(c) => setCustomizeModules(Boolean(c))} />
             <label htmlFor="customize-modules" className="text-xs font-semibold text-foreground cursor-pointer select-none">Configurar Permissões Modulares Específicas</label>

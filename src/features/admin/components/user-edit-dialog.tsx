@@ -188,8 +188,8 @@ function UserEditDialogContent({ user, open, onOpenChange }: { user: AdminUserRo
       footer={
         <ModalFooter borderless>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Fechar</Button>
-          <Button type="submit" form="user-edit-form" variant="default" sensoryIntent={false} disabled={updateStatusMutation.isPending || setRoleMutation.isPending} className="gap-1.5">
-            <UserCheck className="size-4" aria-hidden="true" />
+          <Button type="submit" form="user-edit-form" variant="default" sensoryIntent={false} disabled={updateStatusMutation.isPending || setRoleMutation.isPending}>
+            <UserCheck aria-hidden="true" />
             <span>Salvar Status &amp; Cargo</span>
           </Button>
         </ModalFooter>
@@ -306,6 +306,7 @@ function UserEditDialogContent({ user, open, onOpenChange }: { user: AdminUserRo
         cancelLabel="Cancelar"
         variant="destructive"
         confirmPending={deleteUserMutation.isPending}
+        elevated
         onConfirm={async () => {
           try {
             await deleteUserMutation.mutateAsync({ targetUserId: user.id });

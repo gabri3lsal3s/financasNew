@@ -113,8 +113,8 @@ export function UserCreateDialog({ open, onOpenChange }: UserCreateDialogProps) 
         ) : (
           <ModalFooter borderless>
             <Button type="button" variant="outline" onClick={handleClose}>Cancelar</Button>
-            <Button type="submit" form="user-create-form" variant="default" sensoryIntent={false} disabled={provisionMutation.isPending || !name.trim() || !email.trim()} className="gap-1.5">
-              <UserPlus className="size-4" aria-hidden="true" />
+            <Button type="submit" form="user-create-form" variant="default" sensoryIntent={false} disabled={provisionMutation.isPending || !name.trim() || !email.trim()}>
+              <UserPlus aria-hidden="true" />
               <span>{provisionMutation.isPending ? "Provisionando…" : "Cadastrar e Gerar Link"}</span>
             </Button>
           </ModalFooter>
@@ -126,7 +126,7 @@ export function UserCreateDialog({ open, onOpenChange }: UserCreateDialogProps) 
           <Alert variant="success">
             A conta para <strong>{createdResult.email}</strong> está pronta e vinculada com segurança no banco de dados.
           </Alert>
-          <div className="rounded-xl border border-border/80 bg-muted/40 p-4 flex flex-col gap-3">
+          <div className="rounded-xl border border-border/80 bg-surface p-4 flex flex-col gap-3 shadow-xs">
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                 <KeyRound className="size-3.5 text-primary-strong" aria-hidden="true" />
@@ -138,8 +138,8 @@ export function UserCreateDialog({ open, onOpenChange }: UserCreateDialogProps) 
               <div className="flex flex-col gap-2">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                   <Input readOnly value={createdResult.actionLink} aria-label="Link soberano de ativação" className="font-mono text-base sm:text-sm select-all bg-background" />
-                  <Button type="button" variant="outline" size="sm" sensoryIntent="selection" onClick={handleCopyLink} className="shrink-0 gap-1.5 h-10 px-3">
-                    {hasCopied ? <Check className="size-3.5 text-positive-strong" aria-hidden="true" /> : <Copy className="size-3.5" aria-hidden="true" />}
+                  <Button type="button" variant="outline" size="sm" sensoryIntent="selection" onClick={handleCopyLink} className="shrink-0">
+                    {hasCopied ? <Check className="text-positive-strong" aria-hidden="true" /> : <Copy aria-hidden="true" />}
                     <span>{hasCopied ? "Copiado" : "Copiar"}</span>
                   </Button>
                 </div>
