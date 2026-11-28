@@ -1,13 +1,24 @@
+import { z } from "zod";
 import { getSupabase } from "@/data/client";
 import { reportError } from "@/services/observability";
-import { callRpc, unwrapRpc } from "./client";
+import { callRpc, unwrapRpc, type RpcResult } from "./client";
 import type {
   AdminContactDetails,
   AdminPastDueSubscriptionRow,
   BroadcastAudience,
   BroadcastType,
   UserBroadcastNotification,
+  AdminConnectionsHealth,
+  AdminAiUsageRow,
+  AdminUserSupportDiagnostics,
+  AdminRetentionRadarRow,
 } from "@/types";
+import {
+  adminConnectionsHealthSchema,
+  adminAiUsageSummarySchema,
+  adminUserSupportDiagnosticsSchema,
+  adminRetentionRadarSchema,
+} from "@/domain/admin/schemas";
 
 /**
  * Consulta o mapa de funcionalidades ativas/resolvidas para o usuário atual.
@@ -127,14 +138,34 @@ export async function adminRemoveFeatureOverride(params: {
 export async function adminToggleGlobalFeature(params: {
   featureKey: string;
   enabled: boolean;
+  reason?: string | null;
 }): Promise<void> {
-  await unwrapRpc(
-    callRpc("admin_toggle_global_feature", {
-      p_feature_key: params.featureKey,
-      p_enabled: params.enabled,
-    }),
-    true,
-  );
+  const args = {
+    p_feature_key: params.featureKey,
+    p_enabled: params.enabled,
+    ...(params.reason === undefined ? {} : { p_reason: params.reason }),
+  };
+
+  await unwrapRpc(callRpc("admin_toggle_global_feature", args), true);
+}
+
+const globalFeatureImpactSchema = z.object({
+  active_users_total: z.number().int().nonnegative(),
+  explicit_overrides_count: z.number().int().nonnegative(),
+});
+
+export async function adminPreviewGlobalFeatureImpact(featureKey: string) {
+  // A função pode preceder a atualização dos tipos gerados do Supabase.
+  const response = await (getSupabase().rpc(
+    "admin_preview_global_feature_impact" as never,
+    { p_feature_key: featureKey } as never,
+  ) as unknown as PromiseLike<RpcResult<unknown>>);
+
+  if (z.object({ code: z.literal("PGRST202") }).safeParse(response.error).success) {
+    return null;
+  }
+
+  return globalFeatureImpactSchema.parse(await unwrapRpc(Promise.resolve(response)));
 }
 
 /**
@@ -472,4 +503,180 @@ export async function adminListPastDueSubscriptions(): Promise<AdminPastDueSubsc
   return unwrapRpc(
     callRpc("admin_list_past_due_subscriptions" as never, {} as never),
   ) as Promise<AdminPastDueSubscriptionRow[]>;
+}
+
+/**
+ * Consulta passiva da saúde das conexões e integrações do sistema (sem chamadas externas).
+ */
+export async function adminGetConnectionsHealth(): Promise<AdminConnectionsHealth> {
+  const raw = await unwrapRpc(
+    callRpc("admin_get_connections_health" as never, {} as never),
+  );
+  return adminConnectionsHealthSchema.parse(raw);
+}
+
+export interface AdminAiUsageSummaryParams {
+  periodMonth?: string | null;
+  limit?: number;
+  offset?: number;
+}
+
+/**
+ * Lista paginada do consumo de IA por usuário no mês de referência.
+ */
+export async function adminGetAiUsageSummary(
+  params: AdminAiUsageSummaryParams = {},
+): Promise<AdminAiUsageRow[]> {
+  const raw = await unwrapRpc(
+    callRpc("admin_get_ai_usage_summary" as never, {
+      p_period_month: params.periodMonth ?? null,
+      p_limit: params.limit ?? 50,
+      p_offset: params.offset ?? 0,
+    } as never),
+  );
+  return adminAiUsageSummarySchema.parse(raw ?? []);
+}
+
+/**
+ * Consulta diagnósticos passivos de suporte de um usuário (dispositivos, push e cota de IA).
+ */
+export async function adminGetUserSupportDiagnostics(
+  userId: string,
+): Promise<AdminUserSupportDiagnostics> {
+  const raw = await unwrapRpc(
+    callRpc("admin_get_user_support_diagnostics" as never, {
+      p_user_id: userId,
+    } as never),
+  );
+  return adminUserSupportDiagnosticsSchema.parse(raw);
+}
+
+/**
+ * Lista usuários em risco de retenção cruzando assinaturas, dispositivos e tickets.
+ */
+export async function adminGetRetentionRadar(
+  limit = 20,
+): Promise<AdminRetentionRadarRow[]> {
+  const raw = await unwrapRpc(
+    callRpc("admin_get_retention_radar" as never, {
+      p_limit: limit,
+    } as never),
+  );
+  return adminRetentionRadarSchema.parse(raw ?? []);
+}
+
+const periodMonthSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
+const nonNegativeCount = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
+const dbCents = nonNegativeCount.max(2_147_483_647);
+const finopsParamsInputSchema = z.object({
+  period_month: periodMonthSchema,
+  asaas_pix_fee_cents: dbCents,
+  asaas_card_percent_bps: nonNegativeCount.max(10_000),
+  ai_receipt_unit_cost_cents: dbCents,
+  ai_batch_unit_cost_cents: dbCents,
+  fixed_infra_cents: dbCents,
+  notes: z.string().trim().nullable(),
+});
+
+const finopsParamsSchema = finopsParamsInputSchema.extend({
+  updated_by: z.string().uuid().nullable(),
+  updated_at: z.string().nullable(),
+  configured: z.boolean(),
+});
+
+const billingFinopsOverviewSchema = z.object({
+  period_month: periodMonthSchema,
+  timezone: z.literal("America/Bahia"),
+  window_start: z.string(),
+  window_end: z.string(),
+  params: finopsParamsSchema,
+  payments: z.object({
+    payments_count: nonNegativeCount,
+    gross_revenue_cents: nonNegativeCount,
+    pix_count: nonNegativeCount,
+    pix_revenue_cents: nonNegativeCount,
+    card_count: nonNegativeCount,
+    card_revenue_cents: nonNegativeCount,
+    other_count: nonNegativeCount,
+  }),
+  webhooks: z.object({ events_count: nonNegativeCount, failures_count: nonNegativeCount }),
+  ai_quotas: z.object({
+    active_users_count: nonNegativeCount,
+    total_receipt_calls: nonNegativeCount,
+    total_batch_calls: nonNegativeCount,
+  }),
+  emails: z.object({ sent_count: nonNegativeCount, failed_count: nonNegativeCount }),
+});
+
+const resetAiQuotaInputSchema = z.object({
+  userId: z.string().uuid(),
+  bucket: z.enum(["receipt_calls", "batch_calls", "all"]),
+  reason: z.string().trim().min(3),
+});
+
+const resetAiQuotaResultSchema = z.object({
+  user_id: z.string().uuid(),
+  period_month: periodMonthSchema,
+  bucket: resetAiQuotaInputSchema.shape.bucket,
+  reset_applied: z.boolean(),
+  receipt_calls_month: nonNegativeCount,
+  receipt_calls_day: nonNegativeCount,
+  batch_calls_month: nonNegativeCount,
+  batch_calls_day: nonNegativeCount,
+});
+
+export type AdminFinopsParamsInput = z.input<typeof finopsParamsInputSchema>;
+export type AdminFinopsParams = z.output<typeof finopsParamsSchema>;
+export type AdminBillingFinopsOverview = z.output<typeof billingFinopsOverviewSchema>;
+export type AdminResetAiQuotaInput = z.input<typeof resetAiQuotaInputSchema>;
+export type AdminResetAiQuotaResult = z.output<typeof resetAiQuotaResultSchema>;
+
+export async function adminGetFinopsMonthlyParams(periodMonth?: string): Promise<AdminFinopsParams> {
+  const period = periodMonthSchema.optional().parse(periodMonth);
+  const raw = await unwrapRpc(
+    callRpc("admin_get_finops_monthly_params" as never, { p_period_month: period ?? null } as never),
+  );
+  return finopsParamsSchema.parse(raw);
+}
+
+export async function adminUpsertFinopsMonthlyParams(
+  input: AdminFinopsParamsInput,
+): Promise<AdminFinopsParams> {
+  const params = finopsParamsInputSchema.parse(input);
+  const raw = await unwrapRpc(
+    callRpc("admin_upsert_finops_monthly_params" as never, {
+      p_period_month: params.period_month,
+      p_asaas_pix_fee_cents: params.asaas_pix_fee_cents,
+      p_asaas_card_percent_bps: params.asaas_card_percent_bps,
+      p_ai_receipt_unit_cost_cents: params.ai_receipt_unit_cost_cents,
+      p_ai_batch_unit_cost_cents: params.ai_batch_unit_cost_cents,
+      p_fixed_infra_cents: params.fixed_infra_cents,
+      p_notes: params.notes,
+    } as never),
+  );
+  return finopsParamsSchema.parse(raw);
+}
+
+export async function adminGetBillingFinopsOverview(
+  periodMonth?: string,
+): Promise<AdminBillingFinopsOverview> {
+  const period = periodMonthSchema.optional().parse(periodMonth);
+  const raw = await unwrapRpc(
+    callRpc("admin_get_billing_finops_overview" as never, { p_period_month: period ?? null } as never),
+  );
+  return billingFinopsOverviewSchema.parse(raw);
+}
+
+export async function adminResetUserAiQuota(
+  input: AdminResetAiQuotaInput,
+): Promise<AdminResetAiQuotaResult> {
+  const params = resetAiQuotaInputSchema.parse(input);
+  const raw = await unwrapRpc(
+    callRpc("admin_reset_user_ai_quota" as never, {
+      p_user_id: params.userId,
+      p_bucket: params.bucket,
+      p_reason: params.reason,
+    } as never),
+  );
+  return resetAiQuotaResultSchema.parse(raw);
 }

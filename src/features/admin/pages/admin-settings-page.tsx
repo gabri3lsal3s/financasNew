@@ -1,18 +1,31 @@
 import { useMemo } from "react";
 import { useSearchParams } from "react-router";
-import { AlertCircle, Bot, FileSpreadsheet, Layers, Smartphone } from "lucide-react";
+import { Activity, AlertCircle, Bot, FileSpreadsheet, Layers, Smartphone } from "lucide-react";
 import { Alert, Badge, Button, EmptyState, Skeleton, Tabs } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
+import { ALL_SYSTEM_MODULES } from "@/domain/admin";
+import { AdminHelpTip, AdminPageGuide } from "../components/admin-help-tip";
 import { useAdminFeatures, useAdminStatementBlueprints } from "@/state";
-import { FeatureToggleCard, StatementBlueprintsCard, TelegramSettingsCard } from "../components";
+import { ConnectionsHealthPanel, FeatureToggleCard, StatementBlueprintsCard, TelegramSettingsCard } from "../components";
 
-type SettingsTabValue = "modules" | "apk" | "telegram" | "blueprints";
-const VALID_TABS = new Set<SettingsTabValue>(["modules", "apk", "telegram", "blueprints"]);
+const MODULE_GROUPS = [
+  { key: "core", label: "Núcleo" },
+  { key: "wealth", label: "Patrimônio" },
+  { key: "expansions", label: "Expansões" },
+  { key: "ai_and_beta", label: "IA & Beta" },
+] as const;
+
+const MODULE_CATEGORIES = new Map<string, string>(
+  ALL_SYSTEM_MODULES.map(({ key, category }) => [key, category]),
+);
+
+const SETTINGS_TABS = ["modulos", "apk", "telegram", "blueprints", "conexoes"] as const;
 
 export function AdminSettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const rawTab = searchParams.get("tab") as SettingsTabValue | null;
-  const activeTab: SettingsTabValue = rawTab && VALID_TABS.has(rawTab) ? rawTab : "modules";
+  const rawTab = searchParams.get("tab");
+  const tab = rawTab === "modules" ? "modulos" : rawTab;
+  const activeTab = SETTINGS_TABS.find((value) => value === tab) ?? "modulos";
 
   const featuresQuery = useAdminFeatures();
   const blueprintsQuery = useAdminStatementBlueprints();
@@ -25,23 +38,22 @@ export function AdminSettingsPage() {
 
   const apkFreeFeature = features.find((f) => f.key === "apk_access_free");
   const apkProFeature = features.find((f) => f.key === "apk_access_pro");
-  const bankNotificationFeature = features.find((f) => f.key === "bank_notification_listener");
-  const coreFeatures = features.filter(
-    (f) =>
-      f.key !== "apk_access_free" &&
-      f.key !== "apk_access_pro" &&
-      f.key !== "bank_notification_listener",
-  );
+  const moduleFeatures = features.filter((feature) => MODULE_CATEGORIES.get(feature.key) !== "apk_distribution");
+  const moduleGroups = MODULE_GROUPS.map((group) => ({
+    ...group,
+    features: moduleFeatures.filter((feature) => {
+      const category = MODULE_CATEGORIES.get(feature.key);
+      if (category) return category === group.key;
+      if (["family", "trips", "business"].includes(feature.key)) return group.key === "expansions";
+      return group.key === "core";
+    }),
+  }));
 
   const handleTabChange = (nextTab: string) => {
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
-        if (nextTab === "modules") {
-          next.delete("tab");
-        } else {
-          next.set("tab", nextTab);
-        }
+        next.set("tab", nextTab);
         return next;
       },
       { replace: true },
@@ -54,16 +66,24 @@ export function AdminSettingsPage() {
         <div className="flex items-center gap-2.5">
           <Layers className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
           <div>
-            <h2 className="text-base font-bold text-foreground">
-              Módulos &amp; Kill-Switches Globais
-            </h2>
+            <div className="flex items-center gap-1">
+              <h2 className="text-base font-bold text-foreground">
+                Módulos e controles globais
+              </h2>
+              <AdminHelpTip
+                title="Kill-switch global"
+                what="Controle que permite desligar um módulo para toda a plataforma."
+                when="Use quando uma falha exigir a interrupção do módulo até a correção."
+                impact="O módulo fica indisponível enquanto o controle estiver desligado."
+              />
+            </div>
             <p className="text-xs text-muted-foreground">
               Desativação emergencial instantânea de módulos para toda a plataforma
             </p>
           </div>
         </div>
         <Badge variant="muted" size="xs">
-          {coreFeatures.length} módulos cadastrados
+          {moduleFeatures.length} módulos cadastrados
         </Badge>
       </div>
 
@@ -102,15 +122,20 @@ export function AdminSettingsPage() {
             </Button>
           }
         />
-      ) : coreFeatures.length === 0 ? (
+      ) : moduleFeatures.length === 0 ? (
         <EmptyState
           title="Nenhum módulo encontrado"
           description="O catálogo de módulos do sistema ainda não foi inicializado."
         />
       ) : (
-        <div className="flex flex-col gap-3">
-          {coreFeatures.map((feature) => (
-            <FeatureToggleCard key={feature.key} feature={feature} />
+        <div className="flex flex-col gap-5">
+          {moduleGroups.filter((group) => group.features.length > 0).map((group) => (
+            <div key={group.key} className="flex flex-col gap-2.5">
+              <h3 className="text-sm font-semibold text-foreground">{group.label}</h3>
+              {group.features.map((feature) => (
+                <FeatureToggleCard key={feature.key} feature={feature} />
+              ))}
+            </div>
           ))}
         </div>
       )}
@@ -158,26 +183,10 @@ export function AdminSettingsPage() {
           }
         />
       ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {apkProFeature && <FeatureToggleCard feature={apkProFeature} />}
-            {apkFreeFeature && <FeatureToggleCard feature={apkFreeFeature} />}
-          </div>
-
-          {bankNotificationFeature && (
-            <div className="flex flex-col gap-2 pt-2 border-t border-border/80">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-semibold text-foreground">
-                  Assistente de Notificações Bancárias (Captura em Segundo Plano)
-                </span>
-                <Badge variant="muted" size="xs">
-                  Restrição Granular
-                </Badge>
-              </div>
-              <FeatureToggleCard feature={bankNotificationFeature} />
-            </div>
-          )}
-        </>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {apkProFeature && <FeatureToggleCard feature={apkProFeature} />}
+          {apkFreeFeature && <FeatureToggleCard feature={apkFreeFeature} />}
+        </div>
       )}
     </section>
   );
@@ -185,8 +194,9 @@ export function AdminSettingsPage() {
   return (
     <div className="flex flex-col gap-6 w-full min-w-0">
       <PageHeader
+        utilityActions={<AdminPageGuide page="settings" />}
         title="Configurações"
-        description="Módulos globais, APK Android, Telegram e layouts de fatura"
+        description="Gerencie módulos e acompanhe as conexões"
       />
 
       <Tabs
@@ -195,9 +205,8 @@ export function AdminSettingsPage() {
         ariaLabel="Seções de configuração da plataforma"
         items={[
           {
-            value: "modules",
-            label: "Módulos & Kill-Switches",
-            shortLabel: "Módulos",
+            value: "modulos",
+            label: "Módulos",
             icon: <Layers aria-hidden="true" />,
             content: modulesContent,
           },
@@ -225,7 +234,26 @@ export function AdminSettingsPage() {
                   {pendingBlueprintsCount}
                 </Badge>
               ) : undefined,
-            content: <StatementBlueprintsCard />,
+            content: (
+              <div className="space-y-3">
+                <div className="flex items-center gap-1 text-xs font-semibold text-foreground">
+                  Como funcionam os layouts
+                  <AdminHelpTip
+                    title="Blueprints"
+                    what="Modelos que ajudam a reconhecer a estrutura de faturas na importação."
+                    when="Revise um layout pendente antes de aprová-lo para uso global."
+                    impact="Layouts aprovados podem ser reutilizados nas próximas importações compatíveis."
+                  />
+                </div>
+                <StatementBlueprintsCard />
+              </div>
+            ),
+          },
+          {
+            value: "conexoes",
+            label: "Conexões",
+            icon: <Activity aria-hidden="true" />,
+            content: <ConnectionsHealthPanel />,
           },
         ]}
       />

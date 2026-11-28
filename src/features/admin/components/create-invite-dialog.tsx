@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { Copy, KeyRound, Plus, ShieldAlert, Sparkles } from "lucide-react";
 import { Button, Checkbox, DatePicker, FormField, Input, Modal, ModalFooter, NumericInput, Select } from "@/components/ui";
-import { generateInviteCode } from "@/domain/admin";
+import { CORE_MODULES, generateInviteCode } from "@/domain/admin";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import { useAdminCreateModularInvite } from "@/state";
@@ -13,17 +13,7 @@ export interface CreateInviteDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const INVITE_MODULES = [
-  { key: "overview", label: "Painel Início (Visão Geral)", desc: "Dashboard consolidado, KPIs e fluxo financeiro" },
-  { key: "transactions", label: "Transações & Lançamentos", desc: "Receitas, despesas e extrato" },
-  { key: "cards", label: "Cartões de Crédito", desc: "Faturas, limites e carteira 3D" },
-  { key: "debts", label: "Dívidas & Empréstimos", desc: "Contas a pagar, receber e contratos" },
-  { key: "budgets", label: "Orçamentos & Metas", desc: "Limites de gastos e metas de renda" },
-  { key: "investments", label: "Investimentos & Carteira", desc: "Posição, proventos e rebalanceamento" },
-  { key: "reports", label: "Relatórios Executivos", desc: "DRE, balanço patrimonial e fiscal" },
-  { key: "insights", label: "Inteligência Financeira", desc: "Radar de insights e diagnósticos" },
-  { key: "reminders", label: "Central de Lembretes", desc: "Avisos e pendências de vencimento" },
-] as const;
+const INVITE_MODULES = CORE_MODULES;
 
 /** Modal de criação de convites de acesso com tier e whitelisting modular opcional. */
 export function CreateInviteDialog({ open, onOpenChange }: CreateInviteDialogProps) {

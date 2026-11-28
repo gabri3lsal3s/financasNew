@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { Crown, KeyRound, ShieldCheck, UserCheck } from "lucide-react";
+import { Activity, Crown, KeyRound, ShieldCheck, UserCheck } from "lucide-react";
 import { Button, ConfirmDialog, Modal, ModalFooter, Tabs } from "@/components/ui";
 import { canManageRole, canManageUserStatus } from "@/domain/admin";
 import { useAuth } from "@/hooks/use-auth";
@@ -25,6 +25,7 @@ import {
   UserPiiAuditVaultCard,
   UserSaasPlanSection,
   UserSuperadminSupportActions,
+  UserSupportDiagnosticsCard,
 } from "./user-edit";
 
 export interface UserEditDialogProps {
@@ -46,7 +47,10 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
 
 function UserEditDialogContent({ user, open, onOpenChange }: { user: AdminUserRow; open: boolean; onOpenChange: (open: boolean) => void }) {
   const { user: authUser } = useAuth();
-  const { role: currentUserRole, profile: currentProfile } = useUserAccess();
+  const { role: currentUserRole, profile: currentProfile, inspectedAccessSources } = useUserAccess(
+    undefined,
+    { inspectUserId: open ? user.id : undefined },
+  );
   const updateStatusMutation = useAdminUpdateUserStatus();
   const setRoleMutation = useAdminSetUserRole();
   const deleteUserMutation = useAdminDeleteUser();
@@ -105,6 +109,22 @@ function UserEditDialogContent({ user, open, onOpenChange }: { user: AdminUserRo
   const canEditStatus = canManageUserStatus(currentUserRole, targetRole);
   const canEditRole = canManageRole(currentUserRole, targetRole);
   const displayName = user.name || user.email;
+  const aiOverride = inspectedAccessSources?.overrides?.find((item) => item.feature_key === "ai_extraction");
+
+  const handleSetModulePermission = (moduleKey: string, accessLevel: ModuleAccessLevel) => {
+    const params = moduleKey === "ai_extraction"
+      ? { userId: user.id, featureKey: moduleKey, enabled: accessLevel !== "none" } as const
+      : { userId: user.id, moduleKey, accessLevel };
+    setModulePermissionMutation.mutateAsync(params).catch(() => undefined);
+  };
+
+  const handleRemoveModulePermission = (moduleKey: string) => {
+    const params = moduleKey === "ai_extraction" && aiOverride
+      ? { userId: user.id, featureKey: moduleKey } as const
+      : { userId: user.id, moduleKey };
+    removeModulePermissionMutation.mutateAsync(params).catch(() => undefined);
+  };
+
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -179,7 +199,6 @@ function UserEditDialogContent({ user, open, onOpenChange }: { user: AdminUserRo
         <Tabs
           value={activeTab}
           onValueChange={setActiveTab}
-          fullWidth
           forceMount
           ariaLabel="Seções de edição do usuário"
           items={[
@@ -217,16 +236,30 @@ function UserEditDialogContent({ user, open, onOpenChange }: { user: AdminUserRo
               icon: <KeyRound aria-hidden="true" />,
               content: (
                 <UserModulePermissionsMatrix
-                  effectiveSubStatus={effectiveSubStatus}
-                  hasAnyModuleOverride={userModulePermissions.length > 0}
+                  effectiveSubStatus={subscriptionQuery.data?.status ?? "active"}
+                  hasAnyModuleOverride={userModulePermissions.length > 0 || Boolean(aiOverride)}
                   hasCoreOverrides={coreOverrides.length > 0}
                   modulePermissionsMap={modulePermissionsMap}
+                  accessSources={inspectedAccessSources}
                   isQuickActionPending={isQuickActionPending}
                   isMutating={setModulePermissionMutation.isPending || removeModulePermissionMutation.isPending}
-                  onSetModulePermission={(moduleKey, accessLevel: ModuleAccessLevel) => void setModulePermissionMutation.mutateAsync({ userId: user.id, moduleKey, accessLevel })}
-                  onRemoveModulePermission={(moduleKey) => void removeModulePermissionMutation.mutateAsync({ userId: user.id, moduleKey })}
+                  onSetModulePermission={handleSetModulePermission}
+                  onRemoveModulePermission={handleRemoveModulePermission}
                   onQuickOnlyInvestments={() => void runQuickPreset(() => Promise.all(INVESTMENT_ONLY_PRESET.map((item) => setModulePermissionMutation.mutateAsync({ userId: user.id, moduleKey: item.moduleKey, accessLevel: item.accessLevel }))), "Apenas Investimentos configurado", `Usuário ${displayName} configurado em Apenas Investimentos. Modo Viagem e Familiar restritos; relatórios de carteira liberados.`)}
-                  onQuickRestorePlanDefaults={() => userModulePermissions.length > 0 && void runQuickPreset(() => Promise.all(userModulePermissions.map((p) => removeModulePermissionMutation.mutateAsync({ userId: user.id, moduleKey: p.module_key }))), "Padrão do plano restaurado", `Todas as permissões modulares de ${displayName} foram restauradas ao plano base.`)}
+                  onQuickRestorePlanDefaults={() => void runQuickPreset(
+                    () => Promise.all([
+                      ...userModulePermissions.map((permission) => removeModulePermissionMutation.mutateAsync({
+                        userId: user.id,
+                        moduleKey: permission.module_key,
+                      })),
+                      ...(aiOverride ? [removeModulePermissionMutation.mutateAsync({
+                        userId: user.id,
+                        featureKey: "ai_extraction",
+                      })] : []),
+                    ]),
+                    "Padrão do plano restaurado",
+                    `As permissões de ${displayName} voltaram ao plano base.`,
+                  )}
                 />
               ),
             },
@@ -254,6 +287,12 @@ function UserEditDialogContent({ user, open, onOpenChange }: { user: AdminUserRo
                   {isSuperadminActor && <UserSuperadminSupportActions user={user} revealContact={revealContact} />}
                 </div>
               ),
+            },
+            {
+              value: "diagnostics",
+              label: "Raio-X",
+              icon: <Activity aria-hidden="true" />,
+              content: <UserSupportDiagnosticsCard userId={user.id} enabled={open && activeTab === "diagnostics"} />,
             },
           ]}
         />

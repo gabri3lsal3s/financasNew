@@ -5,7 +5,6 @@ export { AdminNotificationsPage } from "./admin-notifications-page";
 export { AdminBillingPage } from "./admin-billing-page";
 export { AdminTicketsPage } from "./admin-tickets-page";
 export { AdminInvitesPage } from "./admin-invites-page";
-export { AdminBackupsPage } from "./admin-backups-page";
 export { AdminSecurityPage } from "./admin-security-page";
 export { AdminSettingsPage } from "./admin-settings-page";
 export { InvitesTab } from "./invites-tab";

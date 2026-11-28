@@ -25,3 +25,4 @@ export {
   UserSuperadminSupportActions,
   type UserSuperadminSupportActionsProps,
 } from "./user-superadmin-support-actions";
+export { UserSupportDiagnosticsCard } from "./user-support-diagnostics-card";
