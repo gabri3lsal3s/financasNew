@@ -123,17 +123,17 @@ export function FinOpsOverviewPanel() {
 
   return (
     <section aria-label="Visão FinOps Mensal" className="flex flex-col gap-5 w-full min-w-0">
-      <div className="flex flex-col sm:flex-row gap-2.5 sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-2 min-w-0">
-          <Calculator className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-          <h2 className="text-base font-bold text-foreground">Receita & Custos (FinOps)</h2>
-          <Badge variant={confidenceMeta.variant} size="sm">
-            {confidenceMeta.label}
-          </Badge>
-          {overview && !overview.params.configured && (
-            <Badge variant="muted" size="sm">
-              Parâmetros pendentes
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Calculator className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <h2 className="text-base font-bold text-foreground">Receita & Custos (FinOps)</h2>
+            <Badge variant={confidenceMeta.variant} size="sm">
+              {confidenceMeta.label}
             </Badge>
+          </div>
+          {overview && !overview.params.configured && (
+            <p className="text-xs text-muted-foreground">Parâmetros pendentes</p>
           )}
         </div>
 
@@ -213,7 +213,7 @@ export function FinOpsOverviewPanel() {
               </div>
             ))}
           </KpiGrid>
-          <KpiGrid columns={3}>
+          <KpiGrid columns={2}>
             {Array.from({ length: 3 }).map((_, index) => (
               <div
                 key={index}
@@ -299,7 +299,7 @@ export function FinOpsOverviewPanel() {
             />
           </KpiGrid>
 
-          <KpiGrid columns={3}>
+          <KpiGrid columns={2}>
             <KpiCard
               label="Custo variável de IA"
               cents={computed.result.aiVariableCostCents}
@@ -342,8 +342,8 @@ export function FinOpsOverviewPanel() {
             />
           </KpiGrid>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="rounded-xl border border-border/80 bg-surface p-4 shadow-xs flex flex-col gap-2">
+          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+            <div className="flex flex-col gap-2 rounded-2xl border border-border/80 bg-surface p-4 shadow-xs">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <Receipt className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
@@ -371,7 +371,7 @@ export function FinOpsOverviewPanel() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-border/80 bg-surface p-4 shadow-xs flex flex-col gap-2">
+            <div className="flex flex-col gap-2 rounded-2xl border border-border/80 bg-surface p-4 shadow-xs">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <Webhook className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
@@ -389,7 +389,7 @@ export function FinOpsOverviewPanel() {
               </p>
             </div>
 
-            <div className="rounded-xl border border-border/80 bg-surface p-4 shadow-xs flex flex-col gap-2">
+            <div className="flex flex-col gap-2 rounded-2xl border border-border/80 bg-surface p-4 shadow-xs">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <Mail className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
@@ -406,45 +406,44 @@ export function FinOpsOverviewPanel() {
                 {overview.emails.sent_count} envio(s) concluídos no período.
               </p>
             </div>
-          </div>
-
-          <div className="rounded-xl border border-border/80 bg-surface p-4 shadow-xs flex flex-col gap-2">
-            <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2">
-                <Settings2 className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                <span className="text-xs font-semibold text-foreground">Parâmetros vigentes do mês</span>
+            <div className="flex flex-col gap-2 rounded-2xl border border-border/80 bg-surface p-4 shadow-xs">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2">
+                  <Settings2 className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <span className="text-xs font-semibold text-foreground">Parâmetros vigentes do mês</span>
+                </div>
+                {overview.params.updated_at && (
+                  <span className="text-[11px] text-muted-foreground">
+                    Atualizado em {formatDateTimeBR(overview.params.updated_at)}
+                  </span>
+                )}
               </div>
-              {overview.params.updated_at && (
-                <span className="text-[11px] text-muted-foreground">
-                  Atualizado em {formatDateTimeBR(overview.params.updated_at)}
-                </span>
+              <div className="grid grid-cols-1 gap-3 text-xs sm:grid-cols-2">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[11px] text-muted-foreground">Taxa fixa Pix</span>
+                  <MoneyText cents={overview.params.asaas_pix_fee_cents} tone="default" className="text-xs font-semibold" />
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[11px] text-muted-foreground">Taxa percentual cartão</span>
+                  <span className="font-semibold text-foreground tabular-nums">
+                    {formatPercent(overview.params.asaas_card_percent_bps / 100, 2)}%
+                  </span>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[11px] text-muted-foreground">Custo IA (Comprovante)</span>
+                  <MoneyText cents={overview.params.ai_receipt_unit_cost_cents} tone="default" className="text-xs font-semibold" />
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[11px] text-muted-foreground">Custo IA (Lote)</span>
+                  <MoneyText cents={overview.params.ai_batch_unit_cost_cents} tone="default" className="text-xs font-semibold" />
+                </div>
+              </div>
+              {overview.params.notes && (
+                <p className="border-t border-border/80 pt-2 text-[11px] text-muted-foreground">
+                  Observação: {overview.params.notes}
+                </p>
               )}
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[11px] text-muted-foreground">Taxa fixa Pix</span>
-                <MoneyText cents={overview.params.asaas_pix_fee_cents} tone="default" className="text-xs font-semibold" />
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[11px] text-muted-foreground">Taxa percentual cartão</span>
-                <span className="font-semibold text-foreground tabular-nums">
-                  {formatPercent(overview.params.asaas_card_percent_bps / 100, 2)}%
-                </span>
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[11px] text-muted-foreground">Custo IA (Comprovante)</span>
-                <MoneyText cents={overview.params.ai_receipt_unit_cost_cents} tone="default" className="text-xs font-semibold" />
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[11px] text-muted-foreground">Custo IA (Lote)</span>
-                <MoneyText cents={overview.params.ai_batch_unit_cost_cents} tone="default" className="text-xs font-semibold" />
-              </div>
-            </div>
-            {overview.params.notes && (
-              <p className="text-[11px] text-muted-foreground border-t border-border/80 pt-2">
-                Observação: {overview.params.notes}
-              </p>
-            )}
           </div>
         </>
       )}

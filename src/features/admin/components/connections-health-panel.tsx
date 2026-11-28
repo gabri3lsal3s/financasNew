@@ -125,9 +125,12 @@ export function ConnectionsHealthPanel() {
         ) : query.isError ? (
           <ErrorState message={getErrorMessage(query.error)} onRetry={() => void query.refetch()} />
         ) : query.data ? (
-          <ul className="divide-y divide-border/80">
+          <ul className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
             {getServiceEvidence(query.data).map(({ name, status, source, detail, timestamp }) => (
-              <li key={name} className="flex flex-col gap-1 py-2.5 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+              <li
+                key={name}
+                className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-surface p-4 shadow-xs sm:flex-row sm:items-start sm:justify-between"
+              >
                 <div className="min-w-0">
                   <p className="text-sm font-semibold">{name}</p>
                   <p className="break-words text-xs text-muted-foreground">{detail}</p>

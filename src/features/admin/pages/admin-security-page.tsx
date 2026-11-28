@@ -66,7 +66,7 @@ export function AdminSecurityPage() {
       <PageHeader
         utilityActions={<AdminPageGuide page="security" />}
         title="Auditoria"
-        description="Trilha de eventos administrativos e exportação de logs"
+        description="Eventos administrativos e exportações"
         actions={
           <>
             <Button

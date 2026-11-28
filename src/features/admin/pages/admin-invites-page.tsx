@@ -7,8 +7,8 @@ export function AdminInvitesPage() {
     <div className="flex flex-col gap-6 w-full min-w-0">
       <PageHeader
         utilityActions={<AdminPageGuide page="invites" />}
-        title="Convites & Allowlist"
-        description="Tokens de acesso antecipado, cotas e planos"
+        title="Convites"
+        description="Acessos, cotas e planos"
       />
 
       <InvitesTab />

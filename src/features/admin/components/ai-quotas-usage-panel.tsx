@@ -108,16 +108,16 @@ export function AiQuotasUsagePanel() {
 
   return (
     <section aria-label="Cotas e Uso de IA" className="flex flex-col gap-5 w-full min-w-0">
-      <div className="flex flex-col sm:flex-row gap-2.5 sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-2 min-w-0">
-          <Cpu className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-          <h2 className="text-base font-bold text-foreground">Cotas & Uso de IA</h2>
-          <Badge variant="muted" size="sm">
-            Comprov.: {RECEIPT_LIMITS.day}/dia e {RECEIPT_LIMITS.month}/mês
-          </Badge>
-          <Badge variant="muted" size="sm">
-            Lote: {BATCH_LIMITS.day}/dia e {BATCH_LIMITS.month}/mês
-          </Badge>
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <Cpu className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <h2 className="text-base font-bold text-foreground">Cotas & Uso de IA</h2>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Limites: {RECEIPT_LIMITS.day}/dia · {RECEIPT_LIMITS.month}/mês (comprovantes) ·{" "}
+            {BATCH_LIMITS.day}/dia · {BATCH_LIMITS.month}/mês (lote)
+          </p>
         </div>
 
         <div className="inline-flex items-center self-start sm:self-auto rounded-lg border border-border/80 bg-surface shadow-xs">
@@ -165,7 +165,7 @@ export function AiQuotasUsagePanel() {
         />
       ) : usageQuery.isLoading ? (
         <div className="flex flex-col gap-4">
-          <KpiGrid columns={3}>
+          <KpiGrid columns={2}>
             {Array.from({ length: 3 }).map((_, index) => (
               <div
                 key={index}
@@ -180,7 +180,7 @@ export function AiQuotasUsagePanel() {
         </div>
       ) : (
         <>
-          <KpiGrid columns={3}>
+          <KpiGrid columns={2}>
             <KpiCard
               label="Usuários com uso"
               value={String(totals.usersCount)}

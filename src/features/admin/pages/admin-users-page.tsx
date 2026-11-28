@@ -59,8 +59,8 @@ export function AdminUsersPage() {
     <div className="flex flex-col gap-6 w-full min-w-0">
       <PageHeader
         utilityActions={<AdminPageGuide page="users" />}
-        title="Gestão de Usuários"
-        description="Cadastro, planos e permissões modulares"
+        title="Usuários"
+        description="Cadastros, planos e permissões"
         badge={<Badge variant="muted" size="sm">{totalCount} usuários</Badge>}
         actions={
           isSuperadmin ? (

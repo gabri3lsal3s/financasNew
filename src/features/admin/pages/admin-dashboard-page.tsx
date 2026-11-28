@@ -99,7 +99,7 @@ export function AdminDashboardPage() {
   return (
     <div className="flex flex-col gap-6 w-full min-w-0">
       <PageHeader
-        title="Visão geral"
+        title="Visão Geral"
         description="Pendências e indicadores da operação"
         utilityActions={<AdminPageGuide page="dashboard" />}
         actions={
