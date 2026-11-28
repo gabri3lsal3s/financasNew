@@ -33,6 +33,6 @@ describe("AdminUsersPage", () => {
     expect(mockUseAdminUsers).toHaveBeenCalledWith(
       expect.objectContaining({ status: "pending_approval" }),
     );
-    expect(screen.getByText("Gestão de Usuários")).toBeInTheDocument();
+    expect(screen.getByText("Usuários")).toBeInTheDocument();
   });
 });
