@@ -12,6 +12,11 @@ import {
   listSystemFeatures,
   listUserFeatureOverrides,
   getMyBroadcastNotifications,
+  adminGetConnectionsHealth,
+  adminGetAiUsageSummary,
+  adminGetUserSupportDiagnostics,
+  adminGetRetentionRadar,
+  type AdminAiUsageSummaryParams,
   type AdminListUsersParams,
   type ListAuditEventsParams,
 } from "@/data/repositories/admin";
@@ -36,6 +41,10 @@ export const ADMIN_USER_CONTACT_KEY = ["admin_user_contact"] as const;
 export const ADMIN_PAST_DUE_KEY = ["admin_past_due"] as const;
 export const ADMIN_SUBSCRIPTIONS_KEY = ["admin_subscriptions"] as const;
 export const MY_BROADCASTS_KEY = ["my_broadcasts"] as const;
+export const ADMIN_CONNECTIONS_HEALTH_KEY = ["admin_connections_health"] as const;
+export const ADMIN_AI_USAGE_KEY = ["admin_ai_usage"] as const;
+export const ADMIN_USER_SUPPORT_DIAGNOSTICS_KEY = ["admin_user_support_diagnostics"] as const;
+export const ADMIN_RETENTION_RADAR_KEY = ["admin_retention_radar"] as const;
 
 export function useAdminMetrics() {
   return useQuery({
@@ -161,3 +170,39 @@ export function useMyBroadcastNotifications(limit = 20) {
   });
 }
 
+export function useAdminConnectionsHealth() {
+  return useQuery({
+    queryKey: ADMIN_CONNECTIONS_HEALTH_KEY,
+    queryFn: adminGetConnectionsHealth,
+    staleTime: 1000 * 30,
+  });
+}
+
+export function useAdminAiUsageSummary(params: AdminAiUsageSummaryParams = {}) {
+  return useQuery({
+    queryKey: [...ADMIN_AI_USAGE_KEY, params],
+    queryFn: () => adminGetAiUsageSummary(params),
+    staleTime: 1000 * 30,
+  });
+}
+
+export function useAdminUserSupportDiagnostics(
+  userId: string | null | undefined,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: [...ADMIN_USER_SUPPORT_DIAGNOSTICS_KEY, userId],
+    queryFn: () =>
+      userId ? adminGetUserSupportDiagnostics(userId) : Promise.resolve(null),
+    enabled: Boolean(userId) && enabled,
+    staleTime: 1000 * 30,
+  });
+}
+
+export function useAdminRetentionRadar(limit = 20) {
+  return useQuery({
+    queryKey: [...ADMIN_RETENTION_RADAR_KEY, limit],
+    queryFn: () => adminGetRetentionRadar(limit),
+    staleTime: 1000 * 60,
+  });
+}
