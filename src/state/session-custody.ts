@@ -105,6 +105,16 @@ export async function syncCurrentSupabaseSessionToBff(
     const accessToken = data.session?.access_token;
     if (!accessToken) return null;
 
+    const metadata = data.session?.user?.user_metadata as
+      | { name?: string; full_name?: string }
+      | undefined;
+    const rawDisplayName =
+      typeof metadata?.name === "string" && metadata.name.trim()
+        ? metadata.name.trim()
+        : typeof metadata?.full_name === "string" && metadata.full_name.trim()
+          ? metadata.full_name.trim()
+          : undefined;
+
     const raw = await postSessionOperation<PublicSessionContext | { context: PublicSessionContext }>(
       "login",
       {
@@ -112,6 +122,7 @@ export async function syncCurrentSupabaseSessionToBff(
         mode,
         accessToken,
         refreshToken: data.session?.refresh_token || "sync",
+        ...(rawDisplayName ? { displayName: rawDisplayName } : {}),
       },
     );
     const ctx = extractPublicContext(raw);

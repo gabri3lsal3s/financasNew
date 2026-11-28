@@ -20,10 +20,10 @@ import { SESSION_POLICY, maskEmailForSwitcher } from "@/domain/auth/session-poli
 import { Alert } from "@/components/ui/alert";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ContentLoading } from "@/components/ui/content-loading";
 import { EmptyState } from "@/components/ui/empty-state";
+import { isNativePlatform } from "@/services/native/platform";
 import { cn } from "@/lib/utils";
 
 export type AccountSwitcherBusyAction =
@@ -113,11 +113,11 @@ export function AccountSwitcherPanel({
   onClearError,
   className,
 }: AccountSwitcherPanelProps) {
-  const [rememberOnLogout, setRememberOnLogout] = useState(false);
   const [switchingAccountRef, setSwitchingAccountRef] = useState<string | null>(null);
   const [pendingForgetAccount, setPendingForgetAccount] = useState<AccountSummary | null>(null);
   const [confirmLogoutDeviceOpen, setConfirmLogoutDeviceOpen] = useState(false);
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const isNative = isNativePlatform();
 
   // Nunca expor identidades de operador na tela inicial do alternador.
   const visibleAccounts = accounts.filter((account) => account.mode !== "operator");
@@ -357,7 +357,7 @@ export function AccountSwitcherPanel({
       ) : null}
 
       {isPersonal || (isNeutral && visibleAccounts.length > 0) ? (
-        <div className="space-y-3 rounded-xl border border-border/80 bg-surface p-4 shadow-xs">
+        <div className="space-y-3 rounded-xl border border-border/80 bg-surface p-3 sm:p-4 shadow-xs">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
               <Users className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -390,13 +390,15 @@ export function AccountSwitcherPanel({
           {visibleAccounts.length > 0 ? (
             <ul
               aria-label="Lista de contas disponíveis"
-              className="space-y-2"
+              className="space-y-2.5"
               onKeyDown={handleListKeyDown}
             >
               {visibleAccounts.map((account, index) => {
                 const isCurrent =
                   context.status === "authenticated" && context.accountRef === account.accountRef;
                 const safeMaskedEmail = formatSafeMaskedEmail(account.maskedEmail);
+                const showSubtitleEmail =
+                  Boolean(safeMaskedEmail) && safeMaskedEmail !== account.displayName;
                 const statusBadge = getAccountStatusBadge(account.status);
                 const needsLogin = requiresFreshLogin(account.status);
                 const isSwitchingThis =
@@ -406,77 +408,96 @@ export function AccountSwitcherPanel({
                   <li
                     key={account.accountRef}
                     className={cn(
-                      "rounded-lg border p-3 transition-colors",
+                      "rounded-lg border p-3 transition-colors space-y-2.5",
                       isCurrent
                         ? "border-primary/40 bg-primary/5"
                         : "border-border/80 bg-surface",
                     )}
                   >
-                    <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="min-w-0 space-y-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 space-y-0.5">
                         <div className="flex flex-wrap items-center gap-1.5">
                           <span className="text-sm font-semibold text-foreground break-words">
                             {account.displayName}
                           </span>
-                          <Badge variant={statusBadge.variant} size="sm">
-                            {statusBadge.label}
-                          </Badge>
                           {account.hasLocalLock ? (
                             <Badge variant="warning" size="sm">
                               Trava local
                             </Badge>
                           ) : null}
                         </div>
-                        {safeMaskedEmail ? (
-                          <p className="text-xs text-muted-foreground">{safeMaskedEmail}</p>
+                        {showSubtitleEmail ? (
+                          <p className="text-xs text-muted-foreground break-all">{safeMaskedEmail}</p>
                         ) : null}
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                        {isCurrent ? (
+                      <Badge variant={statusBadge.variant} size="sm" className="shrink-0">
+                        {statusBadge.label}
+                      </Badge>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      {isCurrent ? (
+                        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                           <Badge variant="positive" size="sm">
                             <Check className="size-3" aria-hidden="true" />
                             <span>Nesta aba</span>
                           </Badge>
-                        ) : needsLogin ? (
-                          <Button
-                            ref={(node) => {
-                              itemRefs.current[index] = node;
-                            }}
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="flex-1 sm:flex-initial"
-                            disabled={isBusy}
-                            onClick={() => onReauthAccount?.(account)}
-                          >
-                            <KeyRound className="size-3.5 shrink-0" aria-hidden="true" />
-                            <span>Entrar novamente</span>
-                          </Button>
-                        ) : (
-                          <Button
-                            ref={(node) => {
-                              itemRefs.current[index] = node;
-                            }}
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="flex-1 sm:flex-initial"
-                            loading={isSwitchingThis}
-                            disabled={isBusy}
-                            onClick={() => void handleDirectSwitch(account)}
-                          >
-                            <ArrowLeftRight className="size-3.5 shrink-0" aria-hidden="true" />
-                            <span>{isNeutral ? "Entrar" : "Alternar"}</span>
-                          </Button>
-                        )}
+                          {onLogout ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="flex-1 sm:flex-initial"
+                              loading={busyAction === "logout"}
+                              disabled={isBusy}
+                              onClick={() => void onLogout({ remember: false })}
+                            >
+                              <LogOut className="size-3.5 shrink-0" aria-hidden="true" />
+                              <span>Sair desta conta</span>
+                            </Button>
+                          ) : null}
+                        </div>
+                      ) : needsLogin ? (
+                        <Button
+                          ref={(node) => {
+                            itemRefs.current[index] = node;
+                          }}
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 sm:flex-initial"
+                          disabled={isBusy}
+                          onClick={() => onReauthAccount?.(account)}
+                        >
+                          <KeyRound className="size-3.5 shrink-0" aria-hidden="true" />
+                          <span>Entrar novamente</span>
+                        </Button>
+                      ) : (
+                        <Button
+                          ref={(node) => {
+                            itemRefs.current[index] = node;
+                          }}
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 sm:flex-initial"
+                          loading={isSwitchingThis}
+                          disabled={isBusy}
+                          onClick={() => void handleDirectSwitch(account)}
+                        >
+                          <ArrowLeftRight className="size-3.5 shrink-0" aria-hidden="true" />
+                          <span>{isNeutral ? "Entrar" : "Alternar"}</span>
+                        </Button>
+                      )}
 
-                        {!needsLogin && account.status !== "remembered" && onOpenTab ? (
+                      <div className="flex items-center gap-1 shrink-0 ml-auto">
+                        {!isNative && !needsLogin && account.status !== "remembered" && onOpenTab ? (
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="size-8 !w-8 !min-w-8 p-0 shrink-0"
+                            className="hidden sm:inline-flex size-8 !w-8 !min-w-8 p-0 shrink-0"
                             aria-label={`Abrir ${account.displayName} em nova aba`}
                             title="Abrir em nova aba"
                             disabled={isBusy}
@@ -540,37 +561,17 @@ export function AccountSwitcherPanel({
       ) : null}
 
       {isPersonal ? (
-        <div className="space-y-3 rounded-xl border border-border/80 bg-surface p-4 shadow-xs">
-          <Checkbox
-            checked={rememberOnLogout}
-            onCheckedChange={setRememberOnLogout}
+        <div className="flex justify-center sm:justify-end">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
             disabled={isBusy}
-            label="Manter esta conta salva para login rápido ao sair"
-          />
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="w-full sm:w-auto"
-              loading={busyAction === "logout"}
-              disabled={isBusy}
-              onClick={() => void onLogout?.({ remember: rememberOnLogout })}
-            >
-              <LogOut className="size-4 shrink-0" aria-hidden="true" />
-              <span>Sair desta conta</span>
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={isBusy}
-              className="w-full sm:w-auto text-critical-strong hover:bg-critical/10 hover:text-critical-strong"
-              onClick={() => setConfirmLogoutDeviceOpen(true)}
-            >
-              <span>Sair de todas as contas deste dispositivo</span>
-            </Button>
-          </div>
+            className="w-full sm:w-auto text-critical-strong hover:bg-critical/10 hover:text-critical-strong"
+            onClick={() => setConfirmLogoutDeviceOpen(true)}
+          >
+            <span>Sair de todas as contas deste dispositivo</span>
+          </Button>
         </div>
       ) : null}
 

@@ -582,7 +582,7 @@ export default {
             const verifiedUser = (await userRes.json()) as {
               id: string;
               email?: string;
-              user_metadata?: { full_name?: string };
+              user_metadata?: { name?: string; full_name?: string };
               factors?: Array<{ id: string; status: string }>;
             };
 
@@ -605,7 +605,10 @@ export default {
             const publicCtx = await coordinator.admitAuthenticatedAccount({
               userId: verifiedUser.id,
               email: verifiedUser.email,
-              displayName: parsed.data.displayName ?? verifiedUser.user_metadata?.full_name,
+              displayName:
+                parsed.data.displayName ??
+                verifiedUser.user_metadata?.name ??
+                verifiedUser.user_metadata?.full_name,
               mode: parsed.data.mode,
               accessToken: parsed.data.accessToken,
               refreshToken: parsed.data.refreshToken,

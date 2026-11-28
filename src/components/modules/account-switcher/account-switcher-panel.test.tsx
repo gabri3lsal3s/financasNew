@@ -166,17 +166,12 @@ describe("AccountSwitcherPanel", () => {
     await user.click(within(dialog).getByRole("button", { name: "Esquecer conta" }));
     expect(onForgetAccount).toHaveBeenCalledWith(acc2);
 
-    // Logout padrão sem marcar checkbox envia remember: false
+    // Logout direto no card da conta ativa envia remember: false
     await user.click(screen.getByRole("button", { name: /Sair desta conta/i }));
-    expect(onLogout).toHaveBeenNthCalledWith(1, { remember: false });
-
-    // Marcando opt-in envia remember: true
+    expect(onLogout).toHaveBeenCalledWith({ remember: false });
     expect(
-      screen.getByText("Manter esta conta salva para login rápido ao sair"),
-    ).toBeInTheDocument();
-    await user.click(screen.getByRole("checkbox"));
-    await user.click(screen.getByRole("button", { name: /Sair desta conta/i }));
-    expect(onLogout).toHaveBeenNthCalledWith(2, { remember: true });
+      screen.queryByText("Manter esta conta salva para login rápido ao sair"),
+    ).not.toBeInTheDocument();
   });
 
   it("exibe acesso rápido Entrar para conta remembered em estado neutro e Entrar novamente apenas para contas expiradas/revogadas", async () => {
