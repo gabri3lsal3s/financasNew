@@ -1,6 +1,11 @@
 import type { ModuleAccessLevel, SystemFeatureKey } from "@/types";
 
-export type AdminModuleCategory = "core" | "wealth" | "ai_and_beta" | "apk_distribution";
+export type AdminModuleCategory =
+  | "core"
+  | "wealth"
+  | "expansions"
+  | "ai_and_beta"
+  | "apk_distribution";
 
 export interface AdminModuleDescriptor {
   readonly key: SystemFeatureKey;
@@ -12,9 +17,31 @@ export interface AdminModuleDescriptor {
 export const MODULE_CATEGORY_LABELS: Record<AdminModuleCategory, string> = {
   core: "Núcleo Financeiro",
   wealth: "Patrimônio & Análise",
+  expansions: "Expansões do App",
   ai_and_beta: "IA & Recursos Beta",
   apk_distribution: "Distribuição APK (Android)",
 };
+
+export const EXPANSION_MODULES: readonly AdminModuleDescriptor[] = [
+  {
+    key: "family",
+    label: "Modo Família",
+    desc: "Gestão compartilhada, despesas conjuntas e metas familiares",
+    category: "expansions",
+  },
+  {
+    key: "trips",
+    label: "Modo Viagem",
+    desc: "Orçamentos de viagem, câmbio e divisão de gastos",
+    category: "expansions",
+  },
+  {
+    key: "business",
+    label: "Modo Negócio (PJ)",
+    desc: "Fluxo de caixa empresarial, clientes e separação PF/PJ",
+    category: "expansions",
+  },
+];
 
 export const CORE_MODULES: readonly AdminModuleDescriptor[] = [
   {
@@ -71,6 +98,7 @@ export const CORE_MODULES: readonly AdminModuleDescriptor[] = [
     desc: "Diagnósticos e recomendações",
     category: "wealth",
   },
+  ...EXPANSION_MODULES,
 ];
 
 export const BETA_MODULES: readonly AdminModuleDescriptor[] = [
@@ -106,17 +134,23 @@ export const APK_DISTRIBUTION_MODULES: readonly AdminModuleDescriptor[] = [
   },
 ];
 
-export const ALL_SYSTEM_MODULES: readonly AdminModuleDescriptor[] = [
+export const ALL_PRODUCT_MODULES: readonly AdminModuleDescriptor[] = [
   ...CORE_MODULES,
   ...BETA_MODULES,
   ...AI_FEATURE_MODULES,
+];
+
+export const ALL_SYSTEM_MODULES: readonly AdminModuleDescriptor[] = [
+  ...ALL_PRODUCT_MODULES,
   ...APK_DISTRIBUTION_MODULES,
 ];
 
-export const INVESTMENT_ONLY_PRESET: ReadonlyArray<{
-  moduleKey: SystemFeatureKey;
-  accessLevel: ModuleAccessLevel;
-}> = [
+export interface ModuleAccessPresetEntry {
+  readonly moduleKey: SystemFeatureKey;
+  readonly accessLevel: ModuleAccessLevel;
+}
+
+export const INVESTMENT_ONLY_PRESET: ReadonlyArray<ModuleAccessPresetEntry> = [
   { moduleKey: "investments", accessLevel: "write" },
   { moduleKey: "reports", accessLevel: "write" },
   { moduleKey: "insights", accessLevel: "none" },
@@ -126,7 +160,21 @@ export const INVESTMENT_ONLY_PRESET: ReadonlyArray<{
   { moduleKey: "debts", accessLevel: "none" },
   { moduleKey: "budgets", accessLevel: "none" },
   { moduleKey: "reminders", accessLevel: "none" },
+  { moduleKey: "family", accessLevel: "none" },
+  { moduleKey: "trips", accessLevel: "none" },
+  { moduleKey: "business", accessLevel: "none" },
   { moduleKey: "bank_notification_listener", accessLevel: "none" },
+];
+
+export const PERSONAL_ONLY_PRESET: ReadonlyArray<ModuleAccessPresetEntry> = CORE_MODULES.map(
+  (mod) => ({
+    moduleKey: mod.key,
+    accessLevel: mod.key === "business" ? "none" : "write",
+  }),
+);
+
+export const NO_AI_PRESET: ReadonlyArray<ModuleAccessPresetEntry> = [
+  { moduleKey: "ai_extraction", accessLevel: "none" },
 ];
 
 export const SUBSCRIPTION_STATUS_LABELS: Record<string, string> = {
