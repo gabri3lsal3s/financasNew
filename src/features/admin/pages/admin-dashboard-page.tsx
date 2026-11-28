@@ -17,6 +17,7 @@ import { AdminPageGuide } from "../components/admin-help-tip";
 import { FeatureUsageSection } from "../components/feature-usage-section";
 import { AdminMetricsKpiGrid } from "../components/admin-metrics-kpi-grid";
 import { AdminPendingApprovalsCard } from "../components/admin-pending-approvals-card";
+import { RetentionRadarCard } from "../components/retention-radar-card";
 
 interface AttentionCardProps {
   label: string;
@@ -159,6 +160,8 @@ export function AdminDashboardPage() {
           />
         </KpiGrid>
       </section>
+
+      <RetentionRadarCard />
 
       <section aria-labelledby="admin-service-title" className="space-y-4">
         <h2 id="admin-service-title" className="text-lg font-bold text-foreground">

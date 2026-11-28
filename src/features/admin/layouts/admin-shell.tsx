@@ -1,7 +1,6 @@
 import { useLayoutEffect, useMemo, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import {
-  Activity,
   Check,
   ExternalLink,
   LogOut,
@@ -43,6 +42,7 @@ import {
   useAdminAccent,
 } from "./admin-console-preferences";
 import { AdminMobileDrawer } from "./admin-mobile-drawer";
+import { ConnectionsHealthPopover } from "../components/connections-health-panel";
 
 export function AdminShell() {
   const navigate = useNavigate();
@@ -74,8 +74,6 @@ export function AdminShell() {
       pendingBlueprints,
     };
   }, [metricsQuery.data?.pending_users, ticketsQuery.data, pastDueQuery.data, blueprintsQuery.data]);
-
-  const apiHealthy = !metricsQuery.isError;
 
   useLayoutEffect(() => {
     resetPageScroll({ containerId: "admin-main-content" });
@@ -126,24 +124,7 @@ export function AdminShell() {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <div className="hidden lg:flex items-center gap-2 rounded-full border border-border/80 bg-background/60 px-3 py-1 text-xs text-muted-foreground">
-            <span
-              className={cn(
-                "flex size-2 rounded-full",
-                apiHealthy ? "bg-positive-strong" : "bg-critical-strong",
-              )}
-            />
-            <Activity
-              className={cn(
-                "size-3.5",
-                apiHealthy ? "text-positive-strong" : "text-critical-strong",
-              )}
-              aria-hidden="true"
-            />
-            <span className="font-mono text-[11px]">
-              {apiHealthy ? "API Conectada" : "Falha na API"}
-            </span>
-          </div>
+          <ConnectionsHealthPopover />
 
           <Link
             to="/"
