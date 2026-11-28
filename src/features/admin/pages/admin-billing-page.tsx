@@ -1,11 +1,22 @@
 import { useMemo, useState } from "react";
 import { AlertCircle, AlertTriangle, Clock, Crown, ExternalLink, Receipt, TrendingUp } from "lucide-react";
-import { Badge, Button, EmptyState, MoneyText, Select, Skeleton, buttonVariants } from "@/components/ui";
+import {
+  Badge,
+  Button,
+  EmptyState,
+  MoneyText,
+  Select,
+  Skeleton,
+  Tabs,
+  buttonVariants,
+} from "@/components/ui";
 import { PageHeader } from "@/components/layout";
-import { AdminHelpTip, AdminPageGuide } from "../components/admin-help-tip";
 import { KpiCard, KpiGrid } from "@/components/modules";
 import { formatDateBR } from "@/lib/date";
 import { useAdminPastDueSubscriptions, useAdminPlans, useAdminSubscriptions } from "@/state";
+import { AdminHelpTip, AdminPageGuide } from "../components/admin-help-tip";
+import { AiQuotasUsagePanel } from "../components/ai-quotas-usage-panel";
+import { FinOpsOverviewPanel } from "../components/finops-overview-panel";
 import { PastDueManagementCard } from "../components/past-due-management-card";
 
 const SUB_STATUS_LABELS: Record<string, string> = {
@@ -24,6 +35,7 @@ function resolveSubBadgeVariant(status: string): "positive" | "warning" | "criti
 }
 
 export function AdminBillingPage() {
+  const [activeTab, setActiveTab] = useState("visao-financeira");
   const [statusFilter, setStatusFilter] = useState("all");
   const [nowMs] = useState(() => Date.now());
   const subscriptionsQuery = useAdminSubscriptions(200);
@@ -82,25 +94,8 @@ export function AdminBillingPage() {
 
   const hasError = subscriptionsQuery.isError || plansQuery.isError;
 
-  return (
+  const subscriptionsTabContent = (
     <div className="flex flex-col gap-6 w-full min-w-0">
-      <PageHeader
-        utilityActions={<AdminPageGuide page="billing" />}
-        title="Faturamento"
-        description="Receita recorrente, planos e pagamentos em atraso"
-        actions={
-          <a
-            href="https://www.asaas.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={buttonVariants({ variant: "outline", size: "sm" })}
-          >
-            <ExternalLink aria-hidden="true" />
-            <span>Painel Asaas</span>
-          </a>
-        }
-      />
-
       {hasError ? (
         <EmptyState
           icon={<AlertCircle className="size-10 text-critical-strong" aria-hidden="true" />}
@@ -219,8 +214,8 @@ export function AdminBillingPage() {
               {filteredSubscriptions.slice(0, 50).map((sub) => (
                 <div key={sub.id} className="p-4 flex flex-col gap-2 text-xs">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-foreground font-semibold truncate">
-                      {sub.user_id.slice(0, 8)}…
+                    <span className="font-mono text-[11px] text-foreground truncate">
+                      {sub.user_id}
                     </span>
                     <Badge variant={resolveSubBadgeVariant(sub.status)} size="xs">
                       {SUB_STATUS_LABELS[sub.status] ?? sub.status}
@@ -326,6 +321,57 @@ export function AdminBillingPage() {
           )}
         </div>
       </section>
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col gap-6 w-full min-w-0">
+      <PageHeader
+        utilityActions={<AdminPageGuide page="billing" />}
+        title="Faturamento"
+        description="Receita recorrente, planos e pagamentos em atraso"
+        actions={
+          <a
+            href="https://www.asaas.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            <ExternalLink aria-hidden="true" />
+            <span>Painel Asaas</span>
+          </a>
+        }
+      />
+
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        ariaLabel="Seções de faturamento"
+        keepMountedAfterFirstVisit
+        items={[
+          {
+            value: "visao-financeira",
+            label: "Receita & Custos",
+            content: <FinOpsOverviewPanel />,
+          },
+          {
+            value: "assinaturas",
+            label: "Assinaturas & Inadimplência",
+            badge:
+              pastDueCount > 0 ? (
+                <Badge variant="critical" size="xs">
+                  {pastDueCount}
+                </Badge>
+              ) : undefined,
+            content: subscriptionsTabContent,
+          },
+          {
+            value: "cotas-ia",
+            label: "Cotas & Uso de IA",
+            content: <AiQuotasUsagePanel />,
+          },
+        ]}
+      />
     </div>
   );
 }
