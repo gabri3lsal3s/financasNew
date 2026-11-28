@@ -227,11 +227,17 @@ export function AccountSwitcherPanel({
       }}
     >
       {error ? (
-        <Alert variant="error">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <span>{error}</span>
+        <Alert variant="error" className="items-center">
+          <div className="flex w-full items-center justify-between gap-3">
+            <span className="min-w-0 flex-1 leading-snug">{error}</span>
             {onClearError ? (
-              <Button type="button" variant="ghost" size="sm" onClick={onClearError}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="shrink-0"
+                onClick={onClearError}
+              >
                 Fechar
               </Button>
             ) : null}

@@ -250,7 +250,9 @@ export class SessionCoordinatorDO extends DurableObject<CoordinatorEnv> {
 
   private deriveAccountStatus(acct: AccountRow, nowMs: number): AccountLifecycleStatus {
     if (acct.status === "revoked" || acct.revoked_at !== null) return "revoked";
-    if (acct.status === "requires_reauth" || acct.refresh_state === "ambiguous") return "requires_reauth";
+    if (acct.status === "requires_reauth" || acct.refresh_state === "ambiguous" || !acct.encrypted_tokens) {
+      return "requires_reauth";
+    }
     const expired = isSessionExpired(
       {
         mode: acct.mode as SessionMode,
@@ -261,7 +263,7 @@ export class SessionCoordinatorDO extends DurableObject<CoordinatorEnv> {
       nowMs,
     );
     if (expired) return "trust_expired";
-    if (acct.status === "remembered" || !acct.encrypted_tokens) return "remembered";
+    if (acct.status === "remembered") return "remembered";
     return "active";
   }
 

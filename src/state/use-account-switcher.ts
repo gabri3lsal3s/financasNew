@@ -331,6 +331,13 @@ export function useAccountSwitcher(): UseAccountSwitcherReturn {
         return { ok: true, context: cleanContext };
       } catch (err) {
         const mapped = mapSessionError(err);
+        if (mapped.code === "unauthorized") {
+          setAccounts((prev) =>
+            prev.map((item) =>
+              item.accountRef === params.accountRef ? { ...item, status: "requires_reauth" } : item,
+            ),
+          );
+        }
         setError(mapped.message);
         setErrorCode(mapped.code);
         return { ok: false, ...mapped };

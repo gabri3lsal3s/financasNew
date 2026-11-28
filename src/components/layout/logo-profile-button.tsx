@@ -220,7 +220,11 @@ export function LogoProfileButton({
             });
             if (res.ok) {
               setSwitcherOpen(false);
-              navigate("/");
+              if (typeof window !== "undefined") {
+                window.location.assign("/");
+              } else {
+                navigate("/");
+              }
             }
           }}
           onOpenTab={async (account) => {
