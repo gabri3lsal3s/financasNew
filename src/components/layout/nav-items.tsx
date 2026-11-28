@@ -40,12 +40,12 @@ export const navItems: NavItem[] = [
   { label: "Transações", shortLabel: "Extrato", path: "/transacoes", icon: ArrowLeftRight, featureKey: "transactions" },
   { label: "Cartões", shortLabel: "Cartões", path: "/cartoes", icon: CreditCard, featureKey: "cards" },
   { label: "Contas & Dívidas", shortLabel: "Contas", path: "/dividas", icon: HandCoins, featureKey: "debts" },
-  { label: "Meu Negócio", shortLabel: "Negócio", path: "/negocio", icon: Briefcase, businessOnly: true },
-  { label: "Modo Viagem", shortLabel: "Viagens", path: "/viagens", icon: Plane, tripOnly: true },
+  { label: "Meu Negócio", shortLabel: "Negócio", path: "/negocio", icon: Briefcase, featureKey: "business", businessOnly: true },
+  { label: "Modo Viagem", shortLabel: "Viagens", path: "/viagens", icon: Plane, featureKey: "trips", tripOnly: true },
   { label: "Investimentos", shortLabel: "Carteira", path: "/investments", icon: ChartLine, featureKey: "investments" },
   { label: "Orçamentos", shortLabel: "Orçamentos", path: "/orcamentos", icon: PiggyBank, featureKey: "budgets" },
   { label: "Categorias", shortLabel: "Categorias", path: "/categorias", icon: Tags, featureKey: "budgets" },
-  { label: "Modo Família", shortLabel: "Família", path: "/familia", icon: Users, familyOnly: true },
+  { label: "Modo Família", shortLabel: "Família", path: "/familia", icon: Users, featureKey: "family", familyOnly: true },
   { label: "Relatórios", shortLabel: "Relatórios", path: "/relatorios", icon: ChartPie, featureKey: "reports" },
   { label: "Insights", shortLabel: "Insights", path: "/insights", icon: Sparkles, featureKey: "insights" },
   { label: "Lembretes", shortLabel: "Lembretes", path: "/lembretes", icon: Bell, featureKey: "reminders" },
@@ -61,8 +61,8 @@ export const navGroups: NavGroup[] = [
       { label: "Transações", shortLabel: "Extrato", path: "/transacoes", icon: ArrowLeftRight, featureKey: "transactions" },
       { label: "Cartões", shortLabel: "Cartões", path: "/cartoes", icon: CreditCard, featureKey: "cards" },
       { label: "Contas & Dívidas", shortLabel: "Contas", path: "/dividas", icon: HandCoins, featureKey: "debts" },
-      { label: "Meu Negócio", shortLabel: "Negócio", path: "/negocio", icon: Briefcase, businessOnly: true },
-      { label: "Modo Viagem", shortLabel: "Viagens", path: "/viagens", icon: Plane, tripOnly: true },
+      { label: "Meu Negócio", shortLabel: "Negócio", path: "/negocio", icon: Briefcase, featureKey: "business", businessOnly: true },
+      { label: "Modo Viagem", shortLabel: "Viagens", path: "/viagens", icon: Plane, featureKey: "trips", tripOnly: true },
     ],
   },
   {
@@ -71,7 +71,7 @@ export const navGroups: NavGroup[] = [
       { label: "Investimentos", shortLabel: "Carteira", path: "/investments", icon: ChartLine, featureKey: "investments" },
       { label: "Orçamentos", shortLabel: "Orçamentos", path: "/orcamentos", icon: PiggyBank, featureKey: "budgets" },
       { label: "Categorias", shortLabel: "Categorias", path: "/categorias", icon: Tags, featureKey: "budgets" },
-      { label: "Modo Família", shortLabel: "Família", path: "/familia", icon: Users, familyOnly: true },
+      { label: "Modo Família", shortLabel: "Família", path: "/familia", icon: Users, featureKey: "family", familyOnly: true },
       { label: "Relatórios", shortLabel: "Relatórios", path: "/relatorios", icon: ChartPie, featureKey: "reports" },
       { label: "Insights", shortLabel: "Insights", path: "/insights", icon: Sparkles, featureKey: "insights" },
     ],
@@ -97,19 +97,11 @@ export function filterNavItems(
   isTripActive = false,
   isBusinessActive = false,
 ): NavItem[] {
-  // Se o usuário não possui módulos de finanças pessoais (ex.: Apenas Investimentos),
-  // Modo Viagem, Modo Familiar e Modo Negócio são restritos e não devem ser exibidos na navegação.
-  const hasFinance =
-    hasFeature("transactions") ||
-    hasFeature("cards") ||
-    hasFeature("debts") ||
-    hasFeature("budgets");
-
   return items.filter((item) => {
     if (item.adminOnly && !isAdmin) return false;
-    if (item.familyOnly && (!isFamilyActive || !hasFinance)) return false;
-    if (item.tripOnly && (!isTripActive || !hasFinance)) return false;
-    if (item.businessOnly && (!isBusinessActive || !hasFinance)) return false;
+    if (item.familyOnly && !isFamilyActive) return false;
+    if (item.tripOnly && !isTripActive) return false;
+    if (item.businessOnly && !isBusinessActive) return false;
     if (item.featureKey && !hasFeature(item.featureKey)) return false;
     return true;
   });

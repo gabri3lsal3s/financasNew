@@ -3,9 +3,21 @@ import { useSearchParams } from "react-router";
 import { AlertCircle, Bot, FileSpreadsheet, Layers, Smartphone } from "lucide-react";
 import { Alert, Badge, Button, EmptyState, Skeleton, Tabs } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
+import { ALL_SYSTEM_MODULES } from "@/domain/admin";
 import { AdminHelpTip, AdminPageGuide } from "../components/admin-help-tip";
 import { useAdminFeatures, useAdminStatementBlueprints } from "@/state";
 import { FeatureToggleCard, StatementBlueprintsCard, TelegramSettingsCard } from "../components";
+
+const MODULE_GROUPS = [
+  { key: "core", label: "Núcleo" },
+  { key: "wealth", label: "Patrimônio" },
+  { key: "expansions", label: "Expansões" },
+  { key: "ai_and_beta", label: "IA & Beta" },
+] as const;
+
+const MODULE_CATEGORIES = new Map<string, string>(
+  ALL_SYSTEM_MODULES.map(({ key, category }) => [key, category]),
+);
 
 const SETTINGS_TABS = ["modulos", "apk", "telegram", "blueprints"] as const;
 
@@ -26,13 +38,16 @@ export function AdminSettingsPage() {
 
   const apkFreeFeature = features.find((f) => f.key === "apk_access_free");
   const apkProFeature = features.find((f) => f.key === "apk_access_pro");
-  const bankNotificationFeature = features.find((f) => f.key === "bank_notification_listener");
-  const coreFeatures = features.filter(
-    (f) =>
-      f.key !== "apk_access_free" &&
-      f.key !== "apk_access_pro" &&
-      f.key !== "bank_notification_listener",
-  );
+  const moduleFeatures = features.filter((feature) => MODULE_CATEGORIES.get(feature.key) !== "apk_distribution");
+  const moduleGroups = MODULE_GROUPS.map((group) => ({
+    ...group,
+    features: moduleFeatures.filter((feature) => {
+      const category = MODULE_CATEGORIES.get(feature.key);
+      if (category) return category === group.key;
+      if (["family", "trips", "business"].includes(feature.key)) return group.key === "expansions";
+      return group.key === "core";
+    }),
+  }));
 
   const handleTabChange = (nextTab: string) => {
     setSearchParams(
@@ -68,7 +83,7 @@ export function AdminSettingsPage() {
           </div>
         </div>
         <Badge variant="muted" size="xs">
-          {coreFeatures.length} módulos cadastrados
+          {moduleFeatures.length} módulos cadastrados
         </Badge>
       </div>
 
@@ -107,15 +122,20 @@ export function AdminSettingsPage() {
             </Button>
           }
         />
-      ) : coreFeatures.length === 0 ? (
+      ) : moduleFeatures.length === 0 ? (
         <EmptyState
           title="Nenhum módulo encontrado"
           description="O catálogo de módulos do sistema ainda não foi inicializado."
         />
       ) : (
-        <div className="flex flex-col gap-3">
-          {coreFeatures.map((feature) => (
-            <FeatureToggleCard key={feature.key} feature={feature} />
+        <div className="flex flex-col gap-5">
+          {moduleGroups.filter((group) => group.features.length > 0).map((group) => (
+            <div key={group.key} className="flex flex-col gap-2.5">
+              <h3 className="text-sm font-semibold text-foreground">{group.label}</h3>
+              {group.features.map((feature) => (
+                <FeatureToggleCard key={feature.key} feature={feature} />
+              ))}
+            </div>
           ))}
         </div>
       )}
@@ -163,26 +183,10 @@ export function AdminSettingsPage() {
           }
         />
       ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {apkProFeature && <FeatureToggleCard feature={apkProFeature} />}
-            {apkFreeFeature && <FeatureToggleCard feature={apkFreeFeature} />}
-          </div>
-
-          {bankNotificationFeature && (
-            <div className="flex flex-col gap-2 pt-2 border-t border-border/80">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-semibold text-foreground">
-                  Assistente de Notificações Bancárias (Captura em Segundo Plano)
-                </span>
-                <Badge variant="muted" size="xs">
-                  Restrição Granular
-                </Badge>
-              </div>
-              <FeatureToggleCard feature={bankNotificationFeature} />
-            </div>
-          )}
-        </>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {apkProFeature && <FeatureToggleCard feature={apkProFeature} />}
+          {apkFreeFeature && <FeatureToggleCard feature={apkFreeFeature} />}
+        </div>
       )}
     </section>
   );

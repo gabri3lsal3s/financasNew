@@ -1,15 +1,17 @@
 import { useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { QueryClient } from "@tanstack/react-query";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { getSupabase } from "@/data/client";
+import { listSystemFeatures, listUserFeatureOverrides } from "@/data/repositories/admin";
 import { getMyFeatures, getMyProfile } from "@/data/repositories/access";
 import { getMySubscription } from "@/data/repositories/subscriptions";
 import { useAuth } from "@/hooks/use-auth";
 import { getActiveUserId, subscribeActiveUserId } from "@/services/user-storage";
 import { STALE_TIMES, STATIC_GC_TIME } from "@/state/cache-policy";
 import { isQueryPending } from "@/state/query-readiness";
-import type { Profile, SystemFeatureKey, UserRole, UserStatus } from "@/types";
+import type { Profile, SystemFeature, SystemFeatureKey, UserFeatureOverride, UserRole, UserStatus } from "@/types";
+import { ADMIN_FEATURES_KEY, ADMIN_USER_OVERRIDES_KEY } from "./use-admin";
 
 export const USER_ACCESS_KEY = ["user_access"] as const;
 export const USER_FEATURES_KEY = ["user_features"] as const;
@@ -204,6 +206,10 @@ export interface UserAccessResult {
   role: UserRole;
   status: UserStatus;
   features: Record<string, boolean>;
+  inspectedAccessSources?: {
+    features: SystemFeature[] | undefined;
+    overrides: UserFeatureOverride[] | undefined;
+  };
   isPendingApproval: boolean;
   isActive: boolean;
   isSuspended: boolean;
@@ -221,7 +227,10 @@ export interface UserAccessResult {
  * Sincroniza em tempo real via canais Postgres Changes do Supabase com gerenciamento singleton.
  * Opera sob política estrita de Fail-Closed e isolamento de cache parametrizado por userId.
  */
-export function useUserAccess(targetUserId?: string): UserAccessResult {
+export function useUserAccess(
+  targetUserId?: string,
+  { inspectUserId }: { inspectUserId?: string } = {},
+): UserAccessResult {
   const queryClient = useQueryClient();
   const { user: authUser } = useAuth();
   const [storageUserId, setStorageUserId] = useState<string | null>(() => {
@@ -280,12 +289,28 @@ export function useUserAccess(targetUserId?: string): UserAccessResult {
   const isSuperAdmin = role === "superadmin";
   const isAdmin = isSuperAdmin || role === "admin";
 
+  const inspectedUserId = isAdmin ? inspectUserId : undefined;
+  const globalFeaturesQuery = useQuery({
+    queryKey: ADMIN_FEATURES_KEY,
+    queryFn: listSystemFeatures,
+    enabled: Boolean(inspectedUserId),
+    staleTime: 60_000,
+  });
+  const individualFlagsQuery = useQuery({
+    queryKey: [...ADMIN_USER_OVERRIDES_KEY, inspectedUserId],
+    queryFn: inspectedUserId ? () => listUserFeatureOverrides(inspectedUserId) : skipToken,
+    staleTime: 10_000,
+  });
+
   const isLoading = isAuthResolved
     ? isQueryPending(profileQuery) || isQueryPending(featuresQuery) || isQueryPending(subscriptionQuery)
     : false;
 
   const hasFeature = (featureKey: SystemFeatureKey | string): boolean => {
-    // 1. SuperAdmin e Admin têm acesso irrestrito a todas as funcionalidades
+    const isExpansion = featureKey === "family" || featureKey === "trips" || featureKey === "business";
+    if ((isExpansion || featureKey === "ai_extraction") && features[featureKey] === false) return false;
+
+    // Os módulos existentes preservam o acesso administrativo.
     if (isAdmin) return true;
 
     // 2. Kill-Switch global ou desativação explícita de feature flag
@@ -314,6 +339,10 @@ export function useUserAccess(targetUserId?: string): UserAccessResult {
     // 5. Override modular explícito para o módulo solicitado
     if (moduleAccess && moduleAccess[featureKey] !== undefined) {
       return moduleAccess[featureKey] !== "none";
+    }
+
+    if (isExpansion && moduleAccess?.transactions === "none") {
+      return false;
     }
 
     // 6. Visão Geral (Overview)
@@ -356,6 +385,10 @@ export function useUserAccess(targetUserId?: string): UserAccessResult {
     role,
     status,
     features,
+    inspectedAccessSources: inspectedUserId ? {
+      features: globalFeaturesQuery.data,
+      overrides: individualFlagsQuery.data,
+    } : undefined,
     isPendingApproval,
     isActive,
     isSuspended,

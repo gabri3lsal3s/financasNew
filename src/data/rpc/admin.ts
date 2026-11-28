@@ -1,6 +1,7 @@
+import { z } from "zod";
 import { getSupabase } from "@/data/client";
 import { reportError } from "@/services/observability";
-import { callRpc, unwrapRpc } from "./client";
+import { callRpc, unwrapRpc, type RpcResult } from "./client";
 import type {
   AdminContactDetails,
   AdminPastDueSubscriptionRow,
@@ -127,14 +128,34 @@ export async function adminRemoveFeatureOverride(params: {
 export async function adminToggleGlobalFeature(params: {
   featureKey: string;
   enabled: boolean;
+  reason?: string | null;
 }): Promise<void> {
-  await unwrapRpc(
-    callRpc("admin_toggle_global_feature", {
-      p_feature_key: params.featureKey,
-      p_enabled: params.enabled,
-    }),
-    true,
-  );
+  const args = {
+    p_feature_key: params.featureKey,
+    p_enabled: params.enabled,
+    ...(params.reason === undefined ? {} : { p_reason: params.reason }),
+  };
+
+  await unwrapRpc(callRpc("admin_toggle_global_feature", args), true);
+}
+
+const globalFeatureImpactSchema = z.object({
+  active_users_total: z.number().int().nonnegative(),
+  explicit_overrides_count: z.number().int().nonnegative(),
+});
+
+export async function adminPreviewGlobalFeatureImpact(featureKey: string) {
+  // A função pode preceder a atualização dos tipos gerados do Supabase.
+  const response = await (getSupabase().rpc(
+    "admin_preview_global_feature_impact" as never,
+    { p_feature_key: featureKey } as never,
+  ) as unknown as PromiseLike<RpcResult<unknown>>);
+
+  if (z.object({ code: z.literal("PGRST202") }).safeParse(response.error).success) {
+    return null;
+  }
+
+  return globalFeatureImpactSchema.parse(await unwrapRpc(Promise.resolve(response)));
 }
 
 /**
