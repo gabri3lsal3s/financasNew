@@ -44,7 +44,7 @@ describe("CreateInviteDialog", () => {
 
     // Alerta deve ser renderizado
     expect(screen.getByText(/Atenção: Modo Whitelist será Ativado no Resgate/i)).toBeInTheDocument();
-    expect(screen.getByText("Transações & Lançamentos")).toBeInTheDocument();
+    expect(screen.getByText("Transações & Extrato")).toBeInTheDocument();
     expect(screen.getByText("Investimentos & Carteira")).toBeInTheDocument();
 
     // Ao desmarcar, alerta deve sumir

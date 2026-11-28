@@ -6,7 +6,6 @@ export {
   AdminBillingPage,
   AdminTicketsPage,
   AdminInvitesPage,
-  AdminBackupsPage,
   AdminSecurityPage,
   AdminSettingsPage,
   InvitesTab,
