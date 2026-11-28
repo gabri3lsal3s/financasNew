@@ -1,9 +1,9 @@
 import { getSupabase } from "@/data/client";
 import { resolveQuery } from "@/data/query";
+import { callRpc, unwrapRpc } from "@/data/rpc";
 import { currentUserId } from "@/data/session";
-import { AppError, classifyError } from "@/services/errors";
 import { reportError } from "@/services/observability";
-import type { AppAnalyticsEvent, FeatureUsageMetric } from "@/types";
+import type { FeatureUsageMetric } from "@/types";
 
 export interface LogAnalyticsEventInput {
   event_name: string;
@@ -44,54 +44,27 @@ export async function logAnalyticsBatch(
   }
 }
 
+interface AdminFeatureUsageRankingRow {
+  module: string;
+  count: number;
+  percentage: number;
+  last_used_at: string | null;
+}
+
 /**
- * Consulta a agregação de uso de funcionalidades nos últimos N dias para a tela de admin.
+ * Consulta a agregação de uso de funcionalidades nos últimos N dias para a tela de admin via RPC segura.
  */
 export async function getFeatureUsageRanking(days = 30): Promise<FeatureUsageMetric[]> {
-  const sinceDate = new Date();
-  sinceDate.setDate(sinceDate.getDate() - days);
-
-  const { data, error } = await resolveQuery<AppAnalyticsEvent[]>(
-    getSupabase()
-      .from("app_analytics_events")
-      .select("module, created_at")
-      .gte("created_at", sinceDate.toISOString()),
+  const rows = await unwrapRpc(
+    callRpc("admin_get_feature_usage_ranking" as never, {
+      p_days: days,
+    } as never),
   );
 
-  if (error) {
-    const classified = classifyError(error);
-    throw new AppError(classified.kind, classified.message, error);
-  }
-
-  const events = data ?? [];
-  const total = events.length;
-  if (total === 0) return [];
-
-  const countsByModule = new Map<string, { count: number; lastUsedAt: string }>();
-
-  for (const ev of events) {
-    const mod = ev.module || "outros";
-    const existing = countsByModule.get(mod);
-    if (!existing) {
-      countsByModule.set(mod, { count: 1, lastUsedAt: ev.created_at });
-    } else {
-      existing.count += 1;
-      if (new Date(ev.created_at) > new Date(existing.lastUsedAt)) {
-        existing.lastUsedAt = ev.created_at;
-      }
-    }
-  }
-
-  const ranking: FeatureUsageMetric[] = [];
-  for (const [moduleName, info] of countsByModule.entries()) {
-    ranking.push({
-      module: moduleName,
-      count: info.count,
-      percentage: Math.round((info.count / total) * 100),
-      lastUsedAt: info.lastUsedAt,
-    });
-  }
-
-  ranking.sort((a, b) => b.count - a.count);
-  return ranking;
+  return ((rows ?? []) as AdminFeatureUsageRankingRow[]).map((row) => ({
+    module: row.module || "outros",
+    count: Number(row.count ?? 0),
+    percentage: Number(row.percentage ?? 0),
+    lastUsedAt: row.last_used_at ?? null,
+  }));
 }

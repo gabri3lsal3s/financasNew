@@ -3,6 +3,10 @@ import { resolveQuery } from "@/data/query";
 import {
   adminCreateInvite as adminCreateInviteRpc,
   adminDeleteUser as adminDeleteUserRpc,
+  adminQuarantineUser as adminQuarantineUserRpc,
+  adminRestoreUser as adminRestoreUserRpc,
+  adminSetUserTestFlag as adminSetUserTestFlagRpc,
+  adminGetBillingOverview,
   adminGetMetrics as adminGetMetricsRpc,
   adminListPastDueSubscriptions,
   adminListUsers as adminListUsersRpc,
@@ -27,12 +31,15 @@ import {
   adminResetUserAiQuota,
   adminGetUserSupportDiagnostics,
   adminGetRetentionRadar,
+  issueAdminStepUpChallenge,
   type AdminAiUsageSummaryParams,
   type AdminFinopsParams,
   type AdminFinopsParamsInput,
   type AdminResetAiQuotaInput,
   type AdminListUsersParams,
   type AdminMetricsResult,
+  type AdminStepUpChallenge,
+  type AdminStepUpOperation,
   type AdminUserRow,
 } from "@/data/rpc";
 import { AppError, classifyError } from "@/services/errors";
@@ -238,20 +245,6 @@ export interface AdminPortalGrantStatus {
   reason: string | null;
 }
 
-export type AdminStepUpOperation =
-  | "delete_user"
-  | "restore_user"
-  | "reset_mfa"
-  | "revoke_sessions";
-
-export interface AdminStepUpChallenge {
-  challengeId: string;
-  stepUpToken: string;
-  operation: AdminStepUpOperation;
-  targetRef: string;
-  expiresAt: string;
-}
-
 /**
  * Valida se a sessão administrativa atual possui concessão ativa no portal isolado (private_auth).
  * Opera em modo fail-closed: retorna `granted: false` em caso de ausência de concessão ou erro.
@@ -282,49 +275,17 @@ export async function checkAdminPortalGrant(): Promise<AdminPortalGrantStatus> {
 }
 
 /**
- * Emite um desafio de step-up de uso único (validade de 5 minutos) vinculado à operação e ao alvo.
- */
-export async function issueAdminStepUpChallenge(
-  operation: AdminStepUpOperation,
-  targetRef: string,
-): Promise<AdminStepUpChallenge> {
-  const { data, error } = await resolveQuery<{
-    challenge_id: string;
-    step_up_token: string;
-    operation: AdminStepUpOperation;
-    target_ref: string;
-    expires_at: string;
-  }>(
-    getSupabase().rpc(
-      "admin_issue_step_up_challenge" as never,
-      { p_operation: operation, p_target_ref: targetRef } as never,
-    ),
-  );
-
-  if (error || !data?.step_up_token) {
-    const classified = classifyError(error ?? new Error("Falha ao emitir desafio step-up."));
-    throw new AppError(classified.kind, classified.message, error);
-  }
-
-  return {
-    challengeId: data.challenge_id,
-    stepUpToken: data.step_up_token,
-    operation: data.operation,
-    targetRef: data.target_ref,
-    expiresAt: data.expires_at,
-  };
-}
-
-/**
  * Remove e desativa compulsoriamente os fatores 2FA/MFA de uma conta (Incidente 4 do Runbook).
  */
 export async function adminResetUserMFA(userId: string, stepUpToken?: string): Promise<boolean> {
+  const resolvedStepUpToken =
+    stepUpToken ?? (await issueAdminStepUpChallenge("reset_mfa", userId)).stepUpToken;
   const supabase = getSupabase();
   const { data, error } = await supabase.functions.invoke("admin-super-action", {
     body: {
       action: "reset_mfa",
       target_user_id: userId,
-      ...(stepUpToken ? { step_up_token: stepUpToken } : {}),
+      step_up_token: resolvedStepUpToken,
     },
   });
 
@@ -340,12 +301,14 @@ export async function adminResetUserMFA(userId: string, stepUpToken?: string): P
  * Encerra todas as sessões ativas (tokens de acesso) de um usuário específico em todos os dispositivos.
  */
 export async function adminRevokeUserSessions(userId: string, stepUpToken?: string): Promise<boolean> {
+  const resolvedStepUpToken =
+    stepUpToken ?? (await issueAdminStepUpChallenge("revoke_sessions", userId)).stepUpToken;
   const supabase = getSupabase();
   const { data, error } = await supabase.functions.invoke("admin-super-action", {
     body: {
       action: "revoke_sessions",
       target_user_id: userId,
-      ...(stepUpToken ? { step_up_token: stepUpToken } : {}),
+      step_up_token: resolvedStepUpToken,
     },
   });
 
@@ -525,6 +488,10 @@ export async function adminDeleteBroadcastNotification(notificationId: string): 
 export {
   adminCreateInviteRpc as adminCreateInvite,
   adminDeleteUserRpc as adminDeleteUser,
+  adminQuarantineUserRpc as adminQuarantineUser,
+  adminRestoreUserRpc as adminRestoreUser,
+  adminSetUserTestFlagRpc as adminSetUserTestFlag,
+  adminGetBillingOverview,
   adminGetMetricsRpc as adminGetMetrics,
   adminListPastDueSubscriptions,
   adminListUsersRpc as adminListUsers,
@@ -549,12 +516,15 @@ export {
   adminResetUserAiQuota,
   adminGetUserSupportDiagnostics,
   adminGetRetentionRadar,
+  issueAdminStepUpChallenge,
   type AdminAiUsageSummaryParams,
   type AdminFinopsParams,
   type AdminFinopsParamsInput,
   type AdminResetAiQuotaInput,
   type AdminListUsersParams,
   type AdminMetricsResult,
+  type AdminStepUpChallenge,
+  type AdminStepUpOperation,
   type AdminUserRow,
 };
 

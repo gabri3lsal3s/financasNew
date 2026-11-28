@@ -16,6 +16,7 @@ import {
   adminGetAiUsageSummary,
   adminGetFinopsMonthlyParams,
   adminGetBillingFinopsOverview,
+  adminGetBillingOverview,
   adminGetUserSupportDiagnostics,
   adminGetRetentionRadar,
   type AdminAiUsageSummaryParams,
@@ -46,6 +47,7 @@ export const MY_BROADCASTS_KEY = ["my_broadcasts"] as const;
 export const ADMIN_CONNECTIONS_HEALTH_KEY = ["admin_connections_health"] as const;
 export const ADMIN_FINOPS_PARAMS_KEY = ["admin_finops_params"] as const;
 export const ADMIN_BILLING_FINOPS_KEY = ["admin_billing_finops"] as const;
+export const ADMIN_BILLING_OVERVIEW_KEY = ["admin_billing_overview"] as const;
 export const ADMIN_AI_USAGE_KEY = ["admin_ai_usage"] as const;
 export const ADMIN_USER_SUPPORT_DIAGNOSTICS_KEY = ["admin_user_support_diagnostics"] as const;
 export const ADMIN_RETENTION_RADAR_KEY = ["admin_retention_radar"] as const;
@@ -225,6 +227,14 @@ export function useAdminBillingFinopsOverview(periodMonth?: string, enabled = tr
     queryKey: [...ADMIN_BILLING_FINOPS_KEY, periodMonth],
     queryFn: () => adminGetBillingFinopsOverview(periodMonth),
     enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useAdminBillingOverview() {
+  return useQuery({
+    queryKey: ADMIN_BILLING_OVERVIEW_KEY,
+    queryFn: adminGetBillingOverview,
     staleTime: 30_000,
   });
 }

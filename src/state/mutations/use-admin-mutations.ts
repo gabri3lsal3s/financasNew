@@ -2,6 +2,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   adminCreateInvite,
   adminDeleteUser,
+  adminQuarantineUser,
+  adminRestoreUser,
+  adminSetUserTestFlag,
   adminPreviewGlobalFeatureImpact,
   adminRemoveFeatureOverride,
   adminRevokeInvite,
@@ -36,6 +39,7 @@ import {
   ADMIN_AUDIT_KEY,
   ADMIN_AI_USAGE_KEY,
   ADMIN_BILLING_FINOPS_KEY,
+  ADMIN_BILLING_OVERVIEW_KEY,
   ADMIN_FINOPS_PARAMS_KEY,
   ADMIN_USER_SUPPORT_DIAGNOSTICS_KEY,
   ADMIN_FEATURES_KEY,
@@ -410,6 +414,8 @@ export function useAdminDeleteUser() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ADMIN_USERS_KEY });
       void queryClient.invalidateQueries({ queryKey: ADMIN_METRICS_KEY });
+      void queryClient.invalidateQueries({ queryKey: ADMIN_BILLING_OVERVIEW_KEY });
+      void queryClient.invalidateQueries({ queryKey: ADMIN_BILLING_FINOPS_KEY });
       void queryClient.invalidateQueries({ queryKey: ADMIN_AUDIT_KEY });
       pushToast({
         title: "Usuário excluído",
@@ -420,6 +426,90 @@ export function useAdminDeleteUser() {
     onError: (err) => {
       pushToast({
         title: "Erro ao excluir usuário",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useAdminQuarantineUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: { targetUserId: string; reason?: string | null }) =>
+      adminQuarantineUser(params),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ADMIN_USERS_KEY });
+      void queryClient.invalidateQueries({ queryKey: ADMIN_METRICS_KEY });
+      void queryClient.invalidateQueries({ queryKey: ADMIN_BILLING_OVERVIEW_KEY });
+      void queryClient.invalidateQueries({ queryKey: ADMIN_BILLING_FINOPS_KEY });
+      void queryClient.invalidateQueries({ queryKey: ADMIN_AUDIT_KEY });
+      pushToast({
+        title: "Usuário em quarentena",
+        description: "A conta foi movida para quarentena e o acesso foi bloqueado.",
+        variant: "default",
+      });
+    },
+    onError: (err) => {
+      pushToast({
+        title: "Erro ao colocar em quarentena",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useAdminRestoreUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: { targetUserId: string }) => adminRestoreUser(params),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ADMIN_USERS_KEY });
+      void queryClient.invalidateQueries({ queryKey: ADMIN_METRICS_KEY });
+      void queryClient.invalidateQueries({ queryKey: ADMIN_BILLING_OVERVIEW_KEY });
+      void queryClient.invalidateQueries({ queryKey: ADMIN_BILLING_FINOPS_KEY });
+      void queryClient.invalidateQueries({ queryKey: ADMIN_AUDIT_KEY });
+      pushToast({
+        title: "Usuário restaurado",
+        description: "A conta foi restaurada da quarentena com sucesso.",
+        variant: "success",
+      });
+    },
+    onError: (err) => {
+      pushToast({
+        title: "Erro ao restaurar usuário",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useAdminSetUserTestFlag() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: { userId: string; isTest: boolean }) => adminSetUserTestFlag(params),
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: ADMIN_USERS_KEY });
+      void queryClient.invalidateQueries({ queryKey: ADMIN_METRICS_KEY });
+      void queryClient.invalidateQueries({ queryKey: ADMIN_BILLING_OVERVIEW_KEY });
+      void queryClient.invalidateQueries({ queryKey: ADMIN_BILLING_FINOPS_KEY });
+      void queryClient.invalidateQueries({ queryKey: ADMIN_AUDIT_KEY });
+      pushToast({
+        title: variables.isTest ? "Conta marcada como teste" : "Marcação de teste removida",
+        description: variables.isTest
+          ? "A conta foi isolada das métricas reais de negócio."
+          : "A conta voltou a compor as métricas regulares.",
+        variant: "success",
+      });
+    },
+    onError: (err) => {
+      pushToast({
+        title: "Erro ao atualizar flag de teste",
         description: getErrorMessage(err),
         variant: "destructive",
       });

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { getSupabase } from "@/data/client";
-import { reportError } from "@/services/observability";
+import { resolveQuery } from "@/data/query";
+import { AppError, classifyError } from "@/services/errors";
 import { callRpc, unwrapRpc, type RpcResult } from "./client";
 import type {
   AdminContactDetails,
@@ -12,6 +13,7 @@ import type {
   AdminAiUsageRow,
   AdminUserSupportDiagnostics,
   AdminRetentionRadarRow,
+  AdminBillingOverview,
 } from "@/types";
 import {
   adminConnectionsHealthSchema,
@@ -45,6 +47,8 @@ export interface AdminUserRow {
   approved_at: string | null;
   approved_by: string | null;
   suspended_reason: string | null;
+  is_test?: boolean;
+  deleted_at?: string | null;
   total_count: number;
 }
 
@@ -204,6 +208,8 @@ export interface AdminMetricsResult {
   active_users: number;
   pending_users: number;
   suspended_users: number;
+  test_or_internal_users?: number;
+  quarantined_users?: number;
   total_invites: number;
   used_invites: number;
 }
@@ -363,40 +369,186 @@ export async function deleteOwnAccount(): Promise<void> {
   return deleteCurrentUserAccount();
 }
 
-/**
- * Superadmin exclui definitivamente um usuário e todos os seus dados do sistema.
- */
-export async function adminDeleteUser(params: { targetUserId: string }): Promise<void> {
-  // Cancelamento preventivo no Asaas caso o usuário possua assinatura recorrente ativa
-  try {
-    const supabase = getSupabase();
-    const { data: sub } = await supabase
-      .from("user_subscriptions")
-      .select("asaas_subscription_id")
-      .eq("user_id", params.targetUserId)
-      .maybeSingle();
+export type AdminStepUpOperation =
+  | "delete_user"
+  | "quarantine_user"
+  | "restore_user"
+  | "reset_mfa"
+  | "revoke_sessions";
 
-    if (sub?.asaas_subscription_id) {
-      await supabase.functions.invoke("admin-super-action", {
-        body: {
-          action: "admin_update_subscription",
-          target_user_id: params.targetUserId,
-          cancel_asaas: true,
-          status: "canceled",
-          tier: "read_only",
-        },
-      });
-    }
-  } catch (err) {
-    reportError(err, { source: "adminDeleteUser.cancelAsaas", targetUserId: params.targetUserId });
+export interface AdminStepUpChallenge {
+  challengeId: string;
+  stepUpToken: string;
+  operation: AdminStepUpOperation;
+  targetRef: string;
+  expiresAt: string;
+}
+
+/**
+ * Emite um desafio de step-up de uso único (validade de 5 minutos) vinculado à operação e ao alvo.
+ */
+export async function issueAdminStepUpChallenge(
+  operation: AdminStepUpOperation,
+  targetRef: string,
+): Promise<AdminStepUpChallenge> {
+  const { data, error } = await resolveQuery<{
+    challenge_id: string;
+    step_up_token: string;
+    operation: AdminStepUpOperation;
+    target_ref: string;
+    expires_at: string;
+  }>(
+    getSupabase().rpc(
+      "admin_issue_step_up_challenge" as never,
+      { p_operation: operation, p_target_ref: targetRef } as never,
+    ),
+  );
+
+  if (error || !data?.step_up_token) {
+    const classified = classifyError(error ?? new Error("Falha ao emitir desafio step-up."));
+    throw new AppError(classified.kind, classified.message, error);
   }
 
-  await unwrapRpc(
-    callRpc("admin_delete_user", {
+  return {
+    challengeId: data.challenge_id,
+    stepUpToken: data.step_up_token,
+    operation: data.operation,
+    targetRef: data.target_ref,
+    expiresAt: data.expires_at,
+  };
+}
+
+async function extractAdminSuperActionError(
+  data: unknown,
+  error: unknown,
+  fallbackMessage: string,
+): Promise<string> {
+  if (data && typeof data === "object" && "error" in data && typeof data.error === "string" && data.error.trim()) {
+    return data.error;
+  }
+
+  if (error && typeof error === "object" && "context" in error) {
+    const ctx = (error as { context?: unknown }).context;
+    if (ctx && typeof ctx === "object" && "json" in ctx && typeof (ctx as Response).json === "function") {
+      try {
+        const res = ctx as Response;
+        const body = (await (typeof res.clone === "function" ? res.clone() : res).json()) as {
+          error?: unknown;
+          message?: unknown;
+        } | null;
+        if (body && typeof body.error === "string" && body.error.trim()) {
+          return body.error;
+        }
+        if (body && typeof body.message === "string" && body.message.trim()) {
+          return body.message;
+        }
+      } catch {
+        // Ignora falha ao ler corpo JSON da resposta
+      }
+    }
+  }
+
+  if (error && typeof error === "object" && "message" in error && typeof error.message === "string" && error.message.trim()) {
+    return error.message;
+  }
+
+  return fallbackMessage;
+}
+
+/**
+ * Superadmin exclui definitivamente um usuário e todos os seus dados do sistema via Edge Function segura.
+ */
+export async function adminDeleteUser(params: { targetUserId: string }): Promise<void> {
+  const challenge = await issueAdminStepUpChallenge("delete_user", params.targetUserId);
+  const { data, error } = await getSupabase().functions.invoke("admin-super-action", {
+    body: {
+      action: "delete_user",
       target_user_id: params.targetUserId,
-    }),
+      step_up_token: challenge.stepUpToken,
+    },
+  });
+
+  if (error || !data?.success) {
+    const message = await extractAdminSuperActionError(
+      data,
+      error,
+      "Falha ao excluir usuário definitivamente.",
+    );
+    throw new AppError("network", message, error ?? data);
+  }
+}
+
+/**
+ * Coloca um usuário em quarentena (soft-delete + bloqueio imediato) via Edge Function segura.
+ */
+export async function adminQuarantineUser(params: {
+  targetUserId: string;
+  reason?: string | null;
+}): Promise<void> {
+  const challenge = await issueAdminStepUpChallenge("quarantine_user", params.targetUserId);
+  const { data, error } = await getSupabase().functions.invoke("admin-super-action", {
+    body: {
+      action: "quarantine_user",
+      target_user_id: params.targetUserId,
+      reason: params.reason ?? null,
+      step_up_token: challenge.stepUpToken,
+    },
+  });
+
+  if (error || !data?.success) {
+    const message = await extractAdminSuperActionError(
+      data,
+      error,
+      "Falha ao colocar usuário em quarentena.",
+    );
+    throw new AppError("network", message, error ?? data);
+  }
+}
+
+/**
+ * Restaura um usuário que estava em quarentena via Edge Function segura.
+ */
+export async function adminRestoreUser(params: { targetUserId: string }): Promise<void> {
+  const challenge = await issueAdminStepUpChallenge("restore_user", params.targetUserId);
+  const { data, error } = await getSupabase().functions.invoke("admin-super-action", {
+    body: {
+      action: "restore_user",
+      target_user_id: params.targetUserId,
+      step_up_token: challenge.stepUpToken,
+    },
+  });
+
+  if (error || !data?.success) {
+    const message = await extractAdminSuperActionError(
+      data,
+      error,
+      "Falha ao restaurar usuário da quarentena.",
+    );
+    throw new AppError("network", message, error ?? data);
+  }
+}
+
+/**
+ * Marca ou desmarca uma conta como conta de teste/interna para higiene de métricas.
+ */
+export async function adminSetUserTestFlag(params: {
+  userId: string;
+  isTest: boolean;
+}): Promise<void> {
+  await unwrapRpc(
+    callRpc("admin_set_user_test_flag" as never, {
+      p_user_id: params.userId,
+      p_is_test: params.isTest,
+    } as never),
     true,
   );
+}
+
+/**
+ * Obtém a visão consolidada de faturamento real e assinaturas do painel administrativo.
+ */
+export async function adminGetBillingOverview(): Promise<AdminBillingOverview> {
+  return unwrapRpc(callRpc("admin_get_billing_overview" as never, {} as never));
 }
 
 /**

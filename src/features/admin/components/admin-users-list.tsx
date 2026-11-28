@@ -64,9 +64,21 @@ export function AdminUsersList({ users, isLoading, onSelectUser }: AdminUsersLis
                 </span>
                 <span className="text-xs text-muted-foreground font-mono truncate">{u.email}</span>
               </div>
-              <Badge variant={resolveStatusVariant(u.status)} size="xs" className="shrink-0">
-                {STATUS_LABELS[u.status as keyof typeof STATUS_LABELS] ?? u.status}
-              </Badge>
+              <div className="flex items-center gap-1.5 flex-wrap justify-end shrink-0">
+                <Badge variant={resolveStatusVariant(u.status)} size="xs" className="max-w-full truncate inline-block">
+                  {STATUS_LABELS[u.status as keyof typeof STATUS_LABELS] ?? u.status}
+                </Badge>
+                {u.is_test && (
+                  <Badge variant="warning" size="xs" className="max-w-full truncate inline-block">
+                    Teste
+                  </Badge>
+                )}
+                {u.deleted_at && (
+                  <Badge variant="critical" size="xs" className="max-w-full truncate inline-block">
+                    Quarentena
+                  </Badge>
+                )}
+              </div>
             </div>
 
             <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground pt-1">
@@ -114,9 +126,21 @@ export function AdminUsersList({ users, isLoading, onSelectUser }: AdminUsersLis
                   </div>
                 </td>
                 <td className="py-3.5 px-4 whitespace-nowrap">
-                  <Badge variant={resolveStatusVariant(u.status)} size="xs">
-                    {STATUS_LABELS[u.status as keyof typeof STATUS_LABELS] ?? u.status}
-                  </Badge>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <Badge variant={resolveStatusVariant(u.status)} size="xs" className="max-w-full truncate inline-block">
+                      {STATUS_LABELS[u.status as keyof typeof STATUS_LABELS] ?? u.status}
+                    </Badge>
+                    {u.is_test && (
+                      <Badge variant="warning" size="xs" className="max-w-full truncate inline-block">
+                        Teste
+                      </Badge>
+                    )}
+                    {u.deleted_at && (
+                      <Badge variant="critical" size="xs" className="max-w-full truncate inline-block">
+                        Quarentena
+                      </Badge>
+                    )}
+                  </div>
                 </td>
                 <td className="py-3.5 px-4 whitespace-nowrap text-muted-foreground">
                   <span className="font-medium text-foreground">

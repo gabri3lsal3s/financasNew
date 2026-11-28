@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   adminDeleteUser,
+  adminGetBillingOverview,
+  adminQuarantineUser,
+  adminRestoreUser,
+  adminSetUserTestFlag,
   deleteCurrentUserAccount,
   deleteOwnAccount,
   getFamilyConsolidation,
@@ -20,10 +24,14 @@ import { AppError } from "@/services/errors";
 import type { FamilyConsolidationResult } from "@/types";
 
 const rpcMock = vi.fn();
+const functionsInvokeMock = vi.fn();
 
 vi.mock("@/data/client", () => ({
   getSupabase: () => ({
     rpc: (...args: unknown[]) => rpcMock(...args),
+    functions: {
+      invoke: (...args: unknown[]) => functionsInvokeMock(...args),
+    },
   }),
 }));
 
@@ -63,26 +71,244 @@ describe("RPC: Exclusão de Contas e Usuários", () => {
   });
 
   describe("adminDeleteUser", () => {
-    it("deve executar a RPC admin_delete_user com target_user_id correto", async () => {
-      rpcMock.mockResolvedValueOnce({ data: null, error: null });
+    it("deve emitir desafio step-up e invocar admin-super-action com delete_user", async () => {
+      rpcMock.mockResolvedValueOnce({
+        data: {
+          challenge_id: "chg-1",
+          step_up_token: "step-up-tok-123",
+          operation: "delete_user",
+          target_ref: "target-uuid-123",
+          expires_at: "2026-11-28T12:00:00Z",
+        },
+        error: null,
+      });
+      functionsInvokeMock.mockResolvedValueOnce({ data: { success: true }, error: null });
 
       await expect(adminDeleteUser({ targetUserId: "target-uuid-123" })).resolves.toBeUndefined();
       expect(rpcMock).toHaveBeenCalledTimes(1);
-      expect(rpcMock).toHaveBeenCalledWith("admin_delete_user", {
-        target_user_id: "target-uuid-123",
+      expect(rpcMock).toHaveBeenCalledWith("admin_issue_step_up_challenge", {
+        p_operation: "delete_user",
+        p_target_ref: "target-uuid-123",
+      });
+      expect(functionsInvokeMock).toHaveBeenCalledTimes(1);
+      expect(functionsInvokeMock).toHaveBeenCalledWith("admin-super-action", {
+        body: {
+          action: "delete_user",
+          target_user_id: "target-uuid-123",
+          step_up_token: "step-up-tok-123",
+        },
       });
     });
 
-    it("deve propagar AppError quando a RPC falhar (ex: usuário tentando autoexclusão)", async () => {
+    it("deve propagar AppError quando a Edge Function falhar (ex: usuário tentando autoexclusão)", async () => {
       rpcMock.mockResolvedValueOnce({
-        data: null,
-        error: { message: "Superadmins não podem se autoexcluir por esta função.", code: "P0001" },
+        data: {
+          challenge_id: "chg-2",
+          step_up_token: "step-up-tok-456",
+          operation: "delete_user",
+          target_ref: "same-uuid",
+          expires_at: "2026-11-28T12:00:00Z",
+        },
+        error: null,
+      });
+      functionsInvokeMock.mockResolvedValueOnce({
+        data: { success: false, error: "Superadmins não podem se autoexcluir por esta função." },
+        error: null,
       });
 
       await expect(adminDeleteUser({ targetUserId: "same-uuid" })).rejects.toThrow(AppError);
-      expect(rpcMock).toHaveBeenCalledWith("admin_delete_user", {
-        target_user_id: "same-uuid",
+      expect(rpcMock).toHaveBeenCalledWith("admin_issue_step_up_challenge", {
+        p_operation: "delete_user",
+        p_target_ref: "same-uuid",
       });
+      expect(functionsInvokeMock).toHaveBeenCalledWith("admin-super-action", {
+        body: {
+          action: "delete_user",
+          target_user_id: "same-uuid",
+          step_up_token: "step-up-tok-456",
+        },
+      });
+    });
+
+    it("deve propagar AppError quando admin_issue_step_up_challenge falhar", async () => {
+      rpcMock.mockResolvedValueOnce({
+        data: null,
+        error: { message: "Acesso negado.", code: "42501" },
+      });
+
+      await expect(adminDeleteUser({ targetUserId: "target-uuid-123" })).rejects.toThrow(AppError);
+      expect(functionsInvokeMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("adminQuarantineUser", () => {
+    it("deve emitir desafio step-up e invocar admin-super-action com quarantine_user", async () => {
+      rpcMock.mockResolvedValueOnce({
+        data: {
+          challenge_id: "chg-q1",
+          step_up_token: "step-up-q-123",
+          operation: "quarantine_user",
+          target_ref: "target-uuid-123",
+          expires_at: "2026-11-28T12:00:00Z",
+        },
+        error: null,
+      });
+      functionsInvokeMock.mockResolvedValueOnce({ data: { success: true }, error: null });
+
+      await expect(
+        adminQuarantineUser({ targetUserId: "target-uuid-123", reason: "Atividade suspeita" }),
+      ).resolves.toBeUndefined();
+      expect(rpcMock).toHaveBeenCalledWith("admin_issue_step_up_challenge", {
+        p_operation: "quarantine_user",
+        p_target_ref: "target-uuid-123",
+      });
+      expect(functionsInvokeMock).toHaveBeenCalledWith("admin-super-action", {
+        body: {
+          action: "quarantine_user",
+          target_user_id: "target-uuid-123",
+          reason: "Atividade suspeita",
+          step_up_token: "step-up-q-123",
+        },
+      });
+    });
+
+    it("deve normalizar reason ausente para null", async () => {
+      rpcMock.mockResolvedValueOnce({
+        data: {
+          challenge_id: "chg-q2",
+          step_up_token: "step-up-q-456",
+          operation: "quarantine_user",
+          target_ref: "target-uuid-123",
+          expires_at: "2026-11-28T12:00:00Z",
+        },
+        error: null,
+      });
+      functionsInvokeMock.mockResolvedValueOnce({ data: { success: true }, error: null });
+
+      await expect(adminQuarantineUser({ targetUserId: "target-uuid-123" })).resolves.toBeUndefined();
+      expect(functionsInvokeMock).toHaveBeenCalledWith("admin-super-action", {
+        body: {
+          action: "quarantine_user",
+          target_user_id: "target-uuid-123",
+          reason: null,
+          step_up_token: "step-up-q-456",
+        },
+      });
+    });
+
+    it("deve propagar AppError quando admin-super-action falhar", async () => {
+      rpcMock.mockResolvedValueOnce({
+        data: {
+          challenge_id: "chg-q3",
+          step_up_token: "step-up-q-789",
+          operation: "quarantine_user",
+          target_ref: "target-uuid-123",
+          expires_at: "2026-11-28T12:00:00Z",
+        },
+        error: null,
+      });
+      functionsInvokeMock.mockResolvedValueOnce({
+        data: null,
+        error: { message: "Erro interno" },
+      });
+
+      await expect(adminQuarantineUser({ targetUserId: "target-uuid-123" })).rejects.toThrow(AppError);
+    });
+  });
+
+  describe("adminRestoreUser", () => {
+    it("deve emitir desafio step-up e invocar admin-super-action com restore_user", async () => {
+      rpcMock.mockResolvedValueOnce({
+        data: {
+          challenge_id: "chg-r1",
+          step_up_token: "step-up-r-123",
+          operation: "restore_user",
+          target_ref: "target-uuid-123",
+          expires_at: "2026-11-28T12:00:00Z",
+        },
+        error: null,
+      });
+      functionsInvokeMock.mockResolvedValueOnce({ data: { success: true }, error: null });
+
+      await expect(adminRestoreUser({ targetUserId: "target-uuid-123" })).resolves.toBeUndefined();
+      expect(rpcMock).toHaveBeenCalledWith("admin_issue_step_up_challenge", {
+        p_operation: "restore_user",
+        p_target_ref: "target-uuid-123",
+      });
+      expect(functionsInvokeMock).toHaveBeenCalledWith("admin-super-action", {
+        body: {
+          action: "restore_user",
+          target_user_id: "target-uuid-123",
+          step_up_token: "step-up-r-123",
+        },
+      });
+    });
+
+    it("deve propagar AppError quando restore_user falhar", async () => {
+      rpcMock.mockResolvedValueOnce({
+        data: {
+          challenge_id: "chg-r2",
+          step_up_token: "step-up-r-456",
+          operation: "restore_user",
+          target_ref: "target-uuid-123",
+          expires_at: "2026-11-28T12:00:00Z",
+        },
+        error: null,
+      });
+      functionsInvokeMock.mockResolvedValueOnce({
+        data: { success: false, error: "Usuário não está em quarentena." },
+        error: null,
+      });
+
+      await expect(adminRestoreUser({ targetUserId: "target-uuid-123" })).rejects.toThrow(AppError);
+    });
+  });
+
+  describe("adminSetUserTestFlag", () => {
+    it("deve chamar admin_set_user_test_flag com p_user_id e p_is_test", async () => {
+      rpcMock.mockResolvedValueOnce({ data: null, error: null });
+
+      await expect(adminSetUserTestFlag({ userId: "usr-123", isTest: true })).resolves.toBeUndefined();
+      expect(rpcMock).toHaveBeenCalledTimes(1);
+      expect(rpcMock).toHaveBeenCalledWith("admin_set_user_test_flag", {
+        p_user_id: "usr-123",
+        p_is_test: true,
+      });
+    });
+
+    it("deve propagar AppError quando admin_set_user_test_flag falhar", async () => {
+      rpcMock.mockResolvedValueOnce({
+        data: null,
+        error: { message: "Permissão insuficiente.", code: "42501" },
+      });
+
+      await expect(adminSetUserTestFlag({ userId: "usr-123", isTest: false })).rejects.toThrow(AppError);
+    });
+  });
+
+  describe("adminGetBillingOverview", () => {
+    it("deve chamar admin_get_billing_overview e retornar visão consolidada", async () => {
+      const mockOverview = {
+        mrr_cents: 12900,
+        arr_cents: 154800,
+        active_paid_subscriptions: 3,
+        trial_subscriptions: 2,
+      };
+      rpcMock.mockResolvedValueOnce({ data: mockOverview, error: null });
+
+      const result = await adminGetBillingOverview();
+      expect(result).toEqual(mockOverview);
+      expect(rpcMock).toHaveBeenCalledTimes(1);
+      expect(rpcMock).toHaveBeenCalledWith("admin_get_billing_overview", {});
+    });
+
+    it("deve propagar AppError quando admin_get_billing_overview falhar", async () => {
+      rpcMock.mockResolvedValueOnce({
+        data: null,
+        error: { message: "Acesso restrito.", code: "42501" },
+      });
+
+      await expect(adminGetBillingOverview()).rejects.toThrow(AppError);
     });
   });
 

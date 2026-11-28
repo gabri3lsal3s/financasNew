@@ -98,3 +98,31 @@ export interface AdminRetentionRadarRow {
   last_seen_at: string | null;
   created_at: string;
 }
+
+export interface AdminBillingOverviewSubscription {
+  id: string;
+  user_id: string;
+  user_name: string | null;
+  user_email: string | null;
+  user_role: string;
+  is_test: boolean;
+  plan_id: string | null;
+  tier: SubscriptionTier;
+  status: AdminSubscriptionStatus;
+  trial_ends_at: string | null;
+  current_period_end: string | null;
+  asaas_subscription_id: string | null;
+  updated_at: string;
+  created_at: string;
+}
+
+export interface AdminBillingOverview {
+  estimated_real_mrr_cents: number;
+  real_paid_subscribers_count: number;
+  courtesy_lifetime_count: number;
+  trials_count: number;
+  expiring_trials_count: number;
+  past_due_count: number;
+  internal_or_test_count: number;
+  subscriptions: AdminBillingOverviewSubscription[];
+}

@@ -36,6 +36,11 @@ export function AdminMetricsKpiGrid({ metrics, isLoading }: AdminMetricsKpiGridP
         <KpiCard
           label="Total de Usuários"
           value={String(metrics?.total_users ?? 0)}
+          hint={
+            (metrics?.test_or_internal_users ?? 0) > 0
+              ? `${metrics?.test_or_internal_users} teste/internas excluídas`
+              : undefined
+          }
           icon={<Users className="size-4 text-muted-foreground" aria-hidden="true" />}
         />
         <KpiCard
@@ -54,6 +59,11 @@ export function AdminMetricsKpiGrid({ metrics, isLoading }: AdminMetricsKpiGridP
           label="Bloqueados"
           value={String(metrics?.suspended_users ?? 0)}
           tone={(metrics?.suspended_users ?? 0) > 0 ? "negative" : "default"}
+          hint={
+            (metrics?.quarantined_users ?? 0) > 0
+              ? `${metrics?.quarantined_users} em quarentena`
+              : undefined
+          }
           icon={<Shield className="size-4 text-critical-strong" aria-hidden="true" />}
         />
       </KpiGrid>

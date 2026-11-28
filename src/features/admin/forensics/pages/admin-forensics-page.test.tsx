@@ -8,6 +8,7 @@ import { AdminForensicsPage } from "./admin-forensics-page";
 const mockUseAuth = vi.fn();
 const mockUseUserAccess = vi.fn();
 const mockUseAdminUsers = vi.fn();
+const mockVerifyAdminPortalGrant = vi.fn();
 
 vi.mock("@/hooks/use-auth", () => ({
   useAuth: () => mockUseAuth(),
@@ -15,6 +16,10 @@ vi.mock("@/hooks/use-auth", () => ({
 
 vi.mock("@/state/queries/use-user-access", () => ({
   useUserAccess: () => mockUseUserAccess(),
+}));
+
+vi.mock("@/state/queries/use-admin-portal-grant", () => ({
+  verifyAdminPortalGrant: () => mockVerifyAdminPortalGrant(),
 }));
 
 vi.mock("@/state", () => ({
@@ -57,6 +62,10 @@ describe("AdminForensicsPage & Route Guard (Fase 1)", () => {
       isLoading: false,
       isAdmin: true,
     });
+    mockVerifyAdminPortalGrant.mockResolvedValue({
+      granted: true,
+      reason: null,
+    });
     mockUseAdminUsers.mockReturnValue({
       data: [{ id: "usr-12345678", name: "Gabriel Sales", email: "gabriel@axir.app", role: "admin", status: "active" }],
       isLoading: false,
@@ -72,7 +81,7 @@ describe("AdminForensicsPage & Route Guard (Fase 1)", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("Laboratório Forense")).toBeInTheDocument();
+    expect(await screen.findByText("Laboratório Forense")).toBeInTheDocument();
     expect(screen.getByText("Motor Forense de Invariantes")).toBeInTheDocument();
 
     const user = userEvent.setup();

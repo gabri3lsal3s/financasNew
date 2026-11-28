@@ -58,6 +58,10 @@ Deno?.serve?.(async (req: Request) => {
   try {
     const expectedToken = Deno?.env?.get?.("ASAAS_WEBHOOK_TOKEN");
     const receivedToken = req.headers.get("asaas-access-token") ?? "";
+    const asaasEnv =
+      (Deno?.env?.get?.("ASAAS_ENVIRONMENT") ?? "").trim().toLowerCase() === "sandbox"
+        ? "sandbox"
+        : "production";
 
     if (!expectedToken || !(await timingSafeEqualString(receivedToken, expectedToken))) {
       return json({ error: "Não autorizado" }, 403);
@@ -454,6 +458,14 @@ Deno?.serve?.(async (req: Request) => {
         return json({ received: true, duplicate: true, reason: "atomic_payment_lock" });
       }
 
+      if (paymentId) {
+        await supabase
+          .from("billing_processed_payments")
+          .update({ environment: asaasEnv })
+          .eq("provider", "asaas")
+          .eq("provider_payment_id", paymentId);
+      }
+
       const appliedPeriodEnd: string =
         typeof cumResult?.new_period_end === "string" && cumResult.new_period_end
           ? cumResult.new_period_end
@@ -699,6 +711,14 @@ Deno?.serve?.(async (req: Request) => {
           reason: "atomic_payment_lock",
           event: eventType,
         });
+      }
+
+      if (paymentId) {
+        await supabase
+          .from("billing_processed_payments")
+          .update({ environment: asaasEnv })
+          .eq("provider", "asaas")
+          .eq("provider_payment_id", paymentId);
       }
 
       await markWebhookProcessed();
@@ -1026,6 +1046,14 @@ Deno?.serve?.(async (req: Request) => {
         return json({ error: "Erro ao estornar antecipação acumulativa" }, 500);
       }
 
+      if (paymentId) {
+        await supabase
+          .from("billing_processed_payments")
+          .update({ refunded_at: nowIso, refund_reason: eventType })
+          .eq("provider", "asaas")
+          .eq("provider_payment_id", paymentId);
+      }
+
       if (decision.intentId) {
         await supabase
           .from("billing_intents")
@@ -1100,6 +1128,14 @@ Deno?.serve?.(async (req: Request) => {
         return json({ error: "Erro ao registrar estorno" }, 500);
       }
 
+      if (paymentId) {
+        await supabase
+          .from("billing_processed_payments")
+          .update({ refunded_at: nowIso, refund_reason: eventType })
+          .eq("provider", "asaas")
+          .eq("provider_payment_id", paymentId);
+      }
+
       await supabase.from("audit_events").insert({
         user_id: userSub.user_id,
         entity_type: "user_subscription",
@@ -1153,6 +1189,14 @@ Deno?.serve?.(async (req: Request) => {
       if (cbErr) {
         console.error("[asaas-webhook] Falha ao gravar bloqueio de chargeback:", cbErr);
         return json({ error: "Erro ao registrar chargeback" }, 500);
+      }
+
+      if (paymentId) {
+        await supabase
+          .from("billing_processed_payments")
+          .update({ refunded_at: nowIso, refund_reason: eventType })
+          .eq("provider", "asaas")
+          .eq("provider_payment_id", paymentId);
       }
 
       await supabase.from("audit_events").insert({

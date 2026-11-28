@@ -356,6 +356,8 @@ export type AdminUserSummary = {
   approved_at: string | null;
   approved_by: string | null;
   suspended_reason: string | null;
+  is_test?: boolean;
+  deleted_at?: string | null;
   total_count: number;
 };
 
@@ -364,6 +366,8 @@ export type AdminMetrics = {
   active_users: number;
   pending_users: number;
   suspended_users: number;
+  test_or_internal_users?: number;
+  quarantined_users?: number;
   total_invites: number;
   used_invites: number;
 };
@@ -1453,6 +1457,8 @@ export type AdminUserRow = {
   approved_at: string | null;
   approved_by: string | null;
   suspended_reason: string | null;
+  is_test?: boolean;
+  deleted_at?: string | null;
   total_count: number;
 };
 

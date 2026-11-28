@@ -12,8 +12,9 @@ import {
 } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
 import { KpiCard, KpiGrid } from "@/components/modules";
+import { ROLE_LABELS } from "@/domain/admin";
 import { formatDateBR } from "@/lib/date";
-import { useAdminPastDueSubscriptions, useAdminPlans, useAdminSubscriptions } from "@/state";
+import { useAdminBillingOverview, useAdminPlans } from "@/state";
 import { AdminHelpTip, AdminPageGuide } from "../components/admin-help-tip";
 import { AiQuotasUsagePanel } from "../components/ai-quotas-usage-panel";
 import { FinOpsOverviewPanel } from "../components/finops-overview-panel";
@@ -37,62 +38,21 @@ function resolveSubBadgeVariant(status: string): "positive" | "warning" | "criti
 export function AdminBillingPage() {
   const [activeTab, setActiveTab] = useState("visao-financeira");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [nowMs] = useState(() => Date.now());
-  const subscriptionsQuery = useAdminSubscriptions(200);
-  const pastDueQuery = useAdminPastDueSubscriptions();
+  const billingOverviewQuery = useAdminBillingOverview();
   const plansQuery = useAdminPlans();
 
-  const subscriptions = useMemo(() => subscriptionsQuery.data ?? [], [subscriptionsQuery.data]);
+  const overview = billingOverviewQuery.data;
+  const subscriptions = useMemo(() => overview?.subscriptions ?? [], [overview?.subscriptions]);
   const plans = useMemo(() => plansQuery.data ?? [], [plansQuery.data]);
 
-  const { estimatedMrrCents, activeSubscribersCount, activeTrialsCount, expiringTrialsCount, pastDueCount } = useMemo(() => {
-    const planMap = new Map(plans.map((p) => [p.id, p]));
-    let mrr = 0;
-    let activePaid = 0;
-    let trials = 0;
-    let expiring = 0;
-    let pastDue = 0;
-
-    for (const sub of subscriptions) {
-      if (sub.status === "past_due") {
-        pastDue += 1;
-      }
-      if (sub.status === "trialing" || (sub.status === "active" && sub.tier === "trial")) {
-        trials += 1;
-        if (sub.trial_ends_at) {
-          const diff = new Date(sub.trial_ends_at).getTime() - nowMs;
-          if (diff > 0 && diff <= 3 * 86_400_000) expiring += 1;
-        }
-        continue;
-      }
-      if (sub.status === "active" && sub.tier !== "read_only") {
-        activePaid += 1;
-        const plan = planMap.get(sub.plan_id) ?? planMap.get(sub.tier);
-        if (plan && plan.price_cents > 0) {
-          if (plan.billing_interval === "year") {
-            mrr += Math.round(plan.price_cents / 12);
-          } else if (plan.billing_interval === "month") {
-            mrr += plan.price_cents;
-          }
-        }
-      }
-    }
-
-    return {
-      estimatedMrrCents: mrr,
-      activeSubscribersCount: activePaid,
-      activeTrialsCount: trials,
-      expiringTrialsCount: expiring,
-      pastDueCount: Math.max(pastDue, (pastDueQuery.data ?? []).length),
-    };
-  }, [subscriptions, plans, pastDueQuery.data, nowMs]);
+  const pastDueCount = overview?.past_due_count ?? 0;
 
   const filteredSubscriptions = useMemo(() => {
     if (statusFilter === "all") return subscriptions;
     return subscriptions.filter((s) => s.status === statusFilter);
   }, [subscriptions, statusFilter]);
 
-  const hasError = subscriptionsQuery.isError || plansQuery.isError;
+  const hasError = billingOverviewQuery.isError || plansQuery.isError;
 
   const subscriptionsTabContent = (
     <div className="flex flex-col gap-6 w-full min-w-0">
@@ -108,7 +68,7 @@ export function AdminBillingPage() {
               variant="outline"
               size="sm"
               onClick={() => {
-                void subscriptionsQuery.refetch();
+                void billingOverviewQuery.refetch();
                 void plansQuery.refetch();
               }}
             >
@@ -116,7 +76,7 @@ export function AdminBillingPage() {
             </Button>
           }
         />
-      ) : subscriptionsQuery.isLoading || plansQuery.isLoading ? (
+      ) : billingOverviewQuery.isLoading || plansQuery.isLoading ? (
         <KpiGrid columns={4}>
           {Array.from({ length: 4 }).map((_, i) => (
             <div
@@ -129,48 +89,67 @@ export function AdminBillingPage() {
           ))}
         </KpiGrid>
       ) : (
-        <KpiGrid columns={4}>
-          <KpiCard
-            label="MRR estimado"
-            action={
-              <AdminHelpTip
-                title="MRR estimado"
-                what="Estimativa mensal da receita das assinaturas pagas ativas exibidas. Planos anuais entram pelo valor dividido por 12."
-                when="Consulte o indicador para acompanhar a receita recorrente prevista."
-                impact="Ajuda a planejar receitas. O valor recebido pode ser diferente da estimativa."
-              />
-            }
-            cents={estimatedMrrCents}
-            tone="positive"
-            icon={<TrendingUp className="size-4 text-positive-strong" aria-hidden="true" />}
-          />
-          <KpiCard
-            label="Assinantes Ativos"
-            value={String(activeSubscribersCount)}
-            tone="portfolio"
-            icon={<Crown className="size-4 text-portfolio" aria-hidden="true" />}
-          />
-          <KpiCard
-            label="Trials Ativos"
-            value={String(activeTrialsCount)}
-            hint={expiringTrialsCount > 0 ? `${expiringTrialsCount} expirando em 3d` : undefined}
-            icon={<Clock className="size-4 text-muted-foreground" aria-hidden="true" />}
-          />
-          <KpiCard
-            label="Inadimplentes"
-            action={
-              <AdminHelpTip
-                title="Inadimplência"
-                what="Assinaturas com pagamento em atraso."
-                when="Confira as cobranças pendentes na lista de inadimplência antes de tomar uma ação."
-                impact="O atraso pode restringir o acesso da conta a somente leitura."
-              />
-            }
-            value={String(pastDueCount)}
-            tone={pastDueCount > 0 ? "negative" : "default"}
-            icon={<AlertTriangle className="size-4 text-critical-strong" aria-hidden="true" />}
-          />
-        </KpiGrid>
+        <div className="flex flex-col gap-2">
+          <KpiGrid columns={4}>
+            <KpiCard
+              label="MRR real estimado"
+              action={
+                <AdminHelpTip
+                  title="MRR real estimado"
+                  what="Estimativa mensal da receita das assinaturas pagas ativas de clientes reais. Contas internas, de teste e cortesias são excluídas."
+                  when="Consulte o indicador para acompanhar a receita recorrente prevista."
+                  impact="Ajuda a planejar receitas. O valor recebido pode ser diferente da estimativa."
+                />
+              }
+              cents={overview?.estimated_real_mrr_cents ?? 0}
+              tone="positive"
+              icon={<TrendingUp className="size-4 text-positive-strong" aria-hidden="true" />}
+            />
+            <KpiCard
+              label="Pagantes reais"
+              value={String(overview?.real_paid_subscribers_count ?? 0)}
+              hint={
+                (overview?.courtesy_lifetime_count ?? 0) > 0
+                  ? `${overview?.courtesy_lifetime_count} cortesia/vitalício`
+                  : undefined
+              }
+              tone="portfolio"
+              icon={<Crown className="size-4 text-portfolio" aria-hidden="true" />}
+            />
+            <KpiCard
+              label="Trials ativos"
+              value={String(overview?.trials_count ?? 0)}
+              hint={
+                (overview?.expiring_trials_count ?? 0) > 0
+                  ? `${overview?.expiring_trials_count} expirando em 3d`
+                  : undefined
+              }
+              icon={<Clock className="size-4 text-muted-foreground" aria-hidden="true" />}
+            />
+            <KpiCard
+              label="Inadimplentes"
+              action={
+                <AdminHelpTip
+                  title="Inadimplência"
+                  what="Assinaturas com pagamento em atraso."
+                  when="Confira as cobranças pendentes na lista de inadimplência antes de tomar uma ação."
+                  impact="O atraso pode restringir o acesso da conta a somente leitura."
+                />
+              }
+              value={String(pastDueCount)}
+              tone={pastDueCount > 0 ? "negative" : "default"}
+              icon={<AlertTriangle className="size-4 text-critical-strong" aria-hidden="true" />}
+            />
+          </KpiGrid>
+          {(overview?.internal_or_test_count ?? 0) > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {overview?.internal_or_test_count}{" "}
+              {overview?.internal_or_test_count === 1
+                ? "assinatura de conta interna ou de teste isolada das métricas reais."
+                : "assinaturas de contas internas ou de teste isoladas das métricas reais."}
+            </p>
+          )}
+        </div>
       )}
 
       <PastDueManagementCard />
@@ -201,7 +180,7 @@ export function AdminBillingPage() {
           </div>
         </div>
 
-        {subscriptionsQuery.isLoading ? (
+        {billingOverviewQuery.isLoading ? (
           <Skeleton className="h-36 w-full rounded-xl" />
         ) : filteredSubscriptions.length === 0 ? (
           <EmptyState
@@ -213,13 +192,32 @@ export function AdminBillingPage() {
             <div className="flex flex-col divide-y divide-border/80 md:hidden">
               {filteredSubscriptions.slice(0, 50).map((sub) => (
                 <div key={sub.id} className="p-4 flex flex-col gap-2 text-xs">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-[11px] text-foreground truncate">
-                      {sub.user_id}
-                    </span>
-                    <Badge variant={resolveSubBadgeVariant(sub.status)} size="xs" className="max-w-full truncate inline-block">
-                      {SUB_STATUS_LABELS[sub.status] ?? sub.status}
-                    </Badge>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-semibold text-foreground line-clamp-2 break-words">
+                        {sub.user_name || sub.user_email || sub.user_id}
+                      </span>
+                      {sub.user_name && sub.user_email && (
+                        <span className="font-mono text-[11px] text-muted-foreground truncate">
+                          {sub.user_email}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap justify-end shrink-0">
+                      <Badge variant={resolveSubBadgeVariant(sub.status)} size="xs" className="max-w-full truncate inline-block">
+                        {SUB_STATUS_LABELS[sub.status] ?? sub.status}
+                      </Badge>
+                      {sub.is_test && (
+                        <Badge variant="warning" size="xs" className="max-w-full truncate inline-block">
+                          Teste
+                        </Badge>
+                      )}
+                      {sub.user_role !== "user" && (
+                        <Badge variant="muted" size="xs" className="max-w-full truncate inline-block">
+                          {ROLE_LABELS[sub.user_role as keyof typeof ROLE_LABELS] ?? sub.user_role}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center justify-between text-muted-foreground">
                     <span>Plano: <strong className="text-foreground">{sub.tier}</strong></span>
@@ -237,7 +235,7 @@ export function AdminBillingPage() {
               <table className="w-full min-w-[600px] text-left text-xs">
                 <thead className="bg-surface-raised border-b border-border/80 text-muted-foreground font-semibold">
                   <tr>
-                    <th className="py-3 px-4">Usuário ID</th>
+                    <th className="py-3 px-4">Usuário</th>
                     <th className="py-3 px-4">Tier / Plano</th>
                     <th className="py-3 px-4">Status</th>
                     <th className="py-3 px-4">Vigência</th>
@@ -247,14 +245,35 @@ export function AdminBillingPage() {
                 <tbody className="divide-y divide-border/80">
                   {filteredSubscriptions.slice(0, 50).map((sub) => (
                     <tr key={sub.id} className="hover:bg-surface-hover/20 transition-colors">
-                      <td className="py-3 px-4 font-mono text-[11px] text-foreground">
-                        {sub.user_id}
+                      <td className="py-3 px-4">
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-semibold text-foreground truncate">
+                            {sub.user_name || sub.user_email || sub.user_id}
+                          </span>
+                          {sub.user_name && sub.user_email && (
+                            <span className="font-mono text-[11px] text-muted-foreground truncate">
+                              {sub.user_email}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 px-4 font-medium text-foreground">{sub.tier}</td>
                       <td className="py-3 px-4">
-                        <Badge variant={resolveSubBadgeVariant(sub.status)} size="xs" className="max-w-full truncate inline-block">
-                          {SUB_STATUS_LABELS[sub.status] ?? sub.status}
-                        </Badge>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <Badge variant={resolveSubBadgeVariant(sub.status)} size="xs" className="max-w-full truncate inline-block">
+                            {SUB_STATUS_LABELS[sub.status] ?? sub.status}
+                          </Badge>
+                          {sub.is_test && (
+                            <Badge variant="warning" size="xs" className="max-w-full truncate inline-block">
+                              Teste
+                            </Badge>
+                          )}
+                          {sub.user_role !== "user" && (
+                            <Badge variant="muted" size="xs" className="max-w-full truncate inline-block">
+                              {ROLE_LABELS[sub.user_role as keyof typeof ROLE_LABELS] ?? sub.user_role}
+                            </Badge>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 px-4 font-mono text-[11px] text-muted-foreground">
                         {sub.current_period_end || sub.trial_ends_at

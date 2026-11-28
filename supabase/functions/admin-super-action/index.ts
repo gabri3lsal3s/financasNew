@@ -28,6 +28,7 @@ interface ProvisionUserPayload {
 
 const STEP_UP_REQUIRED_ACTIONS = new Set([
   "delete_user",
+  "quarantine_user",
   "restore_user",
   "reset_mfa",
   "revoke_sessions",
@@ -445,6 +446,117 @@ Deno.serve(async (req: Request) => {
       return jsonResponse(req, { success: true });
     }
 
+    async function cancelUserAsaasSubscriptionIfActive(
+      actionName: "quarantine_user" | "delete_user",
+      targetUserId: string,
+      clearLocalSubscription: boolean,
+    ): Promise<{ ok: true; asaasCanceled: boolean } | { ok: false; response: Response }> {
+      const { data: userSub, error: subError } = await adminClient
+        .from("user_subscriptions")
+        .select("id, asaas_subscription_id")
+        .eq("user_id", targetUserId)
+        .maybeSingle();
+
+      if (subError) {
+        await logSensitiveAdminAction(actionName, "error", targetUserId);
+        return {
+          ok: false,
+          response: safeErrorResponse(req, 400, `Erro ao consultar assinatura do usuário: ${subError.message}`),
+        };
+      }
+
+      if (!userSub?.asaas_subscription_id) {
+        return { ok: true, asaasCanceled: false };
+      }
+
+      try {
+        await cancelAsaasSubscription(userSub.asaas_subscription_id);
+      } catch (err: unknown) {
+        if (!isAsaasAlreadyCanceledError(err)) {
+          console.error(
+            `[admin-super-action] Falha ao cancelar assinatura no Asaas (${actionName}):`,
+            sanitizePaymentLog(err),
+          );
+          await logSensitiveAdminAction(actionName, "error", targetUserId);
+          return {
+            ok: false,
+            response: safeErrorResponse(
+              req,
+              502,
+              "Não foi possível cancelar a assinatura recorrente no Asaas. Nenhuma alteração local foi aplicada.",
+            ),
+          };
+        }
+      }
+
+      if (clearLocalSubscription) {
+        const { error: subUpdateErr } = await adminClient
+          .from("user_subscriptions")
+          .update({
+            status: "canceled",
+            asaas_subscription_id: null,
+            scheduled_plan_id: null,
+            scheduled_first_charge_at: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", targetUserId);
+
+        if (subUpdateErr) {
+          await logSensitiveAdminAction(actionName, "error", targetUserId);
+          return {
+            ok: false,
+            response: safeErrorResponse(
+              req,
+              500,
+              "Falha ao atualizar assinatura local após cancelamento no Asaas.",
+              subUpdateErr,
+            ),
+          };
+        }
+      }
+
+      return { ok: true, asaasCanceled: true };
+    }
+
+    // -------------------------------------------------------------------------
+    // AÇÃO 4B-0: COLOCAR USUÁRIO EM QUARENTENA / SOFT-DELETE (COM STEP-UP)
+    // -------------------------------------------------------------------------
+    if (action === "quarantine_user") {
+      const { target_user_id: targetUserId, reason } = body as {
+        target_user_id?: string;
+        reason?: string | null;
+      };
+      if (!targetUserId) {
+        return jsonResponse(req, { error: "ID de usuário é obrigatório." }, 400);
+      }
+
+      const asaasResult = await cancelUserAsaasSubscriptionIfActive(
+        "quarantine_user",
+        String(targetUserId),
+        true,
+      );
+      if (!asaasResult.ok) {
+        return asaasResult.response;
+      }
+
+      const { error: rpcError } = await userClient.rpc("admin_quarantine_user", {
+        target_user_id: targetUserId,
+        p_reason: typeof reason === "string" ? reason : null,
+      });
+
+      if (rpcError) {
+        await logSensitiveAdminAction("quarantine_user", "error", String(targetUserId));
+        return safeErrorResponse(
+          req,
+          400,
+          `Falha ao colocar usuário em quarentena: ${rpcError.message || "erro desconhecido."}`,
+        );
+      }
+
+      await logSensitiveAdminAction("quarantine_user", "success", String(targetUserId));
+      return jsonResponse(req, { success: true, asaasCanceled: asaasResult.asaasCanceled });
+    }
+
     // -------------------------------------------------------------------------
     // AÇÃO 4B: EXCLUIR USUÁRIO DEFINITIVAMENTE (COM STEP-UP DE USO ÚNICO)
     // -------------------------------------------------------------------------
@@ -454,17 +566,30 @@ Deno.serve(async (req: Request) => {
         return jsonResponse(req, { error: "ID de usuário é obrigatório." }, 400);
       }
 
+      const asaasResult = await cancelUserAsaasSubscriptionIfActive(
+        "delete_user",
+        String(targetUserId),
+        false,
+      );
+      if (!asaasResult.ok) {
+        return asaasResult.response;
+      }
+
       const { error: rpcError } = await userClient.rpc("admin_delete_user", {
         target_user_id: targetUserId,
       });
 
       if (rpcError) {
         await logSensitiveAdminAction("delete_user", "error", String(targetUserId));
-        return safeErrorResponse(req, 400, `Falha ao excluir usuário: ${rpcError.message}`);
+        return safeErrorResponse(
+          req,
+          400,
+          `Falha ao excluir usuário: ${rpcError.message || "erro desconhecido na exclusão definitiva."}`,
+        );
       }
 
       await logSensitiveAdminAction("delete_user", "success", String(targetUserId));
-      return jsonResponse(req, { success: true });
+      return jsonResponse(req, { success: true, asaasCanceled: asaasResult.asaasCanceled });
     }
 
     // -------------------------------------------------------------------------
@@ -476,17 +601,17 @@ Deno.serve(async (req: Request) => {
         return jsonResponse(req, { error: "ID de usuário é obrigatório." }, 400);
       }
 
-      const { error: restoreError } = await adminClient
-        .from("profiles")
-        .update({
-          status: "active",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", targetUserId);
+      const { error: rpcError } = await userClient.rpc("admin_restore_user", {
+        target_user_id: targetUserId,
+      });
 
-      if (restoreError) {
+      if (rpcError) {
         await logSensitiveAdminAction("restore_user", "error", String(targetUserId));
-        return safeErrorResponse(req, 400, `Falha ao restaurar usuário: ${restoreError.message}`);
+        return safeErrorResponse(
+          req,
+          400,
+          `Falha ao restaurar usuário: ${rpcError.message || "erro desconhecido na restauração."}`,
+        );
       }
 
       await logSensitiveAdminAction("restore_user", "success", String(targetUserId));

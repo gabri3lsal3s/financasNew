@@ -107,6 +107,16 @@ vi.mock("@/state", () => ({
     mutateAsync: mockRemoveModulePermissionMutateAsync,
     isPending: false,
   }),
+  useAdminUserSupportDiagnostics: () => ({
+    data: undefined,
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
+  useAdminQuarantineUser: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useAdminRestoreUser: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useAdminSetUserTestFlag: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 describe("UserEditDialog", () => {
@@ -290,7 +300,7 @@ describe("UserEditDialog", () => {
       mockAuthUserId = "superadmin-999";
       render(<UserEditDialog user={mockUser} open={true} onOpenChange={vi.fn()} />);
 
-      expect(screen.getByText("Zona de Perigo: Exclusão Definitiva")).toBeInTheDocument();
+      expect(screen.getByText(/Zona de Perigo:/)).toBeInTheDocument();
       expect(
         screen.getByRole("button", { name: "Excluir Usuário do Sistema" }),
       ).toBeInTheDocument();
@@ -301,7 +311,7 @@ describe("UserEditDialog", () => {
       mockAuthUserId = "admin-888";
       render(<UserEditDialog user={mockUser} open={true} onOpenChange={vi.fn()} />);
 
-      expect(screen.queryByText("Zona de Perigo: Exclusão Definitiva")).not.toBeInTheDocument();
+      expect(screen.queryByText(/Zona de Perigo:/)).not.toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "Excluir Usuário do Sistema" }),
       ).not.toBeInTheDocument();
@@ -312,7 +322,7 @@ describe("UserEditDialog", () => {
       mockAuthUserId = "u-123"; // mesmo ID do mockUser
       render(<UserEditDialog user={mockUser} open={true} onOpenChange={vi.fn()} />);
 
-      expect(screen.queryByText("Zona de Perigo: Exclusão Definitiva")).not.toBeInTheDocument();
+      expect(screen.queryByText(/Zona de Perigo:/)).not.toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "Excluir Usuário do Sistema" }),
       ).not.toBeInTheDocument();
@@ -395,7 +405,7 @@ describe("UserEditDialog", () => {
       expect(mockRevokeSessionsMutateAsync).toHaveBeenCalledWith("u-123");
     });
 
-    it("gera o link de recuperação sob demanda e permite copiar", async () => {
+    it("dispara o envio de recuperação sob demanda sem expor o link bruto na interface", async () => {
       const user = userEvent.setup();
       mockCurrentUserRole = "superadmin";
       mockGenerateRecoveryMutateAsync.mockResolvedValueOnce("https://financas.app/#access_token=xyz");
@@ -410,20 +420,11 @@ describe("UserEditDialog", () => {
         email: "maria@teste.com",
       });
 
-      expect(screen.getByText("Link de Acesso Direto Gerado:")).toBeInTheDocument();
-      expect(screen.getByDisplayValue("https://financas.app/#access_token=xyz")).toBeInTheDocument();
-
-      const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
-      await user.click(screen.getByRole("button", { name: /WhatsApp/i }));
-      expect(openSpy).toHaveBeenCalledWith(
-        expect.stringContaining(encodeURIComponent("aplicativo Axir")),
-        "_blank",
-        "noopener,noreferrer",
-      );
-      openSpy.mockRestore();
+      expect(screen.queryByText("Link de Acesso Direto Gerado:")).not.toBeInTheDocument();
+      expect(screen.queryByDisplayValue("https://financas.app/#access_token=xyz")).not.toBeInTheDocument();
     });
 
-    it("reseta o estado interno e links gerados ao trocar de user.id", async () => {
+    it("reseta o estado interno ao trocar de user.id", async () => {
       const user = userEvent.setup();
       mockCurrentUserRole = "superadmin";
       mockGenerateRecoveryMutateAsync.mockResolvedValueOnce("https://financas.app/#access_token=xyz");
@@ -433,7 +434,10 @@ describe("UserEditDialog", () => {
       );
 
       await user.click(screen.getByRole("button", { name: /Link Recuperação/i }));
-      expect(screen.getByText("Link de Acesso Direto Gerado:")).toBeInTheDocument();
+      expect(mockGenerateRecoveryMutateAsync).toHaveBeenCalledWith({
+        userId: "u-123",
+        email: "maria@teste.com",
+      });
 
       const secondUser: AdminUserRow = {
         ...mockUser,

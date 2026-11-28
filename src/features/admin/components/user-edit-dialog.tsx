@@ -7,10 +7,13 @@ import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import {
   useAdminDeleteUser,
+  useAdminQuarantineUser,
   useAdminRemoveUserModulePermission,
+  useAdminRestoreUser,
   useAdminSetUserModulePermission,
   useAdminSetUserRole,
   useAdminSetUserSubscription,
+  useAdminSetUserTestFlag,
   useAdminUpdateUserStatus,
   useAdminUserModulePermissions,
   useAdminUserSubscription,
@@ -53,6 +56,9 @@ function UserEditDialogContent({ user, open, onOpenChange }: { user: AdminUserRo
   );
   const updateStatusMutation = useAdminUpdateUserStatus();
   const setRoleMutation = useAdminSetUserRole();
+  const setTestFlagMutation = useAdminSetUserTestFlag();
+  const quarantineUserMutation = useAdminQuarantineUser();
+  const restoreUserMutation = useAdminRestoreUser();
   const deleteUserMutation = useAdminDeleteUser();
   const subscriptionQuery = useAdminUserSubscription(user.id);
   const modulePermissionsQuery = useAdminUserModulePermissions(user.id);
@@ -64,6 +70,9 @@ function UserEditDialogContent({ user, open, onOpenChange }: { user: AdminUserRo
   const [status, setStatus] = useState<UserStatus>((user.status as UserStatus) || "active");
   const [role, setRole] = useState<UserRole>((user.role as UserRole) || "user");
   const [reason, setReason] = useState(user.suspended_reason || "");
+  const [isTest, setIsTest] = useState(Boolean(user.is_test));
+  const [isQuarantineDialogOpen, setIsQuarantineDialogOpen] = useState(false);
+  const [isRestoreDialogOpen, setIsRestoreDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [revealContact, setRevealContact] = useState(false);
   const [overrideTier, setOverrideTier] = useState<SubscriptionTier | null>(null);
@@ -80,12 +89,15 @@ function UserEditDialogContent({ user, open, onOpenChange }: { user: AdminUserRo
     setStatus((user.status as UserStatus) || "active");
     setRole((user.role as UserRole) || "user");
     setReason(user.suspended_reason || "");
+    setIsTest(Boolean(user.is_test));
     setRevealContact(false);
     setOverrideTier(null);
     setOverridePlanId(null);
     setOverrideSubStatus(null);
     setOverrideTrialEndsAt(undefined);
     setOverridePeriodEnd(undefined);
+    setIsQuarantineDialogOpen(false);
+    setIsRestoreDialogOpen(false);
     setIsDeleteDialogOpen(false);
   }
 
@@ -125,6 +137,16 @@ function UserEditDialogContent({ user, open, onOpenChange }: { user: AdminUserRo
     removeModulePermissionMutation.mutateAsync(params).catch(() => undefined);
   };
 
+
+  const handleToggleTestFlag = async (nextIsTest: boolean) => {
+    setIsTest(nextIsTest);
+    try {
+      await setTestFlagMutation.mutateAsync({ userId: user.id, isTest: nextIsTest });
+    } catch {
+      setIsTest(!nextIsTest);
+      triggerSensory("destructive");
+    }
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -274,14 +296,23 @@ function UserEditDialogContent({ user, open, onOpenChange }: { user: AdminUserRo
                     status={status}
                     reason={reason}
                     role={role}
+                    isTest={isTest}
+                    deletedAt={user.deleted_at}
+                    quarantineReason={user.suspended_reason}
                     canEditStatus={canEditStatus}
                     canEditRole={canEditRole}
                     canDeleteUser={isSuperadminActor && !isSelf}
                     isSuperadminActor={isSuperadminActor}
+                    isTestPending={setTestFlagMutation.isPending}
+                    isQuarantinePending={quarantineUserMutation.isPending}
+                    isRestorePending={restoreUserMutation.isPending}
                     isDeletePending={deleteUserMutation.isPending}
                     onStatusChange={setStatus}
                     onReasonChange={setReason}
                     onRoleChange={setRole}
+                    onToggleTestFlag={(nextIsTest) => void handleToggleTestFlag(nextIsTest)}
+                    onOpenQuarantineConfirm={() => setIsQuarantineDialogOpen(true)}
+                    onOpenRestoreConfirm={() => setIsRestoreDialogOpen(true)}
                     onOpenDeleteConfirm={() => setIsDeleteDialogOpen(true)}
                   />
                   {isSuperadminActor && <UserSuperadminSupportActions user={user} revealContact={revealContact} />}
@@ -297,6 +328,46 @@ function UserEditDialogContent({ user, open, onOpenChange }: { user: AdminUserRo
           ]}
         />
       </form>
+      <ConfirmDialog
+        open={isQuarantineDialogOpen}
+        onOpenChange={setIsQuarantineDialogOpen}
+        title="Colocar Usuário em Quarentena"
+        description={`Tem certeza que deseja colocar ${displayName} em quarentena? O acesso será bloqueado imediatamente e os dados financeiros serão preservados até uma eventual restauração ou exclusão definitiva.`}
+        confirmLabel={quarantineUserMutation.isPending ? "Colocando em quarentena…" : "Colocar em Quarentena"}
+        cancelLabel="Cancelar"
+        variant="destructive"
+        confirmPending={quarantineUserMutation.isPending}
+        elevated
+        onConfirm={async () => {
+          try {
+            await quarantineUserMutation.mutateAsync({ targetUserId: user.id, reason: reason.trim() || null });
+            setIsQuarantineDialogOpen(false);
+            onOpenChange(false);
+          } catch {
+            triggerSensory("destructive");
+          }
+        }}
+      />
+      <ConfirmDialog
+        open={isRestoreDialogOpen}
+        onOpenChange={setIsRestoreDialogOpen}
+        title="Restaurar Acesso do Usuário"
+        description={`Deseja restaurar o acesso da conta de ${displayName}? O usuário sairá da quarentena e poderá voltar a acessar a plataforma.`}
+        confirmLabel={restoreUserMutation.isPending ? "Restaurando…" : "Restaurar Acesso"}
+        cancelLabel="Cancelar"
+        variant="default"
+        confirmPending={restoreUserMutation.isPending}
+        elevated
+        onConfirm={async () => {
+          try {
+            await restoreUserMutation.mutateAsync({ targetUserId: user.id });
+            setIsRestoreDialogOpen(false);
+            onOpenChange(false);
+          } catch {
+            triggerSensory("destructive");
+          }
+        }}
+      />
       <ConfirmDialog
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
