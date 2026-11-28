@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Link, NavLink } from "react-router";
-import { ExternalLink, LogOut } from "lucide-react";
-import { Badge, Button, buttonVariants } from "@/components/ui";
+import { ExternalLink } from "lucide-react";
+import { Badge, buttonVariants } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { triggerSensory } from "@/services/sensory";
 import {
@@ -13,7 +13,6 @@ import {
 export interface AdminMobileDrawerProps {
   open: boolean;
   onClose: () => void;
-  onSignOut: () => void;
   isSuperAdmin?: boolean;
   badges?: Partial<Record<AdminNavBadgeKey, number>>;
 }
@@ -24,7 +23,6 @@ export interface AdminMobileDrawerProps {
 export function AdminMobileDrawer({
   open,
   onClose,
-  onSignOut,
   isSuperAdmin = false,
   badges,
 }: AdminMobileDrawerProps) {
@@ -48,7 +46,7 @@ export function AdminMobileDrawer({
       role="dialog"
       aria-modal="true"
       aria-label="Menu de navegação administrativa"
-      className="fixed inset-x-0 bottom-0 top-16 pt-safe z-40 flex flex-col bg-background/95 backdrop-blur-xs p-4 md:hidden border-b border-border/80 pb-safe overflow-y-auto"
+      className="fixed inset-x-0 bottom-0 top-16 pt-safe z-40 flex flex-col bg-surface p-4 md:hidden border-b border-border/80 pb-24 pb-safe overflow-y-auto"
     >
       <nav className="flex flex-col gap-4" aria-label="Navegação administrativa móvel">
         {ADMIN_NAV_GROUPS.map((group) => (
@@ -122,19 +120,8 @@ export function AdminMobileDrawer({
           )}
         >
           <ExternalLink className="size-3.5" aria-hidden="true" />
-          <span>Abrir App de Finanças</span>
+          <span>Ver App</span>
         </Link>
-        <Button
-          type="button"
-          variant="destructive"
-          size="sm"
-          sensoryIntent="destructive"
-          onClick={onSignOut}
-          className="w-full justify-center gap-2"
-        >
-          <LogOut className="size-4" aria-hidden="true" />
-          <span>Sair do Painel</span>
-        </Button>
       </div>
     </div>
   );

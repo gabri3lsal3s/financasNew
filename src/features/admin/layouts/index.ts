@@ -9,13 +9,3 @@ export {
   type AdminNavGroup,
   type AdminNavItem,
 } from "./admin-nav-config";
-export {
-  ADMIN_ACCENT_OPTIONS,
-  ADMIN_ACCENT_STORAGE_KEY,
-  getAdminAccentStyle,
-  readAdminAccent,
-  useAdminAccent,
-  writeAdminAccent,
-  type AdminAccent,
-  type AdminAccentOption,
-} from "./admin-console-preferences";
