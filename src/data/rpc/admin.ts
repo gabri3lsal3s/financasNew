@@ -564,3 +564,119 @@ export async function adminGetRetentionRadar(
   );
   return adminRetentionRadarSchema.parse(raw ?? []);
 }
+
+const periodMonthSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
+const nonNegativeCount = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
+const dbCents = nonNegativeCount.max(2_147_483_647);
+const finopsParamsInputSchema = z.object({
+  period_month: periodMonthSchema,
+  asaas_pix_fee_cents: dbCents,
+  asaas_card_percent_bps: nonNegativeCount.max(10_000),
+  ai_receipt_unit_cost_cents: dbCents,
+  ai_batch_unit_cost_cents: dbCents,
+  fixed_infra_cents: dbCents,
+  notes: z.string().trim().nullable(),
+});
+
+const finopsParamsSchema = finopsParamsInputSchema.extend({
+  updated_by: z.string().uuid().nullable(),
+  updated_at: z.string().nullable(),
+  configured: z.boolean(),
+});
+
+const billingFinopsOverviewSchema = z.object({
+  period_month: periodMonthSchema,
+  timezone: z.literal("America/Bahia"),
+  window_start: z.string(),
+  window_end: z.string(),
+  params: finopsParamsSchema,
+  payments: z.object({
+    payments_count: nonNegativeCount,
+    gross_revenue_cents: nonNegativeCount,
+    pix_count: nonNegativeCount,
+    pix_revenue_cents: nonNegativeCount,
+    card_count: nonNegativeCount,
+    card_revenue_cents: nonNegativeCount,
+    other_count: nonNegativeCount,
+  }),
+  webhooks: z.object({ events_count: nonNegativeCount, failures_count: nonNegativeCount }),
+  ai_quotas: z.object({
+    active_users_count: nonNegativeCount,
+    total_receipt_calls: nonNegativeCount,
+    total_batch_calls: nonNegativeCount,
+  }),
+  emails: z.object({ sent_count: nonNegativeCount, failed_count: nonNegativeCount }),
+});
+
+const resetAiQuotaInputSchema = z.object({
+  userId: z.string().uuid(),
+  bucket: z.enum(["receipt_calls", "batch_calls", "all"]),
+  reason: z.string().trim().min(3),
+});
+
+const resetAiQuotaResultSchema = z.object({
+  user_id: z.string().uuid(),
+  period_month: periodMonthSchema,
+  bucket: resetAiQuotaInputSchema.shape.bucket,
+  reset_applied: z.boolean(),
+  receipt_calls_month: nonNegativeCount,
+  receipt_calls_day: nonNegativeCount,
+  batch_calls_month: nonNegativeCount,
+  batch_calls_day: nonNegativeCount,
+});
+
+export type AdminFinopsParamsInput = z.input<typeof finopsParamsInputSchema>;
+export type AdminFinopsParams = z.output<typeof finopsParamsSchema>;
+export type AdminBillingFinopsOverview = z.output<typeof billingFinopsOverviewSchema>;
+export type AdminResetAiQuotaInput = z.input<typeof resetAiQuotaInputSchema>;
+export type AdminResetAiQuotaResult = z.output<typeof resetAiQuotaResultSchema>;
+
+export async function adminGetFinopsMonthlyParams(periodMonth?: string): Promise<AdminFinopsParams> {
+  const period = periodMonthSchema.optional().parse(periodMonth);
+  const raw = await unwrapRpc(
+    callRpc("admin_get_finops_monthly_params" as never, { p_period_month: period ?? null } as never),
+  );
+  return finopsParamsSchema.parse(raw);
+}
+
+export async function adminUpsertFinopsMonthlyParams(
+  input: AdminFinopsParamsInput,
+): Promise<AdminFinopsParams> {
+  const params = finopsParamsInputSchema.parse(input);
+  const raw = await unwrapRpc(
+    callRpc("admin_upsert_finops_monthly_params" as never, {
+      p_period_month: params.period_month,
+      p_asaas_pix_fee_cents: params.asaas_pix_fee_cents,
+      p_asaas_card_percent_bps: params.asaas_card_percent_bps,
+      p_ai_receipt_unit_cost_cents: params.ai_receipt_unit_cost_cents,
+      p_ai_batch_unit_cost_cents: params.ai_batch_unit_cost_cents,
+      p_fixed_infra_cents: params.fixed_infra_cents,
+      p_notes: params.notes,
+    } as never),
+  );
+  return finopsParamsSchema.parse(raw);
+}
+
+export async function adminGetBillingFinopsOverview(
+  periodMonth?: string,
+): Promise<AdminBillingFinopsOverview> {
+  const period = periodMonthSchema.optional().parse(periodMonth);
+  const raw = await unwrapRpc(
+    callRpc("admin_get_billing_finops_overview" as never, { p_period_month: period ?? null } as never),
+  );
+  return billingFinopsOverviewSchema.parse(raw);
+}
+
+export async function adminResetUserAiQuota(
+  input: AdminResetAiQuotaInput,
+): Promise<AdminResetAiQuotaResult> {
+  const params = resetAiQuotaInputSchema.parse(input);
+  const raw = await unwrapRpc(
+    callRpc("admin_reset_user_ai_quota" as never, {
+      p_user_id: params.userId,
+      p_bucket: params.bucket,
+      p_reason: params.reason,
+    } as never),
+  );
+  return resetAiQuotaResultSchema.parse(raw);
+}

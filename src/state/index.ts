@@ -235,6 +235,8 @@ export {
   useMyBroadcastNotifications,
   useAdminConnectionsHealth,
   useAdminAiUsageSummary,
+  useAdminFinopsParams,
+  useAdminBillingFinopsOverview,
   useAdminUserSupportDiagnostics,
   useAdminRetentionRadar,
   ADMIN_METRICS_KEY,
@@ -284,6 +286,8 @@ export {
   useAdminSetPastDuePolicy,
   useAdminBlockPastDueNow,
   useAdminSendPastDueReminder,
+  useAdminUpsertFinopsParams,
+  useAdminResetUserAiQuota,
 } from "./mutations/use-admin-mutations";
 
 export {
@@ -464,3 +468,9 @@ export {
 } from "./mutations/use-push-subscription-mutations";
 export { isQueryPending, type QueryStatusLike } from "./query-readiness";
 
+
+export type {
+  AdminFinopsParams,
+  AdminFinopsParamsInput,
+  AdminResetAiQuotaInput,
+} from "@/data/repositories/admin";
