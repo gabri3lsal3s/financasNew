@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { Crown, KeyRound, ShieldCheck, UserCheck } from "lucide-react";
+import { Activity, Crown, KeyRound, ShieldCheck, UserCheck } from "lucide-react";
 import { Button, ConfirmDialog, Modal, ModalFooter, Tabs } from "@/components/ui";
 import { canManageRole, canManageUserStatus } from "@/domain/admin";
 import { useAuth } from "@/hooks/use-auth";
@@ -25,6 +25,7 @@ import {
   UserPiiAuditVaultCard,
   UserSaasPlanSection,
   UserSuperadminSupportActions,
+  UserSupportDiagnosticsCard,
 } from "./user-edit";
 
 export interface UserEditDialogProps {
@@ -198,7 +199,6 @@ function UserEditDialogContent({ user, open, onOpenChange }: { user: AdminUserRo
         <Tabs
           value={activeTab}
           onValueChange={setActiveTab}
-          fullWidth
           forceMount
           ariaLabel="Seções de edição do usuário"
           items={[
@@ -287,6 +287,12 @@ function UserEditDialogContent({ user, open, onOpenChange }: { user: AdminUserRo
                   {isSuperadminActor && <UserSuperadminSupportActions user={user} revealContact={revealContact} />}
                 </div>
               ),
+            },
+            {
+              value: "diagnostics",
+              label: "Raio-X",
+              icon: <Activity aria-hidden="true" />,
+              content: <UserSupportDiagnosticsCard userId={user.id} enabled={open && activeTab === "diagnostics"} />,
             },
           ]}
         />

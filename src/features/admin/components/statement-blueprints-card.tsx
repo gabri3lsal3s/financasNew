@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Check, FileSpreadsheet, ShieldOff } from "lucide-react";
-import { Alert, Badge, Button, ConfirmDialog, EmptyState, Skeleton } from "@/components/ui";
+import { Alert, Badge, Button, ConfirmDialog, EmptyState, KeyValueGrid, Skeleton } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
@@ -13,6 +13,7 @@ import type {
   StatementLayoutBlueprintRow,
   StatementLayoutBlueprintStatus,
 } from "@/types";
+import { AdminHelpTip } from "./admin-help-tip";
 
 const STATUS_META: Record<
   StatementLayoutBlueprintStatus,
@@ -98,9 +99,17 @@ export function StatementBlueprintsCard() {
             aria-hidden="true"
           />
           <div className="min-w-0">
-            <h2 className="text-base font-bold text-foreground line-clamp-2 break-words">
-              Layouts de Fatura
-            </h2>
+            <div className="flex items-center gap-1">
+              <h2 className="text-base font-bold text-foreground line-clamp-2 break-words">
+                Layouts de Fatura
+              </h2>
+              <AdminHelpTip
+                title="indicadores dos layouts de fatura"
+                what="Um acerto determinístico ocorre quando os valores lidos passam na conferência exata. O mesmo usuário pode gerar vários acertos."
+                when="Use os contadores de usuários para ver quantas pessoas tiveram sucesso ou falha. Falhas consecutivas mostram quantas falhas ocorreram em sequência."
+                impact="Uma conferência exata reinicia a sequência de falhas."
+              />
+            </div>
             <p className="text-xs text-muted-foreground">
               Curadoria de layouts aprendidos na nuvem para leitura instantânea de PDFs
             </p>
@@ -164,21 +173,17 @@ export function StatementBlueprintsCard() {
                       {meta.label}
                     </Badge>
                   </div>
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                    <span>{row.file_kind}</span>
-                    <span>
-                      {row.distinct_users_verified}{" "}
-                      {row.distinct_users_verified === 1
-                        ? "validação distinta"
-                        : "validações distintas"}
-                    </span>
-                    <span>{row.exact_checksum_hits} conferências exatas</span>
-                    {row.distinct_users_failed > 0 ? (
-                      <span className="text-warning-strong">
-                        {row.distinct_users_failed} falhas reportadas
-                      </span>
-                    ) : null}
-                  </div>
+                  <p className="text-xs text-muted-foreground">{row.file_kind}</p>
+                  <KeyValueGrid
+                    variant="borderless"
+                    className="py-2"
+                    items={[
+                      { label: "Conferências exatas", value: row.exact_checksum_hits },
+                      { label: "Usuários com validação", value: row.distinct_users_verified },
+                      { label: "Usuários com falha", value: row.distinct_users_failed },
+                      { label: "Falhas consecutivas", value: row.consecutive_failures },
+                    ]}
+                  />
                   <p className="text-[11px] font-mono text-muted-foreground break-all">
                     {row.fingerprint}
                   </p>

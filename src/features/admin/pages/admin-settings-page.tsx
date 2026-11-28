@@ -1,12 +1,12 @@
 import { useMemo } from "react";
 import { useSearchParams } from "react-router";
-import { AlertCircle, Bot, FileSpreadsheet, Layers, Smartphone } from "lucide-react";
+import { Activity, AlertCircle, Bot, FileSpreadsheet, Layers, Smartphone } from "lucide-react";
 import { Alert, Badge, Button, EmptyState, Skeleton, Tabs } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
 import { ALL_SYSTEM_MODULES } from "@/domain/admin";
 import { AdminHelpTip, AdminPageGuide } from "../components/admin-help-tip";
 import { useAdminFeatures, useAdminStatementBlueprints } from "@/state";
-import { FeatureToggleCard, StatementBlueprintsCard, TelegramSettingsCard } from "../components";
+import { ConnectionsHealthPanel, FeatureToggleCard, StatementBlueprintsCard, TelegramSettingsCard } from "../components";
 
 const MODULE_GROUPS = [
   { key: "core", label: "Núcleo" },
@@ -19,7 +19,7 @@ const MODULE_CATEGORIES = new Map<string, string>(
   ALL_SYSTEM_MODULES.map(({ key, category }) => [key, category]),
 );
 
-const SETTINGS_TABS = ["modulos", "apk", "telegram", "blueprints"] as const;
+const SETTINGS_TABS = ["modulos", "apk", "telegram", "blueprints", "conexoes"] as const;
 
 export function AdminSettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -196,7 +196,7 @@ export function AdminSettingsPage() {
       <PageHeader
         utilityActions={<AdminPageGuide page="settings" />}
         title="Configurações"
-        description="Módulos, Android, Telegram e layouts de fatura"
+        description="Gerencie módulos e acompanhe as conexões"
       />
 
       <Tabs
@@ -248,6 +248,12 @@ export function AdminSettingsPage() {
                 <StatementBlueprintsCard />
               </div>
             ),
+          },
+          {
+            value: "conexoes",
+            label: "Conexões",
+            icon: <Activity aria-hidden="true" />,
+            content: <ConnectionsHealthPanel />,
           },
         ]}
       />
