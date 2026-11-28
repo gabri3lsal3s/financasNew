@@ -36,6 +36,11 @@ export type SessionContextStatus =
   | "revoked"
   | "expired";
 
+export interface SessionBridgeTokens {
+  accessToken: string;
+  refreshToken: string;
+}
+
 export interface PublicSessionContext {
   status: SessionContextStatus;
   contextId: string | null;
@@ -49,6 +54,7 @@ export interface PublicSessionContext {
   expiresAt: number | null;
   mfaFactorId?: string | null;
   pendingRevocations?: number;
+  sessionBridge?: SessionBridgeTokens;
 }
 
 export interface AccountSummary {

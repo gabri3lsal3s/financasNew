@@ -11,8 +11,19 @@ import {
   resetSessionContextForTests,
   setSessionContext,
 } from "@/services/session-context";
+import { getActiveUserId, setActiveUserId } from "@/services/user-storage";
 import { SessionTransportError, postSessionOperation } from "@/data/session-transport";
 import { useAccountSwitcher } from "./use-account-switcher";
+
+const mockSetSession = vi.fn();
+
+vi.mock("@/data/client", () => ({
+  getSupabase: () => ({
+    auth: {
+      setSession: (...args: unknown[]) => mockSetSession(...args),
+    },
+  }),
+}));
 
 vi.mock("@/data/session-transport", async () => {
   const actual = await vi.importActual<typeof import("@/data/session-transport")>(
@@ -59,11 +70,17 @@ function makeAccount(overrides: Partial<AccountSummary> = {}): AccountSummary {
 describe("useAccountSwitcher", () => {
   beforeEach(() => {
     resetSessionContextForTests();
+    setActiveUserId(null);
     vi.clearAllMocks();
+    mockSetSession.mockResolvedValue({
+      data: { session: { user: { id: "acc-b" } } },
+      error: null,
+    });
   });
 
   afterEach(() => {
     resetSessionContextForTests();
+    setActiveUserId(null);
   });
 
   it("lista contas visíveis e filtra identidades de operador", async () => {
@@ -137,8 +154,9 @@ describe("useAccountSwitcher", () => {
     expect(result.current.accounts).toEqual([]);
   });
 
-  it("alterna conta enviando expectedGeneration e atualiza session-context", async () => {
+  it("alterna conta enviando expectedGeneration, hidrata Supabase via sessionBridge e limpa bridge do contexto", async () => {
     setSessionContext(makeContext({ accountRef: "acc-a", generation: 2 }));
+    setActiveUserId("user-a");
     const nextCtx = makeContext({
       contextId: "ctx-b",
       csrfToken: "csrf-b",
@@ -146,7 +164,13 @@ describe("useAccountSwitcher", () => {
       displayName: "Conta B",
       generation: 4,
     });
-    mockedPostSessionOperation.mockResolvedValueOnce(nextCtx);
+    mockedPostSessionOperation.mockResolvedValueOnce({
+      context: {
+        ...nextCtx,
+        sessionBridge: { accessToken: "acc-tok-b", refreshToken: "ref-tok-b" },
+      },
+      sessionBridge: { accessToken: "acc-tok-b", refreshToken: "ref-tok-b" },
+    });
 
     const { result } = renderHook(() => useAccountSwitcher());
 
@@ -163,9 +187,63 @@ describe("useAccountSwitcher", () => {
       { targetAccountRef: "acc-b", expectedGeneration: 3, localLockSatisfied: false },
       { signal: undefined },
     );
+    expect(mockSetSession).toHaveBeenCalledWith({
+      access_token: "acc-tok-b",
+      refresh_token: "ref-tok-b",
+    });
+    expect(getActiveUserId()).toBe("acc-b");
     expect(getSessionContext().accountRef).toBe("acc-b");
     expect(getSessionContext().generation).toBe(4);
+    expect("sessionBridge" in getSessionContext()).toBe(false);
     expect(result.current.context.accountRef).toBe("acc-b");
+  });
+
+  it("falha com erro claro e preserva contexto anterior se hydrateSupabaseSessionFromBridge falhar ou sessionBridge estiver ausente", async () => {
+    setSessionContext(makeContext({ accountRef: "acc-a", generation: 2 }));
+    setActiveUserId("user-a");
+    mockSetSession.mockResolvedValueOnce({
+      data: { session: null },
+      error: { message: "Invalid refresh token" },
+    });
+    mockedPostSessionOperation.mockResolvedValueOnce({
+      context: makeContext({
+        contextId: "ctx-b",
+        accountRef: "acc-b",
+        generation: 4,
+      }),
+      sessionBridge: { accessToken: "bad-tok", refreshToken: "bad-ref" },
+    });
+
+    const { result } = renderHook(() => useAccountSwitcher());
+
+    await act(async () => {
+      const res = await result.current.switchAccount({
+        accountRef: "acc-b",
+        expectedGeneration: 3,
+      });
+      expect(res.ok).toBe(false);
+      if (!res.ok) {
+        expect(res.code).toBe("unauthorized");
+      }
+    });
+
+    expect(getSessionContext().accountRef).toBe("acc-a");
+    expect(getActiveUserId()).toBe("user-a");
+
+    mockedPostSessionOperation.mockResolvedValueOnce(
+      makeContext({ contextId: "ctx-b", accountRef: "acc-b", generation: 4 }),
+    );
+    await act(async () => {
+      const res = await result.current.switchAccount({
+        accountRef: "acc-b",
+        expectedGeneration: 3,
+      });
+      expect(res.ok).toBe(false);
+      if (!res.ok) {
+        expect(res.code).toBe("unauthorized");
+      }
+    });
+    expect(getSessionContext().accountRef).toBe("acc-a");
   });
 
   it("preserva contexto anterior quando switchAccount falha com context_stale ou erro de rede", async () => {

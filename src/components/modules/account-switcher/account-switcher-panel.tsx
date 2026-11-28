@@ -365,14 +365,14 @@ export function AccountSwitcherPanel({
 
       {isPersonal || (isNeutral && visibleAccounts.length > 0) ? (
         <div className="space-y-3 rounded-xl border border-border/80 bg-surface p-4 shadow-xs">
-          <div className="flex flex-col sm:flex-row gap-2.5 sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
               <Users className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
               <h3 className="font-display text-sm font-bold text-foreground">
                 Contas neste dispositivo
               </h3>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <Badge variant="muted" size="sm">
                 {personalAccountsCount} de {SESSION_POLICY.MAX_PERSONAL_ACCOUNTS} contas
               </Badge>
@@ -418,7 +418,7 @@ export function AccountSwitcherPanel({
                         : "border-border/80 bg-surface",
                     )}
                   >
-                    <div className="flex flex-col sm:flex-row gap-2.5 sm:items-center sm:justify-between">
+                    <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0 space-y-1">
                         <div className="flex flex-wrap items-center gap-1.5">
                           <span className="text-sm font-semibold text-foreground break-words">
@@ -438,7 +438,7 @@ export function AccountSwitcherPanel({
                         ) : null}
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-1.5">
+                      <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                         {isCurrent ? (
                           <Badge variant="positive" size="sm">
                             <Check className="size-3" aria-hidden="true" />
@@ -452,6 +452,7 @@ export function AccountSwitcherPanel({
                             type="button"
                             variant="outline"
                             size="sm"
+                            className="flex-1 sm:flex-initial"
                             disabled={isBusy}
                             onClick={() => onReauthAccount?.(account)}
                           >
@@ -466,16 +467,17 @@ export function AccountSwitcherPanel({
                             type="button"
                             variant={isPendingTarget ? "default" : "outline"}
                             size="sm"
+                            className="flex-1 sm:flex-initial"
                             disabled={isBusy}
                             aria-expanded={isPendingTarget}
                             onClick={() => setPendingSwitchAccount(account)}
                           >
                             <ArrowLeftRight className="size-3.5 shrink-0" aria-hidden="true" />
-                            <span>Alternar</span>
+                            <span>{isNeutral ? "Entrar" : "Alternar"}</span>
                           </Button>
                         )}
 
-                        {!needsLogin && onOpenTab ? (
+                        {!needsLogin && account.status !== "remembered" && onOpenTab ? (
                           <Button
                             type="button"
                             variant="ghost"
@@ -566,6 +568,7 @@ export function AccountSwitcherPanel({
               type="button"
               variant="outline"
               size="sm"
+              className="w-full sm:w-auto"
               disabled={isBusy || limitReached}
               onClick={onAddAccount}
             >
@@ -582,13 +585,14 @@ export function AccountSwitcherPanel({
             checked={rememberOnLogout}
             onCheckedChange={setRememberOnLogout}
             disabled={isBusy}
-            label="Lembrar esta conta neste dispositivo ao sair"
+            label="Manter esta conta salva para login rápido ao sair"
           />
-          <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <Button
               type="button"
               variant="outline"
               size="sm"
+              className="w-full sm:w-auto"
               loading={busyAction === "logout"}
               disabled={isBusy}
               onClick={() => void onLogout?.({ remember: rememberOnLogout })}
@@ -601,7 +605,7 @@ export function AccountSwitcherPanel({
               variant="ghost"
               size="sm"
               disabled={isBusy}
-              className="text-critical-strong hover:bg-critical/10 hover:text-critical-strong"
+              className="w-full sm:w-auto text-critical-strong hover:bg-critical/10 hover:text-critical-strong"
               onClick={() => setConfirmLogoutDeviceOpen(true)}
             >
               <span>Sair de todas as contas deste dispositivo</span>

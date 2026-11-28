@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { checkPWAUpdateNow } from "@/app/pwa";
 import { getSupabase } from "@/data/client";
 import { resetAppState } from "@/services/auth-cleanup";
+import { getSessionContext } from "@/services/session-context";
 import { getActiveUserId, setActiveUserId } from "@/services/user-storage";
 import { initAppLockListener } from "@/services/native/app-lock";
 import { isNativePlatform } from "@/services/native/platform";
@@ -87,7 +88,9 @@ function AuthQuerySync({ children }: { children: ReactNode }) {
       } else if (previousUserId !== null && previousUserId !== newUserId) {
         // Troca direta entre contas distintas (userA -> userB): isolamento completo
         clearSessionNotifications(previousUserId);
-        resetAppState(queryClient, newUserId);
+        resetAppState(queryClient, newUserId, {
+          preserveSessionContext: getSessionContext().status === "authenticated",
+        });
         void queryClient.invalidateQueries();
         void checkPWAUpdateNow({ force: true, applyIfSafe: true });
         lastAal = nextAal;

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { generateOpaqueToken, sha256Hex } from "./crypto";
-import { SessionCoordinatorDO, type CoordinatorEnv } from "./coordinator-do";
+import { SessionCoordinatorDO, type CoordinatorEnv, type PublicContextPayload } from "./coordinator-do";
 import { SESSION_POLICY } from "./policies";
 
 export { SessionCoordinatorDO };
@@ -249,6 +249,114 @@ async function revokeUpstreamTokens(
   return { upstreamConfirmed, pendingRevocations };
 }
 
+function isJwtExpiringSoon(token: string, nowMs: number, thresholdMs = 60_000): boolean {
+  const parts = token.split(".");
+  if (parts.length !== 3) return false;
+  try {
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+    const payload = JSON.parse(atob(padded)) as { exp?: unknown };
+    if (typeof payload.exp !== "number" || !Number.isFinite(payload.exp)) {
+      return false;
+    }
+    return payload.exp * 1000 - nowMs < thresholdMs;
+  } catch {
+    return false;
+  }
+}
+
+async function ensureFreshSessionBridge(
+  env: WorkerEnv,
+  coordinator: DurableObjectStub<SessionCoordinatorDO>,
+  context: PublicContextPayload,
+  nowMs?: number,
+): Promise<
+  | { ok: true; context: PublicContextPayload }
+  | { ok: false; code: "unauthorized" | "context_stale" | "service_unavailable"; status: 401 | 409 | 503 }
+> {
+  if (!context.sessionBridge || !context.accountRef) {
+    return { ok: true, context };
+  }
+
+  const effectiveNow = nowMs ?? Date.now();
+  if (!isJwtExpiringSoon(context.sessionBridge.accessToken, effectiveNow)) {
+    return { ok: true, context };
+  }
+
+  const began = await coordinator.beginTokenRefresh(context.accountRef, context.revision);
+  if (!began.ok) {
+    return {
+      ok: false,
+      code: began.code,
+      status: began.code === "context_stale" ? 409 : 401,
+    };
+  }
+
+  const refreshRes = await fetch(`${env.SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+    method: "POST",
+    headers: {
+      apikey: env.SUPABASE_ANON_KEY,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ refresh_token: began.refreshToken }),
+  }).catch(() => null);
+
+  if (!refreshRes || !refreshRes.ok) {
+    const isInvalidGrant = refreshRes !== null && (refreshRes.status === 400 || refreshRes.status === 401);
+    await coordinator.abortTokenRefresh({
+      accountRef: context.accountRef,
+      expectedRevision: began.nextRevision,
+      markRequiresReauth: isInvalidGrant,
+    });
+    return {
+      ok: false,
+      code: isInvalidGrant ? "unauthorized" : "service_unavailable",
+      status: isInvalidGrant ? 401 : 503,
+    };
+  }
+
+  const refreshedJson = (await refreshRes.json().catch(() => null)) as {
+    access_token?: unknown;
+    refresh_token?: unknown;
+  } | null;
+
+  if (
+    !refreshedJson ||
+    typeof refreshedJson.access_token !== "string" ||
+    typeof refreshedJson.refresh_token !== "string"
+  ) {
+    await coordinator.abortTokenRefresh({
+      accountRef: context.accountRef,
+      expectedRevision: began.nextRevision,
+      markRequiresReauth: true,
+    });
+    return { ok: false, code: "unauthorized", status: 401 };
+  }
+
+  const committed = await coordinator.commitTokenRefresh({
+    accountRef: context.accountRef,
+    expectedRevision: began.nextRevision,
+    accessToken: refreshedJson.access_token,
+    refreshToken: refreshedJson.refresh_token,
+    nowMs,
+  });
+  if (!committed.ok) {
+    return { ok: false, code: "context_stale", status: 409 };
+  }
+
+  return {
+    ok: true,
+    context: {
+      ...context,
+      revision: committed.revision,
+      sessionBridge: {
+        accessToken: refreshedJson.access_token,
+        refreshToken: refreshedJson.refresh_token,
+      },
+    },
+  };
+}
+
 export default {
   async fetch(request: Request, env: WorkerEnv): Promise<Response> {
     const url = new URL(request.url);
@@ -455,7 +563,24 @@ export default {
               id: string;
               email?: string;
               user_metadata?: { full_name?: string };
+              factors?: Array<{ id: string; status: string }>;
             };
+
+            let jwtAal: string | null = null;
+            try {
+              const parts = parsed.data.accessToken.split(".");
+              if (parts.length >= 2 && parts[1]) {
+                const normalized = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+                const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
+                const payload = JSON.parse(atob(padded)) as { aal?: unknown };
+                jwtAal = typeof payload.aal === "string" ? payload.aal : null;
+              }
+            } catch {
+              jwtAal = null;
+            }
+
+            const verifiedFactor = verifiedUser.factors?.find((f) => f.status === "verified");
+            const mfaRequired = Boolean(verifiedFactor) && jwtAal !== "aal2";
 
             const publicCtx = await coordinator.admitAuthenticatedAccount({
               userId: verifiedUser.id,
@@ -464,7 +589,8 @@ export default {
               mode: parsed.data.mode,
               accessToken: parsed.data.accessToken,
               refreshToken: parsed.data.refreshToken,
-              mfaVerified: true,
+              mfaVerified: !mfaRequired,
+              mfaFactorId: verifiedFactor?.id ?? null,
               nowMs,
             });
 
@@ -549,7 +675,11 @@ export default {
         if (!redeemed.ok) {
           return errorResponse(redeemed.code, redeemed.code === "context_stale" ? 409 : 401);
         }
-        return jsonResponse(redeemed.context, 200);
+        const bridged = await ensureFreshSessionBridge(env, coordinator, redeemed.context, nowMs);
+        if (!bridged.ok) {
+          return errorResponse(bridged.code, bridged.status);
+        }
+        return jsonResponse(bridged.context, 200);
       }
 
       if (!installationId || !contextId) {
@@ -638,7 +768,11 @@ export default {
           const status = switched.code === "context_stale" ? 409 : switched.code === "step_up_required" ? 403 : 401;
           return errorResponse(switched.code, status);
         }
-        return jsonResponse(switched.context, 200);
+        const bridged = await ensureFreshSessionBridge(env, coordinator, switched.context, nowMs);
+        if (!bridged.ok) {
+          return errorResponse(bridged.code, bridged.status);
+        }
+        return jsonResponse(bridged.context, 200);
       }
 
       if (operation === "open-tab") {
@@ -663,19 +797,23 @@ export default {
         if (!parsed.success) return errorResponse("invalid_payload", 400);
 
         const scope = operation === "logout-device" ? "all-device" : parsed.data.scope;
+        const remember = operation === "logout-device" ? false : parsed.data.remember;
         const result = await coordinator.logoutContext({
           contextId,
           csrfToken,
           environment: env.ENVIRONMENT,
           scope,
-          remember: parsed.data.remember,
+          remember,
           nowMs,
         });
         if (!result.ok) {
           return errorResponse(result.code, result.code === "context_stale" ? 409 : 401);
         }
 
-        const remote = await revokeUpstreamTokens(env, coordinator, result.tokensToRevoke, "local", nowMs);
+        const remote =
+          result.tokensToRevoke.length > 0
+            ? await revokeUpstreamTokens(env, coordinator, result.tokensToRevoke, "local", nowMs)
+            : { upstreamConfirmed: true, pendingRevocations: 0 };
         return jsonResponse({
           status: "neutral",
           upstreamConfirmed: remote.upstreamConfirmed,

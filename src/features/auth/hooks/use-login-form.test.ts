@@ -59,6 +59,14 @@ vi.mock("@/data/client", () => ({
           },
         },
       }),
+      setSession: vi.fn().mockResolvedValue({
+        data: {
+          session: {
+            user: { id: "user-hydrated-1" },
+          },
+        },
+        error: null,
+      }),
     },
   }),
 }));
@@ -126,7 +134,10 @@ describe("useLoginForm", () => {
   describe("tab_intent", () => {
     it("resgata tab_intent via redeem-tab, atualiza sessionContext e redireciona para from", async () => {
       const ctx = makeContext({ contextId: "ctx-redeemed", accountRef: "acc-redeemed" });
-      mockedPostSessionOperation.mockResolvedValueOnce(ctx);
+      mockedPostSessionOperation.mockResolvedValueOnce({
+        ...ctx,
+        sessionBridge: { accessToken: "tok-tab-123", refreshToken: "ref-tab-123" },
+      });
 
       renderHook(() => useLoginForm(), {
         wrapper: createWrapper("/login?tab_intent=intent-abc&redirect=%2Fcartoes"),
@@ -147,7 +158,12 @@ describe("useLoginForm", () => {
 
     it("aceita resposta encapsulada em { context } no redeem-tab", async () => {
       const ctx = makeContext({ contextId: "ctx-wrapped" });
-      mockedPostSessionOperation.mockResolvedValueOnce({ context: ctx });
+      mockedPostSessionOperation.mockResolvedValueOnce({
+        context: {
+          ...ctx,
+          sessionBridge: { accessToken: "tok-wrap-123", refreshToken: "ref-wrap-123" },
+        },
+      });
 
       renderHook(() => useLoginForm(), {
         wrapper: createWrapper("/entrar?tab_intent=intent-wrap"),

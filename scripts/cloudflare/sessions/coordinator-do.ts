@@ -29,6 +29,11 @@ export type AccountLifecycleStatus =
   | "revoked"
   | "requires_reauth";
 
+export interface SessionBridgeTokensPayload {
+  accessToken: string;
+  refreshToken: string;
+}
+
 export interface PublicContextPayload {
   status: "authenticated" | "mfa_required" | "neutral" | "revoked" | "expired";
   contextId: string | null;
@@ -42,6 +47,7 @@ export interface PublicContextPayload {
   expiresAt: number | null;
   mfaFactorId?: string | null;
   pendingRevocations?: number;
+  sessionBridge?: SessionBridgeTokensPayload;
 }
 
 export interface AccountSummaryPayload {
@@ -245,7 +251,6 @@ export class SessionCoordinatorDO extends DurableObject<CoordinatorEnv> {
   private deriveAccountStatus(acct: AccountRow, nowMs: number): AccountLifecycleStatus {
     if (acct.status === "revoked" || acct.revoked_at !== null) return "revoked";
     if (acct.status === "requires_reauth" || acct.refresh_state === "ambiguous") return "requires_reauth";
-    if (acct.status === "remembered" || !acct.encrypted_tokens) return "remembered";
     const expired = isSessionExpired(
       {
         mode: acct.mode as SessionMode,
@@ -256,6 +261,7 @@ export class SessionCoordinatorDO extends DurableObject<CoordinatorEnv> {
       nowMs,
     );
     if (expired) return "trust_expired";
+    if (acct.status === "remembered" || !acct.encrypted_tokens) return "remembered";
     return "active";
   }
 
@@ -628,7 +634,12 @@ export class SessionCoordinatorDO extends DurableObject<CoordinatorEnv> {
     }
 
     const targetStatus = this.deriveAccountStatus(target, now);
-    if (targetStatus === "revoked" || targetStatus === "trust_expired" || targetStatus === "requires_reauth" || targetStatus === "remembered") {
+    if (
+      targetStatus === "revoked" ||
+      targetStatus === "trust_expired" ||
+      targetStatus === "requires_reauth" ||
+      !target.encrypted_tokens
+    ) {
       return { ok: false, code: "unauthorized" };
     }
     if (target.generation !== input.expectedGeneration) {
@@ -636,6 +647,11 @@ export class SessionCoordinatorDO extends DurableObject<CoordinatorEnv> {
     }
     if (target.mfa_verified !== 1 || (target.has_local_lock === 1 && !input.localLockSatisfied)) {
       return { ok: false, code: "step_up_required" };
+    }
+
+    const sessionBridge = await this.decryptBridgeTokens(target.encrypted_tokens);
+    if (!sessionBridge) {
+      return { ok: false, code: "unauthorized" };
     }
 
     // Desativa geração/contexto anterior antes de ativar o destino
@@ -651,7 +667,7 @@ export class SessionCoordinatorDO extends DurableObject<CoordinatorEnv> {
     });
 
     this.ctx.storage.sql.exec(
-      "UPDATE installation_accounts SET last_activity_at = ? WHERE account_ref = ?",
+      "UPDATE installation_accounts SET status = 'active', last_activity_at = ? WHERE account_ref = ?",
       now,
       target.account_ref,
     );
@@ -669,8 +685,29 @@ export class SessionCoordinatorDO extends DurableObject<CoordinatorEnv> {
         accountRef: target.account_ref,
         displayName: target.display_name,
         expiresAt: deadlines.effectiveExpiresAt,
+        sessionBridge,
       },
     };
+  }
+
+  private async decryptBridgeTokens(encryptedTokens: string): Promise<SessionBridgeTokensPayload | null> {
+    try {
+      const plain = await decryptTokenPayload(
+        encryptedTokens,
+        this.env.SESSION_ENCRYPTION_KEY_CURRENT,
+        this.env.SESSION_ENCRYPTION_KEY_PREVIOUS,
+      );
+      const parsed = JSON.parse(plain) as { accessToken?: unknown; refreshToken?: unknown };
+      if (typeof parsed.accessToken !== "string" || typeof parsed.refreshToken !== "string") {
+        return null;
+      }
+      return {
+        accessToken: parsed.accessToken,
+        refreshToken: parsed.refreshToken,
+      };
+    } catch {
+      return null;
+    }
   }
 
   async createOpenTabIntent(input: {
@@ -742,6 +779,15 @@ export class SessionCoordinatorDO extends DurableObject<CoordinatorEnv> {
       return { ok: false, code: "context_stale" };
     }
 
+    let sessionBridge: SessionBridgeTokensPayload | undefined;
+    if (acct.encrypted_tokens) {
+      const decrypted = await this.decryptBridgeTokens(acct.encrypted_tokens);
+      if (!decrypted) {
+        return { ok: false, code: "unauthorized" };
+      }
+      sessionBridge = decrypted;
+    }
+
     const mode = acct.mode as SessionMode;
     const { contextId, csrfToken } = await this.mintTabContext(acct.account_ref, acct.generation, mode, now);
     const deadlines = computeSessionDeadlines({
@@ -764,6 +810,7 @@ export class SessionCoordinatorDO extends DurableObject<CoordinatorEnv> {
         accountRef: acct.account_ref,
         displayName: acct.display_name,
         expiresAt: deadlines.effectiveExpiresAt,
+        ...(sessionBridge ? { sessionBridge } : {}),
       },
     };
   }
@@ -928,6 +975,37 @@ export class SessionCoordinatorDO extends DurableObject<CoordinatorEnv> {
     return { ok: true, revision: nextRevision };
   }
 
+  async abortTokenRefresh(input: {
+    accountRef: string;
+    expectedRevision: number;
+    markRequiresReauth: boolean;
+  }): Promise<void> {
+    this.ensureSchema();
+    if (input.markRequiresReauth) {
+      this.ctx.storage.sql.exec(
+        `UPDATE installation_accounts
+         SET refresh_state = 'idle',
+             status = 'requires_reauth',
+             encrypted_tokens = NULL,
+             revision = revision + 1
+         WHERE account_ref = ? AND revision = ? AND refresh_state = 'in_flight'`,
+        input.accountRef,
+        input.expectedRevision,
+      );
+      this.ctx.storage.sql.exec("UPDATE tab_contexts SET active = 0 WHERE account_ref = ?", input.accountRef);
+      return;
+    }
+
+    this.ctx.storage.sql.exec(
+      `UPDATE installation_accounts
+       SET refresh_state = 'idle',
+           revision = revision + 1
+       WHERE account_ref = ? AND revision = ? AND refresh_state = 'in_flight'`,
+      input.accountRef,
+      input.expectedRevision,
+    );
+  }
+
   async resolveContext(input: ResolveContextInput): Promise<ResolveContextResult> {
     this.ensureSchema();
     const now = input.nowMs ?? Date.now();
@@ -1063,7 +1141,8 @@ export class SessionCoordinatorDO extends DurableObject<CoordinatorEnv> {
     const tokensToRevoke: Array<{ accountRef: string; userId: string; accessToken: string }> = [];
 
     for (const acct of accounts) {
-      if (acct.encrypted_tokens) {
+      const nextStatus = input.remember && acct.mode === "personal" ? "remembered" : "revoked";
+      if (nextStatus === "revoked" && acct.encrypted_tokens) {
         try {
           const plain = await decryptTokenPayload(
             acct.encrypted_tokens,
@@ -1081,14 +1160,14 @@ export class SessionCoordinatorDO extends DurableObject<CoordinatorEnv> {
         }
       }
 
-      const nextStatus = input.remember && acct.mode === "personal" ? "remembered" : "revoked";
       this.ctx.storage.sql.exec(
         `UPDATE installation_accounts
-         SET encrypted_tokens = NULL,
+         SET encrypted_tokens = CASE WHEN ? = 'revoked' THEN NULL ELSE encrypted_tokens END,
              status = ?,
              revoked_at = CASE WHEN ? = 'revoked' THEN ? ELSE NULL END,
              revision = revision + 1
          WHERE account_ref = ?`,
+        nextStatus,
         nextStatus,
         nextStatus,
         now,

@@ -35,6 +35,8 @@ describe("Cloudflare Worker + Durable Object — T03 Custody & Session Lifecycle
   let previewFetch: typeof fetch;
   let adminFetch: typeof fetch;
   let failUpstreamLogout = false;
+  let failUpstreamRefresh = false;
+  let logoutCallCount = 0;
   const rlsCategories: CategoryRow[] = [];
 
   function resetCategories(): void {
@@ -110,6 +112,20 @@ describe("Cloudflare Worker + Durable Object — T03 Custody & Session Lifecycle
             );
             return;
           }
+          if (email === "expiring@axir.com.br") {
+            const expSeconds = Math.floor(Date.now() / 1000) + 10;
+            const payloadB64 = Buffer.from(JSON.stringify({ sub: "user-exp", exp: expSeconds })).toString("base64url");
+            res.writeHead(200, { "Content-Type": "application/json" });
+            res.end(
+              JSON.stringify({
+                access_token: `eyJhbGciOiJIUzI1NiJ9.${payloadB64}.sig`,
+                refresh_token: "rt-expiring",
+                aal: "aal2",
+                user: { id: "user-exp", email },
+              }),
+            );
+            return;
+          }
           const match = /^u(\d+)@axir\.com\.br$/.exec(email);
           if (match) {
             const idx = match[1];
@@ -120,6 +136,27 @@ describe("Cloudflare Worker + Durable Object — T03 Custody & Session Lifecycle
                 refresh_token: `rt-u${idx}`,
                 aal: "aal2",
                 user: { id: `user-${idx}`, email },
+              }),
+            );
+            return;
+          }
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "invalid_grant" }));
+          return;
+        }
+
+        if (grantType === "refresh_token") {
+          if (failUpstreamRefresh) {
+            res.writeHead(401, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ error: "invalid_grant" }));
+            return;
+          }
+          if (body.refresh_token === "rt-expiring") {
+            res.writeHead(200, { "Content-Type": "application/json" });
+            res.end(
+              JSON.stringify({
+                access_token: "synthetic.jwt.refreshed",
+                refresh_token: "rt-refreshed",
               }),
             );
             return;
@@ -166,6 +203,7 @@ describe("Cloudflare Worker + Durable Object — T03 Custody & Session Lifecycle
       }
 
       if (req.method === "POST" && reqUrl.pathname === "/auth/v1/logout") {
+        logoutCallCount += 1;
         if (failUpstreamLogout) {
           res.writeHead(500, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ error: "upstream_down" }));
@@ -386,7 +424,16 @@ describe("Cloudflare Worker + Durable Object — T03 Custody & Session Lifecycle
       body: JSON.stringify({ targetAccountRef: ctxB.accountRef, expectedGeneration: ctxB.generation }),
     });
     expect(validSwitch.status).toBe(200);
-    const switchedCtx = (await validSwitch.json()) as { contextId: string; csrfToken: string };
+    expect(validSwitch.headers.get("Cache-Control")).toContain("no-store");
+    const switchedCtx = (await validSwitch.json()) as {
+      contextId: string;
+      csrfToken: string;
+      sessionBridge?: { accessToken: string; refreshToken: string };
+    };
+    expect(switchedCtx.sessionBridge).toEqual({
+      accessToken: JWT_B,
+      refreshToken: "rt-b",
+    });
 
     // Contexto antigo ctxA nao funciona mais
     const oldList = await previewFetch("https://preview.axir.com.br/api/data/v1/categories.list", {
@@ -531,6 +578,13 @@ describe("Cloudflare Worker + Durable Object — T03 Custody & Session Lifecycle
       body: JSON.stringify({ intentToken }),
     });
     expect(redeem1.status).toBe(200);
+    const redeemedCtx = (await redeem1.json()) as {
+      sessionBridge?: { accessToken: string; refreshToken: string };
+    };
+    expect(redeemedCtx.sessionBridge).toEqual({
+      accessToken: JWT_A,
+      refreshToken: "rt-a",
+    });
 
     // Segunda tentativa com o mesmo intentToken falha (uso unico atomico)
     const redeem2 = await previewFetch("https://preview.axir.com.br/api/sessions/v1/redeem-tab", {
@@ -663,5 +717,225 @@ describe("Cloudflare Worker + Durable Object — T03 Custody & Session Lifecycle
     });
     expect(forgetRes.status).toBe(200);
     expect(await forgetRes.json()).toEqual({ forgotten: true, status: "neutral" });
+  });
+
+  it("preserva login automatico via switch apos logout com remember: true e revoga upstream com remember: false", async () => {
+    const loginA = await previewFetch("https://preview.axir.com.br/api/sessions/v1/login", {
+      method: "POST",
+      headers: { Origin: "https://preview.axir.com.br", "Content-Type": "application/json" },
+      body: JSON.stringify({ grant: "password", mode: "personal", email: "a@axir.com.br", password: "secret" }),
+    });
+    expect(loginA.status).toBe(200);
+    const cookie = extractCookiePair(loginA.headers.get("Set-Cookie"));
+    const ctxA = (await loginA.json()) as {
+      contextId: string;
+      csrfToken: string;
+      accountRef: string;
+      generation: number;
+    };
+
+    const loginB = await previewFetch("https://preview.axir.com.br/api/sessions/v1/login", {
+      method: "POST",
+      headers: { Origin: "https://preview.axir.com.br", Cookie: cookie, "Content-Type": "application/json" },
+      body: JSON.stringify({ grant: "password", mode: "personal", email: "b@axir.com.br", password: "secret" }),
+    });
+    expect(loginB.status).toBe(200);
+    const ctxB = (await loginB.json()) as {
+      contextId: string;
+      csrfToken: string;
+      accountRef: string;
+      generation: number;
+    };
+
+    // Logout de A com remember: true -> NAO revoga upstream, preserva tokens e marca como remembered
+    const logoutCountBeforeRemember = logoutCallCount;
+    const logoutRemember = await previewFetch("https://preview.axir.com.br/api/sessions/v1/logout", {
+      method: "POST",
+      headers: {
+        Origin: "https://preview.axir.com.br",
+        Cookie: cookie,
+        "x-axir-context": ctxA.contextId,
+        "x-axir-csrf": ctxA.csrfToken,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ scope: "device", remember: true }),
+    });
+    expect(logoutRemember.status).toBe(200);
+    expect(await logoutRemember.json()).toEqual({
+      status: "neutral",
+      upstreamConfirmed: true,
+      pendingRevocations: 0,
+    });
+    expect(logoutCallCount).toBe(logoutCountBeforeRemember);
+
+    // Conta A aparece como remembered em accounts
+    const accountsAfterRemember = await previewFetch("https://preview.axir.com.br/api/sessions/v1/accounts", {
+      method: "POST",
+      headers: {
+        Origin: "https://preview.axir.com.br",
+        Cookie: cookie,
+        "x-axir-context": ctxB.contextId,
+        "x-axir-csrf": ctxB.csrfToken,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}),
+    });
+    expect(accountsAfterRemember.status).toBe(200);
+    const accountsJson = (await accountsAfterRemember.json()) as {
+      accounts: Array<{ accountRef: string; status: string }>;
+    };
+    expect(accountsJson.accounts.find((a) => a.accountRef === ctxA.accountRef)?.status).toBe("remembered");
+
+    // Alternar de B -> A reativa A automaticamente sem exigir senha e devolve sessionBridge
+    const switchToRemembered = await previewFetch("https://preview.axir.com.br/api/sessions/v1/switch", {
+      method: "POST",
+      headers: {
+        Origin: "https://preview.axir.com.br",
+        Cookie: cookie,
+        "x-axir-context": ctxB.contextId,
+        "x-axir-csrf": ctxB.csrfToken,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ targetAccountRef: ctxA.accountRef, expectedGeneration: ctxA.generation }),
+    });
+    expect(switchToRemembered.status).toBe(200);
+    const reactivatedA = (await switchToRemembered.json()) as {
+      contextId: string;
+      csrfToken: string;
+      sessionBridge?: { accessToken: string; refreshToken: string };
+    };
+    expect(reactivatedA.sessionBridge).toEqual({
+      accessToken: JWT_A,
+      refreshToken: "rt-a",
+    });
+
+    // Logout de B com remember: false -> revoga upstream e bloqueia switch posterior para B
+    const logoutCountBeforeRevoke = logoutCallCount;
+    const loginB2 = await previewFetch("https://preview.axir.com.br/api/sessions/v1/login", {
+      method: "POST",
+      headers: { Origin: "https://preview.axir.com.br", Cookie: cookie, "Content-Type": "application/json" },
+      body: JSON.stringify({ grant: "password", mode: "personal", email: "b@axir.com.br", password: "secret" }),
+    });
+    const ctxB2 = (await loginB2.json()) as {
+      contextId: string;
+      csrfToken: string;
+      accountRef: string;
+      generation: number;
+    };
+
+    const logoutRevoke = await previewFetch("https://preview.axir.com.br/api/sessions/v1/logout", {
+      method: "POST",
+      headers: {
+        Origin: "https://preview.axir.com.br",
+        Cookie: cookie,
+        "x-axir-context": ctxB2.contextId,
+        "x-axir-csrf": ctxB2.csrfToken,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ scope: "device", remember: false }),
+    });
+    expect(logoutRevoke.status).toBe(200);
+    expect(logoutCallCount).toBe(logoutCountBeforeRevoke + 1);
+
+    const switchToRevoked = await previewFetch("https://preview.axir.com.br/api/sessions/v1/switch", {
+      method: "POST",
+      headers: {
+        Origin: "https://preview.axir.com.br",
+        Cookie: cookie,
+        "x-axir-context": reactivatedA.contextId,
+        "x-axir-csrf": reactivatedA.csrfToken,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ targetAccountRef: ctxB2.accountRef, expectedGeneration: ctxB2.generation }),
+    });
+    expect(switchToRevoked.status).toBe(401);
+  });
+
+  it("faz refresh server-side no switch quando accessToken esta proximo de expirar e retorna 401 se falhar", async () => {
+    const loginExp = await previewFetch("https://preview.axir.com.br/api/sessions/v1/login", {
+      method: "POST",
+      headers: { Origin: "https://preview.axir.com.br", "Content-Type": "application/json" },
+      body: JSON.stringify({ grant: "password", mode: "personal", email: "expiring@axir.com.br", password: "secret" }),
+    });
+    expect(loginExp.status).toBe(200);
+    const cookie = extractCookiePair(loginExp.headers.get("Set-Cookie"));
+    const ctxExp = (await loginExp.json()) as {
+      contextId: string;
+      csrfToken: string;
+      accountRef: string;
+      generation: number;
+    };
+
+    const loginB = await previewFetch("https://preview.axir.com.br/api/sessions/v1/login", {
+      method: "POST",
+      headers: { Origin: "https://preview.axir.com.br", Cookie: cookie, "Content-Type": "application/json" },
+      body: JSON.stringify({ grant: "password", mode: "personal", email: "b@axir.com.br", password: "secret" }),
+    });
+    const ctxB = (await loginB.json()) as {
+      contextId: string;
+      csrfToken: string;
+      accountRef: string;
+      generation: number;
+    };
+
+    // Switch para conta expirando (< 60s) -> faz refresh server-side antes de retornar sessionBridge
+    const refreshedSwitch = await previewFetch("https://preview.axir.com.br/api/sessions/v1/switch", {
+      method: "POST",
+      headers: {
+        Origin: "https://preview.axir.com.br",
+        Cookie: cookie,
+        "x-axir-context": ctxB.contextId,
+        "x-axir-csrf": ctxB.csrfToken,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ targetAccountRef: ctxExp.accountRef, expectedGeneration: ctxExp.generation }),
+    });
+    expect(refreshedSwitch.status).toBe(200);
+    const refreshedCtx = (await refreshedSwitch.json()) as {
+      contextId: string;
+      csrfToken: string;
+      sessionBridge?: { accessToken: string; refreshToken: string };
+    };
+    expect(refreshedCtx.sessionBridge).toEqual({
+      accessToken: "synthetic.jwt.refreshed",
+      refreshToken: "rt-refreshed",
+    });
+
+    // Se o refresh upstream falhar com 401 -> switch retorna 401 unauthorized
+    const loginExp2 = await previewFetch("https://preview.axir.com.br/api/sessions/v1/login", {
+      method: "POST",
+      headers: { Origin: "https://preview.axir.com.br", Cookie: cookie, "Content-Type": "application/json" },
+      body: JSON.stringify({ grant: "password", mode: "personal", email: "expiring@axir.com.br", password: "secret" }),
+    });
+    const ctxExp2 = (await loginExp2.json()) as {
+      accountRef: string;
+      generation: number;
+    };
+
+    const loginB2 = await previewFetch("https://preview.axir.com.br/api/sessions/v1/login", {
+      method: "POST",
+      headers: { Origin: "https://preview.axir.com.br", Cookie: cookie, "Content-Type": "application/json" },
+      body: JSON.stringify({ grant: "password", mode: "personal", email: "b@axir.com.br", password: "secret" }),
+    });
+    const ctxB2 = (await loginB2.json()) as {
+      contextId: string;
+      csrfToken: string;
+    };
+
+    failUpstreamRefresh = true;
+    const failedSwitch = await previewFetch("https://preview.axir.com.br/api/sessions/v1/switch", {
+      method: "POST",
+      headers: {
+        Origin: "https://preview.axir.com.br",
+        Cookie: cookie,
+        "x-axir-context": ctxB2.contextId,
+        "x-axir-csrf": ctxB2.csrfToken,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ targetAccountRef: ctxExp2.accountRef, expectedGeneration: ctxExp2.generation }),
+    });
+    failUpstreamRefresh = false;
+    expect(failedSwitch.status).toBe(401);
+    expect(await failedSwitch.json()).toEqual({ error: "unauthorized" });
   });
 });

@@ -182,9 +182,47 @@ describe("AccountSwitcherPanel", () => {
     expect(onLogout).toHaveBeenNthCalledWith(1, { remember: false });
 
     // Marcando opt-in envia remember: true
+    expect(
+      screen.getByText("Manter esta conta salva para login rápido ao sair"),
+    ).toBeInTheDocument();
     await user.click(screen.getByRole("checkbox"));
     await user.click(screen.getByRole("button", { name: /Sair desta conta/i }));
     expect(onLogout).toHaveBeenNthCalledWith(2, { remember: true });
+  });
+
+  it("exibe acesso rápido Entrar para conta remembered em estado neutro e Entrar novamente apenas para contas expiradas/revogadas", async () => {
+    const user = userEvent.setup();
+    const onSwitchAccount = vi.fn();
+    const onReauthAccount = vi.fn();
+    const remembered = makeAccount({
+      accountRef: "acc-rem",
+      displayName: "Bruno Lima",
+      status: "remembered",
+    });
+    const revoked = makeAccount({
+      accountRef: "acc-rev",
+      displayName: "Carla Dias",
+      status: "revoked",
+    });
+
+    render(
+      <AccountSwitcherPanel
+        context={makeContext({ status: "neutral", accountRef: null, displayName: null })}
+        accounts={[remembered, revoked]}
+        onSwitchAccount={onSwitchAccount}
+        onReauthAccount={onReauthAccount}
+      />,
+    );
+
+    const enterBtn = screen.getByRole("button", { name: "Entrar" });
+    const reauthBtn = screen.getByRole("button", { name: /Entrar novamente/i });
+
+    await user.click(enterBtn);
+    await user.click(screen.getByRole("button", { name: "Confirmar troca" }));
+    expect(onSwitchAccount).toHaveBeenCalledWith(remembered);
+
+    await user.click(reauthBtn);
+    expect(onReauthAccount).toHaveBeenCalledWith(revoked);
   });
 
   it("suporta navegação por teclado (setas, Home, End e Escape) na lista de contas", async () => {

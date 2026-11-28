@@ -21,6 +21,8 @@ export { purgeAccountStorage };
 export interface ResetAppStateOptions {
   /** Conta específica cujo armazenamento local deve ser expurgado seletivamente. */
   purgeAccountKey?: string | null;
+  /** Preserva o sessionContext recém-aplicado por switchAccount/redeem-tab. */
+  preserveSessionContext?: boolean;
 }
 
 /**
@@ -34,7 +36,9 @@ export function resetAppState(
   options?: ResetAppStateOptions,
 ): void {
   // 0. Invalida o contexto de sessão da aba para descartar respostas tardias em voo
-  clearSessionContext("neutral");
+  if (!options?.preserveSessionContext) {
+    clearSessionContext("neutral");
+  }
 
   // 1. Cancela buscas e mutações em andamento
   if (queryClient) {

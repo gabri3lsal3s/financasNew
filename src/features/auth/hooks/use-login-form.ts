@@ -12,8 +12,11 @@ import {
 } from "@/hooks/use-auth";
 import { useSignOut } from "@/hooks/use-sign-out";
 import {
+  extractSessionBridge,
+  hydrateSupabaseSessionFromBridge,
   isSessionTransportError,
   postSessionOperation,
+  stripSessionBridge,
   syncCurrentSupabaseSessionToBff,
 } from "@/state/session-custody";
 import { classifyError, getErrorMessage } from "@/services/errors";
@@ -139,15 +142,28 @@ export function useLoginForm() {
       "redeem-tab",
       { intentToken: tabIntentToken },
     )
-      .then((response) => {
+      .then(async (response) => {
         if (cancelled) return;
         const ctx = extractSessionContext(response);
         if (!ctx) {
           setError("Não foi possível validar o contexto de sessão da aba.");
           return;
         }
+        const bridge = extractSessionBridge(response);
+        if (bridge) {
+          const hydrated = await hydrateSupabaseSessionFromBridge(bridge);
+          if (cancelled) return;
+          if (!hydrated) {
+            setError("Não foi possível ativar a sessão desta aba. Faça login novamente.");
+            return;
+          }
+        } else if (ctx.status === "authenticated") {
+          setError("Não foi possível restaurar as credenciais desta aba. Faça login novamente.");
+          return;
+        }
+        const cleanCtx = stripSessionBridge(ctx);
         setError(null);
-        setSessionContext(ctx);
+        setSessionContext(cleanCtx);
         navigate(from, { replace: true });
       })
       .catch((err: unknown) => {

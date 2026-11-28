@@ -8,8 +8,11 @@ import type {
   PublicSessionContext,
 } from "@/types/session-custody";
 import {
+  extractSessionBridge,
+  hydrateSupabaseSessionFromBridge,
   isSessionTransportError,
   postSessionOperation,
+  stripSessionBridge,
   syncCurrentSupabaseSessionToBff,
   type SessionTransportErrorCode,
 } from "@/state/session-custody";
@@ -22,6 +25,7 @@ import {
   subscribeSessionContext,
   type TabSessionContext,
 } from "@/services/session-context";
+import { getActiveUserId } from "@/services/user-storage";
 import { getErrorMessage } from "@/services/errors";
 
 export type AccountSwitcherAction =
@@ -203,7 +207,7 @@ export function useAccountSwitcher(): UseAccountSwitcherReturn {
     async (options?: { signal?: AbortSignal }): Promise<AccountSwitcherResult<{ accounts: AccountSummary[] }>> => {
       const captured = captureContext();
       let activeContextId = captured.contextId;
-      if (!activeContextId || getSessionContext().status === "mfa_required") {
+      if (!activeContextId) {
         const synced = await syncCurrentSupabaseSessionToBff();
         if (!synced?.contextId) {
           setAccounts([]);
@@ -229,7 +233,6 @@ export function useAccountSwitcher(): UseAccountSwitcherReturn {
           const mappedFirst = mapSessionError(firstErr);
           if (
             mappedFirst.code === "unauthorized" ||
-            mappedFirst.code === "step_up_required" ||
             mappedFirst.code === "context_stale"
           ) {
             const resynced = await syncCurrentSupabaseSessionToBff();
@@ -295,12 +298,29 @@ export function useAccountSwitcher(): UseAccountSwitcherReturn {
           setErrorCode("invalid_response");
           return { ok: false, code: "invalid_response", message };
         }
-        resetAppState(queryClient, nextContext.accountRef);
-        setSessionContext(nextContext);
+        const bridge = extractSessionBridge(response);
+        if (bridge) {
+          const hydrated = await hydrateSupabaseSessionFromBridge(bridge);
+          if (!hydrated) {
+            const message = "Não foi possível ativar a sessão da conta selecionada. Faça login novamente.";
+            setError(message);
+            setErrorCode("unauthorized");
+            return { ok: false, code: "unauthorized", message };
+          }
+        } else if (nextContext.status === "authenticated") {
+          const message = "Não foi possível obter as credenciais da conta selecionada. Faça login novamente.";
+          setError(message);
+          setErrorCode("unauthorized");
+          return { ok: false, code: "unauthorized", message };
+        }
+        const cleanContext = stripSessionBridge(nextContext);
+        const nextUserId = getActiveUserId() ?? null;
+        resetAppState(queryClient, nextUserId, { preserveSessionContext: true });
+        setSessionContext(cleanContext);
         setAccounts((prev) =>
           prev.map((item) => {
-            if (item.accountRef === nextContext.accountRef) {
-              return { ...item, status: "active", generation: nextContext.generation };
+            if (item.accountRef === cleanContext.accountRef) {
+              return { ...item, status: "active", generation: cleanContext.generation };
             }
             if (item.status === "active") {
               return { ...item, status: "remembered" };
@@ -308,7 +328,7 @@ export function useAccountSwitcher(): UseAccountSwitcherReturn {
             return item;
           }),
         );
-        return { ok: true, context: nextContext };
+        return { ok: true, context: cleanContext };
       } catch (err) {
         const mapped = mapSessionError(err);
         setError(mapped.message);
